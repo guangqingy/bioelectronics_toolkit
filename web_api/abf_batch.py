@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from flask import jsonify, request
 
+from services import abf as abf_service
 from .jobs import submit_flask_route_job
 
 
@@ -20,24 +21,7 @@ def register_abf_batch_routes(app, ctx):
 
     def _abf_estimate_r(i_trace, v_trace, dt):
         """Estimate resistance from V-step edges via dV/dI."""
-        try:
-            dv = np.diff(v_trace)
-            thresh = np.std(dv) * 3
-            edges = np.where(np.abs(dv) > thresh)[0]
-            if len(edges) >= 2:
-                e = edges[0]
-                win = max(10, int(0.002 / dt))
-                v_pre = np.mean(v_trace[max(0, e - win) : e])
-                v_post = np.mean(v_trace[e + 1 : e + 1 + win])
-                i_pre = np.mean(i_trace[max(0, e - win) : e])
-                i_post = np.mean(i_trace[e + 1 : e + 1 + win])
-                d_v = v_post - v_pre
-                d_i = i_post - i_pre
-                if abs(d_i) > 1e-6:
-                    return abs(d_v / d_i)
-        except Exception:
-            pass
-        return None
+        return abf_service.estimate_resistance(i_trace, v_trace, dt)
 
     @app.route("/api/abf_batch/browse", methods=["POST"])
     def api_abf_batch_browse():

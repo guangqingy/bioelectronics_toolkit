@@ -112,6 +112,9 @@ target-version = "py310"
 [tool.ruff.lint]
 # Baseline CI lint: catch syntax-level and undefined-name issues without
 # failing legacy scientific scripts on historical style/layout differences.
+# CI also runs a stricter E/F/W/I command against services, tests, and the Web
+# launcher plus an all-web_api F gate; keep legacy Tkinter outside the stricter
+# style gate until migrated.
 select = ["E9", "F63", "F7", "F82"]
 ignore = ["E402"]
 

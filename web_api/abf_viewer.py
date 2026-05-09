@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from flask import Response, jsonify, request
 
+from services import abf as abf_service
 
 from web_api.common import as_bool, mode_is_save
 from .jobs import submit_flask_route_job
@@ -31,68 +32,17 @@ def register_abf_viewer_routes(app, ctx):
     _mode_is_save = mode_is_save
     _as_bool = as_bool
 
-    def _default_baseline_indices(n):
-        i0, i1 = 19000, 20000
-        if i1 > n or (i1 - i0) < 5:
-            i0 = int(0.38 * n)
-            i1 = int(0.40 * n)
-        i0 = max(0, min(i0, n - 1))
-        i1 = max(i0 + 1, min(i1, n))
-        return i0, i1
-
     def _abf_baseline_apply(y, t, pre0_ms=None, pre1_ms=None, use_default=False):
         """Return baseline-subtracted signal and baseline value."""
-        baseline = 0.0
-        n = len(y)
-
-        if pre0_ms is not None and pre1_ms is not None and len(t) > 1:
-            dt = t[1] - t[0]
-            if dt > 0:
-                i0 = max(0, int(pre0_ms / 1000.0 / dt))
-                i1 = min(n, int(pre1_ms / 1000.0 / dt))
-                if i1 > i0:
-                    baseline = float(np.mean(y[i0:i1]))
-                    return y - baseline, baseline
-
-        if use_default and n > 5:
-            i0, i1 = _default_baseline_indices(n)
-            baseline = float(np.mean(y[i0:i1]))
-            return y - baseline, baseline
-
-        return y, baseline
+        return abf_service.baseline_apply(y, t, pre0_ms, pre1_ms, use_default)
 
     def _abf_baseline_subtract(y, t, pre0_ms, pre1_ms):
         """Subtract mean of the [pre0_ms, pre1_ms] baseline window."""
-        if pre0_ms is None or pre1_ms is None:
-            return y
-        dt = t[1] - t[0]
-        i0 = max(0, int(pre0_ms / 1000 / dt))
-        i1 = min(len(t), int(pre1_ms / 1000 / dt))
-        if i1 > i0:
-            baseline = np.mean(y[i0:i1])
-            return y - baseline
-        return y
+        return abf_service.baseline_subtract(y, t, pre0_ms, pre1_ms)
 
     def _abf_estimate_r(i_trace, v_trace, dt):
         """Estimate resistance from V-step edges via dV/dI."""
-        try:
-            dv = np.diff(v_trace)
-            thresh = np.std(dv) * 3
-            edges = np.where(np.abs(dv) > thresh)[0]
-            if len(edges) >= 2:
-                e = edges[0]
-                win = max(10, int(0.002 / dt))
-                v_pre = np.mean(v_trace[max(0, e - win) : e])
-                v_post = np.mean(v_trace[e + 1 : e + 1 + win])
-                i_pre = np.mean(i_trace[max(0, e - win) : e])
-                i_post = np.mean(i_trace[e + 1 : e + 1 + win])
-                d_v = v_post - v_pre
-                d_i = i_post - i_pre
-                if abs(d_i) > 1e-6:
-                    return abs(d_v / d_i)
-        except Exception:
-            pass
-        return None
+        return abf_service.estimate_resistance(i_trace, v_trace, dt)
 
     @app.route("/api/abf/browse", methods=["POST"])
     def api_abf_browse():
@@ -289,69 +239,23 @@ def register_abf_viewer_routes(app, ctx):
                     y_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=True
                 )
 
-            if use_all:
-                t_use = t_full
-                y_use = y_full
-                idx_base = np.arange(len(t_full))
-                t0_plot = float(t_full[0]) if len(t_full) else 0.0
-                t1_plot = float(t_full[-1]) if len(t_full) else 0.0
-            else:
-                if t0 is None or t1 is None:
-                    return err("Set analysis window t0/t1 or enable use_all")
-                if t1 < t0:
-                    t0, t1 = t1, t0
-                m = (t_full >= t0) & (t_full <= t1)
-                if not np.any(m):
-                    return err("Selected time window has no points")
-                idx_base = np.where(m)[0]
-                t_use = t_full[m]
-                y_use = y_full[m]
-                t0_plot = float(t0)
-                t1_plot = float(t1)
-
-            if len(t_use) < 3:
-                return err("Not enough points in selected window")
-
-            dt = max(1e-9, t_use[1] - t_use[0])
-            dist_pts = max(1, int(distance_ms / 1000 / dt))
-            kw = {"distance": dist_pts}
-            if height is not None:
-                kw["height"] = height
-            if prominence is not None:
-                kw["prominence"] = prominence
-
-            pol = str(polarity or "positive").strip().lower()
-            if pol in {"neg", "negative"}:
-                idx_local, props = find_peaks(-y_use, **kw)
-                amps = y_use[idx_local]
-                pol_out = "NEG"
-            elif pol == "abs_max":
-                idx_local, props = find_peaks(np.abs(y_use), **kw)
-                amps = np.abs(y_use[idx_local])
-                pol_out = "ABS"
-            else:
-                idx_local, props = find_peaks(y_use, **kw)
-                amps = y_use[idx_local]
-                pol_out = "POS"
-
-            peaks = []
-            for i, p_local in enumerate(idx_local):
-                gi = int(idx_base[int(p_local)])
-                peaks.append(
-                    {
-                        "idx": gi,
-                        "global_index": gi,
-                        "time": float(t_full[gi]),
-                        "amplitude": float(amps[i]),
-                        "width": float(props.get("widths", [np.nan] * len(idx_local))[i]) if "widths" in props else None,
-                        "prominence": (
-                            float(props.get("prominences", [np.nan] * len(idx_local))[i])
-                            if "prominences" in props
-                            else None
-                        ),
-                        "polarity": pol_out,
-                    }
+            try:
+                peaks, window_bounds = abf_service.detect_peaks(
+                    t_full,
+                    y_full,
+                    t0,
+                    t1,
+                    use_all,
+                    polarity,
+                    distance_ms,
+                    find_peaks,
+                    height=height,
+                    prominence=prominence,
                 )
+            except ValueError as exc:
+                return err(str(exc))
+            t0_plot, t1_plot = window_bounds
+            pol_out = peaks[0]["polarity"] if peaks else str(polarity or "positive").upper()
 
             fig, ax = plt.subplots(figsize=(9, 4))
             ax.plot(t_full, y_full, color=line_color, lw=0.7)

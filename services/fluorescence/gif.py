@@ -16,7 +16,11 @@ def import_tifffile(tifflib_module: Any = None):
     return tifffile
 
 
-def import_pillow(image_module: Any = None, image_draw_module: Any = None, image_font_module: Any = None):
+def import_pillow(
+    image_module: Any = None,
+    image_draw_module: Any = None,
+    image_font_module: Any = None,
+):
     if image_module is not None and image_draw_module is not None and image_font_module is not None:
         return image_module, image_draw_module, image_font_module
     from PIL import Image, ImageDraw, ImageFont
@@ -95,7 +99,9 @@ def parse_slice_spec(slice_spec: object, n_frames: int) -> list[int]:
             if start <= 0 or end <= 0:
                 raise ValueError(f"Slice numbers are 1-based and must be positive: {token}")
             if start > n_frames or end > n_frames:
-                raise ValueError(f"Slice range out of bounds: {token}; TIFF has {n_frames} slice(s)")
+                raise ValueError(
+                    f"Slice range out of bounds: {token}; TIFF has {n_frames} slice(s)"
+                )
             if start <= end:
                 indices.extend(range(start - 1, end, step))
             else:
@@ -258,7 +264,11 @@ def render_frame(
     return img
 
 
-def resolve_output_path(input_path: Path, raw_output_path: str = "", raw_output_dir: str = "") -> Path:
+def resolve_output_path(
+    input_path: Path,
+    raw_output_path: str = "",
+    raw_output_dir: str = "",
+) -> Path:
     if raw_output_path:
         out = Path(raw_output_path).expanduser()
         if not out.is_absolute():

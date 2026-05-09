@@ -5,7 +5,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 SCRIPT_LINE_RE = re.compile(r"^([A-Za-z0-9_.-]+)\s*=\s*\"([A-Za-z0-9_.:]+)\"")
 
 

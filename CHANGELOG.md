@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Web-first desktop launcher package under `desktop_apps/`, with legacy
   Tkinter applications preserved under `desktop_apps/legacy/`.
 - Focused fluorescence route modules for stack, 3D, GIF, and ROI endpoints.
+- Shared service modules for CSV trace handling, electrochemistry parsing and
+  detection, ABF baseline/peak helpers, EMG peak helpers, and RHD channel/merge
+  helpers.
+- Service-level unit tests for CSV, electrochemistry, ABF, EMG, and RHD
+  primitives.
 - Repository-level maintenance docs for structure, desktop/Web parity, and
   desktop migration strategy.
 - `.gitattributes` for stable LF line endings and binary data handling.
@@ -23,8 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI, packaging metadata, and README now target Python 3.10 - 3.12.
 - Ruff is used as a baseline correctness gate for syntax and undefined-name
   issues while legacy scripts are gradually cleaned up.
+- CI now applies stricter `E/F/W/I` lint to maintained `services/`, `tests/`,
+  and Web launcher code while keeping legacy Tkinter outside that strict gate.
+- Web API modules now run an all-module `F` lint gate for unused imports and
+  undefined/unused names.
 - WebGUI API responses, job records, run manifests, settings, and file-profile
   behavior are documented as the canonical interface.
+- CSV, electrochemistry, ABF, EMG, and RHD Web routes now delegate more core
+  numeric/data-loading behavior to shared services.
 
 ### Fixed
 - Removed a Python 2-era `unichr` branch from `importrhdutilities.py`.

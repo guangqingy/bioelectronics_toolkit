@@ -1,4 +1,3 @@
-import io
 import traceback
 from pathlib import Path
 
@@ -7,10 +6,9 @@ import numpy as np
 import pandas as pd
 from flask import Response, jsonify, request
 
-from web_api.common import FLOAT_RE, as_bool, load_echem_file, mode_is_save
+from services import echem as echem_service
+from web_api.common import as_bool, mode_is_save
 from .jobs import submit_flask_route_job
-
-_PV_VALUE_COL_HINTS = ["voltage", "potential", "ewe", "v/"]
 
 
 def register_echem_pv_routes(app, ctx):
@@ -30,107 +28,48 @@ def register_echem_pv_routes(app, ctx):
     _as_bool = as_bool
 
     def _normalize_method(method):
-        s = str(method or "median").strip().lower()
-        if s in {"median", "rolling_median"}:
-            return "median"
-        if s == "savgol":
-            return "savgol"
-        return "median"
+        return echem_service.normalize_baseline_method(method)
 
     def _load_echem(path):
         """Load time/voltage data from a .txt or .csv echem file."""
-        return load_echem_file(path, _PV_VALUE_COL_HINTS)
-
-    def _rolling_median(x, win_pts):
-        if win_pts <= 1:
-            return np.zeros_like(x)
-        win_pts = int(win_pts | 1)
-        pad = win_pts // 2
-        xp = np.pad(x, pad, mode="edge")
-        out = np.empty_like(x)
-        for i in range(len(x)):
-            out[i] = np.median(xp[i : i + win_pts])
-        return out
+        return echem_service.load_photovoltage(path)
 
     def _detrend_signal(t, v, method="median", window_ms=50.0, sg_window_ms=51.0, sg_poly=3):
-        if len(t) < 3:
-            return v - np.median(v)
-
-        dt = float(np.median(np.diff(t))) if len(t) > 1 else 1e-3
-        if dt <= 0:
-            dt = 1e-3
-
-        win_pts = max(1, int(round((float(window_ms) / 1000.0) / dt)))
-        win_pts = win_pts if win_pts % 2 == 1 else win_pts + 1
-
-        method = _normalize_method(method)
-        if method == "savgol":
-            if savgol_filter is None:
-                raise RuntimeError("Savitzky-Golay filter unavailable; install scipy")
-
-            sg_pts = max(win_pts, int(round((float(sg_window_ms) / 1000.0) / dt)))
-            sg_pts = sg_pts if sg_pts % 2 == 1 else sg_pts + 1
-
-            if sg_pts >= len(v):
-                sg_pts = len(v) - 1 if len(v) % 2 == 0 else len(v)
-            if sg_pts < 5:
-                baseline = _rolling_median(v, win_pts)
-            else:
-                poly = max(1, int(sg_poly))
-                poly = min(poly, sg_pts - 1)
-                baseline = savgol_filter(v, window_length=sg_pts, polyorder=poly)
-        else:
-            baseline = _rolling_median(v, win_pts)
-
-        return v - baseline
+        return echem_service.detrend_signal(
+            t,
+            v,
+            method=method,
+            window_ms=window_ms,
+            sg_window_ms=sg_window_ms,
+            sg_poly=sg_poly,
+            savgol_filter_func=savgol_filter,
+        )
 
     def _detect_positive_pulses_in_window(t, e_det, t0, t1, peak_min_v, min_width_ms, min_spacing_ms):
-        if t1 <= t0:
-            return []
-
-        s = int(np.searchsorted(t, t0, side="left"))
-        e = int(np.searchsorted(t, t1, side="right"))
-        s = max(0, s)
-        e = min(len(t), e)
-        if e - s < 3:
-            return []
-
-        tt = t[s:e]
-        yy = e_det[s:e]
-        dt = float(np.median(np.diff(tt))) if len(tt) > 1 else (float(np.median(np.diff(t))) if len(t) > 1 else 1e-3)
-        if dt <= 0:
-            dt = 1e-3
-        fs = 1.0 / dt
-        distance = max(1, int((float(min_spacing_ms) / 1000.0) * fs))
-
-        locs, _props = find_peaks(yy, height=float(peak_min_v), distance=distance)
-        if len(locs) == 0:
-            return []
-
-        widths, _, _, _ = peak_widths(yy, locs, rel_height=0.5)
-        min_width_pts = max(1, int((float(min_width_ms) / 1000.0) * fs))
-
-        out = []
-        for i_loc, w in zip(locs, widths):
-            if w >= min_width_pts:
-                gi = s + int(i_loc)
-                out.append(
-                    {
-                        "idx": gi,
-                        "t": float(t[gi]),
-                        "amp_det_v": float(e_det[gi]),
-                        "width_ms": float(1000.0 * w / fs),
-                    }
-                )
-        return out
+        return echem_service.detect_positive_pulses(
+            t,
+            e_det,
+            t0,
+            t1,
+            peak_min_v,
+            min_width_ms,
+            min_spacing_ms,
+            find_peaks,
+            peak_widths,
+        )
 
     def _detect_negative_pulses_in_window(t, e_det, t0, t1, peak_min_v, min_width_ms, min_spacing_ms):
-        pos_like = _detect_positive_pulses_in_window(
-            t, -e_det, t0, t1, peak_min_v, min_width_ms, min_spacing_ms
+        return echem_service.detect_negative_pulses(
+            t,
+            e_det,
+            t0,
+            t1,
+            peak_min_v,
+            min_width_ms,
+            min_spacing_ms,
+            find_peaks,
+            peak_widths,
         )
-        for d in pos_like:
-            d["amp_det_v"] = float(e_det[d["idx"]])
-        return pos_like
 
     @app.route("/api/echem_pv/browse", methods=["POST"])
     def api_echem_pv_browse():

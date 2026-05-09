@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from flask import Response, jsonify, request
 
+from services import csv_tools
 
 from web_api.common import mode_is_save
 from .jobs import submit_flask_route_job
@@ -33,8 +34,7 @@ def register_csv_viewer_routes(app, ctx):
     def api_csv_columns():
         path = (request.json or {}).get("path", "")
         try:
-            df = pd.read_csv(path, nrows=2)
-            return jsonify({"columns": list(df.columns)})
+            return jsonify({"columns": csv_tools.read_columns(path)})
         except Exception as e:
             return err(e)
 
@@ -50,17 +50,7 @@ def register_csv_viewer_routes(app, ctx):
         y_max = float_or(d.get("y_max"), None)
         dsf = int_or(d.get("dsf", 1), 1)
         try:
-            df = pd.read_csv(path)
-            if x_col not in df.columns or y_col not in df.columns:
-                return err(f"Columns {x_col!r} or {y_col!r} not found")
-            x = df[x_col].values[::dsf]
-            y = df[y_col].values[::dsf]
-            if x_min is not None:
-                mask = x >= x_min
-                x, y = x[mask], y[mask]
-            if x_max is not None:
-                mask = x <= x_max
-                x, y = x[mask], y[mask]
+            x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=dsf)
             fig, ax = plt.subplots(figsize=(8, 4))
             ax.plot(x, y, color=line_color, lw=0.9)
             ax.set_xlabel(x_col)
@@ -101,17 +91,10 @@ def register_csv_viewer_routes(app, ctx):
             fig, ax = plt.subplots(figsize=(9, 4))
             plotted = 0
             for i, path in enumerate(paths):
-                df = pd.read_csv(path)
-                if x_col not in df.columns or y_col not in df.columns:
+                try:
+                    x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max)
+                except KeyError:
                     continue
-                x = df[x_col].values
-                y = df[y_col].values
-                if x_min is not None:
-                    mask = x >= x_min
-                    x, y = x[mask], y[mask]
-                if x_max is not None:
-                    mask = x <= x_max
-                    x, y = x[mask], y[mask]
                 ax.plot(x, y, color=colors[i % len(colors)], lw=0.9, label=Path(path).stem)
                 plotted += 1
             if plotted == 0:
@@ -154,40 +137,15 @@ def register_csv_viewer_routes(app, ctx):
             return err("x_col and y_col are required")
 
         try:
-            rows = []
-            for k, path in enumerate(paths):
-                df = pd.read_csv(path)
-                if x_col not in df.columns or y_col not in df.columns:
-                    continue
-
-                x = pd.to_numeric(df[x_col], errors="coerce")
-                y = pd.to_numeric(df[y_col], errors="coerce")
-                m = x.notna() & y.notna()
-                if x_min is not None:
-                    m = m & (x >= x_min)
-                if x_max is not None:
-                    m = m & (x <= x_max)
-                if not m.any():
-                    continue
-
-                sub = pd.DataFrame({x_col: x[m].to_numpy(), y_col: y[m].to_numpy()}).reset_index(drop=True)
-                if drop_first_subsequent and k > 0 and len(sub) > 0:
-                    sub = sub.iloc[1:].reset_index(drop=True)
-                    if sub.empty:
-                        continue
-                rows.append(sub)
-
-            if not rows:
-                return err("No rows available in selected X window")
-
-            out_df = pd.concat(rows, axis=0, ignore_index=True)
-
-            def _tag(v):
-                return f"{float(v):.6f}".replace(".", "p")
-
-            name_left = _tag(x_min) if x_min is not None else "auto"
-            name_right = _tag(x_max) if x_max is not None else "auto"
-            out_name = f"merged_preview_{name_left}-{name_right}.csv"
+            out_df = csv_tools.merge_xy_tables(
+                paths,
+                x_col,
+                y_col,
+                x_min=x_min,
+                x_max=x_max,
+                drop_first_subsequent=drop_first_subsequent,
+            )
+            out_name = csv_tools.default_merge_name(x_min, x_max)
             out_dir = Path(paths[0]).parent
             out_path = out_dir / out_name
 
@@ -229,15 +187,7 @@ def register_csv_viewer_routes(app, ctx):
         y_max = float_or(request.args.get("y_max"), None)
         try:
             src = Path(path)
-            df = pd.read_csv(path)
-            x = df[x_col].values
-            y = df[y_col].values
-            if x_min is not None:
-                mask = x >= x_min
-                x, y = x[mask], y[mask]
-            if x_max is not None:
-                mask = x <= x_max
-                x, y = x[mask], y[mask]
+            x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max)
 
             if fmt == "csv":
                 buf = io.BytesIO()

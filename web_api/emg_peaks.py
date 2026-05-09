@@ -1,4 +1,3 @@
-import io
 import traceback
 from pathlib import Path
 
@@ -7,6 +6,7 @@ import numpy as np
 import pandas as pd
 from flask import Response, jsonify, request
 
+from services import emg as emg_service
 
 from web_api.common import mode_is_save
 from .jobs import submit_flask_route_job
@@ -26,43 +26,16 @@ def register_emg_peaks_routes(app, ctx):
     _mode_is_save = mode_is_save
 
     def _sanitize_name(s):
-        s = str(s or "")
-        out = []
-        for c in s:
-            out.append(c if (c.isalnum() or c in "-_") else "_")
-        return "".join(out)
+        return emg_service.sanitize_name(s)
 
     def _emg_source_path(payload):
-        path = payload.get("path")
-        if path:
-            return Path(path)
-        folder = payload.get("folder", "")
-        subfolder = payload.get("subfolder", "")
-        channel = payload.get("channel", "")
-        if folder and subfolder and channel:
-            return Path(folder) / subfolder / channel
-        return None
+        return emg_service.source_path(payload)
 
     def _channel_label_from_src(src):
-        parent = src.parent.name
-        stem = src.stem
-        if stem.startswith(parent + "_"):
-            label = stem[len(parent) + 1 :]
-        else:
-            label = stem
-        return _sanitize_name(label) or "channel"
+        return emg_service.channel_label_from_source(src)
 
     def _pick_emg_columns(df):
-        t_col = next((c for c in df.columns if "time" in c.lower()), df.columns[0])
-        v_col = next(
-            (
-                c
-                for c in df.columns
-                if any(k in c.lower() for k in ["value", "uv", "\u00b5v", "amp"])
-            ),
-            df.columns[1],
-        )
-        return t_col, v_col
+        return emg_service.pick_columns(df)
 
     def _as_bool(v, default=False):
         if v is None:
@@ -74,12 +47,10 @@ def register_emg_peaks_routes(app, ctx):
         return bool(v)
 
     def _ms_to_samples(ms, fs):
-        return int(round(float(ms) * 1e-3 * float(fs)))
+        return emg_service.ms_to_samples(ms, fs)
 
     def _robust_noise_std(x):
-        med = np.median(x)
-        mad = np.median(np.abs(x - med))
-        return float(1.4826 * mad)
+        return emg_service.robust_noise_std(x)
 
     def _build_peak_kwargs(
         sig,
@@ -93,104 +64,21 @@ def register_emg_peaks_routes(app, ctx):
         sigma_for_prom,
         sigma_for_height,
     ):
-        kwargs = {"distance": max(1, _ms_to_samples(min_peak_distance_ms, fs))}
-
-        if min_width_ms is not None and min_width_ms > 0:
-            kwargs["width"] = max(1, _ms_to_samples(min_width_ms, fs))
-
-        if wlen_ms is not None and wlen_ms > 0:
-            w = _ms_to_samples(wlen_ms, fs)
-            if 3 <= w < sig.size:
-                kwargs["wlen"] = w
-
-        prom_thr = (
-            None
-            if (min_prominence_uV is None or min_prominence_uV <= 0)
-            else float(min_prominence_uV)
+        return emg_service.build_peak_kwargs(
+            sig,
+            fs,
+            min_peak_distance_ms,
+            min_width_ms,
+            wlen_ms,
+            min_prominence_uV,
+            min_height_uV,
+            use_adaptive_sigma,
+            sigma_for_prom,
+            sigma_for_height,
         )
-        height_thr = None if (min_height_uV is None) else float(min_height_uV)
-
-        if use_adaptive_sigma:
-            sigma = _robust_noise_std(sig)
-            med = float(np.median(sig))
-            prom_adapt = (
-                (sigma_for_prom or 0) * sigma if (sigma_for_prom and sigma_for_prom > 0) else None
-            )
-            height_adapt = (
-                med + (sigma_for_height or 0) * sigma
-                if (sigma_for_height and sigma_for_height > 0)
-                else None
-            )
-            if prom_adapt is not None:
-                prom_thr = prom_adapt if prom_thr is None else max(prom_thr, prom_adapt)
-            if height_adapt is not None:
-                height_thr = height_adapt if height_thr is None else max(height_thr, height_adapt)
-
-        if prom_thr is not None:
-            kwargs["prominence"] = prom_thr
-        if height_thr is not None:
-            kwargs["height"] = height_thr
-        return kwargs
 
     def _detect_with_polarity(sig, fs, params, polarity):
-        pos_idx = np.array([], dtype=int)
-        pos_w_ms = np.array([], dtype=float)
-        neg_idx = np.array([], dtype=int)
-        neg_w_ms = np.array([], dtype=float)
-
-        if polarity in ("positive", "both"):
-            kw_pos = _build_peak_kwargs(sig, fs, **params)
-            pos_idx, _ = find_peaks(sig, **kw_pos)
-            if pos_idx.size:
-                w_s, _, _, _ = peak_widths(sig, pos_idx, rel_height=0.5)
-                pos_w_ms = (w_s / fs) * 1e3
-
-        if polarity in ("negative", "both"):
-            inv = -sig
-            kw_neg = _build_peak_kwargs(inv, fs, **params)
-            neg_idx, _ = find_peaks(inv, **kw_neg)
-            if neg_idx.size:
-                w_s, _, _, _ = peak_widths(inv, neg_idx, rel_height=0.5)
-                neg_w_ms = (w_s / fs) * 1e3
-
-        if polarity != "both":
-            idx = pos_idx if polarity == "positive" else neg_idx
-            w_ms = pos_w_ms if polarity == "positive" else neg_w_ms
-            sgn = (
-                np.ones_like(idx, dtype=int)
-                if polarity == "positive"
-                else -np.ones_like(idx, dtype=int)
-            )
-            return idx, w_ms, sgn
-
-        all_idx = np.concatenate([pos_idx, neg_idx])
-        all_sgn = np.concatenate([np.ones_like(pos_idx, dtype=int), -np.ones_like(neg_idx, dtype=int)])
-        all_w = np.concatenate([pos_w_ms, neg_w_ms])
-
-        if all_idx.size == 0:
-            return all_idx, all_w, all_sgn
-
-        order = np.argsort(all_idx)
-        all_idx = all_idx[order]
-        all_sgn = all_sgn[order]
-        all_w = all_w[order]
-
-        keep = np.ones(all_idx.size, dtype=bool)
-        min_dist = _ms_to_samples(params["min_peak_distance_ms"], fs)
-        for i in range(all_idx.size):
-            if not keep[i]:
-                continue
-            j = i + 1
-            while j < all_idx.size and (all_idx[j] - all_idx[i]) < min_dist:
-                ai = abs(sig[all_idx[i]])
-                aj = abs(sig[all_idx[j]])
-                if aj > ai:
-                    keep[i] = False
-                    break
-                keep[j] = False
-                j += 1
-
-        return all_idx[keep], all_w[keep], all_sgn[keep]
+        return emg_service.detect_with_polarity(sig, fs, params, polarity, find_peaks, peak_widths)
 
     @app.route("/api/emg/browse", methods=["POST"])
     def api_emg_browse():
@@ -231,8 +119,9 @@ def register_emg_peaks_routes(app, ctx):
         path = str(Path(folder) / subfolder / channel)
         try:
             df = pd.read_csv(path)
-            t_col = next((c for c in df.columns if "time" in c.lower()), df.columns[0])
-            t = df[t_col].values.astype(float)
+            t_col, v_col = _pick_emg_columns(df)
+            t_raw, _, valid = emg_service.numeric_signal(df, t_col, v_col)
+            t = t_raw[valid]
             return jsonify({"duration": round(float(t[-1] - t[0]), 3) if len(t) else 0})
         except Exception:
             return err(traceback.format_exc())
@@ -246,8 +135,9 @@ def register_emg_peaks_routes(app, ctx):
         try:
             df = pd.read_csv(path)
             t_col, v_col = _pick_emg_columns(df)
-            t = df[t_col].values.astype(float)
-            v = df[v_col].values.astype(float)
+            t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
+            t = t_raw[valid]
+            v = v_raw[valid]
             if x_min is not None:
                 m = t >= x_min
                 t, v = t[m], v[m]
@@ -288,11 +178,7 @@ def register_emg_peaks_routes(app, ctx):
         try:
             df = pd.read_csv(path)
             t_col, v_col = _pick_emg_columns(df)
-            t_raw = pd.to_numeric(df[t_col], errors="coerce").to_numpy()
-            v_raw = pd.to_numeric(df[v_col], errors="coerce").to_numpy()
-            valid = np.isfinite(t_raw) & np.isfinite(v_raw)
-            if np.count_nonzero(valid) < 3:
-                return err("Not enough numeric rows in source CSV")
+            t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
 
             t = t_raw[valid]
             v = v_raw[valid]
@@ -310,11 +196,7 @@ def register_emg_peaks_routes(app, ctx):
             vw = v[wmask]
             src_w = src_idx[wmask]
 
-            dt = np.diff(t)
-            dt = dt[np.isfinite(dt) & (dt > 0)]
-            if dt.size == 0:
-                return err("Cannot infer sampling rate from time column")
-            fs = float(1.0 / np.median(dt))
+            fs = emg_service.infer_sampling_rate(t)
 
             params = dict(
                 min_peak_distance_ms=float(dist if dist is not None else 100.0),
@@ -381,13 +263,9 @@ def register_emg_peaks_routes(app, ctx):
                 try:
                     raw = pd.read_csv(src)
                     t_col, v_col = _pick_emg_columns(raw)
-                    t_raw = pd.to_numeric(raw[t_col], errors="coerce").to_numpy()
-                    v_raw = pd.to_numeric(raw[v_col], errors="coerce").to_numpy()
-                    m = np.isfinite(t_raw) & np.isfinite(v_raw)
+                    t_raw, v_raw, m = emg_service.numeric_signal(raw, t_col, v_col)
                     t = t_raw[m]
                     v = v_raw[m]
-                    if t.size < 3:
-                        return err("Not enough numeric rows in source CSV")
 
                     half_ms = float_or(d.get("half_ms"), 100.0)
                     if half_ms is None or half_ms <= 0:
@@ -437,7 +315,6 @@ def register_emg_peaks_routes(app, ctx):
                             group_dir = src.parent / f"{_sanitize_name(gid)}_{channel}"
                             group_dir.mkdir(parents=True, exist_ok=True)
                             for k, r in enumerate(rows):
-                                i0 = int(r["peak_idx"])
                                 tp = float(r["peak_time_s"])
                                 mask = (t >= tp - half_s) & (t <= tp + half_s)
                                 if not np.any(mask):
@@ -492,8 +369,9 @@ def register_emg_peaks_routes(app, ctx):
         try:
             df = pd.read_csv(path)
             t_col, v_col = _pick_emg_columns(df)
-            t = df[t_col].values.astype(float)
-            v = df[v_col].values.astype(float)
+            t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
+            t = t_raw[valid]
+            v = v_raw[valid]
             dsf = max(1, len(t) // 50000)
             fig, ax = plt.subplots(figsize=(10, 3.5))
             ax.plot(t[::dsf], v[::dsf], color=line_color, lw=0.6)
@@ -526,10 +404,11 @@ def register_emg_peaks_routes(app, ctx):
         try:
             df = pd.read_csv(path)
             t_col, v_col = _pick_emg_columns(df)
-            t = df[t_col].values.astype(float)
-            v = df[v_col].values.astype(float)
-            dt = t[1] - t[0]
-            dist_pts = max(1, int(dist / 1000 / dt))
+            t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
+            t = t_raw[valid]
+            v = v_raw[valid]
+            fs = emg_service.infer_sampling_rate(t)
+            dist_pts = max(1, emg_service.ms_to_samples(dist, fs))
             kw = {"distance": dist_pts}
             if height is not None:
                 kw["height"] = height
@@ -539,7 +418,7 @@ def register_emg_peaks_routes(app, ctx):
             widths, _, _, _ = peak_widths(np.abs(v), peaks, rel_height=0.5)
             peak_rows = []
             for i, pi in enumerate(peaks):
-                dur_ms = widths[i] * dt * 1000
+                dur_ms = (widths[i] / fs) * 1000
                 if dur is not None and dur_ms > dur:
                     continue
                 peak_rows.append(

@@ -190,22 +190,29 @@ bioelectronics_toolkit/
   [`docs/README.md`](./docs/README.md).
 - Shared algorithms should live under `services/` before they are reused by
   both WebGUI routes and desktop entry points. Fluorescence stack/LUT, ROI
-  metrics, and basic TIFF-to-GIF rendering now use this layer. Large historical
-  Tkinter apps live under `desktop_apps/legacy/`; root `*_gui.py` files should
-  stay as thin Web launchers.
+  metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
+  parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
+  channel/merge helpers now use this layer. Large historical Tkinter apps live
+  under `desktop_apps/legacy/`; root `*_gui.py` files should stay as thin Web
+  launchers.
 - Pipeline-level documentation (per analysis flow) lives under
   [`pipeline_readmes/`](./pipeline_readmes/).
 - Before committing Web GUI changes, run:
 
   ```bash
   python3 -m ruff check .
+  python3 -m ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+  python3 -m ruff check web_api --select F --ignore E402
   python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
   python3 -m unittest discover -s tests
   ```
 
-- Style: PEP 8, `# noqa: E402` is used in GUI scripts where the
-  `from config import DEFAULT_START_DIR` import sits between the stdlib block
-  and module-level matplotlib config.
+- CI intentionally applies two lint levels: a whole-repository baseline for
+  fatal syntax/undefined-name issues, and a stricter gate for maintained
+  `services/`, `tests/`, and Web launcher code. Web API modules also run a
+  stricter unused-name/import gate. Historical Tkinter files under
+  `desktop_apps/legacy/` are kept out of the strict style gate until they are
+  ported or retired.
 
 ## Contributing
 

@@ -100,8 +100,16 @@ def main_for_tool(tool: str, argv: list[str] | None = None) -> int:
         )
     )
     parser.add_argument("--legacy", action="store_true", help="Run the legacy Tkinter GUI.")
-    parser.add_argument("--no-start", action="store_true", help="Do not start web_app.py if it is closed.")
-    parser.add_argument("--no-browser", action="store_true", help="Print the URL without opening a browser.")
+    parser.add_argument(
+        "--no-start",
+        action="store_true",
+        help="Do not start web_app.py if it is closed.",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="Print the URL without opening a browser.",
+    )
     args, passthrough = parser.parse_known_args(argv)
 
     if args.legacy:

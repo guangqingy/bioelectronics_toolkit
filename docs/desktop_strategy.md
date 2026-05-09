@@ -44,6 +44,10 @@ below it.
   selection, GIF LUT rendering, scale-bar/timestamp overlays, and GIF/preview
   writing. The desktop TIFF-to-GIF script and Web GIF routes share these
   primitives.
-- Once the service layer is stable, root fluorescence desktop scripts can become
+- `services/csv_tools.py`, `services/echem.py`, `services/abf.py`,
+  `services/emg.py`, and `services/rhd.py` now own the first shared primitives
+  for CSV trace merging, electrochemistry parsing/detection, ABF baseline/peak
+  helpers, EMG peak helpers, and RHD channel/paired-file handling.
+- Once the service layer is stable, remaining root desktop scripts can become
   thin wrappers around the WebGUI or shared services. The compatibility launcher
   structure is already in place.

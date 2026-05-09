@@ -320,16 +320,29 @@ def radial_metrics_2d(
                 bg_mean_value,
                 plot_metric,
             )
-            has_scale = pixel_size_um is not None and np.isfinite(pixel_size_um) and pixel_size_um > 0
+            has_scale = (
+                pixel_size_um is not None
+                and np.isfinite(pixel_size_um)
+                and pixel_size_um > 0
+            )
+            ring_width_um = (
+                (float(outer_px) - float(inner_px)) * float(pixel_size_um)
+                if has_scale
+                else np.nan
+            )
             rows.append(
                 {
                     "inner_radius_px": float(inner_px),
                     "outer_radius_px": float(outer_px),
                     "radius_mid_px": (float(inner_px) + float(outer_px)) / 2.0,
-                    "inner_radius_um": float(inner_px) * float(pixel_size_um) if has_scale else np.nan,
-                    "outer_radius_um": float(outer_px) * float(pixel_size_um) if has_scale else np.nan,
+                    "inner_radius_um": (
+                        float(inner_px) * float(pixel_size_um) if has_scale else np.nan
+                    ),
+                    "outer_radius_um": (
+                        float(outer_px) * float(pixel_size_um) if has_scale else np.nan
+                    ),
                     "ring_width_px": float(outer_px) - float(inner_px),
-                    "ring_width_um": (float(outer_px) - float(inner_px)) * float(pixel_size_um) if has_scale else np.nan,
+                    "ring_width_um": ring_width_um,
                     "ring_count": int(count),
                     "raw": raw_val,
                     "value": val,
@@ -390,24 +403,35 @@ def radial_metrics_2d(
             mask = (dist2 >= inner**2) & (dist2 < outer**2)
         metrics = metrics_from_flat(patch[mask])
         raw_val = float(metrics.get(metric, np.nan))
-        val = apply_metric_mode(raw_val, metrics.get("area_px", 0), metric, bg_mean_value, plot_metric)
+        val = apply_metric_mode(
+            raw_val,
+            metrics.get("area_px", 0),
+            metric,
+            bg_mean_value,
+            plot_metric,
+        )
+        has_scale = (
+            pixel_size_um is not None
+            and np.isfinite(pixel_size_um)
+            and pixel_size_um > 0
+        )
         rows.append(
             {
                 "inner_radius_px": int(inner),
                 "outer_radius_px": int(outer),
                 "radius_mid_px": (float(inner) + float(outer)) / 2.0,
                 "inner_radius_um": float(inner) * float(pixel_size_um)
-                if pixel_size_um is not None and np.isfinite(pixel_size_um) and pixel_size_um > 0
+                if has_scale
                 else np.nan,
                 "outer_radius_um": float(outer) * float(pixel_size_um)
-                if pixel_size_um is not None and np.isfinite(pixel_size_um) and pixel_size_um > 0
+                if has_scale
                 else np.nan,
                 "ring_width_px": int(ring_width),
                 "ring_width_um": float(roi.get("ring_width_um", np.nan))
                 if roi.get("ring_width_um", None) not in (None, "")
                 else (
                     float(ring_width) * float(pixel_size_um)
-                    if pixel_size_um is not None and np.isfinite(pixel_size_um) and pixel_size_um > 0
+                    if has_scale
                     else np.nan
                 ),
                 "ring_count": np.nan,
@@ -481,7 +505,11 @@ def radial_pair_rows(
                 "stack1_value": value1,
                 "stack2_value": value2,
                 "ratio": safe_ratio(value1, value2),
-                "difference": value1 - value2 if np.isfinite(value1) and np.isfinite(value2) else np.nan,
+                "difference": (
+                    value1 - value2
+                    if np.isfinite(value1) and np.isfinite(value2)
+                    else np.nan
+                ),
                 "stack1_area_px": int(row1.get("area_px", 0)),
                 "stack2_area_px": int(row2.get("area_px", 0)),
                 "stack1_bg_mean": float(bg1) if np.isfinite(bg1) else np.nan,

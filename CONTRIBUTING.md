@@ -37,12 +37,19 @@ Run locally:
 
 ```bash
 ruff check .
+ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
 ```
 
-CI runs the same checks across Python 3.10 – 3.12. Green CI is required
-to merge.
+CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`
+keeps a whole-repository correctness baseline, while the stricter command is
+the maintained-code gate for `services/`, `tests/`, and Web launcher code.
+Web API modules also run an all-module unused-name/import gate. Historical
+Tkinter files under `desktop_apps/legacy/` are intentionally outside that strict
+style gate until a workflow is migrated or retired. Green CI is required to
+merge.
 
 Update [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` describing
 user-visible changes.
@@ -80,6 +87,10 @@ Follow the contract documented in [`WEB_README.md`](./WEB_README.md):
   out of git unless they are tiny documented examples.
 - New service modules should be import-safe and testable without launching a
   GUI or browser.
+- New or changed Web routes should keep reusable data loading, numeric
+  transforms, detection logic, and export table assembly in `services/`; the
+  route should mostly validate payloads, call the service, and serialize the
+  response.
 - Prefer small route modules over growing `web_app.py` or a single monolithic
   domain file.
 

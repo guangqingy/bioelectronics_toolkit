@@ -140,6 +140,10 @@ Guidelines:
 - Keep route registration in `web_app.py`.
 - Use shared helpers from `ctx`, such as `err`, `fig_to_b64`, `float_or`,
   `int_or`, `browse_files`, and optional dependency flags.
+- Put data loading, numeric transforms, detection logic, file naming, and export
+  table assembly in `services/` whenever the behavior is reusable or worth
+  testing outside Flask. Route functions should mostly parse payloads, call a
+  service, draw/serialize the result, and return the envelope.
 - Return JSON dictionaries or `api_ok(...)`/`api_error(...)`; the envelope
   middleware is the fallback.
 - Provide job-backed routes for long-running exports and batch operations.
@@ -152,12 +156,22 @@ Run these before committing WebGUI changes:
 
 ```bash
 python3 -m ruff check .
+python3 -m ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+python3 -m ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
 ```
 
 The test suite uses Flask's test client, so it does not require launching a
 separate browser or server.
+
+The first lint command is a compatibility baseline for the full repository.
+The stricter command is the maintained-code gate: new service modules, tests,
+and Web launcher code should pass normal `E/F/W/I` checks. Web API modules also
+run an all-module `F` gate so unused imports/names are caught while route style
+cleanup remains incremental. Legacy Tkinter files are intentionally not part of
+that strict gate until a workflow is migrated to the WebGUI/service
+architecture.
 
 ## Maintenance Notes
 
@@ -175,5 +189,7 @@ separate browser or server.
   API envelope. They should not become the only copy of a data-processing
   algorithm if a desktop entry point also needs that behavior.
 - Fluorescence stack/LUT, ROI metric primitives, and basic TIFF-to-GIF frame
-  generation are now service-backed. GIF ROI overlay/crop analysis remains the
-  next fluorescence-specific extraction target.
+  generation are now service-backed. CSV trace merging, electrochemistry
+  parsing/detection, ABF baseline/peak helpers, EMG peak helpers, and RHD
+  channel/paired-file helpers are also service-backed. GIF ROI overlay/crop
+  analysis remains the next fluorescence-specific extraction target.

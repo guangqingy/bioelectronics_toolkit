@@ -61,7 +61,14 @@ problem.
   shared service module and have both surfaces import it. The fluorescence
   stack/LUT workflow now uses `services/fluorescence/stack.py`, ROI metrics use
   `services/fluorescence/roi.py`, and basic TIFF-to-GIF rendering uses
-  `services/fluorescence/gif.py`.
+  `services/fluorescence/gif.py`. CSV, echem, ABF, EMG, and RHD helpers now
+  also have service modules, so Web routes should not reimplement those core
+  algorithms inline.
+- Keep strict lint focused on maintained code. CI runs a whole-repository
+  baseline for fatal issues, but the `E/F/W/I` style gate is intentionally
+  limited to `services/`, `tests/`, and Web launcher code while Web API modules
+  run a stricter unused-name/import gate. Historical Tkinter scripts remain in
+  `desktop_apps/legacy/` and outside the strict style gate.
 - Split large Web route files by feature area before moving package paths. The
   fluorescence Web routes are now separated into stack, 3D, GIF, and ROI
   registration modules while the older helper layer is being migrated.
@@ -77,7 +84,7 @@ problem.
    have the largest desktop/Web drift today.
 2. Reuse the same services from `web_api/fluorescence.py` and the root
    fluorescence desktop scripts.
-3. Repeat for ABF peak detection and electrochemistry once fluorescence is
-   stable.
-4. Repeat the service-backed pattern for ABF peak detection, electrochemistry,
-   EMG, and CSV workflows as those domains change.
+3. Keep thinning ABF, electrochemistry, EMG, RHD, and CSV Web routes as their
+   service modules grow.
+4. Expand service-level tests before tightening route-level lint on additional
+   Web modules.

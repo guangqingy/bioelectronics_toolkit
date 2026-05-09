@@ -4,10 +4,10 @@ import zipfile
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from flask import Response, jsonify, request
 
+from services import rhd as rhd_service
 
 from web_api.common import as_bool, mode_is_save
 from .jobs import submit_flask_route_job
@@ -19,7 +19,6 @@ def register_rhd_viewer_routes(app, ctx):
     browse_files_recursive = ctx["browse_files_recursive"]
     fig_to_b64 = ctx["fig_to_b64"]
     float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
     apply_axes_limits = ctx["apply_axes_limits"]
     line_color = ctx["LINE_COLOR"]
     has_rhd = ctx["HAS_RHD"]
@@ -30,135 +29,14 @@ def register_rhd_viewer_routes(app, ctx):
     _mode_is_save = mode_is_save
     _as_bool = as_bool
 
-    def _channel_display_names(result):
-        names = []
-        for i, ch in enumerate(result.get("amplifier_channels", [])):
-            nm = ch.get("custom_channel_name")
-            if not nm:
-                nm = f"ch{i}"
-            names.append(str(nm))
-        return names
-
-    def _channel_native_names(result):
-        names = []
-        for i, ch in enumerate(result.get("amplifier_channels", [])):
-            nm = ch.get("native_channel_name") or f"ch{i}"
-            names.append(str(nm))
-        return names
-
     def _resolve_channel_index(result, ch_in):
-        if isinstance(ch_in, str) and not ch_in.isdigit():
-            names_disp = _channel_display_names(result)
-            if ch_in in names_disp:
-                return names_disp.index(ch_in)
-            names_native = _channel_native_names(result)
-            if ch_in in names_native:
-                return names_native.index(ch_in)
-            return 0
-        return int_or(ch_in, 0)
-
-    def _find_split_partner(path):
-        stem = path.stem
-        if len(stem) < 4:
-            return None, None
-        last4 = stem[-4:]
-        if not last4.isdigit():
-            return None, None
-        cur_val = int(last4)
-
-        candidates = []
-        for delta in (-100, 100):
-            target = cur_val + delta
-            if 0 <= target <= 9999:
-                target_str = f"{target:04d}"
-                cand_stem = stem[:-4] + target_str
-                cand_path = path.with_name(cand_stem + path.suffix)
-                if cand_path.exists():
-                    candidates.append(cand_path)
-
-        if not candidates:
-            return None, None
-
-        filtered = []
-        for q in candidates:
-            if len(q.stem) == len(stem) and q.stem[:-4] == stem[:-4]:
-                filtered.append(q)
-
-        if not filtered:
-            return None, None
-
-        partner = filtered[0]
-        cur_last4 = int(stem[-4:])
-        ptn_last4 = int(partner.stem[-4:])
-
-        if abs(ptn_last4 - cur_last4) != 100:
-            return None, None
-
-        earlier = path if cur_last4 < ptn_last4 else partner
-        later = partner if cur_last4 < ptn_last4 else path
-        return earlier, later
-
-    def _load_rhd_arrays(path):
-        result, _ = rhd.load_file(str(path))
-        fs = float(result.get("frequency_parameters", {}).get("amplifier_sample_rate", 0.0) or 0.0)
-        amp = np.asarray(result.get("amplifier_data", np.empty((0, 0))), dtype=float)
-        if amp.ndim != 2:
-            raise RuntimeError("Amplifier data shape mismatch.")
-
-        t_raw = result.get("t_amplifier", None)
-        if t_raw is not None:
-            t = np.asarray(t_raw, dtype=float)
-            if t.ndim != 1 or t.size != amp.shape[1]:
-                t = np.arange(amp.shape[1], dtype=float) / (fs if fs > 0 else 1.0)
-        else:
-            t = np.arange(amp.shape[1], dtype=float) / (fs if fs > 0 else 1.0)
-
-        ch_names = _channel_display_names(result)
-        if len(ch_names) != amp.shape[0]:
-            ch_names = [f"ch{i}" for i in range(amp.shape[0])]
-
-        return t, fs, ch_names, amp, result
-
-    def _load_merged_if_pair(path):
-        earlier, later = _find_split_partner(path)
-        if earlier is None or later is None:
-            t, fs, ch, amp, _ = _load_rhd_arrays(path)
-            return t, fs, ch, amp, path.stem, False
-
-        t1, fs1, ch1, a1, _ = _load_rhd_arrays(earlier)
-        t2, fs2, ch2, a2, _ = _load_rhd_arrays(later)
-
-        if abs(fs1 - fs2) > 1e-9 or len(ch1) != len(ch2) or any(x != y for x, y in zip(ch1, ch2)):
-            t, fs, ch, amp, _ = _load_rhd_arrays(path)
-            return t, fs, ch, amp, path.stem, False
-
-        if fs1 > 0:
-            dt = 1.0 / fs1
-        elif t1.size > 1:
-            dt = float(t1[1] - t1[0])
-        else:
-            dt = 0.0
-
-        if t1.size > 0 and t2.size > 0:
-            offset = float(t1[-1]) + dt - float(t2[0])
-        else:
-            offset = 0.0
-
-        t_merged = np.concatenate([t1, t2 + offset], axis=0)
-        a_merged = np.concatenate([a1, a2], axis=1)
-        return t_merged, fs1, ch1, a_merged, earlier.stem, True
+        return rhd_service.resolve_channel_index(result, ch_in, default=0)
 
     def _load_rhd_with_merge_option(path, do_merge):
-        if do_merge:
-            return _load_merged_if_pair(path)
-        t, fs, ch, amp, _ = _load_rhd_arrays(path)
-        return t, fs, ch, amp, path.stem, False
+        return rhd_service.load_with_merge_option(path, rhd, do_merge)
 
     def _df_all_channels_wide(time_s, ch_names, amp):
-        out = {"time": np.asarray(time_s, dtype=float)}
-        for i, name in enumerate(ch_names):
-            out[str(name)] = np.asarray(amp[i, :], dtype=float)
-        return pd.DataFrame(out)
+        return rhd_service.all_channels_wide_frame(time_s, ch_names, amp)
 
     @app.route("/api/rhd/browse", methods=["POST"])
     def api_rhd_browse():
@@ -179,9 +57,8 @@ def register_rhd_viewer_routes(app, ctx):
 
         path = (request.json or {}).get("path", "")
         try:
-            data, _ = rhd.load_file(path)
+            _t, fs, ch_names, amp, data = rhd_service.load_rhd_arrays(Path(path), rhd)
             ch_list = []
-            ch_names = []
             if "amplifier_channels" in data:
                 for i, ch in enumerate(data["amplifier_channels"]):
                     name = ch.get("custom_channel_name") or f"ch{i}"
@@ -194,10 +71,8 @@ def register_rhd_viewer_routes(app, ctx):
                             "type": "amplifier",
                         }
                     )
-                    ch_names.append(name)
 
-            fs = data.get("frequency_parameters", {}).get("amplifier_sample_rate", 0)
-            n_samples = data.get("amplifier_data", np.array([[]])).shape[1] if "amplifier_data" in data else 0
+            n_samples = amp.shape[1]
             duration = round(n_samples / fs, 2) if fs > 0 else 0
 
             return jsonify(
@@ -229,14 +104,11 @@ def register_rhd_viewer_routes(app, ctx):
         y_max = float_or(d.get("y_max"), None)
 
         try:
-            data, _ = rhd.load_file(path)
-            amp_data = data["amplifier_data"]
+            t, fs, _ch_names, amp_data, data = rhd_service.load_rhd_arrays(Path(path), rhd)
             ch = _resolve_channel_index(data, ch_in)
             ch = max(0, min(ch, amp_data.shape[0] - 1))
 
-            fs = data["frequency_parameters"]["amplifier_sample_rate"]
             y = amp_data[ch]
-            t = np.arange(len(y)) / fs
 
             if x_min is not None:
                 mask = t >= x_min
@@ -279,13 +151,11 @@ def register_rhd_viewer_routes(app, ctx):
 
         try:
             src = Path(path)
-            data, _ = rhd.load_file(path)
+            t, _fs, _ch_names, amp_data, data = rhd_service.load_rhd_arrays(src, rhd)
             ch = _resolve_channel_index(data, ch_in)
-            ch = max(0, min(ch, data["amplifier_data"].shape[0] - 1))
+            ch = max(0, min(ch, amp_data.shape[0] - 1))
 
-            fs = data["frequency_parameters"]["amplifier_sample_rate"]
-            y = data["amplifier_data"][ch]
-            t = np.arange(len(y)) / fs
+            y = amp_data[ch]
             ch_name = data["amplifier_channels"][ch].get("custom_channel_name") or f"ch{ch}"
 
             if fmt == "csv":

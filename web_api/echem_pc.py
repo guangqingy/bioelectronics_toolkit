@@ -1,4 +1,3 @@
-import io
 import traceback
 from pathlib import Path
 
@@ -7,10 +6,9 @@ import numpy as np
 import pandas as pd
 from flask import Response, jsonify, request
 
-from web_api.common import FLOAT_RE, as_bool, load_echem_file, mode_is_save
+from services import echem as echem_service
+from web_api.common import as_bool, mode_is_save
 from .jobs import submit_flask_route_job
-
-_PC_VALUE_COL_HINTS = ["<i>", "current", "i/m", "i/\u00b5", "i/a", "ewe"]
 
 
 def register_echem_pc_routes(app, ctx):
@@ -28,58 +26,7 @@ def register_echem_pc_routes(app, ctx):
 
     def _load_echem(path):
         """Load time/current data from a .txt or .csv echem file."""
-        return load_echem_file(path, _PC_VALUE_COL_HINTS)
-
-    def _detect_pairs_in_window(
-        t,
-        i,
-        t0,
-        t1,
-        pos_min_mA,
-        neg_min_abs_mA,
-        min_delay_ms,
-        max_delay_ms,
-        min_pos_distance_ms,
-    ):
-        if t1 <= t0:
-            return []
-
-        s = int(np.searchsorted(t, t0, side="left"))
-        e = int(np.searchsorted(t, t1, side="right"))
-        s = max(0, s)
-        e = min(len(t), e)
-        if e - s < 3:
-            return []
-
-        tt = t[s:e]
-        ii = i[s:e]
-        if len(tt) > 1:
-            dt = float(np.median(np.diff(tt)))
-        elif len(t) > 1:
-            dt = float(np.median(np.diff(t)))
-        else:
-            dt = 1e-3
-        if dt <= 0:
-            dt = 1e-3
-        fs = 1.0 / dt
-
-        distance = max(1, int((min_pos_distance_ms / 1000.0) * fs))
-        pos_loc, _props = find_peaks(ii, height=pos_min_mA, distance=distance)
-
-        pairs = []
-        for ip in pos_loc:
-            j0 = int(ip + max(1, int((min_delay_ms / 1000.0) * fs)))
-            j1 = int(min(len(tt), ip + int((max_delay_ms / 1000.0) * fs)))
-            if j1 - j0 < 2:
-                continue
-            neg_local = j0 + int(np.argmin(ii[j0:j1]))
-
-            pos_val = float(ii[ip])
-            neg_val = float(ii[neg_local])
-            if (pos_val >= pos_min_mA) and (abs(neg_val) >= neg_min_abs_mA):
-                pairs.append((s + int(ip), s + int(neg_local)))
-
-        return pairs
+        return echem_service.load_photocurrent(path)
 
     @app.route("/api/echem/browse", methods=["POST"])
     def api_echem_browse():
@@ -152,7 +99,7 @@ def register_echem_pc_routes(app, ctx):
                 if t1 < t0:
                     t0, t1 = t1, t0
 
-            pairs_idx = _detect_pairs_in_window(
+            pairs_idx = echem_service.detect_photocurrent_pairs(
                 t,
                 i_raw,
                 float(t0),
@@ -162,6 +109,7 @@ def register_echem_pc_routes(app, ctx):
                 float(min_delay_ms),
                 float(max_delay_ms),
                 float(min_pos_distance_ms),
+                find_peaks,
             )
 
             pairs = []
