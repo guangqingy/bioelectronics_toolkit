@@ -37,7 +37,7 @@ Run locally:
 
 ```bash
 ruff check .
-ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
 ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
@@ -45,7 +45,7 @@ python3 -m unittest discover -s tests -v
 
 CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`
 keeps a whole-repository correctness baseline, while the stricter command is
-the maintained-code gate for `services/`, `tests/`, and Web launcher code.
+the maintained-code gate for `services/`, `tests/`, and desktop launcher code.
 Web API modules also run an all-module unused-name/import gate. Historical
 Tkinter files under `desktop_apps/legacy/` are intentionally outside that strict
 style gate until a workflow is migrated or retired. Green CI is required to
@@ -56,17 +56,19 @@ user-visible changes.
 
 ## Adding or changing a GUI workflow
 
-The WebGUI is the canonical user surface. Root `*_gui.py` files should stay
-thin compatibility launchers that open the matching WebGUI route by default.
+The WebGUI is the canonical user surface. Launcher modules under
+`desktop_apps/launchers/` should stay thin compatibility entry points that open
+the matching WebGUI route by default.
 
 1. Put reusable analysis logic in `services/<domain>/`.
 2. Update the Web route/template first.
 3. If a Tkinter fallback is still needed, keep it in `desktop_apps/legacy/` and
    make it call the same service logic where practical.
 4. Add or update the route mapping in `desktop_apps/web_launcher.py`.
-5. Register or adjust console scripts in `pyproject.toml`.
-6. Add tests under `tests/` for the service, launcher, and API contract.
-7. Update `README.md`, `WEB_README.md`, and the relevant `docs/` note.
+5. Add or update any thin source launcher in `desktop_apps/launchers/`.
+6. Register or adjust console scripts in `pyproject.toml`.
+7. Add tests under `tests/` for the service, launcher, and API contract.
+8. Update `README.md`, `WEB_README.md`, and the relevant `docs/` note.
 
 ## Adding a new web blueprint
 

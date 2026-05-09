@@ -21,49 +21,50 @@ desktop workflows are intentionally thinner than their WebGUI equivalents.
 
 ## Features
 
-The script names below are stable user entry points. For GUI workflows they
-open the corresponding WebGUI page by default; the older Tkinter windows remain
-available with `--legacy` and live under `desktop_apps/legacy/`.
+The commands below are stable user entry points after `pip install -e .`. GUI
+commands open the corresponding WebGUI page by default; the older Tkinter
+windows remain available with `--legacy` and live under `desktop_apps/legacy/`.
+The source launcher modules are grouped under `desktop_apps/launchers/`.
 
 ### Patch-clamp / `.abf` analysis
 
-| Script | What it does |
+| Command | What it does |
 | --- | --- |
-| `abf_batch_processor_gui.py` | Batch-process folders of `.abf` files, parse `{main}_{treat}_sample_..._.abf` filenames, optional reorganization and segment CSV export. |
-| `abf_peak_detection_gui.py` | Interactive peak detection on ABF sweeps. |
-| `abf_sweep_viewer_gui.py` | Quick visualization of individual ABF sweeps. |
-| `abf_photocurrent_viewer_gui.py` | Photocurrent-specific viewer with stim alignment. |
-| `abf_photocurrent_figure_gui.py` | Generates publication-quality photocurrent figures. |
+| `bte-abf-batch` | Batch-process folders of `.abf` files, parse `{main}_{treat}_sample_..._.abf` filenames, optional reorganization and segment CSV export. |
+| `bte-abf-peaks` | Interactive peak detection on ABF sweeps. |
+| `bte-abf-sweep` | Quick visualization of individual ABF sweeps. |
+| `bte-abf-pc-viewer` | Photocurrent-specific viewer with stim alignment. |
+| `bte-abf-pc-figure` | Generates publication-quality photocurrent figures. |
 
 ### Electrochemistry
 
-| Script | What it does |
+| Command | What it does |
 | --- | --- |
-| `echem_photocurrent_gui.py` | Photocurrent waveform analysis and plotting. |
-| `echem_photovoltage_gui.py` | Photovoltage waveform analysis and plotting. |
+| `bte-echem-pc` | Photocurrent waveform analysis and plotting. |
+| `bte-echem-pv` | Photovoltage waveform analysis and plotting. |
 
 ### EMG / Intan
 
-| Script | What it does |
+| Command | What it does |
 | --- | --- |
-| `emg_rhd_viewer_gui.py` | Viewer for Intan `.rhd` recordings. |
-| `emg_peak_selector_gui.py` | Manual / semi-automatic peak selection on EMG traces. |
+| `bte-emg-viewer` | Viewer for Intan `.rhd` recordings. |
+| `bte-emg-peaks` | Manual / semi-automatic peak selection on EMG traces. |
 | `importrhdutilities.py` | Helper module for parsing `.rhd` files (used by the viewer). |
 
 ### Fluorescence imaging
 
-| Script | What it does |
+| Command | What it does |
 | --- | --- |
-| `fluorescence_roi_gui.py` | ROI-based intensity analysis on TIFF stacks. |
-| `fluorescence_lut_gui.py` | Lookup-table editor / preview. |
-| `fluorescence_tiff_to_gif.py` | Convert multi-page TIFFs to GIFs for sharing. |
+| `bte-fl-roi` | ROI-based intensity analysis on TIFF stacks. |
+| `bte-fl-lut` | Lookup-table editor / preview. |
+| `bte-fl-gif` | Convert multi-page TIFFs to GIFs for sharing. |
 
 ### Misc utilities
 
-| Script | What it does |
+| Command | What it does |
 | --- | --- |
-| `csv_folder_viewer_gui.py` | Browse and overlay CSV traces in a folder. |
-| `histology_naming_gui.py` | Standardize histology file naming. |
+| `bte-csv-viewer` | Browse and overlay CSV traces in a folder. |
+| `bte-histology` | Standardize histology file naming. |
 
 ### Web app
 
@@ -129,24 +130,31 @@ documented settings shape.
 
 ## Running desktop tools
 
-The WebGUI is the default desktop surface. Historical script names still work,
-but they now open the matching local WebGUI page:
+The WebGUI is the default desktop surface. Use the installed `bte-*` commands
+for day-to-day work:
 
 ```bash
-python3 abf_batch_processor_gui.py
-python3 echem_photocurrent_gui.py
-python3 fluorescence_roi_gui.py
+bte-abf-batch
+bte-echem-pc
+bte-fl-roi
 # ...etc
 ```
 
 To run the old Tkinter window for one-off legacy work, add `--legacy`:
 
 ```bash
-python3 fluorescence_roi_gui.py --legacy
+bte-fl-roi --legacy
 ```
 
-After `pip install -e .`, the `bte-*` commands also open WebGUI pages by
-default. If a legacy tool complains about missing dependencies (e.g. `pyabf`,
+For source-tree execution without installing entry points, run launcher modules
+with `python3 -m`, for example:
+
+```bash
+python3 -m desktop_apps.launchers.fluorescence_roi_gui
+python3 -m desktop_apps.launchers.fluorescence_roi_gui --legacy
+```
+
+If a legacy tool complains about missing dependencies (e.g. `pyabf`,
 `pyserial`), make sure your virtualenv is active and `pip install -r
 requirements.txt` ran without errors.
 
@@ -162,11 +170,10 @@ bioelectronics_toolkit/
 ├── web_gui_settings.example.json    # Web GUI local settings template
 ├── .gitignore
 │
-├── *_gui.py                        # thin WebGUI launchers; --legacy opens Tkinter
 ├── desktop_apps/
+│   ├── launchers/                  # thin WebGUI/CLI entry modules
 │   ├── web_launcher.py             # maps desktop commands to WebGUI pages
 │   └── legacy/                     # historical Tkinter applications
-├── fluorescence_tiff_to_gif.py      # service-backed TIFF-to-GIF CLI
 ├── importrhdutilities.py            # Intan `.rhd` parsing helper
 │
 ├── web_app.py                      # Flask app entry point
@@ -192,16 +199,16 @@ bioelectronics_toolkit/
   both WebGUI routes and desktop entry points. Fluorescence stack/LUT, ROI
   metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
   parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
-  channel/merge helpers now use this layer. Large historical Tkinter apps live
-  under `desktop_apps/legacy/`; root `*_gui.py` files should stay as thin Web
-  launchers.
+  channel/merge helpers now use this layer. Thin user-facing launchers live in
+  `desktop_apps/launchers/`; large historical Tkinter apps live under
+  `desktop_apps/legacy/`.
 - Pipeline-level documentation (per analysis flow) lives under
   [`pipeline_readmes/`](./pipeline_readmes/).
 - Before committing Web GUI changes, run:
 
   ```bash
   python3 -m ruff check .
-  python3 -m ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+  python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
   python3 -m ruff check web_api --select F --ignore E402
   python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
   python3 -m unittest discover -s tests
@@ -209,7 +216,7 @@ bioelectronics_toolkit/
 
 - CI intentionally applies two lint levels: a whole-repository baseline for
   fatal syntax/undefined-name issues, and a stricter gate for maintained
-  `services/`, `tests/`, and Web launcher code. Web API modules also run a
+  `services/`, `tests/`, and desktop launcher code. Web API modules also run a
   stricter unused-name/import gate. Historical Tkinter files under
   `desktop_apps/legacy/` are kept out of the strict style gate until they are
   ported or retired.

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metrics, and TIFF-to-GIF rendering.
 - Web-first desktop launcher package under `desktop_apps/`, with legacy
   Tkinter applications preserved under `desktop_apps/legacy/`.
+- Thin source-tree launcher modules grouped under `desktop_apps/launchers/` so
+  the repository root stays focused on project-level entry points.
 - Focused fluorescence route modules for stack, 3D, GIF, and ROI endpoints.
 - Shared service modules for CSV trace handling, electrochemistry parsing and
   detection, ABF baseline/peak helpers, EMG peak helpers, and RHD channel/merge
@@ -23,13 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `.gitattributes` for stable LF line endings and binary data handling.
 
 ### Changed
-- Root `*_gui.py` files now act as thin WebGUI launchers by default; pass
+- Desktop GUI launchers now act as thin WebGUI launchers by default; pass
   `--legacy` to open the historical Tkinter implementation.
 - CI, packaging metadata, and README now target Python 3.10 - 3.12.
 - Ruff is used as a baseline correctness gate for syntax and undefined-name
   issues while legacy scripts are gradually cleaned up.
 - CI now applies stricter `E/F/W/I` lint to maintained `services/`, `tests/`,
-  and Web launcher code while keeping legacy Tkinter outside that strict gate.
+  and desktop launcher code while keeping legacy Tkinter outside that strict
+  gate.
 - Web API modules now run an all-module `F` lint gate for unused imports and
   undefined/unused names.
 - WebGUI API responses, job records, run manifests, settings, and file-profile

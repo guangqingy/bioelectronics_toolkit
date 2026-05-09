@@ -30,7 +30,7 @@ If applicable, paste relevant terminal output, tracebacks, or screenshots.
 
 ## Environment
 
-- Tool / script: <!-- e.g. abf_batch_processor_gui.py, web_app.py -->
+- Tool / script: <!-- e.g. bte-abf-batch, web_app.py -->
 - Python version: <!-- python --version -->
 - OS: <!-- macOS 14.4 / Ubuntu 22.04 / Windows 11 -->
 - Toolkit version / commit: <!-- git rev-parse --short HEAD -->

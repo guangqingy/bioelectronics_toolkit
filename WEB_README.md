@@ -19,7 +19,10 @@ tool page is opened.
 ```text
 DataProcess/
 ├── web_app.py                  # Flask composition root and page routes
-├── desktop_apps/               # Web launchers plus legacy Tkinter apps
+├── desktop_apps/
+│   ├── launchers/              # thin source-tree launchers
+│   ├── web_launcher.py         # maps tools to WebGUI routes
+│   └── legacy/                 # historical Tkinter apps
 ├── services/                   # Shared processing logic used by Web and desktop
 ├── web_api/                    # Domain API modules
 │   ├── response.py             # Unified API envelope
@@ -156,7 +159,7 @@ Run these before committing WebGUI changes:
 
 ```bash
 python3 -m ruff check .
-python3 -m ruff check services tests desktop_apps/web_launcher.py --select E,F,W,I --ignore E402
+python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
 python3 -m ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
@@ -167,7 +170,7 @@ separate browser or server.
 
 The first lint command is a compatibility baseline for the full repository.
 The stricter command is the maintained-code gate: new service modules, tests,
-and Web launcher code should pass normal `E/F/W/I` checks. Web API modules also
+and desktop launcher code should pass normal `E/F/W/I` checks. Web API modules also
 run an all-module `F` gate so unused imports/names are caught while route style
 cleanup remains incremental. Legacy Tkinter files are intentionally not part of
 that strict gate until a workflow is migrated to the WebGUI/service

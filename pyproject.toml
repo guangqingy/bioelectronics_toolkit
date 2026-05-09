@@ -56,7 +56,7 @@ Repository = "https://github.com/guangqingy/bioelectronics_toolkit"
 
 # ---------------------------------------------------------------------------
 # Entry points – desktop commands open the canonical WebGUI page by default.
-# Use the matching root compatibility module with `--legacy` for Tkinter.
+# Use --legacy for the matching Tkinter fallback when one is still available.
 # ---------------------------------------------------------------------------
 [project.scripts]
 bte-abf-batch      = "desktop_apps.web_launcher:abf_batch_main"
@@ -70,31 +70,17 @@ bte-emg-viewer     = "desktop_apps.web_launcher:emg_rhd_main"
 bte-emg-peaks      = "desktop_apps.web_launcher:emg_peaks_main"
 bte-fl-roi         = "desktop_apps.web_launcher:fluorescence_roi_main"
 bte-fl-lut         = "desktop_apps.web_launcher:fluorescence_lut_main"
-bte-fl-gif         = "fluorescence_tiff_to_gif:main"
+bte-fl-gif         = "desktop_apps.launchers.fluorescence_tiff_to_gif:main"
 bte-csv-viewer     = "desktop_apps.web_launcher:csv_viewer_main"
 bte-histology      = "desktop_apps.web_launcher:histology_main"
 bte-web            = "web_app:main"
 
 # ---------------------------------------------------------------------------
-# Setuptools – keep root compatibility modules and package the maintained code.
+# Setuptools – package maintained code; desktop launchers live under desktop_apps.
 # ---------------------------------------------------------------------------
 [tool.setuptools]
 py-modules = [
-    "abf_batch_processor_gui",
-    "abf_peak_detection_gui",
-    "abf_photocurrent_figure_gui",
-    "abf_photocurrent_viewer_gui",
-    "abf_sweep_viewer_gui",
     "config",
-    "csv_folder_viewer_gui",
-    "echem_photocurrent_gui",
-    "echem_photovoltage_gui",
-    "emg_peak_selector_gui",
-    "emg_rhd_viewer_gui",
-    "fluorescence_lut_gui",
-    "fluorescence_roi_gui",
-    "fluorescence_tiff_to_gif",
-    "histology_naming_gui",
     "importrhdutilities",
     "web_app",
 ]
@@ -112,8 +98,8 @@ target-version = "py310"
 [tool.ruff.lint]
 # Baseline CI lint: catch syntax-level and undefined-name issues without
 # failing legacy scientific scripts on historical style/layout differences.
-# CI also runs a stricter E/F/W/I command against services, tests, and the Web
-# launcher plus an all-web_api F gate; keep legacy Tkinter outside the stricter
+# CI also runs a stricter E/F/W/I command against services, tests, and desktop
+# launchers plus an all-web_api F gate; keep legacy Tkinter outside the stricter
 # style gate until migrated.
 select = ["E9", "F63", "F7", "F82"]
 ignore = ["E402"]

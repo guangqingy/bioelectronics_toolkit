@@ -1,7 +1,8 @@
 # Desktop GUI Strategy
 
-The WebGUI is the canonical product surface. Root `*_gui.py` files should not
-grow into separate products with their own divergent analysis logic.
+The WebGUI is the canonical product surface. Launcher modules under
+`desktop_apps/launchers/` should not grow into separate products with their own
+divergent analysis logic.
 
 ## Preferred Future
 
@@ -13,9 +14,10 @@ Desktop entry points should be one of these:
 - A legacy script kept only because it supports a workflow that has not yet been
   ported to WebGUI.
 
-Current root `*_gui.py` files follow the first pattern: they open the canonical
+Current launcher modules follow the first pattern: they open the canonical
 WebGUI page by default and accept `--legacy` when the historical Tkinter window
-is still needed. The large Tkinter files live in `desktop_apps/legacy/`.
+is still needed. Thin launchers live in `desktop_apps/launchers/`; the large
+Tkinter files live in `desktop_apps/legacy/`.
 
 ## Why This Matters
 
@@ -30,8 +32,8 @@ below it.
 2. Update Web routes so they call the service.
 3. Update the desktop script so it calls the same service or launches the Web
    page.
-4. Keep a root compatibility wrapper until users have moved to console commands
-   or packaged entry points.
+4. Keep a thin launcher module until users have moved to console commands or
+   packaged entry points.
 
 ## Current Direction
 
@@ -48,6 +50,6 @@ below it.
   `services/emg.py`, and `services/rhd.py` now own the first shared primitives
   for CSV trace merging, electrochemistry parsing/detection, ABF baseline/peak
   helpers, EMG peak helpers, and RHD channel/paired-file handling.
-- Once the service layer is stable, remaining root desktop scripts can become
-  thin wrappers around the WebGUI or shared services. The compatibility launcher
-  structure is already in place.
+- Once the service layer is stable, remaining desktop entry points can stay as
+  thin wrappers around the WebGUI or shared services. The compatibility
+  launcher structure is already in place.

@@ -1,16 +1,16 @@
 # Repository Structure
 
-This repository keeps small root compatibility scripts for historical command
-names, but the large Tkinter implementations now live under
-`desktop_apps/legacy/`. The WebGUI is the more complete product surface and is
-the default target for desktop launcher commands.
+This repository keeps desktop launchers under `desktop_apps/launchers/` and the
+large historical Tkinter implementations under `desktop_apps/legacy/`. The
+WebGUI is the more complete product surface and is the default target for
+desktop launcher commands.
 
 ## Current Layout
 
 ```text
 DataProcess/
-+-- *_gui.py                  # thin compatibility launchers; use --legacy for Tkinter
 +-- desktop_apps/
+|   +-- launchers/            # thin WebGUI/CLI launchers
 |   +-- web_launcher.py       # opens the canonical WebGUI page for each tool
 |   +-- legacy/               # historical Tkinter applications
 +-- web_app.py                # Flask composition root
@@ -24,8 +24,8 @@ DataProcess/
 ```
 
 This shape is supported by `pyproject.toml`, where GUI console scripts point at
-`desktop_apps.web_launcher:*_main`. Root modules such as
-`fluorescence_roi_gui.py` remain as compatibility launchers.
+`desktop_apps.web_launcher:*_main`, while direct source-tree launchers live
+under `desktop_apps/launchers/`.
 
 ## Recommended Direction
 
@@ -66,8 +66,8 @@ problem.
   algorithms inline.
 - Keep strict lint focused on maintained code. CI runs a whole-repository
   baseline for fatal issues, but the `E/F/W/I` style gate is intentionally
-  limited to `services/`, `tests/`, and Web launcher code while Web API modules
-  run a stricter unused-name/import gate. Historical Tkinter scripts remain in
+  limited to `services/`, `tests/`, and desktop launcher code while Web API
+  modules run a stricter unused-name/import gate. Historical Tkinter scripts remain in
   `desktop_apps/legacy/` and outside the strict style gate.
 - Split large Web route files by feature area before moving package paths. The
   fluorescence Web routes are now separated into stack, 3D, GIF, and ROI
@@ -82,8 +82,8 @@ problem.
 
 1. Add service modules for fluorescence TIFF/LUT, ROI, and GIF workflows. These
    have the largest desktop/Web drift today.
-2. Reuse the same services from `web_api/fluorescence.py` and the root
-   fluorescence desktop scripts.
+2. Reuse the same services from `web_api/fluorescence.py` and the launcher or
+   desktop compatibility layer.
 3. Keep thinning ABF, electrochemistry, EMG, RHD, and CSV Web routes as their
    service modules grow.
 4. Expand service-level tests before tightening route-level lint on additional
