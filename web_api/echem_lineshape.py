@@ -9,7 +9,10 @@ from flask import Response, jsonify, request
 
 
 from web_api.common import mode_is_save
-from .jobs import submit_flask_route_job
+
+from .jobs import submit_json_task
+from .path_policy import ensure_output_parent
+from .response import api_ok
 
 
 def register_echem_lineshape_routes(app, ctx):
@@ -22,6 +25,39 @@ def register_echem_lineshape_routes(app, ctx):
     _mode_is_save = mode_is_save
 
     device_dir_re = _re.compile(r"^(?P<prefix>.*?)(?P<ch>\d+)_(?P<idx>\d+)$")
+
+    def _lineshape_avg_export(d: dict) -> dict:
+        source_path = d.get("source_path", "")
+        avg_data = d.get("avg_data", {})
+        t_ms = avg_data.get("t_ms", [])
+        y = avg_data.get("y", [])
+        if not t_ms:
+            raise ValueError("No averaged data to export")
+        df_out = pd.DataFrame({"time_ms": t_ms, "signal": y})
+        payload = df_out.to_csv(index=False).encode("utf-8")
+        if source_path:
+            src = Path(source_path)
+            out_path = src.with_name(f"{src.stem}_lineshape_avg.csv")
+        else:
+            out_path = Path.cwd() / "lineshape_avg.csv"
+        return {
+            "payload": payload,
+            "download_name": "lineshape_avg.csv",
+            "out_path": out_path,
+        }
+
+    def _save_lineshape_avg_export(export: dict) -> dict:
+        out_path = ensure_output_parent(export["out_path"])
+        out_path.write_bytes(export["payload"])
+        return {
+            "ok": True,
+            "saved_path": str(out_path),
+            "outputs": [{"path": str(out_path), "type": "csv", "role": "lineshape_avg"}],
+        }
+
+    def _lineshape_avg_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting averaged lineshape")
+        return _save_lineshape_avg_export(_lineshape_avg_export(body))
 
     def _ls_read_csv(path):
         """Read two-column segment CSV -> (t, y) arrays."""
@@ -255,36 +291,26 @@ def register_echem_lineshape_routes(app, ctx):
         """Export averaged trace as CSV download."""
         d = request.json or {}
         mode = d.get("mode", "download")
-        source_path = d.get("source_path", "")
-        avg_data = d.get("avg_data", {})
-        t_ms = avg_data.get("t_ms", [])
-        y = avg_data.get("y", [])
-        if not t_ms:
-            return err("No averaged data to export")
-        df_out = pd.DataFrame({"time_ms": t_ms, "signal": y})
-        payload = df_out.to_csv(index=False).encode("utf-8")
+        try:
+            export = _lineshape_avg_export(d)
+        except ValueError as exc:
+            return err(str(exc))
         if _mode_is_save(mode):
-            if source_path:
-                src = Path(source_path)
-                out_path = src.with_name(f"{src.stem}_lineshape_avg.csv")
-            else:
-                out_path = Path.cwd() / "lineshape_avg.csv"
-            out_path.write_bytes(payload)
-            return jsonify({"ok": True, "saved_path": str(out_path)})
+            result = _save_lineshape_avg_export(export)
+            return api_ok(result, outputs=result["outputs"])
         return Response(
-            payload,
+            export["payload"],
             mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=lineshape_avg.csv"},
+            headers={"Content-Disposition": f"attachment; filename={export['download_name']}"},
         )
 
     @app.route("/api/echem/lineshape/export_avg_job", methods=["POST"])
     def api_ls_export_avg_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/echem/lineshape/export_avg",
             "echem_lineshape.export_avg",
             "Export echem lineshape average",
-            api_ls_export_avg,
+            _lineshape_avg_export_task,
             request.json or {},
+            metadata={"endpoint": "/api/echem/lineshape/export_avg"},
         )

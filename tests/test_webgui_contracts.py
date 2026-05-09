@@ -230,11 +230,14 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(job["data"]["saved_path"], job["outputs"][0]["path"])
             self.assertEqual(job["outputs"][0]["role"], "full_csv")
 
-    def test_csv_jobs_do_not_wrap_flask_routes(self) -> None:
-        source = Path(__file__).resolve().parents[1] / "web_api" / "csv_viewer.py"
-        text = source.read_text(encoding="utf-8")
-        self.assertIn("submit_json_task", text)
-        self.assertNotIn("submit_flask_route_job", text)
+    def test_job_routes_do_not_wrap_flask_routes(self) -> None:
+        web_api = Path(__file__).resolve().parents[1] / "web_api"
+        offenders = []
+        for source in web_api.glob("*.py"):
+            text = source.read_text(encoding="utf-8")
+            if "submit_flask_route_job" in text or "test_request_context" in text:
+                offenders.append(source.name)
+        self.assertEqual([], offenders)
 
     def test_web_app_keeps_page_and_system_routes_out_of_composition_root(self) -> None:
         root = Path(__file__).resolve().parents[1]

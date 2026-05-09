@@ -5,7 +5,8 @@ from pathlib import Path
 
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import submit_json_task
+from .response import api_ok
 
 
 def register_fluorescence_3d_routes(app, fl):
@@ -26,6 +27,73 @@ def register_fluorescence_3d_routes(app, fl):
     _fl_tiff_series_info = fl["_fl_tiff_series_info"]
     _fl_tiff_volume3d_payload = fl["_fl_tiff_volume3d_payload"]
     _fl_volume3d_html = fl["_fl_volume3d_html"]
+
+    def _export_volume_payload(d: dict) -> dict:
+        if not has_tiff:
+            raise ValueError("tifffile is required")
+        path = str(d.get("path", "") or "").strip()
+        output_name = str(d.get("output_name", "") or "").strip()
+        output_dir_raw = str(d.get("output_dir", "") or "").strip()
+        overwrite = _fl_bool(d.get("overwrite", True), True)
+        c = int_or(d.get("c", 0), 0)
+        t = int_or(d.get("t", 0), 0)
+        extra_indices = d.get("extra_indices") if isinstance(d.get("extra_indices"), dict) else {}
+        channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
+        if channel_mode not in {"composite", "current"}:
+            channel_mode = "composite"
+        max_points = int_or(d.get("max_points", 110000), 110000)
+        max_xy = int_or(d.get("max_xy", 220), 220)
+        max_z = int_or(d.get("max_z", 120), 120)
+        threshold_percentile = float_or(d.get("threshold_percentile", 98.6), 98.6)
+        channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
+        denoise_mode = _fl_clean_choice(d.get("denoise"), _FL_DENOISE_OPTIONS, "Off")
+        show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
+        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 20.0), 20.0))
+        p = Path(path)
+        if not p.exists():
+            raise ValueError(f"Input TIFF not found: {path}")
+        payload = _fl_tiff_volume3d_payload(
+            p,
+            c=c,
+            t=t,
+            extra_indices=extra_indices,
+            channel_mode=channel_mode,
+            max_points=max_points,
+            max_xy=max_xy,
+            max_z=max_z,
+            threshold_percentile=threshold_percentile,
+            channel_ranges=channel_ranges,
+            denoise_mode=denoise_mode,
+            show_scale_bar=show_scale_bar,
+            scale_bar_um=scale_bar_um,
+        )
+        output_dir = Path(output_dir_raw).expanduser() if output_dir_raw else p.parent / f"{p.stem}_3d_exports"
+        if not output_dir.is_absolute():
+            output_dir = p.parent / output_dir
+        output_dir.mkdir(parents=True, exist_ok=True)
+        safe_name = _fl_sanitize_prefix(output_name or p.stem, p.stem)
+        out_path = output_dir / f"{safe_name}_3d_viewer.html"
+        if not overwrite:
+            stem = out_path.stem
+            suffix = out_path.suffix
+            n = 2
+            while out_path.exists():
+                out_path = output_dir / f"{stem}_{n}{suffix}"
+                n += 1
+        out_path.write_text(_fl_volume3d_html(payload), encoding="utf-8")
+        return {
+            "ok": True,
+            "output_path": str(out_path),
+            "n_points": payload.get("render", {}).get("n_points", 0),
+            "z_sampled": payload.get("dimensions", {}).get("z_sampled", 0),
+            "channels_rendered": payload.get("dimensions", {}).get("channels_rendered", []),
+            "calibration": payload.get("calibration", {}),
+            "outputs": [{"path": str(out_path), "type": "html", "role": "fluorescence_3d_viewer"}],
+        }
+
+    def _export_volume_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting fluorescence 3D viewer")
+        return _export_volume_payload(body)
 
     @app.route("/api/fluorescence/3d/tiff_info", methods=["POST"])
     def api_fl_3d_tiff_info():
@@ -128,70 +196,10 @@ def register_fluorescence_3d_routes(app, fl):
 
     @app.route("/api/fluorescence/3d/export_volume", methods=["POST"])
     def api_fl_3d_export_volume():
-        if not has_tiff:
-            return err("tifffile is required")
         d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        output_name = str(d.get("output_name", "") or "").strip()
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        overwrite = _fl_bool(d.get("overwrite", True), True)
-        c = int_or(d.get("c", 0), 0)
-        t = int_or(d.get("t", 0), 0)
-        extra_indices = d.get("extra_indices") if isinstance(d.get("extra_indices"), dict) else {}
-        channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
-        if channel_mode not in {"composite", "current"}:
-            channel_mode = "composite"
-        max_points = int_or(d.get("max_points", 110000), 110000)
-        max_xy = int_or(d.get("max_xy", 220), 220)
-        max_z = int_or(d.get("max_z", 120), 120)
-        threshold_percentile = float_or(d.get("threshold_percentile", 98.6), 98.6)
-        channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
-        denoise_mode = _fl_clean_choice(d.get("denoise"), _FL_DENOISE_OPTIONS, "Off")
-        show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 20.0), 20.0))
         try:
-            p = Path(path)
-            if not p.exists():
-                return err(f"Input TIFF not found: {path}")
-            payload = _fl_tiff_volume3d_payload(
-                p,
-                c=c,
-                t=t,
-                extra_indices=extra_indices,
-                channel_mode=channel_mode,
-                max_points=max_points,
-                max_xy=max_xy,
-                max_z=max_z,
-                threshold_percentile=threshold_percentile,
-                channel_ranges=channel_ranges,
-                denoise_mode=denoise_mode,
-                show_scale_bar=show_scale_bar,
-                scale_bar_um=scale_bar_um,
-            )
-            output_dir = Path(output_dir_raw).expanduser() if output_dir_raw else p.parent / f"{p.stem}_3d_exports"
-            if not output_dir.is_absolute():
-                output_dir = p.parent / output_dir
-            output_dir.mkdir(parents=True, exist_ok=True)
-            safe_name = _fl_sanitize_prefix(output_name or p.stem, p.stem)
-            out_path = output_dir / f"{safe_name}_3d_viewer.html"
-            if not overwrite:
-                stem = out_path.stem
-                suffix = out_path.suffix
-                n = 2
-                while out_path.exists():
-                    out_path = output_dir / f"{stem}_{n}{suffix}"
-                    n += 1
-            out_path.write_text(_fl_volume3d_html(payload), encoding="utf-8")
-            return jsonify(
-                {
-                    "ok": True,
-                    "output_path": str(out_path),
-                    "n_points": payload.get("render", {}).get("n_points", 0),
-                    "z_sampled": payload.get("dimensions", {}).get("z_sampled", 0),
-                    "channels_rendered": payload.get("dimensions", {}).get("channels_rendered", []),
-                    "calibration": payload.get("calibration", {}),
-                }
-            )
+            result = _export_volume_payload(d)
+            return api_ok(result, outputs=result["outputs"])
         except ValueError as exc:
             return err(str(exc))
         except Exception:
@@ -199,13 +207,11 @@ def register_fluorescence_3d_routes(app, fl):
 
     @app.route("/api/fluorescence/3d/export_volume_job", methods=["POST"])
     def api_fl_3d_export_volume_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/3d/export_volume",
             "fluorescence.export_volume3d",
             "Export fluorescence 3D viewer",
-            api_fl_3d_export_volume,
+            _export_volume_task,
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/3d/export_volume"},
         )
-

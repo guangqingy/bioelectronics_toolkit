@@ -8,7 +8,7 @@ from matplotlib.lines import Line2D
 from matplotlib.ticker import LogLocator, ScalarFormatter
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import route_response_to_payload, submit_json_task
 
 DEFAULT_OUT_NAME = "plots_quick_analysis"
 DPI = 600
@@ -473,6 +473,11 @@ def register_figure_generator_routes(app, ctx):
     fig_to_b64 = ctx["fig_to_b64"]
     jobs = ctx.get("jobs")
 
+    def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
+        job_ctx.set_progress(0.2, message)
+        with app.app_context():
+            return route_response_to_payload(handler(body or {}))
+
     @app.route("/api/figure/browse", methods=["POST"])
     def api_figure_browse():
         folder = (request.json or {}).get("folder", "")
@@ -582,8 +587,8 @@ def register_figure_generator_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/figure/run", methods=["POST"])
-    def api_figure_run():
-        d = request.json or {}
+    def api_figure_run(payload=None):
+        d = (request.json or {}) if payload is None else payload
         queue = d.get("queue", [])
         action = str(d.get("action", "analyze")).strip().lower()
 
@@ -927,12 +932,13 @@ def register_figure_generator_routes(app, ctx):
 
     @app.route("/api/figure/run_job", methods=["POST"])
     def api_figure_run_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/figure/run",
             "figure.run",
             "Run figure export",
-            api_figure_run,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_figure_run, "Running figure export"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/figure/run"},
         )

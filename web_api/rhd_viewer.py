@@ -10,7 +10,9 @@ from flask import Response, jsonify, request
 from services import rhd as rhd_service
 
 from web_api.common import as_bool, mode_is_save
-from .jobs import submit_flask_route_job
+
+from .jobs import submit_json_task
+from .response import api_ok
 
 
 def register_rhd_viewer_routes(app, ctx):
@@ -37,6 +39,147 @@ def register_rhd_viewer_routes(app, ctx):
 
     def _df_all_channels_wide(time_s, ch_names, amp):
         return rhd_service.all_channels_wide_frame(time_s, ch_names, amp)
+
+    def _rhd_output(path: str | Path, role: str = "rhd_export") -> dict:
+        p = Path(path)
+        return {
+            "path": str(p),
+            "type": "directory" if p.is_dir() else "csv",
+            "role": role,
+        }
+
+    def _rhd_export_all_payload(d: dict) -> dict:
+        if not has_rhd:
+            raise ValueError("importrhdutilities.py not found")
+
+        path = d.get("path", "")
+        mode = d.get("mode", "download")
+        do_merge = _as_bool(d.get("merge_pair"), True)
+        wide_csv = _as_bool(d.get("wide_csv"), False)
+        src = Path(path)
+        if not src.is_file():
+            raise ValueError(f"RHD file not found: {path}")
+        t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(src, do_merge)
+
+        if _mode_is_save(mode):
+            base_dir = src.parent
+            if wide_csv:
+                out_path = base_dir / f"{base_stem}.csv"
+                dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
+                dfw.to_csv(out_path, index=False, sep="\t")
+                return {
+                    "kind": "save",
+                    "data": {
+                        "ok": True,
+                        "saved_path": str(out_path),
+                        "saved_paths": [str(out_path)],
+                        "outputs": [_rhd_output(out_path, "rhd_all_channels_wide")],
+                    },
+                }
+
+            target_dir = base_dir / base_stem
+            target_dir.mkdir(parents=True, exist_ok=True)
+            saved = 0
+            saved_paths = []
+            for i, name in enumerate(ch_all):
+                out_path = target_dir / f"{base_stem}_{name}.csv"
+                pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(out_path, index=False)
+                saved += 1
+                saved_paths.append(str(out_path))
+            outputs = [_rhd_output(target_dir, "rhd_channel_folder")]
+            outputs.extend(_rhd_output(path, "rhd_channel_csv") for path in saved_paths)
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(target_dir),
+                    "saved_count": saved,
+                    "saved_paths": saved_paths,
+                    "outputs": outputs,
+                },
+            }
+
+        out = io.BytesIO()
+        with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for i, name in enumerate(ch_all):
+                csv_bytes = pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(
+                    index=False
+                ).encode("utf-8")
+                zf.writestr(f"{base_stem}_{name}.csv", csv_bytes)
+        out.seek(0)
+        return {
+            "kind": "download",
+            "payload": out.getvalue(),
+            "mimetype": "application/zip",
+            "download_name": f"{base_stem}_all_channels.zip",
+        }
+
+    def _rhd_export_all_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting all RHD channels")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _rhd_export_all_payload(save_body)["data"]
+
+    def _rhd_export_queue_payload(d: dict) -> dict:
+        if not has_rhd:
+            raise ValueError("importrhdutilities.py not found")
+
+        paths = d.get("paths", [])
+        if not isinstance(paths, list) or not paths:
+            raise ValueError("Queue is empty.")
+
+        do_merge = _as_bool(d.get("merge_pair"), True)
+        wide_csv = _as_bool(d.get("wide_csv"), False)
+
+        total = 0
+        ok = 0
+        warnings = []
+        saved_paths = []
+        processed_bases = set()
+
+        for raw in paths:
+            total += 1
+            p = Path(str(raw))
+            try:
+                t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(p, do_merge)
+
+                if do_merge and base_stem in processed_bases:
+                    continue
+
+                base_dir = p.parent
+                if wide_csv:
+                    out_path = base_dir / f"{base_stem}.csv"
+                    dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
+                    dfw.to_csv(out_path, index=False, sep="\t")
+                    saved_paths.append(str(out_path))
+                else:
+                    target_dir = base_dir / base_stem
+                    target_dir.mkdir(parents=True, exist_ok=True)
+                    for i, name in enumerate(ch_all):
+                        out_path = target_dir / f"{base_stem}_{name}.csv"
+                        pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(
+                            out_path, index=False
+                        )
+                    saved_paths.append(str(target_dir))
+
+                if do_merge:
+                    processed_bases.add(base_stem)
+                ok += 1
+            except Exception as e:
+                warnings.append(f"{p}: {e}")
+
+        return {
+            "ok": True,
+            "saved_count": ok,
+            "total": total,
+            "saved_paths": saved_paths,
+            "warnings": warnings,
+            "outputs": [_rhd_output(path, "rhd_queue_export") for path in saved_paths],
+        }
+
+    def _rhd_export_queue_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting RHD queue")
+        return _rhd_export_queue_payload(body)
 
     @app.route("/api/rhd/browse", methods=["POST"])
     def api_rhd_browse():
@@ -199,134 +342,49 @@ def register_rhd_viewer_routes(app, ctx):
 
     @app.route("/api/rhd/export_all", methods=["POST"])
     def api_rhd_export_all():
-        if not has_rhd:
-            return err("importrhdutilities.py not found")
-
         d = request.json or {}
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
-        do_merge = _as_bool(d.get("merge_pair"), True)
-        wide_csv = _as_bool(d.get("wide_csv"), False)
         try:
-            src = Path(path)
-            if not src.is_file():
-                return err(f"RHD file not found: {path}")
-            t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(src, do_merge)
-
-            if _mode_is_save(mode):
-                base_dir = src.parent
-                if wide_csv:
-                    out_path = base_dir / f"{base_stem}.csv"
-                    dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
-                    dfw.to_csv(out_path, index=False, sep="\t")
-                    return jsonify({"ok": True, "saved_path": str(out_path), "saved_paths": [str(out_path)]})
-
-                target_dir = base_dir / base_stem
-                target_dir.mkdir(parents=True, exist_ok=True)
-                saved = 0
-                saved_paths = []
-                for i, name in enumerate(ch_all):
-                    out_path = target_dir / f"{base_stem}_{name}.csv"
-                    pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(out_path, index=False)
-                    saved += 1
-                    saved_paths.append(str(out_path))
-                return jsonify({"ok": True, "saved_path": str(target_dir), "saved_count": saved, "saved_paths": saved_paths})
-
-            out = io.BytesIO()
-            with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                for i, name in enumerate(ch_all):
-                    csv_bytes = pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(index=False).encode("utf-8")
-                    zf.writestr(f"{base_stem}_{name}.csv", csv_bytes)
-            out.seek(0)
-            payload = out.getvalue()
+            result = _rhd_export_all_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"], warnings=data.get("warnings"))
             return Response(
-                payload,
-                mimetype="application/zip",
-                headers={"Content-Disposition": f"attachment; filename={base_stem}_all_channels.zip"},
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValueError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/rhd/export_all_job", methods=["POST"])
     def api_rhd_export_all_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/rhd/export_all",
             "rhd.export_all",
             "Export all RHD channels",
-            api_rhd_export_all,
+            _rhd_export_all_task,
             request.json or {},
+            metadata={"endpoint": "/api/rhd/export_all"},
         )
 
     @app.route("/api/rhd/export_queue", methods=["POST"])
     def api_rhd_export_queue():
-        if not has_rhd:
-            return err("importrhdutilities.py not found")
-
         d = request.json or {}
-        paths = d.get("paths", [])
-        if not isinstance(paths, list) or not paths:
-            return err("Queue is empty.")
-
-        do_merge = _as_bool(d.get("merge_pair"), True)
-        wide_csv = _as_bool(d.get("wide_csv"), False)
-
-        total = 0
-        ok = 0
-        warnings = []
-        saved_paths = []
-        processed_bases = set()
-
-        for raw in paths:
-            total += 1
-            p = Path(str(raw))
-            try:
-                t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(p, do_merge)
-
-                if do_merge and base_stem in processed_bases:
-                    continue
-
-                base_dir = p.parent
-                if wide_csv:
-                    out_path = base_dir / f"{base_stem}.csv"
-                    dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
-                    dfw.to_csv(out_path, index=False, sep="\t")
-                    saved_paths.append(str(out_path))
-                else:
-                    target_dir = base_dir / base_stem
-                    target_dir.mkdir(parents=True, exist_ok=True)
-                    for i, name in enumerate(ch_all):
-                        out_path = target_dir / f"{base_stem}_{name}.csv"
-                        pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(
-                            out_path, index=False
-                        )
-                    saved_paths.append(str(target_dir))
-
-                if do_merge:
-                    processed_bases.add(base_stem)
-                ok += 1
-            except Exception as e:
-                warnings.append(f"{p}: {e}")
-
-        return jsonify(
-            {
-                "ok": True,
-                "saved_count": ok,
-                "total": total,
-                "saved_paths": saved_paths,
-                "warnings": warnings,
-            }
-        )
+        try:
+            result = _rhd_export_queue_payload(d)
+            return api_ok(result, outputs=result["outputs"], warnings=result.get("warnings"))
+        except ValueError as exc:
+            return err(str(exc))
 
     @app.route("/api/rhd/export_queue_job", methods=["POST"])
     def api_rhd_export_queue_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/rhd/export_queue",
             "rhd.export_queue",
             "Export RHD queue",
-            api_rhd_export_queue,
+            _rhd_export_queue_task,
             request.json or {},
+            metadata={"endpoint": "/api/rhd/export_queue"},
         )

@@ -85,8 +85,8 @@ creates a metadata sidecar, the route should return it explicitly in
 
 ## Background Jobs
 
-Heavy or side-effect-heavy operations should expose a `*_job` endpoint. New
-code should prefer a request-body-driven service task:
+Heavy or side-effect-heavy operations should expose a `*_job` endpoint backed by
+a request-body-driven service task:
 
 ```python
 return submit_json_task(
@@ -94,20 +94,6 @@ return submit_json_task(
     "domain.export",
     "Human-readable job title",
     export_task,      # accepts (job_ctx, body)
-    request.json or {},
-)
-```
-
-The compatibility adapter for older synchronous route bodies remains available:
-
-```python
-return submit_flask_route_job(
-    app,
-    jobs,
-    "/api/domain/export",
-    "domain.export",
-    "Human-readable job title",
-    api_domain_export,
     request.json or {},
 )
 ```
@@ -173,8 +159,8 @@ Guidelines:
 - Return JSON dictionaries or `api_ok(...)`/`api_error(...)`; the envelope
   middleware is the fallback.
 - Provide job-backed routes for long-running exports and batch operations.
-- Prefer `submit_json_task(...)` for new jobs. Use `submit_flask_route_job(...)`
-  only as a compatibility bridge while an older route still owns the work.
+- Use `submit_json_task(...)` for job routes; the older Flask request-context
+  wrapper has been retired from the route modules.
 - New save/export routes should return explicit `outputs=[...]` records through
   `api_ok(...)`; the response inference layer exists for older route shapes.
 - Keep download-only streaming endpoints synchronous unless there is a separate

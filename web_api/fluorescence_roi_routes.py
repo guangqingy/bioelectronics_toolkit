@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import route_response_to_payload, submit_json_task
 
 
 def register_fluorescence_roi_routes(app, fl):
@@ -52,6 +52,11 @@ def register_fluorescence_roi_routes(app, fl):
     _fl_roi_shape_type = fl["_fl_roi_shape_type"]
     _fl_roi_shared_ylim = fl["_fl_roi_shared_ylim"]
     _fl_sanitize_prefix = fl["_fl_sanitize_prefix"]
+
+    def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
+        job_ctx.set_progress(0.2, message)
+        with app.app_context():
+            return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/roi/browse", methods=["POST"])
     def api_fl_roi_browse():
@@ -655,9 +660,9 @@ def register_fluorescence_roi_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/roi/export_sequence", methods=["POST"])
-    def api_fl_roi_export_sequence():
+    def api_fl_roi_export_sequence(payload=None):
         """Save ROI sequence analysis outputs to disk (CSV/plot/ROI preview)."""
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         records = d.get("records", [])
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_sequence_analysis")
@@ -731,23 +736,24 @@ def register_fluorescence_roi_routes(app, fl):
 
     @app.route("/api/fluorescence/roi/export_sequence_job", methods=["POST"])
     def api_fl_roi_export_sequence_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/roi/export_sequence",
             "fluorescence.roi_export_sequence",
             "Export ROI sequence outputs",
-            api_fl_roi_export_sequence,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_roi_export_sequence, "Exporting ROI sequence outputs"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/roi/export_sequence"},
         )
 
     @app.route("/api/fluorescence/roi/export_sequence_gif", methods=["POST"])
-    def api_fl_roi_export_sequence_gif():
+    def api_fl_roi_export_sequence_gif(payload=None):
         """Save a sequence GIF from selected ROI records with ROI overlays and scale bar."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         records = d.get("records", [])
         rois = d.get("rois", [])
         preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
@@ -837,12 +843,13 @@ def register_fluorescence_roi_routes(app, fl):
 
     @app.route("/api/fluorescence/roi/export_sequence_gif_job", methods=["POST"])
     def api_fl_roi_export_sequence_gif_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/roi/export_sequence_gif",
             "fluorescence.roi_export_sequence_gif",
             "Export ROI sequence GIF",
-            api_fl_roi_export_sequence_gif,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_roi_export_sequence_gif, "Exporting ROI sequence GIF"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/roi/export_sequence_gif"},
         )

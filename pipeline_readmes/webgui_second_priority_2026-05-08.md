@@ -99,7 +99,7 @@ Available job endpoints:
 
 Pipelines script execution now uses this job manager internally while preserving the previous `/api/scripts/run` and `/api/scripts/status` response shape.
 
-`web_api/jobs.py` also includes `submit_flask_route_job(...)`, a bridge for wrapping older synchronous Flask API routes as background jobs without rewriting the analysis body first.
+Earlier migration notes referred to a Flask route job bridge for wrapping older synchronous API routes. Current route modules use body-driven job tasks instead, so background work no longer depends on manufacturing Flask request contexts.
 
 The following heavier endpoints now have job-backed entry points:
 

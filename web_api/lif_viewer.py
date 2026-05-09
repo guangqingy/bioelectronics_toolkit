@@ -14,7 +14,7 @@ from xml.etree import ElementTree as ET
 import numpy as np
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import route_response_to_payload, submit_json_task
 
 
 def register_lif_viewer_routes(app, ctx):
@@ -31,6 +31,11 @@ def register_lif_viewer_routes(app, ctx):
     has_readlif = ctx.get("HAS_READLIF", False)
     LifFile = ctx.get("LifFile")
     _lif_cache = {}
+
+    def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
+        job_ctx.set_progress(0.2, message)
+        with app.app_context():
+            return route_response_to_payload(handler(body or {}))
 
     time_key_re = re.compile(r"(acq|acquis|date|time|stamp|creat|start|end|modif)", re.IGNORECASE)
     skip_key_re = re.compile(
@@ -1660,8 +1665,8 @@ animate();
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_volume3d", methods=["POST"])
-    def api_lif_export_volume3d():
-        d = request.json or {}
+    def api_lif_export_volume3d(payload=None):
+        d = (request.json or {}) if payload is None else payload
         path = str(d.get("path", "") or "").strip()
         image_index = int_or(d.get("image_index", 0), 0)
         output_name = str(d.get("output_name", "") or "").strip()
@@ -1727,14 +1732,15 @@ animate();
 
     @app.route("/api/fluorescence/lif/export_volume3d_job", methods=["POST"])
     def api_lif_export_volume3d_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/lif/export_volume3d",
             "fluorescence.lif_export_volume3d",
             "Export LIF 3D viewer",
-            api_lif_export_volume3d,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_lif_export_volume3d, "Exporting LIF 3D viewer"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/lif/export_volume3d"},
         )
 
     @app.route("/api/fluorescence/lif/export_manifest", methods=["POST"])
@@ -1783,8 +1789,8 @@ animate();
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_tiff", methods=["POST"])
-    def api_lif_export_tiff():
-        d = request.json or {}
+    def api_lif_export_tiff(payload=None):
+        d = (request.json or {}) if payload is None else payload
         path = str(d.get("path", "") or "").strip()
         image_index = int_or(d.get("image_index", 0), 0)
         output_name = str(d.get("output_name", "") or "").strip()
@@ -1810,19 +1816,20 @@ animate();
 
     @app.route("/api/fluorescence/lif/export_tiff_job", methods=["POST"])
     def api_lif_export_tiff_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/lif/export_tiff",
             "fluorescence.lif_export_tiff",
             "Export selected LIF TIFF",
-            api_lif_export_tiff,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_lif_export_tiff, "Exporting selected LIF TIFF"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/lif/export_tiff"},
         )
 
     @app.route("/api/fluorescence/lif/export_tiff_batch", methods=["POST"])
-    def api_lif_export_tiff_batch():
-        d = request.json or {}
+    def api_lif_export_tiff_batch(payload=None):
+        d = (request.json or {}) if payload is None else payload
         path = str(d.get("path", "") or "").strip()
         order_indices_raw = d.get("order_indices") or []
         rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
@@ -1872,12 +1879,13 @@ animate();
 
     @app.route("/api/fluorescence/lif/export_tiff_batch_job", methods=["POST"])
     def api_lif_export_tiff_batch_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/lif/export_tiff_batch",
             "fluorescence.lif_export_tiff_batch",
             "Export all LIF TIFFs",
-            api_lif_export_tiff_batch,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_lif_export_tiff_batch, "Exporting LIF TIFF batch"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/lif/export_tiff_batch"},
         )

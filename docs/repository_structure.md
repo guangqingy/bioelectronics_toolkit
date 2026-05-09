@@ -80,9 +80,8 @@ problem.
   `web_static/js/pages/` for page-specific assets once they no longer need
   Jinja interpolation. Shared Jinja fragments belong in
   `web_templates/partials/` rather than growing `base.html`.
-- Prefer service-task jobs through `submit_json_task(...)` for new or touched
-  routes. Keep `submit_flask_route_job(...)` only as a temporary compatibility
-  bridge for older route-owned workflows.
+- Prefer service-task jobs through `submit_json_task(...)`; route modules should
+  not manufacture Flask request contexts for background work.
 - Keep local state out of git: `web_gui_settings.json`, `config.json`, real
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.

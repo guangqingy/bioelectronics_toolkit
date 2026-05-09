@@ -198,44 +198,6 @@ def route_response_to_payload(result: Any) -> dict[str, Any]:
     return payload
 
 
-def unwrap_api_envelope(payload: Any) -> dict[str, Any]:
-    if not isinstance(payload, dict):
-        return {"value": payload}
-    envelope_keys = {"ok", "data", "outputs", "warnings", "error"}
-    if envelope_keys.issubset(payload.keys()) and isinstance(payload.get("data"), dict):
-        merged = dict(payload["data"])
-        for key, value in payload.items():
-            if key != "data":
-                merged[key] = value
-        return merged
-    return payload
-
-
-def run_flask_route_job(
-    job_ctx: JobContext,
-    app,
-    endpoint: str,
-    route_func: Callable[..., Any],
-    body: dict[str, Any] | None,
-    method: str = "POST",
-    query_string: dict[str, Any] | None = None,
-):
-    job_ctx.set_progress(0.02, "Starting job")
-    request_kwargs: dict[str, Any] = {"method": method or "POST"}
-    if query_string:
-        request_kwargs["query_string"] = query_string
-    elif (method or "POST").upper() != "GET":
-        request_kwargs["json"] = body or {}
-    with app.test_request_context(endpoint, **request_kwargs):
-        payload = unwrap_api_envelope(route_response_to_payload(route_func()))
-    if payload.get("error"):
-        job_ctx.set_progress(1.0, "Failed")
-        payload.setdefault("ok", False)
-        return payload
-    job_ctx.set_progress(1.0, "Complete")
-    return payload
-
-
 def run_json_task_job(
     job_ctx: JobContext,
     task_func: Callable[..., Any],
@@ -279,37 +241,6 @@ def submit_json_task(
         task_func,
         body or {},
         metadata=metadata or {},
-    )
-    return api_ok({"running": True, "job": job, "job_id": job["job_id"]})
-
-
-def submit_flask_route_job(
-    app,
-    jobs: JobManager | None,
-    endpoint: str,
-    kind: str,
-    title: str,
-    route_func: Callable[..., Any],
-    body: dict[str, Any] | None = None,
-    metadata: dict[str, Any] | None = None,
-    method: str = "POST",
-    query_string: dict[str, Any] | None = None,
-):
-    if jobs is None:
-        return api_error("Background job manager is not available", 500)
-    meta = {"endpoint": endpoint}
-    meta.update(metadata or {})
-    job = jobs.submit(
-        kind,
-        title,
-        run_flask_route_job,
-        app,
-        endpoint,
-        route_func,
-        body or {},
-        method,
-        query_string,
-        metadata=meta,
     )
     return api_ok({"running": True, "job": job, "job_id": job["job_id"]})
 

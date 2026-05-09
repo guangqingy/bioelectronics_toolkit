@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import route_response_to_payload, submit_json_task
 
 
 def register_fluorescence_gif_routes(app, fl):
@@ -50,6 +50,11 @@ def register_fluorescence_gif_routes(app, fl):
     _fl_smooth_heatmap_2d = fl["_fl_smooth_heatmap_2d"]
     _fl_smooth_series_nan = fl["_fl_smooth_series_nan"]
     _fl_tiff_gif_frame_count = fl["_fl_tiff_gif_frame_count"]
+
+    def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
+        job_ctx.set_progress(0.2, message)
+        with app.app_context():
+            return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/gif_preview", methods=["POST"])
     def api_fl_gif_preview():
@@ -131,12 +136,12 @@ def register_fluorescence_gif_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/gif_roi/export_preview", methods=["POST"])
-    def api_fl_gif_roi_export_preview():
+    def api_fl_gif_roi_export_preview(payload=None):
         """Save one GIF preview frame with polygon ROI overlays and a labeled scale bar."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         input_path_str = str(d.get("input_path", "") or "").strip()
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_reference")
@@ -228,21 +233,22 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/gif_roi/export_preview_job", methods=["POST"])
     def api_fl_gif_roi_export_preview_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/gif_roi/export_preview",
             "fluorescence.gif_roi_export_preview",
             "Export GIF ROI preview",
-            api_fl_gif_roi_export_preview,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_gif_roi_export_preview, "Exporting GIF ROI preview"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/gif_roi/export_preview"},
         )
 
     @app.route("/api/fluorescence/make_gif", methods=["POST"])
-    def api_fl_make_gif():
+    def api_fl_make_gif(payload=None):
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         input_path_str = d.get("input_path", "")
         output_path_str = d.get("output_path", "")
         fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
@@ -350,18 +356,19 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/make_gif_job", methods=["POST"])
     def api_fl_make_gif_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/make_gif",
             "fluorescence.make_gif",
             "Generate single-file fluorescence GIF",
-            api_fl_make_gif,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_make_gif, "Generating fluorescence GIF"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/make_gif"},
         )
 
     @app.route("/api/fluorescence/merge_gif", methods=["POST"])
-    def api_fl_merge_gif():
+    def api_fl_merge_gif(payload=None):
         """Merge one or more TIFF stacks into a single animated GIF.
 
         Request body:
@@ -378,7 +385,7 @@ def register_fluorescence_gif_routes(app, fl):
         """
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         tiff_paths = d.get("tiff_paths") or []
         if not tiff_paths:
             return err("tiff_paths must be a non-empty list")
@@ -514,23 +521,24 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/merge_gif_job", methods=["POST"])
     def api_fl_merge_gif_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/merge_gif",
             "fluorescence.merge_gif",
             "Generate fluorescence GIF",
-            api_fl_merge_gif,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_merge_gif, "Generating fluorescence GIF"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/merge_gif"},
         )
 
     @app.route("/api/fluorescence/gif_roi/analyze", methods=["POST"])
-    def api_fl_gif_roi_analyze():
+    def api_fl_gif_roi_analyze(payload=None):
         """Analyze polygon ROI fluorescence across the GIF queue timeline."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         tiff_paths = d.get("tiff_paths") or []
         slice_specs = d.get("slice_specs") or []
         roi_specs = _fl_gif_roi_make_specs(d.get("rois", d.get("roi_polygons", [])))
@@ -711,20 +719,21 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/gif_roi/analyze_job", methods=["POST"])
     def api_fl_gif_roi_analyze_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/gif_roi/analyze",
             "fluorescence.gif_roi_analysis",
             "Analyze GIF ROI time series",
-            api_fl_gif_roi_analyze,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_gif_roi_analyze, "Analyzing GIF ROI time series"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/gif_roi/analyze"},
         )
 
     @app.route("/api/fluorescence/gif_roi/export", methods=["POST"])
-    def api_fl_gif_roi_export():
+    def api_fl_gif_roi_export(payload=None):
         """Save GIF ROI time-analysis CSV and/or plot PNG to disk."""
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         tiff_paths = d.get("tiff_paths") or []
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_time_analysis")
@@ -781,23 +790,24 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/gif_roi/export_job", methods=["POST"])
     def api_fl_gif_roi_export_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/gif_roi/export",
             "fluorescence.gif_roi_export",
             "Export GIF ROI time outputs",
-            api_fl_gif_roi_export,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_gif_roi_export, "Exporting GIF ROI time outputs"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/gif_roi/export"},
         )
 
     @app.route("/api/fluorescence/gif_roi/kymograph", methods=["POST"])
-    def api_fl_gif_roi_kymograph():
+    def api_fl_gif_roi_kymograph(payload=None):
         """Build a time-vs-intensity distribution kymograph for one polygon ROI."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         tiff_paths = d.get("tiff_paths") or []
         slice_specs = d.get("slice_specs") or []
         roi_specs = _fl_gif_roi_make_specs([d.get("roi")], "ROI") if isinstance(d.get("roi"), dict) else []
@@ -1227,20 +1237,21 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/gif_roi/kymograph_job", methods=["POST"])
     def api_fl_gif_roi_kymograph_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/gif_roi/kymograph",
             "fluorescence.gif_roi_kymograph",
             "Build GIF ROI kymograph",
-            api_fl_gif_roi_kymograph,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_gif_roi_kymograph, "Building GIF ROI kymograph"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/gif_roi/kymograph"},
         )
 
     @app.route("/api/fluorescence/gif_roi/kymograph_export", methods=["POST"])
-    def api_fl_gif_roi_kymograph_export():
+    def api_fl_gif_roi_kymograph_export(payload=None):
         """Save selected-ROI kymograph plot and data to disk."""
-        d = request.json or {}
+        d = (request.json or {}) if payload is None else payload
         tiff_paths = d.get("tiff_paths") or []
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_kymograph")
@@ -1306,12 +1317,13 @@ def register_fluorescence_gif_routes(app, fl):
 
     @app.route("/api/fluorescence/gif_roi/kymograph_export_job", methods=["POST"])
     def api_fl_gif_roi_kymograph_export_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/fluorescence/gif_roi/kymograph_export",
             "fluorescence.gif_roi_kymograph_export",
             "Export GIF ROI kymograph outputs",
-            api_fl_gif_roi_kymograph_export,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_fl_gif_roi_kymograph_export, "Exporting GIF ROI kymograph outputs"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/fluorescence/gif_roi/kymograph_export"},
         )

@@ -9,7 +9,9 @@ from flask import Response, jsonify, request
 from services import emg as emg_service
 
 from web_api.common import mode_is_save
-from .jobs import submit_flask_route_job
+
+from .jobs import submit_json_task
+from .response import api_ok
 
 
 def register_emg_peaks_routes(app, ctx):
@@ -79,6 +81,187 @@ def register_emg_peaks_routes(app, ctx):
 
     def _detect_with_polarity(sig, fs, params, polarity):
         return emg_service.detect_with_polarity(sig, fs, params, polarity, find_peaks, peak_widths)
+
+    def _emg_peak_outputs(saved_path: str | Path, role: str, extra_paths: list[str] | None = None) -> list[dict]:
+        output_path = Path(saved_path)
+        outputs = [
+            {
+                "path": str(output_path),
+                "type": "directory" if output_path.is_dir() else "csv",
+                "role": role,
+            }
+        ]
+        for path in extra_paths or []:
+            p = Path(path)
+            outputs.append(
+                {
+                    "path": str(p),
+                    "type": "directory" if p.is_dir() else "csv",
+                    "role": "emg_peak_segment" if p.suffix.lower() == ".csv" else "emg_peak_output",
+                }
+            )
+        return outputs
+
+    def _emg_grouped_export_payload(d: dict) -> dict:
+        peaks = d.get("peaks", [])
+        mode = d.get("mode", "download")
+        if not peaks:
+            raise ValueError("No peaks to export")
+
+        active = [p for p in peaks if not bool(p.get("removed", False))]
+        if not active:
+            raise ValueError("No peaks to export after removals")
+
+        df = pd.DataFrame(active)
+        payload = df.to_csv(index=False).encode("utf-8")
+        if _mode_is_save(mode):
+            src = _emg_source_path(d)
+            if src is not None and src.exists() and src.suffix.lower() == ".csv":
+                raw = pd.read_csv(src)
+                t_col, v_col = _pick_emg_columns(raw)
+                t_raw, v_raw, m = emg_service.numeric_signal(raw, t_col, v_col)
+                t = t_raw[m]
+                v = v_raw[m]
+
+                half_ms = float_or(d.get("half_ms"), 100.0)
+                if half_ms is None or half_ms <= 0:
+                    half_ms = 100.0
+                half_s = float(half_ms) / 1000.0
+
+                channel = _channel_label_from_src(src)
+                summary_rows = []
+                prepared = []
+                for p in active:
+                    pi = (
+                        int(p.get("peak_idx", p.get("idx", -1)))
+                        if p.get("peak_idx", p.get("idx", None)) is not None
+                        else -1
+                    )
+                    tp = float_or(p.get("time_s", p.get("time")), None)
+                    if pi < 0 or pi >= t.size:
+                        if tp is None:
+                            continue
+                        pi = int(np.argmin(np.abs(t - tp)))
+                    tp = float(t[pi])
+                    grp = str(p.get("group", "")).strip()
+                    dur = float_or(p.get("duration", p.get("duration_ms", p.get("fwhm_ms"))), np.nan)
+                    h = float_or(p.get("height", p.get("height_uV")), float(v[pi]))
+
+                    summary_rows.append(
+                        {
+                            "peak_idx": int(pi),
+                            "peak_time_s": tp,
+                            "height_uV": float(h),
+                            "fwhm_ms": float(dur),
+                            "group_id": grp,
+                        }
+                    )
+                    prepared.append({"peak_idx": int(pi), "peak_time_s": tp, "group_id": grp})
+
+                summary_df = pd.DataFrame(summary_rows)
+                summary_path = src.parent / f"{src.parent.name}_{channel}_peaks_summary.csv"
+                summary_df.to_csv(summary_path, index=False)
+
+                file_count = 0
+                segment_paths = []
+                grouped = [r for r in prepared if str(r.get("group_id", "")).strip() != ""]
+                if grouped:
+                    groups = {}
+                    for r in grouped:
+                        groups.setdefault(str(r["group_id"]), []).append(r)
+
+                    for gid, rows in groups.items():
+                        rows = sorted(rows, key=lambda x: x["peak_time_s"])
+                        group_dir = src.parent / f"{_sanitize_name(gid)}_{channel}"
+                        group_dir.mkdir(parents=True, exist_ok=True)
+                        for k, r in enumerate(rows):
+                            tp = float(r["peak_time_s"])
+                            mask = (t >= tp - half_s) & (t <= tp + half_s)
+                            if not np.any(mask):
+                                continue
+                            out_file = group_dir / f"peak_{channel}_{k:04d}_t{tp:.6f}s.csv"
+                            pd.DataFrame(
+                                {
+                                    "t_rel_ms": (t[mask] - tp) * 1e3,
+                                    "value_uV": v[mask],
+                                }
+                            ).to_csv(out_file, index=False)
+                            file_count += 1
+                            segment_paths.append(str(out_file))
+
+                saved_paths = [str(summary_path)] + segment_paths
+                return {
+                    "kind": "save",
+                    "data": {
+                        "ok": True,
+                        "saved_path": str(src.parent),
+                        "summary_path": str(summary_path),
+                        "segment_count": file_count,
+                        "segment_paths": segment_paths,
+                        "saved_paths": saved_paths,
+                        "outputs": _emg_peak_outputs(src.parent, "emg_peak_folder", saved_paths),
+                    },
+                }
+
+            out_path = src.with_name(f"{src.stem}_peaks.csv") if src is not None else Path.cwd() / "emg_peaks.csv"
+            out_path.write_bytes(payload)
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(out_path),
+                    "outputs": _emg_peak_outputs(out_path, "emg_peaks_csv"),
+                },
+            }
+        return {
+            "kind": "download",
+            "payload": payload,
+            "mimetype": "text/csv",
+            "download_name": "emg_peaks.csv",
+        }
+
+    def _emg_grouped_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting EMG grouped peaks")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _emg_grouped_export_payload(save_body)["data"]
+
+    def _emg_export_peaks_payload(d: dict) -> dict:
+        peaks = [p for p in d.get("peaks", []) if not p.get("removed")]
+        path = d.get("path", "")
+        mode = d.get("mode", "download")
+        if not peaks:
+            raise ValueError("No peaks to export")
+        df = pd.DataFrame(peaks)
+        payload = df.to_csv(index=False).encode("utf-8")
+        stem = Path(path).stem if path else "peaks"
+        if _mode_is_save(mode):
+            src = Path(path) if path else _emg_source_path(d)
+            if src is not None:
+                out_path = src.with_name(f"{src.stem}_peaks_grouped.csv")
+            else:
+                out_path = Path.cwd() / f"{stem}_peaks_grouped.csv"
+            out_path.write_bytes(payload)
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(out_path),
+                    "outputs": _emg_peak_outputs(out_path, "emg_peaks_grouped_csv"),
+                },
+            }
+        return {
+            "kind": "download",
+            "payload": payload,
+            "mimetype": "text/csv",
+            "download_name": f"{stem}_peaks.csv",
+        }
+
+    def _emg_export_peaks_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting EMG peaks CSV")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _emg_export_peaks_payload(save_body)["data"]
 
     @app.route("/api/emg/browse", methods=["POST"])
     def api_emg_browse():
@@ -246,121 +429,30 @@ def register_emg_peaks_routes(app, ctx):
     @app.route("/api/emg/export", methods=["POST"])
     def api_emg_export_compat():
         d = request.json or {}
-        peaks = d.get("peaks", [])
-        mode = d.get("mode", "download")
-        if not peaks:
-            return err("No peaks to export")
-
-        active = [p for p in peaks if not bool(p.get("removed", False))]
-        if not active:
-            return err("No peaks to export after removals")
-
-        df = pd.DataFrame(active)
-        payload = df.to_csv(index=False).encode("utf-8")
-        if _mode_is_save(mode):
-            src = _emg_source_path(d)
-            if src is not None and src.exists() and src.suffix.lower() == ".csv":
-                try:
-                    raw = pd.read_csv(src)
-                    t_col, v_col = _pick_emg_columns(raw)
-                    t_raw, v_raw, m = emg_service.numeric_signal(raw, t_col, v_col)
-                    t = t_raw[m]
-                    v = v_raw[m]
-
-                    half_ms = float_or(d.get("half_ms"), 100.0)
-                    if half_ms is None or half_ms <= 0:
-                        half_ms = 100.0
-                    half_s = float(half_ms) / 1000.0
-
-                    channel = _channel_label_from_src(src)
-                    summary_rows = []
-                    prepared = []
-                    for p in active:
-                        pi = int(p.get("peak_idx", p.get("idx", -1))) if p.get("peak_idx", p.get("idx", None)) is not None else -1
-                        tp = float_or(p.get("time_s", p.get("time")), None)
-                        if pi < 0 or pi >= t.size:
-                            if tp is None:
-                                continue
-                            pi = int(np.argmin(np.abs(t - tp)))
-                        tp = float(t[pi])
-                        grp = str(p.get("group", "")).strip()
-                        dur = float_or(p.get("duration", p.get("duration_ms", p.get("fwhm_ms"))), np.nan)
-                        h = float_or(p.get("height", p.get("height_uV")), float(v[pi]))
-
-                        summary_rows.append(
-                            {
-                                "peak_idx": int(pi),
-                                "peak_time_s": tp,
-                                "height_uV": float(h),
-                                "fwhm_ms": float(dur),
-                                "group_id": grp,
-                            }
-                        )
-                        prepared.append({"peak_idx": int(pi), "peak_time_s": tp, "group_id": grp})
-
-                    summary_df = pd.DataFrame(summary_rows)
-                    summary_path = src.parent / f"{src.parent.name}_{channel}_peaks_summary.csv"
-                    summary_df.to_csv(summary_path, index=False)
-
-                    file_count = 0
-                    segment_paths = []
-                    grouped = [r for r in prepared if str(r.get("group_id", "")).strip() != ""]
-                    if grouped:
-                        groups = {}
-                        for r in grouped:
-                            groups.setdefault(str(r["group_id"]), []).append(r)
-
-                        for gid, rows in groups.items():
-                            rows = sorted(rows, key=lambda x: x["peak_time_s"])
-                            group_dir = src.parent / f"{_sanitize_name(gid)}_{channel}"
-                            group_dir.mkdir(parents=True, exist_ok=True)
-                            for k, r in enumerate(rows):
-                                tp = float(r["peak_time_s"])
-                                mask = (t >= tp - half_s) & (t <= tp + half_s)
-                                if not np.any(mask):
-                                    continue
-                                out_file = group_dir / f"peak_{channel}_{k:04d}_t{tp:.6f}s.csv"
-                                pd.DataFrame(
-                                    {
-                                        "t_rel_ms": (t[mask] - tp) * 1e3,
-                                        "value_uV": v[mask],
-                                    }
-                                ).to_csv(out_file, index=False)
-                                file_count += 1
-                                segment_paths.append(str(out_file))
-
-                    return jsonify(
-                        {
-                            "ok": True,
-                            "saved_path": str(src.parent),
-                            "summary_path": str(summary_path),
-                            "segment_count": file_count,
-                            "segment_paths": segment_paths,
-                            "saved_paths": [str(summary_path)] + segment_paths,
-                        }
-                    )
-                except Exception:
-                    return err(traceback.format_exc())
-
-            out_path = src.with_name(f"{src.stem}_peaks.csv") if src is not None else Path.cwd() / "emg_peaks.csv"
-            out_path.write_bytes(payload)
-            return jsonify({"ok": True, "saved_path": str(out_path)})
-        return Response(
-            payload,
-            mimetype="text/csv",
-            headers={"Content-Disposition": "attachment; filename=emg_peaks.csv"},
-        )
+        try:
+            result = _emg_grouped_export_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"])
+            return Response(
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
+            )
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
 
     @app.route("/api/emg/export_job", methods=["POST"])
     def api_emg_export_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/emg/export",
             "emg.export",
             "Export EMG grouped peaks",
-            api_emg_export_compat,
+            _emg_grouped_export_task,
             request.json or {},
+            metadata={"endpoint": "/api/emg/export"},
         )
 
     @app.route("/api/emg/load_csv", methods=["POST"])
@@ -449,36 +541,26 @@ def register_emg_peaks_routes(app, ctx):
     @app.route("/api/emg/export_peaks", methods=["POST"])
     def api_emg_export_peaks():
         d = request.json or {}
-        peaks = [p for p in d.get("peaks", []) if not p.get("removed")]
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
-        if not peaks:
-            return err("No peaks to export")
-        df = pd.DataFrame(peaks)
-        payload = df.to_csv(index=False).encode("utf-8")
-        stem = Path(path).stem if path else "peaks"
-        if _mode_is_save(mode):
-            src = Path(path) if path else _emg_source_path(d)
-            if src is not None:
-                out_path = src.with_name(f"{src.stem}_peaks_grouped.csv")
-            else:
-                out_path = Path.cwd() / f"{stem}_peaks_grouped.csv"
-            out_path.write_bytes(payload)
-            return jsonify({"ok": True, "saved_path": str(out_path)})
-        return Response(
-            payload,
-            mimetype="text/csv",
-            headers={"Content-Disposition": f"attachment; filename={stem}_peaks.csv"},
-        )
+        try:
+            result = _emg_export_peaks_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"])
+            return Response(
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
+            )
+        except ValueError as exc:
+            return err(str(exc))
 
     @app.route("/api/emg/export_peaks_job", methods=["POST"])
     def api_emg_export_peaks_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/emg/export_peaks",
             "emg.export_peaks",
             "Export EMG peaks CSV",
-            api_emg_export_peaks,
+            _emg_export_peaks_task,
             request.json or {},
+            metadata={"endpoint": "/api/emg/export_peaks"},
         )

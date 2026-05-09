@@ -10,7 +10,9 @@ from flask import Response, jsonify, request
 from services import abf as abf_service
 
 from web_api.common import as_bool, mode_is_save
-from .jobs import submit_flask_route_job
+
+from .jobs import submit_json_task
+from .response import api_ok
 
 
 def register_abf_viewer_routes(app, ctx):
@@ -290,6 +292,291 @@ def register_abf_viewer_routes(app, ctx):
         except Exception:
             return err(traceback.format_exc())
 
+    def _abf_output(path: str | Path, role: str) -> dict:
+        p = Path(path)
+        return {
+            "path": str(p),
+            "type": "directory" if p.is_dir() else (p.suffix.lower().lstrip(".") or "file"),
+            "role": role,
+        }
+
+    def _abf_export_peaks_payload(d: dict) -> dict:
+        if not has_abf or pyabf_mod is None:
+            raise ValueError("pyabf not installed")
+
+        path = d.get("path", "")
+        mode = d.get("mode", "download")
+        peaks = d.get("peaks", [])
+        if not peaks:
+            raise ValueError("No peaks selected")
+
+        sweep = int_or(d.get("sweep", 0), 0)
+        ch = int_or(d.get("channel", 0), 0)
+        i_ch = int_or(d.get("i_ch", 0), 0)
+        v_ch = int_or(d.get("v_ch", 1), 1)
+        r_norm = _as_bool(d.get("r_norm", False))
+        bl0 = float_or(d.get("bl_pre0"), None)
+        bl1 = float_or(d.get("bl_pre1"), None)
+        export_window_ms = float_or(d.get("export_window_ms"), 50.0)
+        if export_window_ms is None or export_window_ms <= 0:
+            export_window_ms = 50.0
+
+        polarity = str(d.get("polarity", "POS")).upper()
+        window = d.get("window", [])
+        win_t0 = float_or(window[0], np.nan) if isinstance(window, list) and len(window) > 0 else np.nan
+        win_t1 = float_or(window[1], np.nan) if isinstance(window, list) and len(window) > 1 else np.nan
+
+        src = Path(path)
+        abf = pyabf_mod.ABF(path)
+        sw = min(sweep, abf.sweepCount - 1)
+        ch = min(ch, abf.channelCount - 1)
+
+        abf.setSweep(sw, channel=ch)
+        t_full = abf.sweepX.copy()
+        y_full = abf.sweepY.copy()
+
+        r_val = None
+        r_method = ""
+        baseline_raw_i = np.nan
+
+        if r_norm and abf.channelCount >= 2:
+            i_ch = min(i_ch, abf.channelCount - 1)
+            v_ch = min(v_ch, abf.channelCount - 1)
+            abf.setSweep(sw, channel=i_ch)
+            i_full = abf.sweepY.copy()
+            abf.setSweep(sw, channel=v_ch)
+            v_full = abf.sweepY.copy()
+            dt_full = abf.sweepX[1] - abf.sweepX[0] if len(abf.sweepX) > 1 else 1e-4
+            r_val = _abf_estimate_r(i_full, v_full, dt_full)
+            r_method = "dV/dI edge" if r_val is not None else "unavailable"
+
+            i_norm, baseline_raw_i = _abf_baseline_apply(
+                i_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=True
+            )
+            if ch == i_ch:
+                y_full = i_norm
+                if r_val is not None:
+                    y_full = y_full * (r_val * 1e3)
+            else:
+                y_full, _ = _abf_baseline_apply(
+                    y_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=False
+                )
+        else:
+            y_full, baseline_raw_i = _abf_baseline_apply(
+                y_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=True
+            )
+
+        out_folder = src.parent / src.stem
+        out_folder.mkdir(parents=True, exist_ok=True)
+
+        rows = []
+        selected = []
+        for export_idx, p in enumerate(peaks, start=1):
+            gi = int_or(p.get("idx", p.get("global_index")), -1)
+            if gi < 0 or gi >= len(t_full):
+                tp = float_or(p.get("time", p.get("t")), None)
+                if tp is None:
+                    continue
+                gi = int(np.argmin(np.abs(t_full - tp)))
+
+            selected.append((export_idx, gi))
+            rows.append(
+                {
+                    "export_index": export_idx,
+                    "global_index": gi,
+                    "t_s": float(t_full[gi]),
+                    "y_norm": float(y_full[gi]),
+                    "polarity": polarity,
+                    "R_MOhm": (float(r_val * 1e3) if r_val is not None else np.nan),
+                    "R_method": r_method,
+                    "baseline_raw_i_pA": float(baseline_raw_i),
+                    "window_start_s": win_t0,
+                    "window_end_s": win_t1,
+                }
+            )
+
+        summary_path = out_folder / f"{src.stem}_peaks_summary.csv"
+        pd.DataFrame(rows).to_csv(summary_path, index=False, encoding="utf-8-sig")
+
+        half = float(export_window_ms) / 1000.0
+        saved = 0
+        segment_paths = []
+        for export_idx, gi in selected:
+            tp = float(t_full[gi])
+            mask = (t_full >= tp - half) & (t_full <= tp + half)
+            if not np.any(mask):
+                continue
+            seg_path = out_folder / f"{src.stem}_peak_{export_idx:03d}.csv"
+            pd.DataFrame({"time_s": t_full[mask], "I_norm": y_full[mask]}).to_csv(
+                seg_path, index=False
+            )
+            saved += 1
+            segment_paths.append(str(seg_path))
+
+        if _mode_is_save(mode):
+            outputs = [_abf_output(out_folder, "abf_peak_folder")]
+            outputs.append(_abf_output(summary_path, "abf_peak_summary"))
+            outputs.extend(_abf_output(path, "abf_peak_segment") for path in segment_paths)
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(out_folder),
+                    "summary_path": str(summary_path),
+                    "saved_count": saved,
+                    "saved_paths": [str(summary_path)] + segment_paths,
+                    "outputs": outputs,
+                },
+            }
+
+        return {
+            "kind": "download",
+            "payload": summary_path.read_bytes(),
+            "mimetype": "text/csv",
+            "download_name": f"{src.stem}_peaks_summary.csv",
+        }
+
+    def _abf_export_peaks_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting ABF peaks")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _abf_export_peaks_payload(save_body)["data"]
+
+    def _abf_export_payload(d: dict) -> dict:
+        if not has_abf or pyabf_mod is None:
+            raise ValueError("pyabf not installed")
+        path = d.get("path", "")
+        fmt = d.get("fmt", "png")
+        mode = d.get("mode", "download")
+        sweep = int_or(d.get("sweep", 0), 0)
+        ch = int_or(d.get("channel", 0), 0)
+        i_ch = int_or(d.get("i_ch", 0), 0)
+        v_ch = int_or(d.get("v_ch", 1), 1)
+        r_norm = _as_bool(d.get("r_norm", False))
+        bl0 = float_or(d.get("bl_pre0"), None)
+        bl1 = float_or(d.get("bl_pre1"), None)
+        x_min = float_or(d.get("x_min"), None)
+        x_max = float_or(d.get("x_max"), None)
+        y_min = float_or(d.get("y_min"), None)
+        y_max = float_or(d.get("y_max"), None)
+        dsf = max(1, int_or(d.get("dsf", 1), 1))
+        signal_only = _as_bool(d.get("signal_only", False))
+        src = Path(path)
+        abf = pyabf_mod.ABF(path)
+        abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(ch, abf.channelCount - 1))
+        t = abf.sweepX[::dsf]
+        y = abf.sweepY.copy()
+        y = y[::dsf]
+        y_unit = abf.adcUnits[ch] if ch < abf.channelCount else ""
+
+        if r_norm and abf.channelCount >= 2:
+            abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(i_ch, abf.channelCount - 1))
+            i_full = abf.sweepY
+            abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(v_ch, abf.channelCount - 1))
+            v_full = abf.sweepY
+            dt_full = abf.sweepX[1] - abf.sweepX[0]
+            r_val = _abf_estimate_r(i_full, v_full, dt_full)
+
+            abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(ch, abf.channelCount - 1))
+            y = abf.sweepY[::dsf].copy()
+            if r_val is not None:
+                y = y * (r_val * 1e3)
+                y_unit = "mV (xR)"
+
+        y = _abf_baseline_subtract(y, t, bl0, bl1)
+
+        if x_min is not None:
+            mask = t >= x_min
+            t, y = t[mask], y[mask]
+        if x_max is not None:
+            mask = t <= x_max
+            t, y = t[mask], y[mask]
+
+        if fmt == "csv":
+            buf = io.BytesIO()
+            pd.DataFrame({"time_s": t, "value": y}).to_csv(buf, index=False)
+            buf.seek(0)
+            payload = buf.getvalue()
+            if _mode_is_save(mode):
+                out_path = src.with_name(f"{src.stem}_s{sweep}_ch{ch}.csv")
+                out_path.write_bytes(payload)
+                return {
+                    "kind": "save",
+                    "data": {
+                        "ok": True,
+                        "saved_path": str(out_path),
+                        "outputs": [_abf_output(out_path, "abf_trace_csv")],
+                    },
+                }
+            return {
+                "kind": "download",
+                "payload": payload,
+                "mimetype": "text/csv",
+                "download_name": "abf_export.csv",
+            }
+        fig, ax = plt.subplots(figsize=(9, 4))
+        ax.plot(t, y, color=line_color, lw=0.7)
+        if signal_only and str(fmt).lower() == "svg":
+            if len(t):
+                ax.set_xlim(float(t[0]), float(t[-1]))
+            if y_min is not None or y_max is not None:
+                cur = ax.get_ylim()
+                ax.set_ylim(y_min if y_min is not None else cur[0], y_max if y_max is not None else cur[1])
+            ax.set_position([0, 0, 1, 1])
+            ax.set_title("")
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            for sp in ax.spines.values():
+                sp.set_visible(False)
+            ax.set_frame_on(False)
+            ax.axis("off")
+        else:
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel(y_unit)
+            apply_axes_limits(ax, None, None, y_min, y_max)
+            ax.grid(True, alpha=0.4)
+        fig.tight_layout()
+        buf = io.BytesIO()
+        save_kw = {"format": fmt, "bbox_inches": "tight"}
+        if fmt == "png":
+            save_kw["dpi"] = 300
+        if signal_only and str(fmt).lower() == "svg":
+            save_kw["pad_inches"] = 0
+            save_kw["transparent"] = True
+            save_kw["facecolor"] = "none"
+        fig.savefig(buf, **save_kw)
+        plt.close(fig)
+        buf.seek(0)
+        payload = buf.getvalue()
+        if _mode_is_save(mode):
+            if signal_only and str(fmt).lower() == "svg":
+                out_path = src.with_name(f"{src.stem}_preview_signal.svg")
+            else:
+                out_path = src.with_name(f"{src.stem}_s{sweep}_ch{ch}.{fmt}")
+            out_path.write_bytes(payload)
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(out_path),
+                    "outputs": [_abf_output(out_path, "abf_trace_export")],
+                },
+            }
+        return {
+            "kind": "download",
+            "payload": payload,
+            "mimetype": "image/png" if fmt == "png" else "image/svg+xml",
+            "download_name": f"abf_export.{fmt}",
+        }
+
+    def _abf_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting ABF trace")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _abf_export_payload(save_body)["data"]
+
     @app.route("/api/abf/export_peaks", methods=["GET", "POST"])
     def api_abf_export_peaks_compat():
         if not has_abf or pyabf_mod is None:
@@ -318,274 +605,57 @@ def register_abf_viewer_routes(app, ctx):
                 return err(traceback.format_exc())
 
         d = request.json or {}
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
-        peaks = d.get("peaks", [])
-        if not peaks:
-            return err("No peaks selected")
-
-        sweep = int_or(d.get("sweep", 0), 0)
-        ch = int_or(d.get("channel", 0), 0)
-        i_ch = int_or(d.get("i_ch", 0), 0)
-        v_ch = int_or(d.get("v_ch", 1), 1)
-        r_norm = _as_bool(d.get("r_norm", False))
-        bl0 = float_or(d.get("bl_pre0"), None)
-        bl1 = float_or(d.get("bl_pre1"), None)
-        export_window_ms = float_or(d.get("export_window_ms"), 50.0)
-        if export_window_ms is None or export_window_ms <= 0:
-            export_window_ms = 50.0
-
-        polarity = str(d.get("polarity", "POS")).upper()
-        window = d.get("window", [])
-        win_t0 = float_or(window[0], np.nan) if isinstance(window, list) and len(window) > 0 else np.nan
-        win_t1 = float_or(window[1], np.nan) if isinstance(window, list) and len(window) > 1 else np.nan
-
         try:
-            src = Path(path)
-            abf = pyabf_mod.ABF(path)
-            sw = min(sweep, abf.sweepCount - 1)
-            ch = min(ch, abf.channelCount - 1)
-
-            abf.setSweep(sw, channel=ch)
-            t_full = abf.sweepX.copy()
-            y_full = abf.sweepY.copy()
-
-            r_val = None
-            r_method = ""
-            baseline_raw_i = np.nan
-
-            if r_norm and abf.channelCount >= 2:
-                i_ch = min(i_ch, abf.channelCount - 1)
-                v_ch = min(v_ch, abf.channelCount - 1)
-                abf.setSweep(sw, channel=i_ch)
-                i_full = abf.sweepY.copy()
-                abf.setSweep(sw, channel=v_ch)
-                v_full = abf.sweepY.copy()
-                dt_full = abf.sweepX[1] - abf.sweepX[0] if len(abf.sweepX) > 1 else 1e-4
-                r_val = _abf_estimate_r(i_full, v_full, dt_full)
-                r_method = "dV/dI edge" if r_val is not None else "unavailable"
-
-                i_norm, baseline_raw_i = _abf_baseline_apply(
-                    i_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=True
-                )
-                if ch == i_ch:
-                    y_full = i_norm
-                    if r_val is not None:
-                        y_full = y_full * (r_val * 1e3)
-                else:
-                    y_full, _ = _abf_baseline_apply(
-                        y_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=False
-                    )
-            else:
-                y_full, baseline_raw_i = _abf_baseline_apply(
-                    y_full, t_full, pre0_ms=bl0, pre1_ms=bl1, use_default=True
-                )
-
-            out_folder = src.parent / src.stem
-            out_folder.mkdir(parents=True, exist_ok=True)
-
-            rows = []
-            selected = []
-            for export_idx, p in enumerate(peaks, start=1):
-                gi = int_or(p.get("idx", p.get("global_index")), -1)
-                if gi < 0 or gi >= len(t_full):
-                    tp = float_or(p.get("time", p.get("t")), None)
-                    if tp is None:
-                        continue
-                    gi = int(np.argmin(np.abs(t_full - tp)))
-
-                selected.append((export_idx, gi))
-                rows.append(
-                    {
-                        "export_index": export_idx,
-                        "global_index": gi,
-                        "t_s": float(t_full[gi]),
-                        "y_norm": float(y_full[gi]),
-                        "polarity": polarity,
-                        "R_MOhm": (float(r_val * 1e3) if r_val is not None else np.nan),
-                        "R_method": r_method,
-                        "baseline_raw_i_pA": float(baseline_raw_i),
-                        "window_start_s": win_t0,
-                        "window_end_s": win_t1,
-                    }
-                )
-
-            summary_path = out_folder / f"{src.stem}_peaks_summary.csv"
-            pd.DataFrame(rows).to_csv(summary_path, index=False, encoding="utf-8-sig")
-
-            half = float(export_window_ms) / 1000.0
-            saved = 0
-            for export_idx, gi in selected:
-                tp = float(t_full[gi])
-                mask = (t_full >= tp - half) & (t_full <= tp + half)
-                if not np.any(mask):
-                    continue
-                seg_path = out_folder / f"{src.stem}_peak_{export_idx:03d}.csv"
-                pd.DataFrame({"time_s": t_full[mask], "I_norm": y_full[mask]}).to_csv(
-                    seg_path, index=False
-                )
-                saved += 1
-
-            if _mode_is_save(mode):
-                return jsonify(
-                    {
-                        "ok": True,
-                        "saved_path": str(out_folder),
-                        "summary_path": str(summary_path),
-                        "saved_count": saved,
-                    }
-                )
-
-            payload = summary_path.read_bytes()
+            result = _abf_export_peaks_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"])
             return Response(
-                payload,
-                mimetype="text/csv",
-                headers={
-                    "Content-Disposition": f"attachment; filename={src.stem}_peaks_summary.csv"
-                },
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValueError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/abf/export_peaks_job", methods=["POST"])
     def api_abf_export_peaks_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/abf/export_peaks",
             "abf.export_peaks",
             "Export ABF peaks",
-            api_abf_export_peaks_compat,
+            _abf_export_peaks_task,
             request.json or {},
+            metadata={"endpoint": "/api/abf/export_peaks"},
         )
 
     @app.route("/api/abf/export", methods=["GET", "POST"])
     def api_abf_export():
-        if not has_abf or pyabf_mod is None:
-            return err("pyabf not installed")
         d = request_data()
-        path = d.get("path", "")
-        fmt = d.get("fmt", "png")
-        mode = d.get("mode", "download")
-        sweep = int_or(d.get("sweep", 0), 0)
-        ch = int_or(d.get("channel", 0), 0)
-        i_ch = int_or(d.get("i_ch", 0), 0)
-        v_ch = int_or(d.get("v_ch", 1), 1)
-        r_norm = _as_bool(d.get("r_norm", False))
-        bl0 = float_or(d.get("bl_pre0"), None)
-        bl1 = float_or(d.get("bl_pre1"), None)
-        x_min = float_or(d.get("x_min"), None)
-        x_max = float_or(d.get("x_max"), None)
-        y_min = float_or(d.get("y_min"), None)
-        y_max = float_or(d.get("y_max"), None)
-        dsf = max(1, int_or(d.get("dsf", 1), 1))
-        signal_only = _as_bool(d.get("signal_only", False))
         try:
-            src = Path(path)
-            abf = pyabf_mod.ABF(path)
-            abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(ch, abf.channelCount - 1))
-            t = abf.sweepX[::dsf]
-            y = abf.sweepY.copy()
-            y = y[::dsf]
-            y_unit = abf.adcUnits[ch] if ch < abf.channelCount else ""
-
-            if r_norm and abf.channelCount >= 2:
-                abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(i_ch, abf.channelCount - 1))
-                i_full = abf.sweepY
-                abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(v_ch, abf.channelCount - 1))
-                v_full = abf.sweepY
-                dt_full = abf.sweepX[1] - abf.sweepX[0]
-                r_val = _abf_estimate_r(i_full, v_full, dt_full)
-
-                abf.setSweep(min(sweep, abf.sweepCount - 1), channel=min(ch, abf.channelCount - 1))
-                y = abf.sweepY[::dsf].copy()
-                if r_val is not None:
-                    y = y * (r_val * 1e3)
-                    y_unit = "mV (xR)"
-
-            y = _abf_baseline_subtract(y, t, bl0, bl1)
-
-            if x_min is not None:
-                mask = t >= x_min
-                t, y = t[mask], y[mask]
-            if x_max is not None:
-                mask = t <= x_max
-                t, y = t[mask], y[mask]
-
-            if fmt == "csv":
-                buf = io.BytesIO()
-                pd.DataFrame({"time_s": t, "value": y}).to_csv(buf, index=False)
-                buf.seek(0)
-                payload = buf.getvalue()
-                if _mode_is_save(mode):
-                    out_path = src.with_name(f"{src.stem}_s{sweep}_ch{ch}.csv")
-                    out_path.write_bytes(payload)
-                    return jsonify({"ok": True, "saved_path": str(out_path)})
-                return Response(
-                    payload,
-                    mimetype="text/csv",
-                    headers={"Content-Disposition": "attachment; filename=abf_export.csv"},
-                )
-            fig, ax = plt.subplots(figsize=(9, 4))
-            ax.plot(t, y, color=line_color, lw=0.7)
-            if signal_only and str(fmt).lower() == "svg":
-                if len(t):
-                    ax.set_xlim(float(t[0]), float(t[-1]))
-                if y_min is not None or y_max is not None:
-                    cur = ax.get_ylim()
-                    ax.set_ylim(y_min if y_min is not None else cur[0], y_max if y_max is not None else cur[1])
-                ax.set_position([0, 0, 1, 1])
-                ax.set_title("")
-                ax.set_xlabel("")
-                ax.set_ylabel("")
-                ax.set_xticks([])
-                ax.set_yticks([])
-                for sp in ax.spines.values():
-                    sp.set_visible(False)
-                ax.set_frame_on(False)
-                ax.axis("off")
-            else:
-                ax.set_xlabel("Time (s)")
-                ax.set_ylabel(y_unit)
-                apply_axes_limits(ax, None, None, y_min, y_max)
-                ax.grid(True, alpha=0.4)
-            fig.tight_layout()
-            buf = io.BytesIO()
-            save_kw = {"format": fmt, "bbox_inches": "tight"}
-            if fmt == "png":
-                save_kw["dpi"] = 300
-            if signal_only and str(fmt).lower() == "svg":
-                save_kw["pad_inches"] = 0
-                save_kw["transparent"] = True
-                save_kw["facecolor"] = "none"
-            fig.savefig(buf, **save_kw)
-            plt.close(fig)
-            buf.seek(0)
-            payload = buf.getvalue()
-            if _mode_is_save(mode):
-                if signal_only and str(fmt).lower() == "svg":
-                    out_path = src.with_name(f"{src.stem}_preview_signal.svg")
-                else:
-                    out_path = src.with_name(f"{src.stem}_s{sweep}_ch{ch}.{fmt}")
-                out_path.write_bytes(payload)
-                return jsonify({"ok": True, "saved_path": str(out_path)})
-            mt = "image/png" if fmt == "png" else "image/svg+xml"
+            result = _abf_export_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"])
             return Response(
-                payload,
-                mimetype=mt,
-                headers={"Content-Disposition": f"attachment; filename=abf_export.{fmt}"},
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValueError as exc:
+            return err(str(exc))
         except Exception as e:
             return err(e)
 
     @app.route("/api/abf/export_job", methods=["POST"])
     def api_abf_export_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/abf/export",
             "abf.export",
             "Export ABF trace",
-            api_abf_export,
+            _abf_export_task,
             request.json or {},
+            metadata={"endpoint": "/api/abf/export"},
         )

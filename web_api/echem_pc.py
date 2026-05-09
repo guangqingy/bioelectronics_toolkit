@@ -8,7 +8,9 @@ from flask import Response, jsonify, request
 
 from services import echem as echem_service
 from web_api.common import as_bool, mode_is_save
-from .jobs import submit_flask_route_job
+
+from .jobs import submit_json_task
+from .response import api_ok
 
 
 def register_echem_pc_routes(app, ctx):
@@ -27,6 +29,150 @@ def register_echem_pc_routes(app, ctx):
     def _load_echem(path):
         """Load time/current data from a .txt or .csv echem file."""
         return echem_service.load_photocurrent(path)
+
+    def _pc_outputs(output_folder: Path, summary_path: Path, saved_paths: list[str]) -> list[dict]:
+        outputs = [{"path": str(output_folder), "type": "directory", "role": "photocurrent_pair_folder"}]
+        outputs.append({"path": str(summary_path), "type": "csv", "role": "photocurrent_pair_summary"})
+        outputs.extend(
+            {"path": path, "type": "csv", "role": "photocurrent_pair_window"}
+            for path in saved_paths
+            if path != str(summary_path)
+        )
+        return outputs
+
+    def _echem_pc_export_payload(d: dict) -> dict:
+        pairs = d.get("pairs", [])
+        path = d.get("path", "")
+        mode = d.get("mode", "download")
+        if not pairs:
+            raise ValueError("No pairs to export")
+
+        stem = Path(path).stem if path else "pairs"
+        if _mode_is_save(mode):
+            src = Path(path)
+            if not path:
+                raise ValueError("Missing source file path")
+
+            t, i_raw, _t_col, _i_col = _load_echem(path)
+            if len(t) == 0:
+                raise ValueError("No data points found in file")
+
+            output_folder = src.with_name(src.stem)
+            output_folder.mkdir(parents=True, exist_ok=True)
+
+            window = d.get("window", [])
+            if isinstance(window, list) and len(window) >= 2:
+                win_t0 = float_or(window[0], np.nan)
+                win_t1 = float_or(window[1], np.nan)
+            else:
+                win_t0 = float_or(d.get("t0"), np.nan)
+                win_t1 = float_or(d.get("t1"), np.nan)
+
+            pos_min_mA = float_or(d.get("pos_min_mA"), np.nan)
+            neg_min_abs_mA = float_or(d.get("neg_min_abs_mA"), np.nan)
+
+            summary_path = output_folder / f"{src.stem}_pairs_summary.csv"
+            rows = []
+            pair_indices = []
+            saved_paths = [str(summary_path)]
+            export_idx = 1
+            for p in pairs:
+                pi = int(p.get("pi", -1)) if p.get("pi", None) is not None else -1
+                ni = int(p.get("ni", -1)) if p.get("ni", None) is not None else -1
+
+                if pi < 0 or pi >= len(t):
+                    tp = float_or(p.get("t_pos"), None)
+                    if tp is None:
+                        continue
+                    pi = int(np.argmin(np.abs(t - tp)))
+                if ni < 0 or ni >= len(t):
+                    tn = float_or(p.get("t_neg"), None)
+                    if tn is None:
+                        continue
+                    ni = int(np.argmin(np.abs(t - tn)))
+
+                tp = float(t[pi])
+                ip = float(i_raw[pi])
+                tn = float(t[ni])
+                ineg = float(i_raw[ni])
+
+                rows.append(
+                    [
+                        export_idx,
+                        int(p.get("original_index", export_idx)),
+                        tp,
+                        ip,
+                        tn,
+                        ineg,
+                        (ip + abs(ineg)),
+                        (tn - tp),
+                        win_t0,
+                        win_t1,
+                        pos_min_mA,
+                        neg_min_abs_mA,
+                    ]
+                )
+                pair_indices.append((export_idx, pi))
+                export_idx += 1
+
+            header = (
+                "export_index,original_index,POS_t_s,POS_I_mA,NEG_t_s,NEG_I_mA,Delta_I_mA,Delta_t_s,"
+                "window_start_s,window_end_s,pos_min_mA,neg_min_abs_mA"
+            )
+            with summary_path.open("w", encoding="utf-8") as f:
+                f.write(header + "\n")
+                for r in rows:
+                    f.write(
+                        ",".join(f"{v:.9g}" if isinstance(v, float) else str(v) for v in r)
+                        + "\n"
+                    )
+
+            window_ms = float_or(d.get("pair_window_ms"), 50.0)
+            if window_ms is None or window_ms <= 0:
+                window_ms = 50.0
+
+            saved_count = 0
+            for export_idx, pi in pair_indices:
+                tp = float(t[pi])
+                t_start = tp - (window_ms / 1000.0)
+                t_end = tp + (window_ms / 1000.0)
+                mask = (t >= t_start) & (t <= t_end)
+                if not np.any(mask):
+                    continue
+
+                pair_path = output_folder / f"{src.stem}_pair_{export_idx:03d}.csv"
+                with pair_path.open("w", encoding="utf-8") as f:
+                    f.write("time_s,current_mA\n")
+                    for t_val, i_val in zip(t[mask], i_raw[mask]):
+                        f.write(f"{float(t_val):.9g},{float(i_val):.9g}\n")
+                saved_count += 1
+                saved_paths.append(str(pair_path))
+
+            return {
+                "kind": "save",
+                "data": {
+                    "ok": True,
+                    "saved_path": str(output_folder),
+                    "summary_path": str(summary_path),
+                    "saved_count": saved_count,
+                    "saved_paths": saved_paths,
+                    "outputs": _pc_outputs(output_folder, summary_path, saved_paths),
+                },
+            }
+
+        df = pd.DataFrame(pairs)
+        return {
+            "kind": "download",
+            "payload": df.to_csv(index=False).encode("utf-8"),
+            "mimetype": "text/csv",
+            "download_name": f"{stem}_pairs.csv",
+        }
+
+    def _echem_pc_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting photocurrent pairs")
+        save_body = dict(body or {})
+        save_body["mode"] = "save"
+        return _echem_pc_export_payload(save_body)["data"]
 
     @app.route("/api/echem/browse", methods=["POST"])
     def api_echem_browse():
@@ -190,142 +336,28 @@ def register_echem_pc_routes(app, ctx):
     @app.route("/api/echem/export", methods=["POST"])
     def api_echem_export():
         d = request.json or {}
-        pairs = d.get("pairs", [])
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
-        if not pairs:
-            return err("No pairs to export")
-
         try:
-            stem = Path(path).stem if path else "pairs"
-            if _mode_is_save(mode):
-                src = Path(path)
-                if not path:
-                    return err("Missing source file path")
-
-                t, i_raw, _t_col, _i_col = _load_echem(path)
-                if len(t) == 0:
-                    return err("No data points found in file")
-
-                output_folder = src.with_name(src.stem)
-                output_folder.mkdir(parents=True, exist_ok=True)
-
-                window = d.get("window", [])
-                if isinstance(window, list) and len(window) >= 2:
-                    win_t0 = float_or(window[0], np.nan)
-                    win_t1 = float_or(window[1], np.nan)
-                else:
-                    win_t0 = float_or(d.get("t0"), np.nan)
-                    win_t1 = float_or(d.get("t1"), np.nan)
-
-                pos_min_mA = float_or(d.get("pos_min_mA"), np.nan)
-                neg_min_abs_mA = float_or(d.get("neg_min_abs_mA"), np.nan)
-
-                summary_path = output_folder / f"{src.stem}_pairs_summary.csv"
-                rows = []
-                pair_indices = []
-                saved_paths = [str(summary_path)]
-                export_idx = 1
-                for p in pairs:
-                    pi = int(p.get("pi", -1)) if p.get("pi", None) is not None else -1
-                    ni = int(p.get("ni", -1)) if p.get("ni", None) is not None else -1
-
-                    if pi < 0 or pi >= len(t):
-                        tp = float_or(p.get("t_pos"), None)
-                        if tp is None:
-                            continue
-                        pi = int(np.argmin(np.abs(t - tp)))
-                    if ni < 0 or ni >= len(t):
-                        tn = float_or(p.get("t_neg"), None)
-                        if tn is None:
-                            continue
-                        ni = int(np.argmin(np.abs(t - tn)))
-
-                    tp = float(t[pi])
-                    ip = float(i_raw[pi])
-                    tn = float(t[ni])
-                    ineg = float(i_raw[ni])
-
-                    rows.append(
-                        [
-                            export_idx,
-                            int(p.get("original_index", export_idx)),
-                            tp,
-                            ip,
-                            tn,
-                            ineg,
-                            (ip + abs(ineg)),
-                            (tn - tp),
-                            win_t0,
-                            win_t1,
-                            pos_min_mA,
-                            neg_min_abs_mA,
-                        ]
-                    )
-                    pair_indices.append((export_idx, pi))
-                    export_idx += 1
-
-                header = (
-                    "export_index,original_index,POS_t_s,POS_I_mA,NEG_t_s,NEG_I_mA,Delta_I_mA,Delta_t_s,"
-                    "window_start_s,window_end_s,pos_min_mA,neg_min_abs_mA"
-                )
-                with summary_path.open("w", encoding="utf-8") as f:
-                    f.write(header + "\n")
-                    for r in rows:
-                        f.write(
-                            ",".join(f"{v:.9g}" if isinstance(v, float) else str(v) for v in r)
-                            + "\n"
-                        )
-
-                window_ms = float_or(d.get("pair_window_ms"), 50.0)
-                if window_ms is None or window_ms <= 0:
-                    window_ms = 50.0
-
-                saved_count = 0
-                for export_idx, pi in pair_indices:
-                    tp = float(t[pi])
-                    t_start = tp - (window_ms / 1000.0)
-                    t_end = tp + (window_ms / 1000.0)
-                    mask = (t >= t_start) & (t <= t_end)
-                    if not np.any(mask):
-                        continue
-
-                    pair_path = output_folder / f"{src.stem}_pair_{export_idx:03d}.csv"
-                    with pair_path.open("w", encoding="utf-8") as f:
-                        f.write("time_s,current_mA\n")
-                        for t_val, i_val in zip(t[mask], i_raw[mask]):
-                            f.write(f"{float(t_val):.9g},{float(i_val):.9g}\n")
-                    saved_count += 1
-                    saved_paths.append(str(pair_path))
-
-                return jsonify(
-                    {
-                        "ok": True,
-                        "saved_path": str(output_folder),
-                        "summary_path": str(summary_path),
-                        "saved_count": saved_count,
-                        "saved_paths": saved_paths,
-                    }
-                )
-
-            df = pd.DataFrame(pairs)
-            payload = df.to_csv(index=False).encode("utf-8")
+            result = _echem_pc_export_payload(d)
+            if result["kind"] == "save":
+                data = result["data"]
+                return api_ok(data, outputs=data["outputs"])
             return Response(
-                payload,
-                mimetype="text/csv",
-                headers={"Content-Disposition": f"attachment; filename={stem}_pairs.csv"},
+                result["payload"],
+                mimetype=result["mimetype"],
+                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValueError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/echem/export_job", methods=["POST"])
     def api_echem_export_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/echem/export",
             "echem_pc.export",
             "Export echem photocurrent pairs",
-            api_echem_export,
+            _echem_pc_export_task,
             request.json or {},
+            metadata={"endpoint": "/api/echem/export"},
         )

@@ -12,7 +12,7 @@ import numpy as np
 from flask import jsonify, request
 from PIL import Image, ImageOps
 
-from .jobs import submit_flask_route_job
+from .jobs import route_response_to_payload, submit_json_task
 
 try:
     import tifffile  # type: ignore
@@ -1115,6 +1115,11 @@ def register_histology_routes(app, ctx):
     err = ctx["err"]
     jobs = ctx.get("jobs")
 
+    def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
+        job_ctx.set_progress(0.2, message)
+        with app.app_context():
+            return route_response_to_payload(handler(body or {}))
+
     @app.route("/api/histology/browse", methods=["POST"])
     def api_histology_browse():
         try:
@@ -1143,9 +1148,9 @@ def register_histology_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/histology/rename", methods=["POST"])
-    def api_histology_rename():
+    def api_histology_rename(payload=None):
         try:
-            d = request.json or {}
+            d = (request.json or {}) if payload is None else payload
             case_path = d.get("case_path", "")
             new_name = d.get("new_name", "")
             update_server_json = _bool(d.get("update_server_json", True), default=True)
@@ -1164,20 +1169,21 @@ def register_histology_routes(app, ctx):
 
     @app.route("/api/histology/rename_job", methods=["POST"])
     def api_histology_rename_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/histology/rename",
             "histology.rename",
             "Rename histology case",
-            api_histology_rename,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_histology_rename, "Renaming histology case"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/histology/rename"},
         )
 
     @app.route("/api/histology/sync_qupath_names", methods=["POST"])
-    def api_histology_sync_qupath_names():
+    def api_histology_sync_qupath_names(payload=None):
         try:
-            d = request.json or {}
+            d = (request.json or {}) if payload is None else payload
             qupath_project = d.get("qupath_project", None)
             update_server_json = _bool(d.get("update_server_json", True), default=True)
             cases = d.get("cases")
@@ -1199,12 +1205,13 @@ def register_histology_routes(app, ctx):
 
     @app.route("/api/histology/sync_qupath_names_job", methods=["POST"])
     def api_histology_sync_qupath_names_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/histology/sync_qupath_names",
             "histology.sync_qupath_names",
             "Sync histology QuPath names",
-            api_histology_sync_qupath_names,
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_histology_sync_qupath_names, "Syncing histology QuPath names"
+            ),
             request.json or {},
+            metadata={"endpoint": "/api/histology/sync_qupath_names"},
         )
