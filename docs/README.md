@@ -12,6 +12,8 @@ from `pipeline_readmes/`, which documents data-analysis workflows.
   canonical reference.
 - [Desktop strategy](desktop_strategy.md): how desktop launcher modules should
   stay thin Web launchers or service-backed clients.
+- [Pipeline registry](pipeline_registry.md): how the WebGUI Pipeline Runner
+  discovers categories, scripts, parameters, and local availability.
 - [GitHub repository checklist](github_repository_checklist.md): web-UI settings
   that cannot be represented directly in code.
 

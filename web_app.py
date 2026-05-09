@@ -12,13 +12,13 @@ import base64
 import importlib.metadata
 import io
 import os
+import re
 import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
-import tomllib
 
 import matplotlib
 
@@ -65,8 +65,9 @@ def _project_version() -> str:
     except importlib.metadata.PackageNotFoundError:
         pyproject = BASE_DIR / "pyproject.toml"
         try:
-            data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
-            return str(data.get("project", {}).get("version", "0+unknown"))
+            text = pyproject.read_text(encoding="utf-8")
+            match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
+            return match.group(1) if match else "0+unknown"
         except Exception:
             return "0+unknown"
 
@@ -95,7 +96,8 @@ def inject_template_defaults():
     return {
         "app_commit": APP_COMMIT,
         "app_version": APP_VERSION,
-        "default_data_dir": str(BASE_DIR),
+        "default_data_dir": "",
+        "default_examples_dir": "examples",
     }
 
 

@@ -20,6 +20,7 @@ DataProcess/
 +-- web_static/               # CSS and shared JavaScript
 +-- vendor/                   # vendored reference parsers kept out of root
 +-- examples/                 # tiny synthetic demo data
++-- pipelines/                # canonical WebGUI pipeline registry
 +-- tests/                    # smoke and contract tests
 +-- pipeline_readmes/         # domain pipeline notes and audits
 +-- docs/                     # repository-level maintenance notes
@@ -88,6 +89,9 @@ problem.
   `web_templates/partials/` rather than growing `base.html`.
 - Prefer service-task jobs through `submit_json_task(...)`; route modules should
   not manufacture Flask request contexts for background work.
+- Keep Pipeline Runner metadata in `pipelines/registry.json`; route modules and
+  templates should consume that registry instead of keeping their own script
+  maps.
 - Keep local state out of git: `web_gui_settings.json`, `config.json`, real
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.

@@ -5,7 +5,7 @@ Scope: `Pipelines` web GUI, excluding temp scripts.
 ## Backend/API checks
 
 - `python -m py_compile web_api/scripts_panel.py web_app.py`: passed
-- `python pipeline_readmes/check_analysis_scripts.py`: 122 scripts checked, 0 blocking issues
+- `python scripts/check_analysis_scripts.py`: 121 scripts checked, 0 blocking issues
 - Flask template smoke test:
   - `/scripts/photocurrent`: 200
   - `/scripts/emg`: 200

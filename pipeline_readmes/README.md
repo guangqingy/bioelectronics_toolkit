@@ -43,9 +43,10 @@ This folder documents how each script pipeline category integrates with the GUI 
 
 ## Maintenance Notes
 
-- Script mapping source of truth: `web_api/scripts_panel.py` (`script_map`).
-- Frontend pipeline catalog: `web_templates/scripts.html` (`SCRIPTS`).
-- Keep script IDs consistent between those two files.
+- Pipeline source of truth: `pipelines/registry.json`.
+- Python loader and availability checks: `pipelines/registry.py`.
+- The WebGUI page and `/api/pipelines/catalog` both load that registry, so do
+  not duplicate script lists in templates or route modules.
 - Prefer environment-variable-driven scripts for robust GUI integration.
 - Run `python3 -m unittest discover -s tests` after Web GUI route, job, or
   response-contract changes.

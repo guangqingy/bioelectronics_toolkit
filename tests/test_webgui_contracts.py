@@ -145,9 +145,18 @@ class WebAppSmokeTests(unittest.TestCase):
                 if source.suffix not in {".html", ".js", ".css"}:
                     continue
                 text = source.read_text(encoding="utf-8")
-                if "/Users/" + "guangqing" in text or "Desktop/" + "UChicago" in text:
+                if "/" + "Users/" + "guangqing" in text or "Desktop" + "/" + "UChicago" in text:
                     offenders.append(str(source.relative_to(root)))
         self.assertEqual([], offenders)
+
+    def test_rendered_pages_do_not_expose_developer_absolute_paths(self) -> None:
+        needles = ("/" + "Users/" + "guangqing", "Desktop" + "/" + "UChicago")
+        for route in ("/", "/scripts", "/abf/viewer", "/fluorescence/roi?demo=fluorescence"):
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                html = response.data.decode("utf-8")
+                for needle in needles:
+                    self.assertNotIn(needle, html)
 
     def test_nav_exposes_domain_groups_and_version(self) -> None:
         response = self.client.get("/")

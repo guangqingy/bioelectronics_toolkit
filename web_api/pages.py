@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from flask import render_template, request
 
+from pipelines.registry import default_category_id, pipeline_catalog, pipeline_category_ids
+
 
 def register_page_routes(app, ctx) -> None:
+    base_dir = ctx["BASE_DIR"]
     has_abf = ctx["HAS_ABF"]
     has_rhd = ctx["HAS_RHD"]
     has_scipy = ctx["HAS_SCIPY"]
@@ -106,14 +109,18 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/scripts")
     @app.route("/scripts/<cat>")
-    def scripts(cat="photocurrent"):
-        if cat not in {"photocurrent", "emg", "echem_curves", "viability"}:
-            cat = "photocurrent"
+    def scripts(cat=None):
+        valid_categories = set(pipeline_category_ids())
+        fallback_category = default_category_id()
+        if cat not in valid_categories:
+            cat = fallback_category
         return render_template(
             "scripts.html",
             active="scripts",
             cat=cat,
             cat_explicit=request.path != "/scripts",
+            pipeline_catalog=pipeline_catalog(base_dir, include_availability=True),
+            pipeline_default_category=fallback_category,
         )
 
     @app.route("/runs")

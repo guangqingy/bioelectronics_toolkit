@@ -560,6 +560,7 @@ async function applyInitialPathDefaults() {
     const looksLikePath = /(path|folder|directory|dir|file)/.test(key);
     const explicitlyNotPath = /(token|power|prefix|label|sequence)/.test(key);
     if (el.dataset.pathDefault === 'false' || !looksLikePath || explicitlyNotPath) return;
+    if (!defaultDir) return;
     if (!el.value || !el.value.trim()) el.value = defaultDir;
   });
 }

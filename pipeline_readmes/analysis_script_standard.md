@@ -68,10 +68,9 @@ if __name__ == "__main__":
 Run:
 
 ```bash
-python pipeline_readmes/check_analysis_scripts.py
+python scripts/check_analysis_scripts.py
 ```
 
 Expected healthy result:
 - `Blocking issues: 0`
 - Temp/test named scripts may remain only while legacy scratch scripts are being retired.
-

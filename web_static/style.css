@@ -1427,6 +1427,29 @@ kbd {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.script-item-state {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 5px;
+  border: 1px solid #dce5ef;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--pewter);
+  background: #FAFBFD;
+}
+.script-item-state.ok {
+  border-color: #c6dccf;
+  background: #F5FBF7;
+  color: #2f6b46;
+}
+.script-item-state.warn {
+  border-color: #ead7ad;
+  background: #FFF9EA;
+  color: #7a5a13;
+}
 .script-item.active .script-item-name {
   color: var(--blue);
 }
@@ -1490,6 +1513,11 @@ kbd {
   background: #F5FBF7;
   color: #2f6b46;
 }
+.pipeline-badge.warn {
+  border-color: #ead7ad;
+  background: #FFF9EA;
+  color: #7a5a13;
+}
 .pipeline-badge.mono {
   font-family: "SF Mono", "Menlo", monospace;
 }
@@ -1507,6 +1535,10 @@ kbd {
 .pipeline-run-summary.error {
   border-color: #e0b7b7;
   background: #FFF8F8;
+}
+.pipeline-run-summary.warning {
+  border-color: #ead7ad;
+  background: #FFF9EA;
 }
 .pipeline-run-summary.running {
   border-color: #c7d3f7;

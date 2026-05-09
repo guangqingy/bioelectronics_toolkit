@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from pathlib import Path
+from subprocess import check_output
 
 
 class RepositoryAssetTests(unittest.TestCase):
@@ -38,6 +39,37 @@ class RepositoryAssetTests(unittest.TestCase):
             with self.subTest(asset=asset.name):
                 self.assertTrue(asset.exists())
                 self.assertGreater(asset.stat().st_size, 1000)
+
+    def test_tracked_text_files_do_not_expose_developer_absolute_paths(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        needles = ("/" + "Users/" + "guangqing", "Desktop" + "/" + "UChicago")
+        excluded_suffixes = {
+            ".abf",
+            ".gif",
+            ".ico",
+            ".jpg",
+            ".jpeg",
+            ".pdf",
+            ".png",
+            ".tif",
+            ".tiff",
+        }
+        tracked = check_output(["git", "ls-files"], cwd=root, text=True).splitlines()
+        for rel_path in tracked:
+            path = root / rel_path
+            if path.suffix.lower() in excluded_suffixes:
+                continue
+            try:
+                text = path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                continue
+            for needle in needles:
+                if needle in text:
+                    offenders.append(rel_path)
+                    break
+
+        self.assertEqual([], offenders)
 
 
 if __name__ == "__main__":

@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Canonical `pipelines/` registry for WebGUI Pipeline Runner categories,
+  scripts, parameters, documentation links, and local availability checks.
 - WebGUI version/commit display, keyboard-shortcut help, persistent error
   banner, generic file-list filters, and status progress bars.
 - ABF batch dry-run mode with custom confirmation for filesystem changes and
   operation logs under `.dataprocess_cache/operation_logs/`.
 
 ### Changed
+- Pipeline Runner page and API now consume `pipelines/registry.json` instead of
+  maintaining duplicate script maps in the route module and template.
 - Dashboard now starts with demo-data entry points, recently used tools, and an
   all-tools board instead of requiring manual tool grouping.
 - Top navigation is grouped by domain with dropdown menus and full tool names.
@@ -23,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Removed the hard-coded developer path from the ABF viewer template.
+- Web app version detection no longer imports Python 3.11-only `tomllib`, so
+  the Python 3.10 CI job can import `web_app.py`.
 - Restricted automatic default-path filling to actual folder/file/path inputs
   so token and parameter fields are not overwritten.
 

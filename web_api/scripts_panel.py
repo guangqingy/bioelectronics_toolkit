@@ -8,6 +8,8 @@ from pathlib import Path
 
 from flask import jsonify, request
 
+from pipelines.registry import find_pipeline_script, pipeline_catalog, validate_registry
+
 
 _running_scripts = {}
 
@@ -245,6 +247,18 @@ def register_scripts_panel_routes(app, ctx):
             return payload
         return _running_scripts.get(job_id)
 
+    @app.route("/api/pipelines/catalog")
+    def api_pipeline_catalog():
+        catalog = pipeline_catalog(base_dir, include_availability=True)
+        return jsonify(
+            {
+                "ok": True,
+                "catalog": catalog,
+                "categories": catalog.get("categories", []),
+                "errors": validate_registry(catalog),
+            }
+        )
+
     @app.route("/api/scripts/run", methods=["POST"])
     def api_scripts_run():
         """
@@ -254,34 +268,18 @@ def register_scripts_panel_routes(app, ctx):
         d = request.json or {}
         script_id = d.get("script_id", "")
         params = d.get("params", {})
+        if not isinstance(params, dict):
+            params = {}
 
-        script_map = {
-            # Photocurrent
-            "pc_line_chart":    "2025_Subcutaneous/Photocurrent/model_line_chart.py",
-            "pc_peaks_overlay": "2025_Subcutaneous/Photocurrent/model_peaks_overlay.py",
-            "pc_heatmap":       "2025_Subcutaneous/Photocurrent/model_heatmap.py",
-            "pc_decay":         "2025_Subcutaneous/Photocurrent/model_decay_curve.py",
-            "pc_longterm":      "2025_Subcutaneous/Photocurrent/model_longterm_bar.py",
-            # EMG
-            "emg_demo":         "2025_Subcutaneous/EMG/model_demo_single_peak.py",
-            "emg_overlay":      "2025_Subcutaneous/EMG/model_overlay_mean.py",
-            "emg_bar":          "2025_Subcutaneous/EMG/model_bar_diagram.py",
-            "emg_heatmap":      "2025_Subcutaneous/EMG/model_heatmap.py",
-            # Electrochemistry curves
-            "echem_pc_curve":      "2025_Subcutaneous/Electrochemistry/group_1_photocurrent_curve.py",
-            "echem_pv_curve":      "2025_Subcutaneous/Electrochemistry/group_1_photovoltage_curve.py",
-            # Cell viability
-            "viab_watershed_area": "2025_Subcutaneous/Cell_Number_Counting/model_watershed_area_ratio.py",
-            "viab_stardist_auto":  "2025_Subcutaneous/Cell_Number_Counting/model_stardist_auto_ratio.py",
-        }
+        script_entry = find_pipeline_script(script_id, base_dir)
+        if not script_entry:
+            return err(f"Unknown pipeline script: {script_id}", 404)
 
-        script_rel = script_map.get(script_id)
-        if script_rel:
-            script_path = base_dir / script_rel
-            if not script_path.exists():
-                script_path = None
-        else:
-            script_path = None
+        script_path = (
+            Path(script_entry["resolved_script_path"])
+            if script_entry.get("available") and script_entry.get("resolved_script_path")
+            else None
+        )
 
         if script_path and script_path.exists():
             out_dir = _resolve_output_dir(script_path, params)
@@ -296,7 +294,7 @@ def register_scripts_panel_routes(app, ctx):
                 out_dir,
                 metadata={
                     "script_id": script_id,
-                    "category": d.get("cat", ""),
+                    "category": script_entry.get("category") or d.get("cat", ""),
                     "script_path": str(script_path),
                     "output_dir": str(out_dir or ""),
                 },
@@ -338,10 +336,15 @@ def register_scripts_panel_routes(app, ctx):
         return jsonify(
             {
                 "message": (
-                    f"Script '{script_id}' is not directly runnable via web panel yet. "
-                    "Copy the parameters below into the corresponding group_*.py PANEL block and run manually."
+                    f"Pipeline script '{script_entry.get('name', script_id)}' is registered, "
+                    "but the local project script is not available in this checkout."
                 ),
-                "ok": True,
+                "ok": False,
+                "missing": True,
+                "script_id": script_id,
+                "script_path": script_entry.get("script_path", ""),
+                "documentation": script_entry.get("category_documentation", ""),
+                "availability_message": script_entry.get("availability_message", ""),
                 "config_preview": json.dumps(params, indent=2),
                 "figures": [],
                 "artifacts": [],

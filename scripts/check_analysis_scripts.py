@@ -15,8 +15,22 @@ EXCLUDE_DIRS = {
     ".conda",
     "__pycache__",
     "build",
+    "desktop_apps",
     "dist",
+    "docs",
+    "examples",
+    "pipelines",
     "pipeline_readmes",
+    "services",
+    "tests",
+    "vendor",
+    "web_api",
+    "web_static",
+    "web_templates",
+}
+
+EXCLUDE_FILES = {
+    "config.py",
 }
 
 GUI_NAME_TOKENS = (
@@ -78,7 +92,7 @@ class ScriptAudit:
 
 
 def is_excluded_path(path: Path) -> bool:
-    return any(part in EXCLUDE_DIRS for part in path.parts)
+    return path.name in EXCLUDE_FILES or any(part in EXCLUDE_DIRS for part in path.parts)
 
 
 def is_gui_script(path: Path, text: str) -> bool:

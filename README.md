@@ -220,6 +220,7 @@ bioelectronics_toolkit/
 ├── WEB_README.md                   # web-app architecture notes
 ├── docs/                           # repository structure and parity notes
 ├── tests/                          # stdlib unittest contract/smoke tests
+├── pipelines/                      # canonical WebGUI pipeline registry
 │
 └── pipeline_readmes/               # data-processing pipeline docs
 ```
@@ -241,7 +242,8 @@ bioelectronics_toolkit/
 - `bte-fl-lut` opens the WebGUI fluorescence page by default, but its dedicated
   LUT editor still lives in `desktop_apps.legacy.fluorescence_lut_gui` until
   `services/fluorescence/lut.py` is added.
-- Pipeline-level documentation (per analysis flow) lives under
+- Pipeline metadata lives in [`pipelines/`](./pipelines/). Pipeline-level
+  documentation (per analysis flow) lives under
   [`pipeline_readmes/`](./pipeline_readmes/).
 - Before committing Web GUI changes, run:
 

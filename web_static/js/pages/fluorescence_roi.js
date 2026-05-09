@@ -1393,7 +1393,7 @@ window.addEventListener('load', async () => {
   onBgModeChange();
   onDrawShapeChange();
   if (new URLSearchParams(window.location.search).get('demo') === 'fluorescence') {
-    document.getElementById('folderPath').value = DEFAULT_DATA_DIR + '/examples';
+    document.getElementById('folderPath').value = DEFAULT_EXAMPLES_DIR || 'examples';
     scanFolder();
   }
 	});

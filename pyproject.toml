@@ -84,7 +84,10 @@ py-modules = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["desktop_apps*", "services*", "vendor*", "web_api*"]
+include = ["desktop_apps*", "pipelines*", "services*", "vendor*", "web_api*"]
+
+[tool.setuptools.package-data]
+pipelines = ["*.json"]
 
 # ---------------------------------------------------------------------------
 # Ruff linter (optional – run with `ruff check .`)
