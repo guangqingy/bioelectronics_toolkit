@@ -126,6 +126,9 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_fluorescence_refactor_keeps_route_contracts(self) -> None:
         routes = {str(rule.rule) for rule in self.client.application.url_map.iter_rules()}
         expected = {
+            "/api/system/select_folder",
+            "/api/system/select_file",
+            "/api/system/logout",
             "/api/fluorescence/browse",
             "/api/fluorescence/stack_export",
             "/api/fluorescence/stack_export_job",
@@ -138,6 +141,19 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/roi/export_sequence_gif_job",
         }
         self.assertTrue(expected.issubset(routes), sorted(expected - routes))
+
+    def test_extracted_page_assets_are_served(self) -> None:
+        assets = (
+            "/static/css/fluorescence_gif.css",
+            "/static/js/pages/fluorescence_gif.js",
+            "/static/js/pages/fluorescence_roi.js",
+        )
+        for route in assets:
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200)
+                self.assertGreater(len(response.data), 100)
+                response.close()
 
     def test_fluorescence_split_routes_handle_small_tiff(self) -> None:
         try:
@@ -198,6 +214,36 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(job["status"], "succeeded")
             self.assertTrue(Path(job["outputs"][0]["path"]).exists())
             self.assertEqual(job["data"]["saved_path"], job["outputs"][0]["path"])
+
+    def test_run_history_package_job_uses_service_task_contract(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_run_history_test_") as tmp:
+            recorded = self.client.post(
+                "/api/run_history/record",
+                json={
+                    "project_root": tmp,
+                    "view": "test_view",
+                    "title": "Test Run",
+                    "status": "ok",
+                    "parameters": {"alpha": 1},
+                    "input_files": [],
+                    "outputs": [],
+                },
+            )
+            recorded_payload = recorded.get_json()
+            self.assertEqual(recorded.status_code, 200)
+            self.assertTrue(recorded_payload["ok"])
+
+            started = self.client.post(
+                "/api/run_history/package_job",
+                json={"manifest_path": recorded_payload["manifest_path"]},
+            )
+            started_payload = started.get_json()
+            self.assertEqual(started.status_code, 200)
+            self.assertTrue(started_payload["ok"])
+
+            job = self._wait_for_api_job(started_payload["job_id"])
+            self.assertEqual(job["status"], "succeeded")
+            self.assertTrue(Path(job["data"]["package_path"]).exists())
 
     def _wait_for_api_job(self, job_id: str) -> dict:
         for _ in range(80):

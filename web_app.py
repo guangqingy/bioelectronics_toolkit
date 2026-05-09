@@ -10,12 +10,9 @@ fluorescence imaging, and scripted data analysis.
 import base64
 import io
 import os
-import signal
-import subprocess
 import sys
 import threading
 import time
-import traceback
 import webbrowser
 from pathlib import Path
 
@@ -23,15 +20,14 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-import numpy as np
-import pandas as pd
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, render_template, request
 
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
 from web_api.abf_batch import register_abf_batch_routes
 from web_api.abf_viewer import register_abf_viewer_routes
+from web_api.context import WebApiContext
 from web_api.csv_viewer import register_csv_viewer_routes
 from web_api.echem_lineshape import register_echem_lineshape_routes
 from web_api.echem_pc import register_echem_pc_routes
@@ -48,6 +44,7 @@ from web_api.response import api_error, register_api_envelope
 from web_api.rhd_viewer import register_rhd_viewer_routes
 from web_api.run_history import register_run_history_routes
 from web_api.scripts_panel import register_scripts_panel_routes
+from web_api.system import register_system_routes
 
 app = Flask(
     __name__,
@@ -82,6 +79,7 @@ plt.rcParams.update(
 LINE_COLOR = "#3E6AE1"
 
 
+pyabf = None
 try:
     import pyabf
 
@@ -89,6 +87,7 @@ try:
 except ImportError:
     HAS_ABF = False
 
+rhd = None
 try:
     import importrhdutilities as rhd
 
@@ -96,14 +95,19 @@ try:
 except ImportError:
     HAS_RHD = False
 
+find_peaks = None
+peak_widths = None
+savgol_filter = None
+f_oneway = None
 try:
     from scipy.signal import find_peaks, peak_widths, savgol_filter
-    from scipy.stats import f_oneway, ttest_ind
+    from scipy.stats import f_oneway
 
     HAS_SCIPY = True
 except ImportError:
     HAS_SCIPY = False
 
+MultiComparison = None
 try:
     from statsmodels.stats.multicomp import MultiComparison
 
@@ -111,6 +115,7 @@ try:
 except ImportError:
     HAS_STATSMODELS = False
 
+tifflib = None
 try:
     import tifffile as tifflib
 
@@ -118,6 +123,9 @@ try:
 except ImportError:
     HAS_TIFF = False
 
+Image = None
+ImageDraw = None
+ImageFont = None
 try:
     from PIL import Image, ImageDraw, ImageFont
 
@@ -125,6 +133,7 @@ try:
 except ImportError:
     HAS_PIL = False
 
+LifFile = None
 try:
     from readlif.reader import LifFile
 
@@ -190,10 +199,6 @@ def request_data():
     return request.json or {}
 
 
-def applescript_string(value):
-    return str(value).replace("\\", "\\\\").replace('"', '\\"')
-
-
 def apply_axes_limits(ax, xmin, xmax, ymin, ymax):
     if xmin is not None or xmax is not None:
         cur = ax.get_xlim()
@@ -209,40 +214,39 @@ def apply_axes_limits(ax, xmin, xmax, ymin, ymax):
         )
 
 
-_web_api_ctx = {
-    "err": err,
-    "browse_files": browse_files,
-    "browse_files_recursive": browse_files_recursive,
-    "fig_to_b64": fig_to_b64,
-    "float_or": float_or,
-    "int_or": int_or,
-    "request_data": request_data,
-    "apply_axes_limits": apply_axes_limits,
-    "BASE_DIR": BASE_DIR,
-    "LINE_COLOR": LINE_COLOR,
-    "HAS_ABF": HAS_ABF,
-    "HAS_RHD": HAS_RHD,
-    "HAS_SCIPY": HAS_SCIPY,
-    "HAS_STATSMODELS": HAS_STATSMODELS,
-    "HAS_TIFF": HAS_TIFF,
-    "HAS_PIL": HAS_PIL,
-    "HAS_READLIF": HAS_READLIF,
-    "pyabf": globals().get("pyabf"),
-    "rhd": globals().get("rhd"),
-    "find_peaks": globals().get("find_peaks"),
-    "savgol_filter": globals().get("savgol_filter"),
-    "peak_widths": globals().get("peak_widths"),
-    "f_oneway": globals().get("f_oneway"),
-    "MultiComparison": globals().get("MultiComparison"),
-    "tifflib": globals().get("tifflib"),
-    "Image": globals().get("Image"),
-    "ImageDraw": globals().get("ImageDraw"),
-    "ImageFont": globals().get("ImageFont"),
-    "LifFile": globals().get("LifFile"),
-}
-
 _job_manager = JobManager()
-_web_api_ctx["jobs"] = _job_manager
+_web_api_ctx = WebApiContext(
+    err=err,
+    browse_files=browse_files,
+    browse_files_recursive=browse_files_recursive,
+    fig_to_b64=fig_to_b64,
+    float_or=float_or,
+    int_or=int_or,
+    request_data=request_data,
+    apply_axes_limits=apply_axes_limits,
+    BASE_DIR=BASE_DIR,
+    LINE_COLOR=LINE_COLOR,
+    HAS_ABF=HAS_ABF,
+    HAS_RHD=HAS_RHD,
+    HAS_SCIPY=HAS_SCIPY,
+    HAS_STATSMODELS=HAS_STATSMODELS,
+    HAS_TIFF=HAS_TIFF,
+    HAS_PIL=HAS_PIL,
+    HAS_READLIF=HAS_READLIF,
+    pyabf=pyabf,
+    rhd=rhd,
+    find_peaks=find_peaks,
+    savgol_filter=savgol_filter,
+    peak_widths=peak_widths,
+    f_oneway=f_oneway,
+    MultiComparison=MultiComparison,
+    tifflib=tifflib,
+    Image=Image,
+    ImageDraw=ImageDraw,
+    ImageFont=ImageFont,
+    LifFile=LifFile,
+    jobs=_job_manager,
+)
 
 
 register_api_envelope(app)
@@ -262,6 +266,7 @@ register_scripts_panel_routes(app, _web_api_ctx)
 register_preferences_routes(app, _web_api_ctx)
 register_file_profile_routes(app, _web_api_ctx)
 register_run_history_routes(app, _web_api_ctx)
+register_system_routes(app, _web_api_ctx)
 register_job_routes(app, _web_api_ctx)
 
 
@@ -386,108 +391,6 @@ def scripts(cat="photocurrent"):
 @app.route("/runs")
 def run_history_page():
     return render_template("run_history.html", active="run_history")
-
-
-@app.route("/api/system/select_folder", methods=["POST"])
-def api_system_select_folder():
-    try:
-        d = request.json or {}
-        start = str(d.get("start", "") or "").strip()
-
-        default_dir = Path(BASE_DIR)
-        if start:
-            try:
-                p = Path(start).expanduser()
-                if p.is_file():
-                    default_dir = p.parent
-                elif p.is_dir():
-                    default_dir = p
-                elif p.parent.exists():
-                    default_dir = p.parent
-            except Exception:
-                pass
-
-        if sys.platform == "darwin":
-            script = (
-                'POSIX path of (choose folder with prompt "Select Data Folder" '
-                f'default location POSIX file "{applescript_string(default_dir)}")'
-            )
-            out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-            if out.returncode != 0:
-                return jsonify({"path": "", "cancelled": True})
-            path = out.stdout.strip()
-            return jsonify({"path": path, "cancelled": not bool(path)})
-
-        import tkinter as tk
-        from tkinter import filedialog
-
-        root = tk.Tk()
-        root.withdraw()
-        root.update()
-        path = filedialog.askdirectory(initialdir=str(default_dir))
-        root.destroy()
-        return jsonify({"path": path or "", "cancelled": not bool(path)})
-    except Exception:
-        return err(traceback.format_exc())
-
-
-@app.route("/api/system/select_file", methods=["POST"])
-def api_system_select_file():
-    try:
-        d = request.json or {}
-        start = str(d.get("start", "") or "").strip()
-
-        default_dir = Path(BASE_DIR)
-        if start:
-            try:
-                p = Path(start).expanduser()
-                if p.is_file():
-                    default_dir = p.parent
-                elif p.is_dir():
-                    default_dir = p
-                elif p.parent.exists():
-                    default_dir = p.parent
-            except Exception:
-                pass
-
-        if sys.platform == "darwin":
-            script = (
-                'POSIX path of (choose file with prompt "Select File" '
-                f'default location POSIX file "{applescript_string(default_dir)}")'
-            )
-            out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-            if out.returncode != 0:
-                return jsonify({"path": "", "cancelled": True})
-            path = out.stdout.strip()
-            return jsonify({"path": path, "cancelled": not bool(path)})
-
-        import tkinter as tk
-        from tkinter import filedialog
-
-        root = tk.Tk()
-        root.withdraw()
-        root.update()
-        path = filedialog.askopenfilename(initialdir=str(default_dir))
-        root.destroy()
-        return jsonify({"path": path or "", "cancelled": not bool(path)})
-    except Exception:
-        return err(traceback.format_exc())
-
-
-@app.route("/api/system/logout", methods=["POST"])
-def api_system_logout():
-    try:
-        def _shutdown_server():
-            time.sleep(0.25)
-            try:
-                os.kill(os.getpid(), signal.SIGINT)
-            except Exception:
-                os._exit(0)
-
-        threading.Thread(target=_shutdown_server, daemon=True).start()
-        return jsonify({"ok": True, "message": "DataProcess Web is closing..."})
-    except Exception:
-        return err(traceback.format_exc())
 
 
 PORT = 7433

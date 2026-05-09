@@ -13,6 +13,7 @@ from matplotlib.patches import Circle, Rectangle
 from services.fluorescence import gif as fl_gif
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import stack as fl_stack
+from .path_policy import sanitize_name_part
 
 
 def register_fluorescence_routes(app, ctx):
@@ -84,11 +85,7 @@ def register_fluorescence_routes(app, ctx):
         return default
 
     def _fl_sanitize_prefix(prefix: str, fallback: str = "roi_sequence_analysis") -> str:
-        raw = str(prefix or "").strip()
-        if not raw:
-            raw = fallback
-        out = _re2.sub(r"[^a-zA-Z0-9._-]+", "_", raw).strip("._")
-        return out or fallback
+        return sanitize_name_part(prefix, fallback)
 
     def _fl_rational_to_float(v) -> float | None:
         try:
@@ -1791,9 +1788,52 @@ animate();
     from .fluorescence_stack_routes import register_fluorescence_stack_routes
     from .fluorescence_3d_routes import register_fluorescence_3d_routes
 
-    route_ctx = locals()
-    register_fluorescence_stack_routes(app, route_ctx)
-    register_fluorescence_3d_routes(app, route_ctx)
+    stack_route_ctx = {
+        "err": err,
+        "browse_files": browse_files,
+        "int_or": int_or,
+        "float_or": float_or,
+        "has_tiff": has_tiff,
+        "has_pil": has_pil,
+        "tifflib": tifflib,
+        "jobs": jobs,
+        "_FL_BACKGROUND_OPTIONS": _FL_BACKGROUND_OPTIONS,
+        "_FL_DENOISE_OPTIONS": _FL_DENOISE_OPTIONS,
+        "_FL_LUT_OPTIONS": _FL_LUT_OPTIONS,
+        "_fl_bool": _fl_bool,
+        "_fl_build_default_settings_for_pages": _fl_build_default_settings_for_pages,
+        "_fl_build_settings_from_template": _fl_build_settings_from_template,
+        "_fl_clean_choice": _fl_clean_choice,
+        "_fl_compute_auto_range_with_processing": _fl_compute_auto_range_with_processing,
+        "_fl_export_with_settings": _fl_export_with_settings,
+        "_fl_frame_to_b64": _fl_frame_to_b64,
+        "_fl_is_generated_tiff": _fl_is_generated_tiff,
+        "_fl_normalize_settings_for_pages": _fl_normalize_settings_for_pages,
+        "_fl_read_tiff_as_pages": _fl_read_tiff_as_pages,
+        "_fl_resolve_gif_scale": _fl_resolve_gif_scale,
+        "_fl_select_display_frame": _fl_select_display_frame,
+        "_fl_tiff_gif_frame_count": _fl_tiff_gif_frame_count,
+    }
+    volume_route_ctx = {
+        "err": err,
+        "int_or": int_or,
+        "float_or": float_or,
+        "has_tiff": has_tiff,
+        "has_pil": has_pil,
+        "jobs": jobs,
+        "_FL_DENOISE_OPTIONS": _FL_DENOISE_OPTIONS,
+        "_fl_bool": _fl_bool,
+        "_fl_clean_choice": _fl_clean_choice,
+        "_fl_frame_to_b64": _fl_frame_to_b64,
+        "_fl_sanitize_prefix": _fl_sanitize_prefix,
+        "_fl_tiff_plane_from_array": _fl_tiff_plane_from_array,
+        "_fl_tiff_read_array": _fl_tiff_read_array,
+        "_fl_tiff_series_info": _fl_tiff_series_info,
+        "_fl_tiff_volume3d_payload": _fl_tiff_volume3d_payload,
+        "_fl_volume3d_html": _fl_volume3d_html,
+    }
+    register_fluorescence_stack_routes(app, stack_route_ctx)
+    register_fluorescence_3d_routes(app, volume_route_ctx)
 
     _fl_roi_shape_type = fl_roi.shape_type
     _fl_roi_empty_metrics = fl_roi.empty_metrics
@@ -1950,6 +1990,75 @@ animate();
     from .fluorescence_gif_routes import register_fluorescence_gif_routes
     from .fluorescence_roi_routes import register_fluorescence_roi_routes
 
-    final_route_ctx = locals()
-    register_fluorescence_gif_routes(app, final_route_ctx)
-    register_fluorescence_roi_routes(app, final_route_ctx)
+    gif_route_ctx = {
+        "err": err,
+        "fig_to_b64": fig_to_b64,
+        "float_or": float_or,
+        "int_or": int_or,
+        "has_pil": has_pil,
+        "has_tiff": has_tiff,
+        "jobs": jobs,
+        "_fl_apply_gif_crop": _fl_apply_gif_crop,
+        "_fl_bool": _fl_bool,
+        "_fl_decode_base64_payload": _fl_decode_base64_payload,
+        "_fl_gif_kymo_stat": _fl_gif_kymo_stat,
+        "_fl_gif_kymo_top_mean": _fl_gif_kymo_top_mean,
+        "_fl_gif_roi_apply_value": _fl_gif_roi_apply_value,
+        "_fl_gif_roi_background_mean": _fl_gif_roi_background_mean,
+        "_fl_gif_roi_make_specs": _fl_gif_roi_make_specs,
+        "_fl_gif_roi_mask_for": _fl_gif_roi_mask_for,
+        "_fl_gif_roi_metrics_2d": _fl_gif_roi_metrics_2d,
+        "_fl_image_to_b64": _fl_image_to_b64,
+        "_fl_normalize_gif_polygons": _fl_normalize_gif_polygons,
+        "_fl_normalize_gif_rects": _fl_normalize_gif_rects,
+        "_fl_parse_percent_list": _fl_parse_percent_list,
+        "_fl_parse_slice_spec": _fl_parse_slice_spec,
+        "_fl_percent_label": _fl_percent_label,
+        "_fl_read_selected_gif_planes": _fl_read_selected_gif_planes,
+        "_fl_render_gif_frame": _fl_render_gif_frame,
+        "_fl_render_gif_roi_reference_preview": _fl_render_gif_roi_reference_preview,
+        "_fl_resolve_gif_scale": _fl_resolve_gif_scale,
+        "_fl_roi_delta_f_over_f0": _fl_roi_delta_f_over_f0,
+        "_fl_sanitize_prefix": _fl_sanitize_prefix,
+        "_fl_smooth_heatmap_2d": _fl_smooth_heatmap_2d,
+        "_fl_smooth_series_nan": _fl_smooth_series_nan,
+        "_fl_tiff_gif_frame_count": _fl_tiff_gif_frame_count,
+    }
+    roi_route_ctx = {
+        "err": err,
+        "fig_to_b64": fig_to_b64,
+        "float_or": float_or,
+        "int_or": int_or,
+        "has_pil": has_pil,
+        "has_tiff": has_tiff,
+        "jobs": jobs,
+        "tifflib": tifflib,
+        "_fl_bool": _fl_bool,
+        "_fl_decode_base64_payload": _fl_decode_base64_payload,
+        "_fl_frame_to_b64": _fl_frame_to_b64,
+        "_fl_infer_pixel_size_um_from_tiff": _fl_infer_pixel_size_um_from_tiff,
+        "_fl_roi_apply_metric_mode": _fl_roi_apply_metric_mode,
+        "_fl_roi_background_mean": _fl_roi_background_mean,
+        "_fl_roi_circle_geometry": _fl_roi_circle_geometry,
+        "_fl_roi_collect_pairs": _fl_roi_collect_pairs,
+        "_fl_roi_compute": _fl_roi_compute,
+        "_fl_roi_delta_f_over_f0": _fl_roi_delta_f_over_f0,
+        "_fl_roi_empty_metrics": _fl_roi_empty_metrics,
+        "_fl_roi_metrics_2d": _fl_roi_metrics_2d,
+        "_fl_roi_normalize_to_reference": _fl_roi_normalize_to_reference,
+        "_fl_roi_pick_output_dir": _fl_roi_pick_output_dir,
+        "_fl_roi_plot_radial_profiles": _fl_roi_plot_radial_profiles,
+        "_fl_roi_radial_pair_rows": _fl_roi_radial_pair_rows,
+        "_fl_roi_read_first_page": _fl_roi_read_first_page,
+        "_fl_roi_render_gif_frame": _fl_roi_render_gif_frame,
+        "_fl_roi_render_reference_preview": _fl_roi_render_reference_preview,
+        "_fl_roi_resolve_ref_index": _fl_roi_resolve_ref_index,
+        "_fl_roi_ring_count": _fl_roi_ring_count,
+        "_fl_roi_safe_ratio": _fl_roi_safe_ratio,
+        "_fl_roi_sequence_number": _fl_roi_sequence_number,
+        "_fl_roi_shape_type": _fl_roi_shape_type,
+        "_fl_roi_shared_ylim": _fl_roi_shared_ylim,
+        "_fl_sanitize_prefix": _fl_sanitize_prefix,
+    }
+    register_fluorescence_gif_routes(app, gif_route_ctx)
+    register_fluorescence_roi_routes(app, roi_route_ctx)

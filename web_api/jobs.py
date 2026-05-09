@@ -236,6 +236,53 @@ def run_flask_route_job(
     return payload
 
 
+def run_json_task_job(
+    job_ctx: JobContext,
+    task_func: Callable[..., Any],
+    body: dict[str, Any] | None,
+):
+    """Run a body-driven service task without manufacturing a Flask request."""
+    job_ctx.set_progress(0.02, "Starting job")
+    result = task_func(job_ctx, body or {})
+    if result is None:
+        result = {}
+    if not isinstance(result, dict):
+        result = {"value": result}
+    if result.get("error"):
+        job_ctx.set_progress(1.0, "Failed")
+        result.setdefault("ok", False)
+        return result
+    job_ctx.set_progress(1.0, "Complete")
+    return result
+
+
+def submit_json_task(
+    jobs: JobManager | None,
+    kind: str,
+    title: str,
+    task_func: Callable[..., Any],
+    body: dict[str, Any] | None = None,
+    metadata: dict[str, Any] | None = None,
+):
+    """Submit a background task that accepts ``(job_ctx, body)``.
+
+    Prefer this for new code: the synchronous route and job route can both call
+    the same service function, and the job worker no longer needs Flask's test
+    request machinery.
+    """
+    if jobs is None:
+        return api_error("Background job manager is not available", 500)
+    job = jobs.submit(
+        kind,
+        title,
+        run_json_task_job,
+        task_func,
+        body or {},
+        metadata=metadata or {},
+    )
+    return api_ok({"running": True, "job": job, "job_id": job["job_id"]})
+
+
 def submit_flask_route_job(
     app,
     jobs: JobManager | None,

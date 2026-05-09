@@ -14,7 +14,7 @@ DataProcess/
 |   +-- web_launcher.py       # opens the canonical WebGUI page for each tool
 |   +-- legacy/               # historical Tkinter applications
 +-- web_app.py                # Flask composition root
-+-- web_api/                  # Web route modules and shared Web services
++-- web_api/                  # Web route modules, context, jobs, and local system routes
 +-- services/                 # UI-independent processing services
 +-- web_templates/            # Jinja templates
 +-- web_static/               # CSS and shared JavaScript
@@ -72,6 +72,12 @@ problem.
 - Split large Web route files by feature area before moving package paths. The
   fluorescence Web routes are now separated into stack, 3D, GIF, and ROI
   registration modules while the older helper layer is being migrated.
+- Keep `web_app.py` as a composition root. Local file-picker/shutdown behavior
+  belongs in `web_api/system.py`, and shared route registration dependencies
+  belong in `web_api/context.py`.
+- Keep stable page CSS/JS out of large templates. Use `web_static/css/` and
+  `web_static/js/pages/` for page-specific assets once they no longer need
+  Jinja interpolation.
 - Keep local state out of git: `web_gui_settings.json`, `config.json`, real
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.

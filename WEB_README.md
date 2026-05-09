@@ -25,8 +25,11 @@ DataProcess/
 │   └── legacy/                 # historical Tkinter apps
 ├── services/                   # Shared processing logic used by Web and desktop
 ├── web_api/                    # Domain API modules
+│   ├── context.py              # Explicit route registration context
 │   ├── response.py             # Unified API envelope
 │   ├── jobs.py                 # In-memory background job manager
+│   ├── system.py               # Local file picker and shutdown routes
+│   ├── path_policy.py          # Shared filename/output-path helpers
 │   ├── preferences.py          # Global and per-view defaults
 │   ├── file_profiles.py        # Per-file cached UI settings
 │   ├── run_history.py          # Run manifests and package/report helpers
@@ -36,13 +39,15 @@ DataProcess/
 ├── web_templates/              # Jinja pages, one main template per view
 ├── web_static/
 │   ├── style.css
+│   ├── css/                    # Page-specific CSS extracted from templates
 │   └── js/
 │       ├── dp_core.js
 │       ├── dp_settings_schema.js
 │       ├── dp_manifest.js
 │       ├── dp_settings.js
 │       ├── dp_profiles.js
-│       └── dp_jobs.js
+│       ├── dp_jobs.js
+│       └── pages/              # Page-specific JavaScript extracted from templates
 ├── tests/                      # Stdlib unittest smoke and contract tests
 └── WEB_README.md
 ```
@@ -78,8 +83,20 @@ creates a metadata sidecar, the route should return it explicitly in
 
 ## Background Jobs
 
-Heavy or side-effect-heavy operations should expose a `*_job` endpoint. The
-preferred adapter for older synchronous route bodies is:
+Heavy or side-effect-heavy operations should expose a `*_job` endpoint. New
+code should prefer a request-body-driven service task:
+
+```python
+return submit_json_task(
+    jobs,
+    "domain.export",
+    "Human-readable job title",
+    export_task,      # accepts (job_ctx, body)
+    request.json or {},
+)
+```
+
+The compatibility adapter for older synchronous route bodies remains available:
 
 ```python
 return submit_flask_route_job(
@@ -126,8 +143,9 @@ Every tool page should follow the base shell:
 3. `block scripts`: page-specific JavaScript only.
 
 Common browser helpers belong in `web_static/js/*.js`, not inline in
-`base.html`. Page-specific code can stay in the template until it is stable
-enough to extract.
+`base.html`. Stable page-specific code belongs under `web_static/js/pages/`,
+and page-specific CSS belongs under `web_static/css/`. Keep only small
+Jinja-dependent bootstrapping inline.
 
 ## Route Module Contract
 

@@ -17,7 +17,7 @@ from typing import Any
 
 from flask import jsonify, request
 
-from .jobs import submit_flask_route_job
+from .jobs import submit_json_task
 
 
 _run_lock = threading.Lock()
@@ -540,14 +540,13 @@ def register_run_history_routes(app, ctx):
 
     @app.route("/api/run_history/package_job", methods=["POST"])
     def api_run_history_package_job():
-        return submit_flask_route_job(
-            app,
+        return submit_json_task(
             jobs,
-            "/api/run_history/package",
             "run_history.package",
             "Package run manifest",
-            api_run_history_package,
+            _package_run_history_body,
             request.json or {},
+            metadata={"endpoint": "/api/run_history/package"},
         )
 
     @app.route("/api/run_history/report", methods=["POST"])
@@ -577,62 +576,71 @@ def register_run_history_routes(app, ctx):
         except Exception as exc:
             return err(exc)
 
+    def _package_run_history_body(job_ctx, body: dict[str, Any]) -> dict[str, Any]:
+        include_inputs = bool(body.get("include_inputs"))
+        include_outputs = body.get("include_outputs") is not False
+        if job_ctx is not None:
+            job_ctx.check_cancelled()
+            job_ctx.set_progress(0.08, "Loading run manifest")
+        with _run_lock:
+            manifest, manifest_path = _load_manifest_from_request(body, base_dir)
+        if not manifest:
+            return {"ok": False, "error": f"Run manifest not found: {manifest_path or ''}"}
+
+        run_id = _sanitize_run_id(manifest.get("run_id") or "run")
+        if manifest_path:
+            package_path = manifest_path.with_suffix(".zip")
+        else:
+            project_root = _abs_path(_as_path(manifest.get("project_root")) or base_dir)
+            package_path = _manifest_dir(project_root) / f"{run_id}.zip"
+        package_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if job_ctx is not None:
+            job_ctx.check_cancelled()
+            job_ctx.set_progress(0.22, "Checking files")
+        check = _check_manifest_files(manifest)
+        report_text = _manifest_markdown(manifest, manifest_path, check)
+        index: dict[str, Any] = {
+            "run_id": run_id,
+            "created_at": _now_iso(),
+            "include_inputs": include_inputs,
+            "include_outputs": include_outputs,
+            "manifest_path": str(manifest_path or ""),
+            "included": [],
+            "missing": [],
+        }
+        used = {"manifest.json", "report.md", "package_index.json"}
+        tmp = package_path.with_suffix(package_path.suffix + ".tmp")
+        if job_ctx is not None:
+            job_ctx.check_cancelled()
+            job_ctx.set_progress(0.4, "Writing package")
+        with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+            zf.writestr("report.md", report_text)
+            if include_outputs:
+                included, missing = _add_records_to_zip(zf, manifest.get("outputs"), "outputs", used)
+                index["included"].extend(included)
+                index["missing"].extend(missing)
+            if include_inputs:
+                included, missing = _add_records_to_zip(zf, manifest.get("input_files"), "inputs", used)
+                index["included"].extend(included)
+                index["missing"].extend(missing)
+            zf.writestr("package_index.json", json.dumps(index, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        os.replace(tmp, package_path)
+
+        return {
+            "ok": True,
+            "manifest_path": str(manifest_path or ""),
+            "package_path": str(package_path),
+            "included_count": len(index["included"]),
+            "missing_count": len(index["missing"]),
+            "index": index,
+            "check": check,
+        }
+
     @app.route("/api/run_history/package", methods=["POST"])
     def api_run_history_package():
         try:
-            body = request.json or {}
-            include_inputs = bool(body.get("include_inputs"))
-            include_outputs = body.get("include_outputs") is not False
-            with _run_lock:
-                manifest, manifest_path = _load_manifest_from_request(body, base_dir)
-            if not manifest:
-                return err(f"Run manifest not found: {manifest_path or ''}", 404)
-
-            run_id = _sanitize_run_id(manifest.get("run_id") or "run")
-            if manifest_path:
-                package_path = manifest_path.with_suffix(".zip")
-            else:
-                project_root = _abs_path(_as_path(manifest.get("project_root")) or base_dir)
-                package_path = _manifest_dir(project_root) / f"{run_id}.zip"
-            package_path.parent.mkdir(parents=True, exist_ok=True)
-
-            check = _check_manifest_files(manifest)
-            report_text = _manifest_markdown(manifest, manifest_path, check)
-            index: dict[str, Any] = {
-                "run_id": run_id,
-                "created_at": _now_iso(),
-                "include_inputs": include_inputs,
-                "include_outputs": include_outputs,
-                "manifest_path": str(manifest_path or ""),
-                "included": [],
-                "missing": [],
-            }
-            used = {"manifest.json", "report.md", "package_index.json"}
-            tmp = package_path.with_suffix(package_path.suffix + ".tmp")
-            with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-                zf.writestr("manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-                zf.writestr("report.md", report_text)
-                if include_outputs:
-                    included, missing = _add_records_to_zip(zf, manifest.get("outputs"), "outputs", used)
-                    index["included"].extend(included)
-                    index["missing"].extend(missing)
-                if include_inputs:
-                    included, missing = _add_records_to_zip(zf, manifest.get("input_files"), "inputs", used)
-                    index["included"].extend(included)
-                    index["missing"].extend(missing)
-                zf.writestr("package_index.json", json.dumps(index, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
-            os.replace(tmp, package_path)
-
-            return jsonify(
-                {
-                    "ok": True,
-                    "manifest_path": str(manifest_path or ""),
-                    "package_path": str(package_path),
-                    "included_count": len(index["included"]),
-                    "missing_count": len(index["missing"]),
-                    "index": index,
-                    "check": check,
-                }
-            )
+            return jsonify(_package_run_history_body(None, request.json or {}))
         except Exception as exc:
             return err(exc)

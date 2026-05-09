@@ -1,0 +1,229 @@
+.gif-stack-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.gif-stack-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.gif-stack-count {
+  font-size: 11px;
+  color: var(--pewter);
+  background: var(--ash);
+  border: 1px solid var(--cloud);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.gif-stack-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.gif-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.gif-file-row {
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, #fff, #fbfbfc);
+  border-radius: 8px;
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(23, 26, 32, 0.03);
+}
+.gif-file-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gif-file-index {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+.gif-file-summary {
+  flex: 1;
+  min-width: 0;
+}
+.gif-file-name {
+  color: var(--carbon);
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gif-file-sub {
+  color: var(--silver);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.gif-pill-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.gif-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border-radius: 999px;
+  border: 1px solid #dbe4ff;
+  background: #f2f5ff;
+  color: var(--blue);
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.gif-pill-muted {
+  border-color: var(--cloud);
+  background: var(--ash);
+  color: var(--pewter);
+}
+.gif-file-path-row,
+.gif-slice-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.gif-mini-label {
+  width: 44px;
+  flex-shrink: 0;
+  color: var(--silver);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.gif-file-row input[type="text"] {
+  min-width: 0;
+  flex: 1;
+  height: 30px;
+  font-size: 11.5px;
+  background: #fff;
+}
+.gif-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gif-row-actions .btn-icon,
+.gif-file-path-row .btn-icon {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.gif-row-actions .btn-danger {
+  color: #9d2f2f;
+  border-color: #efd4d4;
+}
+.gif-row-actions .btn-danger:hover {
+  background: #fff4f4;
+  border-color: #e1aaaa;
+}
+.gif-empty-state {
+  border: 1px dashed #d7dbe3;
+  border-radius: 8px;
+  background: #fbfcff;
+  padding: 14px 10px;
+  color: var(--silver);
+  font-size: 12px;
+  text-align: center;
+}
+.gif-available-list {
+  max-height: 210px;
+  overflow-y: auto;
+}
+.gif-available-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.gif-available-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gif-available-meta {
+  color: var(--silver);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.gif-preview-wrap {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+.gif-preview-wrap img {
+  display: block;
+  max-width: 100%;
+  max-height: 560px;
+  image-rendering: pixelated;
+}
+.gif-roi-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: crosshair;
+}
+.gif-roi-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 8px;
+}
+.gif-roi-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--cloud);
+  border-radius: 6px;
+  background: #fff;
+  padding: 5px 7px;
+}
+.gif-roi-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.gif-roi-name {
+  flex: 1;
+  min-width: 0;
+  color: var(--pewter);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
