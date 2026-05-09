@@ -14,7 +14,7 @@ instead of pretending they can run.
 
 - `registry.json` - editable catalog for humans and reviewers.
 - `registry.py` - loader, validation, availability checks, and script lookup.
-- `pipeline_readmes/` - domain notes that explain the scientific workflow.
+- `docs/pipelines/` - domain notes that explain the scientific workflow.
 
 ## Adding A Pipeline
 
@@ -22,5 +22,5 @@ instead of pretending they can run.
 2. Give it a stable `id`; run history and saved settings key off this value.
 3. Add parameter definitions with `key`, `label`, `type`, optional `default`,
    `desc`, and `options` where needed.
-4. Document the workflow in `pipeline_readmes/`.
+4. Document the workflow in `docs/pipelines/`.
 5. Run `python -m unittest discover -s tests` and `ruff check .`.

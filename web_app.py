@@ -73,6 +73,12 @@ def _project_version() -> str:
 
 
 def _git_commit() -> str:
+    for key in ("BIOELECTRONICS_TOOLKIT_COMMIT", "BTE_COMMIT", "GITHUB_SHA"):
+        value = (os.environ.get(key) or "").strip()
+        if value:
+            return value[:7]
+    if not (BASE_DIR / ".git").exists():
+        return ""
     try:
         proc = subprocess.run(
             ["git", "rev-parse", "--short=7", "HEAD"],
@@ -82,13 +88,14 @@ def _git_commit() -> str:
             text=True,
             timeout=2,
         )
-        return proc.stdout.strip() or "unknown"
+        return proc.stdout.strip()
     except Exception:
-        return "unknown"
+        return ""
 
 
 APP_VERSION = _project_version()
 APP_COMMIT = _git_commit()
+APP_VERSION_LABEL = f"v{APP_VERSION}" + (f" · {APP_COMMIT}" if APP_COMMIT else "")
 
 
 @app.context_processor
@@ -96,8 +103,19 @@ def inject_template_defaults():
     return {
         "app_commit": APP_COMMIT,
         "app_version": APP_VERSION,
+        "app_version_label": APP_VERSION_LABEL,
         "default_data_dir": "",
         "default_examples_dir": "examples",
+    }
+
+
+@app.route("/api/version")
+def api_version():
+    return {
+        "ok": True,
+        "version": APP_VERSION,
+        "commit": APP_COMMIT,
+        "label": APP_VERSION_LABEL,
     }
 
 

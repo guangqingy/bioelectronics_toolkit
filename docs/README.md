@@ -1,7 +1,7 @@
 # Maintenance Docs
 
-These notes describe repository-level maintenance decisions. They are separate
-from `pipeline_readmes/`, which documents data-analysis workflows.
+These notes describe repository-level maintenance decisions. Pipeline workflow
+notes live under `docs/pipelines/`.
 
 ## Index
 

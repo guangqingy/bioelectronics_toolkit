@@ -49,11 +49,12 @@ The source launcher modules are grouped under `desktop_apps/launchers/`.
 
 | Command | What it does |
 | --- | --- |
-| `bte-emg-viewer` | Viewer for Intan `.rhd` recordings. |
+| `bte-rhd-viewer` | Viewer for Intan `.rhd` recordings. |
 | `bte-emg-peaks` | Manual / semi-automatic peak selection on EMG traces. |
 
 Intan `.rhd` parsing is provided by the vendored reference parser under
-`vendor/intan/`.
+`vendor/intan/`. `bte-emg-viewer` remains as a backward-compatible alias for
+`bte-rhd-viewer`.
 
 ### Fluorescence imaging
 
@@ -76,6 +77,9 @@ Intan `.rhd` parsing is provided by the vendored reference parser under
 behind a unified browser UI. See [`WEB_README.md`](./WEB_README.md) for the
 internal architecture (route modules, templates, shared helpers, API response
 contracts, background jobs, and local cache behavior).
+
+The WebGUI is designed for desktop browsers (Chrome, Safari, Firefox, or Edge).
+Mobile browsers are not a primary target for this local lab workflow.
 
 ```bash
 python3 web_app.py
@@ -194,6 +198,15 @@ Additional screenshots:
 
 ![Fluorescence ROI screenshot](web_static/img/screenshot_fluorescence_roi.png)
 
+## Pipeline Runner
+
+The Pipeline Runner is catalog-driven by [`pipelines/registry.json`](./pipelines/registry.json).
+For external users, it primarily documents available workflow categories and
+parameter shapes. The current registered model scripts point at local
+project-specific analysis trees such as `2025_Subcutaneous/`; a fresh public
+clone will mark those entries as `Local script missing` until the matching
+project data/script tree is present.
+
 ## Project layout
 
 ```text
@@ -203,6 +216,7 @@ bioelectronics_toolkit/
 ├── config.py                       # config loader
 ├── config.example.json             # config template (copy to config.json)
 ├── web_gui_settings.example.json    # Web GUI local settings template
+├── dev_scripts/                    # maintainer-only repository scripts
 ├── .gitignore
 │
 ├── desktop_apps/
@@ -219,10 +233,9 @@ bioelectronics_toolkit/
 ├── web_static/                     # CSS / JS assets
 ├── WEB_README.md                   # web-app architecture notes
 ├── docs/                           # repository structure and parity notes
+│   └── pipelines/                  # data-processing pipeline docs
 ├── tests/                          # stdlib unittest contract/smoke tests
 ├── pipelines/                      # canonical WebGUI pipeline registry
-│
-└── pipeline_readmes/               # data-processing pipeline docs
 ```
 
 ## Development notes
@@ -244,7 +257,7 @@ bioelectronics_toolkit/
   `services/fluorescence/lut.py` is added.
 - Pipeline metadata lives in [`pipelines/`](./pipelines/). Pipeline-level
   documentation (per analysis flow) lives under
-  [`pipeline_readmes/`](./pipeline_readmes/).
+  [`docs/pipelines/`](./docs/pipelines/).
 - Before committing Web GUI changes, run:
 
   ```bash
@@ -253,6 +266,7 @@ bioelectronics_toolkit/
   python3 -m ruff check web_api --select F --ignore E402
   python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
   python3 -m unittest discover -s tests
+  python3 dev_scripts/check_analysis_scripts.py
   ```
 
 - CI intentionally applies two lint levels: a whole-repository baseline for

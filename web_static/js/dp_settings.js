@@ -264,11 +264,22 @@ function syncPrefsJson() {
 
 async function openPrefsModal() {
   document.getElementById('prefsOverlay').classList.add('show');
+  openPrefsTab('defaults');
   await loadPrefsModal();
 }
 
 function closePrefsModal() {
   document.getElementById('prefsOverlay').classList.remove('show');
+}
+
+function openPrefsTab(tab) {
+  const active = tab || 'defaults';
+  document.querySelectorAll('.prefs-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.prefsTab === active);
+  });
+  document.querySelectorAll('[data-prefs-tab-panel]').forEach(panel => {
+    panel.hidden = panel.dataset.prefsTabPanel !== active;
+  });
 }
 
 async function loadPrefsModal() {

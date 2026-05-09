@@ -38,8 +38,8 @@ This folder documents how each script pipeline category integrates with the GUI 
 
 ## Dev Utilities
 
-- `scripts/check_analysis_scripts.py` — audits project analysis scripts for import-safety conventions.
-  Run from the repo root: `python3 scripts/check_analysis_scripts.py`
+- `dev_scripts/check_analysis_scripts.py` — audits project analysis scripts for import-safety conventions.
+  Run from the repo root: `python3 dev_scripts/check_analysis_scripts.py`
 
 ## Maintenance Notes
 

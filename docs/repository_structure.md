@@ -20,10 +20,11 @@ DataProcess/
 +-- web_static/               # CSS and shared JavaScript
 +-- vendor/                   # vendored reference parsers kept out of root
 +-- examples/                 # tiny synthetic demo data
++-- dev_scripts/              # maintainer-only repository scripts
 +-- pipelines/                # canonical WebGUI pipeline registry
 +-- tests/                    # smoke and contract tests
-+-- pipeline_readmes/         # domain pipeline notes and audits
 +-- docs/                     # repository-level maintenance notes
+|   +-- pipelines/            # domain pipeline notes and audits
 ```
 
 This shape is supported by `pyproject.toml`, where GUI console scripts point at
@@ -96,7 +97,7 @@ problem.
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.
 - Update `README.md`, `WEB_README.md`, and the relevant file in
-  `pipeline_readmes/` whenever a user-facing workflow changes.
+  `docs/pipelines/` whenever a user-facing workflow changes.
 
 ## Suggested Refactor Order
 

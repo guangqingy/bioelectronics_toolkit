@@ -9,7 +9,7 @@ Scope:
   `desktop_apps/`, `services/`, `pipelines/`, `tests/`, `vendor/`,
   `web_api/`, `web_static/`, virtual environments, build/dist, and
   `__pycache__`.
-- Total checked: 121 scripts.
+- Total checked: 120 scripts.
 - Syntax status: no Python syntax errors found by AST parsing or `py_compile`.
 
 Reference style from `2025_Subcutaneous`:
@@ -66,8 +66,8 @@ Mechanical changes applied:
 - Moved top-level `OUT_DIR.mkdir(...)`, `OUT_BASE.mkdir(...)`, and related output-folder creation into `main()` or guarded `run_all()`.
 - Corrected the active `2025_Subcellular_Stimulation/Photocurrent/group_1_material_peaks.py` header and peak-description comment.
 - Added `2025_Subcutaneous/Photocurrent/temp_scripts_index.md` to document legacy temp scripts without moving them.
-- Added `scripts/check_analysis_scripts.py` so the audit can be rerun.
-- Added `pipeline_readmes/analysis_script_standard.md` as the standard format for future non-GUI analysis scripts.
+- Added `dev_scripts/check_analysis_scripts.py` so the audit can be rerun.
+- Added `docs/pipelines/analysis_script_standard.md` as the standard format for future non-GUI analysis scripts.
 
 ## Remaining Cleanup
 
@@ -90,11 +90,11 @@ These are not syntax or import-safety blockers, but they should still be cleaned
 ## Verification
 
 Commands run:
-- AST parse over 121 checked non-GUI scripts.
+- AST parse over 120 checked non-GUI scripts.
 - `py_compile` over checked non-GUI scripts.
-- `python scripts/check_analysis_scripts.py`
+- `python dev_scripts/check_analysis_scripts.py`
 
 Result:
 - No syntax errors.
 - All checked non-GUI scripts are guarded against accidental execution during import.
-- Reusable checker reports 121 checked scripts, 0 blocking issues, and 10 temp/test named scripts to clean up later.
+- Reusable checker reports 120 checked scripts, 0 blocking issues, and 10 temp/test named scripts to clean up later.

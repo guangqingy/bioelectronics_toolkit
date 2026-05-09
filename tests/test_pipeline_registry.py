@@ -41,6 +41,16 @@ class PipelineRegistryTests(unittest.TestCase):
         self.assertTrue(all("resolved_script_path" not in script for script in scripts))
         self.assertTrue(any(script["available"] is False for script in scripts))
 
+    def test_pipeline_category_docs_live_under_docs_pipelines(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        catalog = pipeline_catalog()
+
+        for category in catalog["categories"]:
+            with self.subTest(category=category["id"]):
+                doc_path = category.get("documentation", "")
+                self.assertTrue(doc_path.startswith("docs/pipelines/"), doc_path)
+                self.assertTrue((root / doc_path).is_file(), doc_path)
+
     def test_backend_lookup_keeps_resolved_path_internal(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_pipeline_lookup_") as tmp:
             fake_script = (

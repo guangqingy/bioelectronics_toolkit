@@ -30,6 +30,18 @@ def project_scripts() -> dict[str, str]:
 
 
 class ConsoleEntrypointTests(unittest.TestCase):
+    def test_rhd_viewer_has_primary_command_and_emg_compatibility_alias(self) -> None:
+        scripts = project_scripts()
+
+        self.assertEqual(
+            scripts.get("bte-rhd-viewer"),
+            "desktop_apps.web_launcher:rhd_viewer_main",
+        )
+        self.assertEqual(
+            scripts.get("bte-emg-viewer"),
+            "desktop_apps.web_launcher:emg_rhd_main",
+        )
+
     def test_all_project_scripts_import_callable_main(self) -> None:
         scripts = project_scripts()
         self.assertGreaterEqual(len(scripts), 1)

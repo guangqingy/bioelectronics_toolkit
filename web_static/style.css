@@ -212,7 +212,7 @@ body {
   border-radius: var(--radius-sm);
   color: var(--silver);
   font-family: "SF Mono", "Menlo", monospace;
-  font-size: 11px;
+  font-size: 13px;
   padding: 4px 7px;
   white-space: nowrap;
 }
@@ -874,6 +874,28 @@ table.dp-table tr:hover td { background: var(--ash); }
   flex-direction: column;
   gap: 12px;
 }
+.prefs-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+}
+.prefs-tab {
+  border: 1px solid #d7dce6;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--pewter);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+.prefs-tab:hover,
+.prefs-tab.active {
+  border-color: #cbd6f6;
+  background: #F2F5FF;
+  color: var(--blue);
+}
 .prefs-layout {
   display: grid;
   grid-template-columns: minmax(260px, 0.8fr) minmax(360px, 1.2fr);
@@ -892,6 +914,9 @@ table.dp-table tr:hover td { background: var(--ash); }
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+.prefs-wide {
+  width: 100%;
 }
 .prefs-row {
   display: grid;
@@ -1240,6 +1265,56 @@ table.dp-table tr:hover td { background: var(--ash); }
 
 .shortcut-card {
   width: min(620px, 100%);
+}
+.command-card {
+  width: min(720px, 100%);
+}
+.command-search {
+  width: 100%;
+  min-height: 42px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+}
+.command-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--graphite);
+  cursor: pointer;
+  padding: 9px 10px;
+  text-align: left;
+}
+.command-item:hover,
+.command-item.active {
+  border-color: #d7e0f5;
+  background: #F2F5FF;
+}
+.command-main {
+  font-size: 14px;
+  font-weight: 650;
+}
+.command-meta {
+  color: var(--silver);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+}
+.command-empty {
+  border: 1px dashed #d7dbe3;
+  border-radius: var(--radius-sm);
+  color: var(--silver);
+  padding: 16px;
+  text-align: center;
 }
 .confirm-card {
   width: min(560px, 100%);

@@ -153,7 +153,7 @@ Completed jobs also show an inferred output count and first output path when ava
   documents the expected shape.
 - Removed tracked local editor/agent configuration from the repository and
   ignored `.claude/` and `.vscode/`.
-- Updated `README.md`, `WEB_README.md`, and `pipeline_readmes/README.md` with
+- Updated `README.md`, `WEB_README.md`, and `docs/pipelines/README.md` with
   current validation and cache behavior.
 
 ## Migration Direction

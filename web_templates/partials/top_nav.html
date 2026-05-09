@@ -70,9 +70,10 @@
       {% endif %}
     </div>
     <div class="nav-right">
+      <button id="commandBtn" class="nav-settings" type="button" onclick="openCommandPalette()" title="Command palette">Search</button>
       <button id="shortcutBtn" class="nav-settings" type="button" onclick="openShortcutModal()" title="Keyboard shortcuts">?</button>
       <button id="prefsBtn" class="nav-settings" type="button" onclick="openPrefsModal()">Settings</button>
-      <span class="nav-version" title="bioelectronics_toolkit v{{ app_version }} · commit {{ app_commit }}">v{{ app_version }} · {{ app_commit }}</span>
+      <span class="nav-version" title="bioelectronics_toolkit {{ app_version_label }}">{{ app_version_label }}</span>
       <button id="logoutBtn" class="nav-logout" type="button" onclick="logoutServer()">Log Out</button>
     </div>
   </div>

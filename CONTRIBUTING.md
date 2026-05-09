@@ -69,6 +69,15 @@ the matching WebGUI route by default.
 6. Register or adjust console scripts in `pyproject.toml`.
 7. Add tests under `tests/` for the service, launcher, and API contract.
 8. Update `README.md`, `WEB_README.md`, and the relevant `docs/` note.
+9. Use full user-facing names in navigation and cards; keep abbreviations only
+   when the full name is also visible.
+10. Make the workflow keyboard-navigable: focus states visible, dropdowns usable
+   with focus, and common actions reachable without mouse-only gestures.
+11. Send blocking errors through the persistent error banner, use toast messages
+   for short-lived success feedback, and prefer `setStatus(...)` for inline
+   page state.
+12. For Pipeline Runner entries, use stable `snake_case` script IDs and do not
+   rename them once saved settings or run manifests may exist.
 
 ## Adding a new web blueprint
 

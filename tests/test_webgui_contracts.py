@@ -171,7 +171,20 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Fluorescence", html)
         self.assertIn("Photocurrent", html)
         self.assertIn("Intan RHD Viewer", html)
+        self.assertIn("Command Palette", html)
+        self.assertIn("commandPalette", html)
         self.assertIn("v0.2.0", html)
+        self.assertNotIn("unknown", html.lower())
+
+    def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
+        response = self.client.get("/api/version")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertEqual(payload["version"], "0.2.0")
+        self.assertTrue(payload["label"].startswith("v0.2.0"))
+        self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_abf_dry_run_") as tmp:
@@ -205,6 +218,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/system/select_folder",
             "/api/system/select_file",
             "/api/system/logout",
+            "/api/version",
             "/api/fluorescence/browse",
             "/api/fluorescence/stack_export",
             "/api/fluorescence/stack_export_job",
@@ -230,6 +244,33 @@ class WebAppSmokeTests(unittest.TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertGreater(len(response.data), 100)
                 response.close()
+
+    def test_core_js_exposes_command_palette_and_file_list_filter_contracts(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        core_js = (root / "web_static" / "js" / "dp_core.js").read_text(encoding="utf-8")
+
+        self.assertIn("function openCommandPalette()", core_js)
+        self.assertIn("function closeCommandPalette()", core_js)
+        self.assertIn("metaKey || ev.ctrlKey", core_js)
+        self.assertIn("ev.key.toLowerCase() === 'k'", core_js)
+        self.assertIn("function filterFileList(listId)", core_js)
+        self.assertIn("function installFileListFilters()", core_js)
+        self.assertNotIn("btn.click();\n        btn.click();", core_js)
+
+    def test_settings_modal_uses_tabs_instead_of_one_long_panel(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        modal = (
+            root / "web_templates" / "partials" / "preferences_modal.html"
+        ).read_text(encoding="utf-8")
+        settings_js = (root / "web_static" / "js" / "dp_settings.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('data-prefs-tab="defaults"', modal)
+        self.assertIn('data-prefs-tab="history"', modal)
+        self.assertIn('data-prefs-tab-panel="jobs"', modal)
+        self.assertIn('data-prefs-tab-panel="json"', modal)
+        self.assertIn("function openPrefsTab(tab)", settings_js)
 
     def test_fluorescence_split_routes_handle_small_tiff(self) -> None:
         try:

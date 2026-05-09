@@ -6,7 +6,7 @@
       "id": "photocurrent",
       "label": "Photocurrent Analysis",
       "description": "Publication-oriented photocurrent plots generated from ABF batch outputs.",
-      "documentation": "pipeline_readmes/photocurrent_pipeline_README.md",
+      "documentation": "docs/pipelines/photocurrent_pipeline_README.md",
       "scripts": [
         {
           "id": "pc_line_chart",
@@ -254,7 +254,7 @@
       "id": "emg",
       "label": "EMG Analysis",
       "description": "Post-processing and figure pipelines for EMG peak exports.",
-      "documentation": "pipeline_readmes/emg_pipeline_README.md",
+      "documentation": "docs/pipelines/emg_pipeline_README.md",
       "scripts": [
         {
           "id": "emg_demo",
@@ -458,7 +458,7 @@
       "id": "echem_curves",
       "label": "Echem Curves",
       "description": "Dataset-specific electrochemistry curve figure scripts.",
-      "documentation": "pipeline_readmes/echem_curve_pipeline_README.md",
+      "documentation": "docs/pipelines/echem_curve_pipeline_README.md",
       "scripts": [
         {
           "id": "echem_pc_curve",
@@ -484,7 +484,7 @@
       "id": "viability",
       "label": "Cell Viability",
       "description": "Dataset-specific live/dead cell viability figure scripts.",
-      "documentation": "pipeline_readmes/viability_pipeline_README.md",
+      "documentation": "docs/pipelines/viability_pipeline_README.md",
       "scripts": [
         {
           "id": "viab_watershed_area",

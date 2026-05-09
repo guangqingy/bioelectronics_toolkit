@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Cmd/Ctrl+K command palette for jumping to WebGUI tools, demos, pipeline
+  categories, run history, and the version API.
+- `/api/version` endpoint for machine-readable WebGUI version and commit
+  metadata.
+- `bte-rhd-viewer` console command as the primary Intan RHD viewer entry point,
+  with `bte-emg-viewer` retained as a compatibility alias.
 - Canonical `pipelines/` registry for WebGUI Pipeline Runner categories,
   scripts, parameters, documentation links, and local availability checks.
 - WebGUI version/commit display, keyboard-shortcut help, persistent error
@@ -16,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operation logs under `.dataprocess_cache/operation_logs/`.
 
 ### Changed
+- Pipeline documentation moved under `docs/pipelines/`, and maintainer scripts
+  moved under `dev_scripts/` to separate public workflow docs from repository
+  maintenance utilities.
+- Settings modal sections are separated into tabs for defaults, run history,
+  jobs, and advanced JSON.
+- Version labels omit commit metadata when the commit is unavailable instead of
+  showing `unknown`.
 - Pipeline Runner page and API now consume `pipelines/registry.json` instead of
   maintaining duplicate script maps in the route module and template.
 - Dashboard now starts with demo-data entry points, recently used tools, and an
@@ -111,7 +124,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Project metadata via `pyproject.toml` (PEP 621), including `[project.scripts]`
   console-script entry points (`bte-abf-batch`, `bte-echem-pc`, `bte-web`, …).
 - MIT license, top-level README, dependency metadata, and pipeline
-  documentation under `pipeline_readmes/`.
+  documentation under `docs/pipelines/`.
 - GitHub Actions CI workflow (lint + unittest + compileall).
 - `sync_to_github.sh` helper script for quick chore-style syncs.
 

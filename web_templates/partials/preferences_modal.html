@@ -8,7 +8,13 @@
       <button class="btn-icon" type="button" onclick="closePrefsModal()">Close</button>
     </div>
     <div class="modal-body prefs-body">
-      <div class="prefs-layout">
+      <div class="prefs-tabs" role="tablist" aria-label="Settings sections">
+        <button class="prefs-tab active" type="button" data-prefs-tab="defaults" onclick="openPrefsTab('defaults')">Defaults</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="history" onclick="openPrefsTab('history')">Run History</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="jobs" onclick="openPrefsTab('jobs')">Jobs</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="json" onclick="openPrefsTab('json')">Advanced JSON</button>
+      </div>
+      <div class="prefs-layout" data-prefs-tab-panel="defaults">
         <div class="prefs-pane prefs-side">
           <div class="prefs-row">
             <label class="prefs-label" for="prefsViewSelect">Interface</label>
@@ -31,20 +37,6 @@
           <div class="prefs-hint">
             Defaults saved here are used when that interface opens. File profiles and run manifests are stored in each project's .dataprocess_cache folder.
           </div>
-
-          <div class="prefs-card">
-            <div class="prefs-section-title">Run History</div>
-            <button class="btn-secondary btn-block" type="button" onclick="loadRunHistoryForCurrentProject()">Refresh Recent Runs</button>
-            <div class="prefs-file" id="runHistoryRoot" style="margin-top:8px">Project folder not detected</div>
-            <div id="runHistoryList" class="run-history-list"></div>
-            <pre id="runHistoryDetails" class="run-history-details"></pre>
-          </div>
-
-          <div class="prefs-card">
-            <div class="prefs-section-title">Background Jobs</div>
-            <button class="btn-secondary btn-block" type="button" onclick="loadBackgroundJobs(false)">Refresh Jobs</button>
-            <div id="backgroundJobList" class="run-history-list"></div>
-          </div>
         </div>
 
         <div class="prefs-pane prefs-main">
@@ -64,7 +56,21 @@
         </div>
       </div>
 
-      <details class="prefs-advanced">
+      <div class="prefs-card prefs-wide" data-prefs-tab-panel="history">
+        <div class="prefs-section-title">Run History</div>
+        <button class="btn-secondary btn-block" type="button" onclick="loadRunHistoryForCurrentProject()">Refresh Recent Runs</button>
+        <div class="prefs-file" id="runHistoryRoot" style="margin-top:8px">Project folder not detected</div>
+        <div id="runHistoryList" class="run-history-list"></div>
+        <pre id="runHistoryDetails" class="run-history-details"></pre>
+      </div>
+
+      <div class="prefs-card prefs-wide" data-prefs-tab-panel="jobs">
+        <div class="prefs-section-title">Background Jobs</div>
+        <button class="btn-secondary btn-block" type="button" onclick="loadBackgroundJobs(false)">Refresh Jobs</button>
+        <div id="backgroundJobList" class="run-history-list"></div>
+      </div>
+
+      <details class="prefs-advanced" data-prefs-tab-panel="json" open>
         <summary>Advanced JSON</summary>
         <textarea id="prefsJson" class="prefs-json" spellcheck="false"></textarea>
         <div class="prefs-actions">

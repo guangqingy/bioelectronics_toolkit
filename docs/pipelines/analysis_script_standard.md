@@ -68,7 +68,7 @@ if __name__ == "__main__":
 Run:
 
 ```bash
-python scripts/check_analysis_scripts.py
+python dev_scripts/check_analysis_scripts.py
 ```
 
 Expected healthy result:

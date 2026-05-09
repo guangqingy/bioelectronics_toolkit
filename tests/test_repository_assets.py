@@ -40,6 +40,14 @@ class RepositoryAssetTests(unittest.TestCase):
                 self.assertTrue(asset.exists())
                 self.assertGreater(asset.stat().st_size, 1000)
 
+    def test_maintenance_scripts_and_pipeline_docs_have_clear_homes(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+
+        self.assertTrue((root / "dev_scripts" / "check_analysis_scripts.py").is_file())
+        self.assertTrue((root / "docs" / "pipelines" / "README.md").is_file())
+        self.assertFalse((root / "scripts").exists())
+        self.assertFalse((root / "pipeline_readmes").exists())
+
     def test_tracked_text_files_do_not_expose_developer_absolute_paths(self) -> None:
         root = Path(__file__).resolve().parents[1]
         offenders = []
