@@ -1,5 +1,7 @@
+import json
 import re
 import traceback
+from datetime import datetime
 from pathlib import Path
 
 import numpy as np
@@ -10,6 +12,8 @@ from services import abf as abf_service
 
 from .jobs import submit_json_task
 from .response import api_ok
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
 
 
 def register_abf_batch_routes(app, ctx):
@@ -24,6 +28,14 @@ def register_abf_batch_routes(app, ctx):
     def _abf_estimate_r(i_trace, v_trace, dt):
         """Estimate resistance from V-step edges via dV/dI."""
         return abf_service.estimate_resistance(i_trace, v_trace, dt)
+
+    def _write_abf_batch_operation_log(payload: dict) -> str:
+        log_dir = ROOT_DIR / ".dataprocess_cache" / "operation_logs"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = log_dir / f"abf_batch_{stamp}.json"
+        path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+        return str(path)
 
     def _abf_batch_process_payload(d: dict) -> dict:
         if not has_abf or pyabf_mod is None:
@@ -43,6 +55,7 @@ def register_abf_batch_routes(app, ctx):
         peak_window = float_or(d.get("peak_window", 200), 200)
         move_files = bool(d.get("move_files", True))
         reindex_seq = bool(d.get("reindex_seq", False))
+        dry_run = bool(d.get("dry_run", False))
 
         p = Path(folder)
         abf_files = sorted(p.rglob("*.abf"))
@@ -90,6 +103,7 @@ def register_abf_batch_routes(app, ctx):
 
         moved_count = 0
         renamed_count = 0
+        operations = []
 
         for item in parsed:
             af = Path(item["path"])
@@ -102,15 +116,26 @@ def register_abf_batch_routes(app, ctx):
             cur_path = af
             if move_files:
                 sample_dir = p / f"{mn}_{tr}" / f"sample_{samp}"
-                sample_dir.mkdir(parents=True, exist_ok=True)
                 dest_path = sample_dir / cur_path.name
                 try:
                     if cur_path.resolve() != dest_path.resolve():
-                        if not dest_path.exists():
-                            cur_path = cur_path.rename(dest_path)
+                        operations.append(
+                            {
+                                "action": "move",
+                                "source": str(cur_path),
+                                "destination": str(dest_path),
+                            }
+                        )
+                        if dry_run:
+                            cur_path = dest_path
                             moved_count += 1
                         else:
-                            warnings.append(f"Move skipped (exists): {dest_path.name}")
+                            sample_dir.mkdir(parents=True, exist_ok=True)
+                            if not dest_path.exists():
+                                cur_path = cur_path.rename(dest_path)
+                                moved_count += 1
+                            else:
+                                warnings.append(f"Move skipped (exists): {dest_path.name}")
                 except Exception as e:
                     warnings.append(f"Move failed for {cur_path.name}: {e}")
 
@@ -127,6 +152,18 @@ def register_abf_batch_routes(app, ctx):
                         new_path = cur_path.with_name(new_stem + cur_path.suffix)
                         try:
                             if cur_path.resolve() != new_path.resolve():
+                                operations.append(
+                                    {
+                                        "action": "rename",
+                                        "source": str(cur_path),
+                                        "destination": str(new_path),
+                                    }
+                                )
+                                if dry_run:
+                                    cur_path = new_path
+                                    renamed_count += 1
+                                    seq_i = new_seq
+                                    continue
                                 if not new_path.exists():
                                     cur_path = cur_path.rename(new_path)
                                     renamed_count += 1
@@ -135,6 +172,9 @@ def register_abf_batch_routes(app, ctx):
                         except Exception as e:
                             warnings.append(f"Rename failed for {cur_name}: {e}")
                         seq_i = new_seq
+
+            if dry_run:
+                continue
 
             try:
                 abf = pyabf_mod.ABF(str(cur_path))
@@ -177,12 +217,68 @@ def register_abf_batch_routes(app, ctx):
             except Exception:
                 continue
 
+        if dry_run:
+            log_payload = {
+                "mode": "dry_run",
+                "created_at": datetime.now().isoformat(timespec="seconds"),
+                "folder": str(p),
+                "main": main_token,
+                "treat": treat_token,
+                "move_files": move_files,
+                "reindex_seq": reindex_seq,
+                "planned_count": len(operations),
+                "planned_move_count": sum(1 for op in operations if op["action"] == "move"),
+                "planned_rename_count": sum(1 for op in operations if op["action"] == "rename"),
+                "operations": operations,
+                "warnings": warnings,
+            }
+            log_path = _write_abf_batch_operation_log(log_payload)
+            return {
+                "dry_run": True,
+                "message": f"Dry run planned {len(operations)} filesystem operation(s)",
+                "n": 0,
+                "rows": [],
+                "results": [],
+                "plan": operations[:200],
+                "planned_count": len(operations),
+                "moved_count": log_payload["planned_move_count"],
+                "renamed_count": log_payload["planned_rename_count"],
+                "warnings": warnings[:100],
+                "operation_log_path": log_path,
+                "outputs": [{"path": log_path, "type": "json", "role": "operation_log"}],
+            }
+
         if not records:
+            log_path = ""
+            outputs = []
+            if operations or warnings:
+                log_path = _write_abf_batch_operation_log(
+                    {
+                        "mode": "apply",
+                        "created_at": datetime.now().isoformat(timespec="seconds"),
+                        "folder": str(p),
+                        "main": main_token,
+                        "treat": treat_token,
+                        "move_files": move_files,
+                        "reindex_seq": reindex_seq,
+                        "moved_count": moved_count,
+                        "renamed_count": renamed_count,
+                        "processed_count": 0,
+                        "operations": operations,
+                        "warnings": warnings,
+                    }
+                )
+                outputs = [{"path": log_path, "type": "json", "role": "operation_log"}]
             return {
                 "message": "No matching files processed",
                 "n": 0,
                 "rows": [],
                 "results": [],
+                "moved_count": moved_count,
+                "renamed_count": renamed_count,
+                "operation_log_path": log_path,
+                "outputs": outputs,
+                "warnings": warnings[:100],
             }
 
         df = pd.DataFrame(records)
@@ -203,6 +299,23 @@ def register_abf_batch_routes(app, ctx):
                 }
             )
 
+        log_payload = {
+            "mode": "apply",
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "folder": str(p),
+            "main": main_token,
+            "treat": treat_token,
+            "move_files": move_files,
+            "reindex_seq": reindex_seq,
+            "moved_count": moved_count,
+            "renamed_count": renamed_count,
+            "processed_count": len(records),
+            "csv_path": str(csv_path),
+            "operations": operations,
+            "warnings": warnings,
+        }
+        log_path = _write_abf_batch_operation_log(log_payload)
+
         return {
             "message": f"Processed {len(records)} files. Saved: {csv_path}",
             "n": len(records),
@@ -212,7 +325,11 @@ def register_abf_batch_routes(app, ctx):
             "moved_count": moved_count,
             "renamed_count": renamed_count,
             "warnings": warnings[:100],
-            "outputs": [{"path": str(csv_path), "type": "csv", "role": "abf_batch_summary"}],
+            "operation_log_path": log_path,
+            "outputs": [
+                {"path": str(csv_path), "type": "csv", "role": "abf_batch_summary"},
+                {"path": log_path, "type": "json", "role": "operation_log"},
+            ],
         }
 
     def _abf_batch_process_task(job_ctx, body: dict) -> dict:

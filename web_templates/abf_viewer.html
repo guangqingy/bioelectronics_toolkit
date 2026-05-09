@@ -6,7 +6,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Folder</div>
   <div class="input-row abf-folder-row">
-    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/folder" value="/Users/guangqing/Desktop/UChicago/DataProcess"/>
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/folder" value="{{ default_data_dir }}"/>
   </div>
   <div class="btn-row abf-folder-actions">
     <button class="btn-secondary" type="button" onclick="pickFolder('folderPath','scanFolder')">Choose</button>
@@ -218,9 +218,7 @@ function baseName(path) {
 }
 
 function setStatusBar(message, kind) {
-  const bar = document.getElementById("status");
-  bar.textContent = message;
-  bar.className = "status-bar" + (kind ? " status-" + kind : "");
+  setStatus("status", message, kind || "");
 }
 
 function updateBreadcrumb(path) {
@@ -610,6 +608,9 @@ window.addEventListener("load", function() {
   const main = document.getElementById("mainContent");
   if (ctrl) ctrl.classList.add("abf-panel");
   if (main) main.classList.add("abf-main");
+  if (new URLSearchParams(window.location.search).get("demo") === "abf") {
+    document.getElementById("folderPath").value = DEFAULT_DATA_DIR + "/examples";
+  }
   renderQueue();
   scanFolder();
 });

@@ -23,13 +23,13 @@
   <div class="ctrl-label">Files To Analyze</div>
   <div id="analysisList" class="file-list" style="max-height:170px"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary" onclick="removeActiveAnalysisPair()">Remove</button>
-    <button class="btn-secondary" onclick="clearAnalysisList()">Clear</button>
+    <button class="btn-secondary btn-danger" onclick="removeActiveAnalysisPair()">Remove</button>
+    <button class="btn-secondary btn-danger" onclick="clearAnalysisList()">Clear</button>
   </div>
   <div id="analysisCount" class="status-bar" style="padding-top:6px">0 selected</div>
 </div>
 
-<div class="ctrl-section" id="stackSection" style="display:none">
+<div class="ctrl-section" id="stackSection" style="display:none" data-resettable="true">
   <div class="ctrl-label">Preview</div>
   <div class="param-row">
     <div class="param-label">Stack</div>
@@ -63,10 +63,10 @@
   </div>
 </div>
 
-<div class="ctrl-section">
+<div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI Manager</span>
-    <button class="btn-secondary" style="font-size:11px;padding:2px 8px" onclick="addRoi()">+ Add ROI</button>
+    <button class="btn-icon" style="font-size:11px;padding:2px 8px" onclick="addRoi()">+ Add ROI</button>
   </div>
   <div id="roiList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
 	  <div class="param-row" style="margin-top:8px">
@@ -92,7 +92,7 @@
   </div>
 </div>
 
-<div class="ctrl-section">
+<div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Background</div>
   <div class="param-row">
     <div class="param-label">Mode</div>
@@ -109,7 +109,7 @@
   </div>
 </div>
 
-<div class="ctrl-section">
+<div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Analysis Settings</div>
   <div class="param-row">
     <div class="param-label">Metric</div>
@@ -193,7 +193,7 @@
       <button class="btn-secondary" type="button" onclick="saveRoiFileProfile(false)">Save</button>
       <button class="btn-secondary" type="button" onclick="saveRoiFileProfile(true)">Save As</button>
     </div>
-    <button class="btn-secondary btn-block" type="button" onclick="deleteSelectedRoiFileProfile()">Delete Profile</button>
+    <button class="btn-secondary btn-danger btn-block" type="button" onclick="deleteSelectedRoiFileProfile()">Delete Profile</button>
     <label class="checkbox-row">
       <input type="checkbox" id="roiAutoLoadProfile" checked>
       <span>Auto-load profile when selecting a stack pair</span>

@@ -1,38 +1,78 @@
+{% set abf_active = active in ['abf_viewer', 'abf_batch', 'abf_figure', 'abf_peaks'] %}
+{% set echem_active = active in ['echem_pc', 'echem_pv', 'echem_lineshape'] %}
+{% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
+{% set data_active = active in ['csv_viewer'] %}
+{% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif'] %}
+{% set workflow_active = active in ['scripts', 'run_history'] %}
 <nav class="top-nav">
   <div class="nav-inner">
     <a class="nav-brand" href="{% if standalone_lif %}/fluorescence/lif{% else %}/{% endif %}">{% if standalone_lif %}Leica LIF Browser{% else %}DataProcess{% endif %}</a>
-    <div class="nav-sep"></div>
-    <div class="nav-group">
+    <div class="nav-group" aria-label="Primary navigation">
       {% if standalone_lif %}
-      <a class="nav-item active" href="/fluorescence/lif">LIF</a>
+      <a class="nav-item active" href="/fluorescence/lif" title="Leica LIF Browser">LIF Browser</a>
       {% else %}
-      <a class="nav-item {% if active=='abf_viewer' %}active{% endif %}" href="/abf/viewer">ABF</a>
-      <a class="nav-item {% if active=='abf_batch' %}active{% endif %}" href="/abf/batch">Batch</a>
-      <a class="nav-item {% if active=='abf_figure' %}active{% endif %}" href="/abf/figure">Figures</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='echem_pc' %}active{% endif %}" href="/echem/photocurrent">PC</a>
-      <a class="nav-item {% if active=='echem_pv' %}active{% endif %}" href="/echem/photovoltage">PV</a>
-      <a class="nav-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape">Lineshape</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd">RHD</a>
-      <a class="nav-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks">Peaks</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='csv_viewer' %}active{% endif %}" href="/csv">CSV</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='fluorescence' %}active{% endif %}" href="/fluorescence">TIFF</a>
-      <a class="nav-item {% if active=='fluorescence_lif' %}active{% endif %}" href="/fluorescence/lif">LIF</a>
-      <a class="nav-item {% if active=='fluorescence_3d_stacking' %}active{% endif %}" href="/fluorescence/3d-stacking">3D Stacking</a>
-      <a class="nav-item {% if active=='fluorescence_roi' %}active{% endif %}" href="/fluorescence/roi">ROI</a>
-      <a class="nav-item {% if active=='fluorescence_gif' %}active{% endif %}" href="/fluorescence/gif">GIF</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='histology' %}active{% endif %}" href="/histology">Histology</a>
-      <div class="nav-sep"></div>
-      <a class="nav-item {% if active=='scripts' %}active{% endif %}" href="/scripts">Pipelines</a>
-      <a class="nav-item {% if active=='run_history' %}active{% endif %}" href="/runs">Runs</a>
+      <div class="nav-menu {% if abf_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">ABF</button>
+        <div class="nav-dropdown" role="menu">
+          <a class="nav-dropdown-item {% if active=='abf_viewer' %}active{% endif %}" href="/abf/viewer" title="ABF Viewer">Viewer</a>
+          <a class="nav-dropdown-item {% if active=='abf_batch' %}active{% endif %}" href="/abf/batch" title="ABF Batch Processor">Batch Processor</a>
+          <a class="nav-dropdown-item {% if active=='abf_figure' %}active{% endif %}" href="/abf/figure" title="ABF Figure Generator">Figure Generator</a>
+          <a class="nav-dropdown-item {% if active=='abf_peaks' %}active{% endif %}" href="/abf/peaks" title="ABF Peak Detection">Peak Detection</a>
+        </div>
+      </div>
+
+      <div class="nav-menu {% if echem_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EChem</button>
+        <div class="nav-dropdown" role="menu">
+          <a class="nav-dropdown-item {% if active=='echem_pc' %}active{% endif %}" href="/echem/photocurrent" title="Photocurrent Detector">Photocurrent</a>
+          <a class="nav-dropdown-item {% if active=='echem_pv' %}active{% endif %}" href="/echem/photovoltage" title="Photovoltage Detector">Photovoltage</a>
+          <a class="nav-dropdown-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape" title="Electrochemistry Lineshape Analysis">Lineshape</a>
+        </div>
+      </div>
+
+      <div class="nav-menu {% if emg_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EMG</button>
+        <div class="nav-dropdown" role="menu">
+          <a class="nav-dropdown-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd" title="Intan RHD Viewer">Intan RHD Viewer</a>
+          <a class="nav-dropdown-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks" title="RHD Peak Selector">Peak Selector</a>
+        </div>
+      </div>
+
+      <div class="nav-menu {% if data_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Data</button>
+        <div class="nav-dropdown" role="menu">
+          <a class="nav-dropdown-item {% if active=='csv_viewer' %}active{% endif %}" href="/csv" title="CSV Viewer and Trace Merge">CSV Viewer</a>
+        </div>
+      </div>
+
+      <div class="nav-menu {% if fl_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Fluorescence</button>
+        <div class="nav-dropdown nav-dropdown-wide" role="menu">
+          <div class="nav-dropdown-label">Inputs</div>
+          <a class="nav-dropdown-item {% if active=='fluorescence' %}active{% endif %}" href="/fluorescence" title="TIFF Stack Browser">TIFF Stack Browser</a>
+          <a class="nav-dropdown-item {% if active=='fluorescence_lif' %}active{% endif %}" href="/fluorescence/lif" title="Leica LIF Browser">Leica LIF Browser</a>
+          <div class="nav-dropdown-label">Analyze / Export</div>
+          <a class="nav-dropdown-item {% if active=='fluorescence_roi' %}active{% endif %}" href="/fluorescence/roi" title="ROI Sequence Analysis">ROI Analysis</a>
+          <a class="nav-dropdown-item {% if active=='fluorescence_gif' %}active{% endif %}" href="/fluorescence/gif" title="Annotated GIF Export">GIF Export</a>
+          <a class="nav-dropdown-item {% if active=='fluorescence_3d_stacking' %}active{% endif %}" href="/fluorescence/3d-stacking" title="3D Stack Builder">3D Stack Builder</a>
+        </div>
+      </div>
+
+      <a class="nav-item {% if active=='histology' %}active{% endif %}" href="/histology" title="Histology Folder Namer">Histology</a>
+
+      <div class="nav-menu {% if workflow_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Workflows</button>
+        <div class="nav-dropdown nav-dropdown-right" role="menu">
+          <a class="nav-dropdown-item {% if active=='scripts' %}active{% endif %}" href="/scripts" title="General Script Pipelines">Pipelines</a>
+          <a class="nav-dropdown-item {% if active=='run_history' %}active{% endif %}" href="/runs" title="Run History and Manifests">Runs</a>
+        </div>
+      </div>
       {% endif %}
     </div>
     <div class="nav-right">
+      <button id="shortcutBtn" class="nav-settings" type="button" onclick="openShortcutModal()" title="Keyboard shortcuts">?</button>
       <button id="prefsBtn" class="nav-settings" type="button" onclick="openPrefsModal()">Settings</button>
+      <span class="nav-version" title="bioelectronics_toolkit v{{ app_version }} · commit {{ app_commit }}">v{{ app_version }} · {{ app_commit }}</span>
       <button id="logoutBtn" class="nav-logout" type="button" onclick="logoutServer()">Log Out</button>
     </div>
   </div>

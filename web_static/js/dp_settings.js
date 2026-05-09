@@ -556,6 +556,10 @@ async function applyInitialPathDefaults() {
     defaultDir = DEFAULT_DATA_DIR;
   }
   document.querySelectorAll('input.input-path').forEach(el => {
+    const key = `${el.id || ''} ${el.name || ''} ${el.placeholder || ''}`.toLowerCase();
+    const looksLikePath = /(path|folder|directory|dir|file)/.test(key);
+    const explicitlyNotPath = /(token|power|prefix|label|sequence)/.test(key);
+    if (el.dataset.pathDefault === 'false' || !looksLikePath || explicitlyNotPath) return;
     if (!el.value || !el.value.trim()) el.value = defaultDir;
   });
 }

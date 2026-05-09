@@ -9,13 +9,16 @@ fluorescence imaging, and scripted data analysis.
 
 import argparse
 import base64
+import importlib.metadata
 import io
 import os
+import subprocess
 import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+import tomllib
 
 import matplotlib
 
@@ -56,9 +59,44 @@ app = Flask(
 )
 
 
+def _project_version() -> str:
+    try:
+        return importlib.metadata.version("bioelectronics-toolkit")
+    except importlib.metadata.PackageNotFoundError:
+        pyproject = BASE_DIR / "pyproject.toml"
+        try:
+            data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+            return str(data.get("project", {}).get("version", "0+unknown"))
+        except Exception:
+            return "0+unknown"
+
+
+def _git_commit() -> str:
+    try:
+        proc = subprocess.run(
+            ["git", "rev-parse", "--short=7", "HEAD"],
+            cwd=BASE_DIR,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        return proc.stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
+APP_VERSION = _project_version()
+APP_COMMIT = _git_commit()
+
+
 @app.context_processor
 def inject_template_defaults():
-    return {"default_data_dir": str(BASE_DIR)}
+    return {
+        "app_commit": APP_COMMIT,
+        "app_version": APP_VERSION,
+        "default_data_dir": str(BASE_DIR),
+    }
 
 
 @app.route("/favicon.ico")

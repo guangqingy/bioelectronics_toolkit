@@ -3,7 +3,25 @@
 
 {% block head %}
 <style>
-.gui-board-section { margin-bottom: 16px; }
+.dashboard-wrap { padding-top: var(--nav-h); }
+.dashboard-header { padding: 42px 32px 24px; }
+.dashboard-body { padding: 0 32px 48px; max-width: 1320px; }
+.demo-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 26px;
+  border: 1px solid #dce3ee;
+  border-radius: var(--radius-md);
+  background: #fff;
+  padding: 16px 18px;
+}
+.demo-title { color: var(--carbon); font-size: 17px; font-weight: 650; }
+.demo-sub { margin-top: 3px; color: var(--pewter); font-size: 13px; line-height: 1.55; }
+.demo-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.demo-actions .btn-secondary { min-width: 132px; }
+.gui-board-section { margin-bottom: 28px; }
 .gui-board-head {
   display: flex;
   align-items: center;
@@ -11,11 +29,11 @@
   margin-bottom: 10px;
 }
 .gui-board-title {
-  font-size: 13px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
   color: var(--silver);
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .10em;
+  text-transform: uppercase;
 }
 .gui-board-count {
   color: var(--pewter);
@@ -43,58 +61,85 @@
   flex-wrap: wrap;
 }
 .gui-domain {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--blue);
-  background: #edf2ff;
   border-radius: 3px;
+  background: #edf2ff;
+  color: var(--blue);
+  font-size: 10px;
+  font-weight: 700;
   padding: 2px 6px;
 }
 .gui-pin {
   min-height: 28px;
-  font-size: 11px;
+  font-size: 11.5px;
   padding: 4px 8px;
+}
+.gui-card details {
+  border-top: 1px solid var(--cloud);
+  color: var(--pewter);
+  font-size: 12px;
+  line-height: 1.55;
+  padding-top: 8px;
+}
+.gui-card summary {
+  color: var(--graphite);
+  cursor: pointer;
+  font-weight: 600;
+}
+.empty-recent {
+  border: 1px dashed #d7dbe3;
+  border-radius: var(--radius-md);
+  color: var(--silver);
+  font-size: 13px;
+  padding: 18px;
+}
+@media (max-width: 760px) {
+  .dashboard-header, .dashboard-body { padding-left: 16px; padding-right: 16px; }
+  .demo-strip { grid-template-columns: 1fr; }
+  .demo-actions { justify-content: flex-start; }
 }
 </style>
 {% endblock %}
 
 {% block body %}
-<div style="padding-top: var(--nav-h);">
-  <div class="page-header" style="padding: 48px 32px 32px;">
+<div class="dashboard-wrap">
+  <div class="dashboard-header">
     <div class="page-eyebrow">Guangqing Yang · UChicago</div>
     <div class="page-title">DataProcess</div>
     <div class="page-sub">Unified web interface for electrophysiology, electrochemistry, fluorescence imaging, and analysis</div>
   </div>
 
-  <div style="padding: 0 32px 48px; max-width: 1300px;">
-    <div style="margin-bottom: 36px;">
-      <div class="gui-board-head">
-        <div class="ctrl-label" style="margin:0;">GUI Workspace</div>
-        <button class="btn-secondary" id="resetGuiPrefs" type="button" style="font-size:11px;padding:4px 8px;">Reset Common/Other</button>
+  <div class="dashboard-body">
+    <div class="demo-strip">
+      <div>
+        <div class="demo-title">First time here? Try the demo data.</div>
+        <div class="demo-sub">The repository includes tiny synthetic ABF, electrochemistry CSV, and TIFF stack files under <code>examples/</code>.</div>
       </div>
-      <div class="result-card" style="margin-bottom: 12px;">
-        <div class="result-card-body" style="padding: 12px 16px; font-size: 12px; color: var(--pewter);">
-          Fluorescence is now managed as a dedicated GUI tool (not in general scripts). Use the card buttons to manually move tools between Common GUI and Other GUI.
-        </div>
-      </div>
-
-      <div class="gui-board-section">
-        <div class="gui-board-head">
-          <div class="gui-board-title">Common GUI <span class="gui-board-count" id="commonCount"></span></div>
-        </div>
-        <div class="dash-grid" id="commonGuiGrid"></div>
-      </div>
-
-      <div class="gui-board-section">
-        <div class="gui-board-head">
-          <div class="gui-board-title">Other GUI <span class="gui-board-count" id="otherCount"></span></div>
-        </div>
-        <div class="dash-grid" id="otherGuiGrid"></div>
+      <div class="demo-actions">
+        <a class="btn-secondary" href="/abf/viewer?demo=abf">ABF Demo</a>
+        <a class="btn-secondary" href="/echem/photocurrent?demo=echem">EChem Demo</a>
+        <a class="btn-secondary" href="/fluorescence/roi?demo=fluorescence">ROI Demo</a>
       </div>
     </div>
 
-    <div style="margin-bottom: 36px;">
-      <div class="ctrl-label" style="margin-bottom: 12px;">General Script Pipelines</div>
+    <div class="gui-board-section">
+      <div class="gui-board-head">
+        <div class="gui-board-title">Recently Used <span class="gui-board-count" id="recentCount"></span></div>
+        <button class="btn-secondary" id="resetGuiUsage" type="button" style="font-size:11.5px;padding:4px 8px;">Reset Usage</button>
+      </div>
+      <div class="dash-grid" id="recentGuiGrid"></div>
+    </div>
+
+    <div class="gui-board-section">
+      <div class="gui-board-head">
+        <div class="gui-board-title">All Tools <span class="gui-board-count" id="allCount"></span></div>
+      </div>
+      <div class="dash-grid" id="allGuiGrid"></div>
+    </div>
+
+    <div class="gui-board-section">
+      <div class="gui-board-head">
+        <div class="gui-board-title">General Script Pipelines</div>
+      </div>
       <div class="dash-grid">
         <a class="dash-card" href="/scripts/photocurrent">
           <div class="dash-card-name">Photocurrent Pipelines</div>
@@ -118,7 +163,6 @@
         </a>
       </div>
     </div>
-
   </div>
 </div>
 {% endblock %}
@@ -130,6 +174,7 @@ const GUI_ITEMS = [
     id: 'abf_viewer',
     name: 'ABF Viewer',
     desc: 'Browse .abf files, select sweep and channel, preview with baseline subtraction and R-normalization. Export SVG / PNG / CSV.',
+    why: 'Use this when you want to inspect individual patch-clamp recordings before exporting a figure or table.',
     tag: 'pyabf',
     domain: 'ABF',
     href: '/abf/viewer',
@@ -138,6 +183,7 @@ const GUI_ITEMS = [
     id: 'abf_batch',
     name: 'Batch Processor',
     desc: 'Scan a folder of .abf files, auto-parse filenames, extract photocurrent peaks, and generate per-file and summary CSV outputs.',
+    why: 'Use this for structured ABF folders where filenames encode main group, treatment, sample, spot, and sequence.',
     tag: 'Batch CSV',
     domain: 'ABF',
     href: '/abf/batch',
@@ -146,6 +192,7 @@ const GUI_ITEMS = [
     id: 'abf_figure',
     name: 'Figure Generator',
     desc: 'Load summary CSVs, queue multiple folders, and plot peak/integral metrics with linear and log x-ranges.',
+    why: 'Use this after batch processing to compare summary metrics across conditions.',
     tag: 'Comparison',
     domain: 'ABF',
     href: '/abf/figure',
@@ -154,6 +201,7 @@ const GUI_ITEMS = [
     id: 'abf_peaks',
     name: 'Peak Detection',
     desc: 'R-normalized peak detection with configurable window and threshold controls, exporting peak summary CSV.',
+    why: 'Use this when peak picking needs manual review or tuned thresholds on ABF sweeps.',
     tag: 'scipy peaks',
     domain: 'ABF',
     href: '/abf/peaks',
@@ -162,6 +210,7 @@ const GUI_ITEMS = [
     id: 'echem_pc',
     name: 'Photocurrent Detector',
     desc: 'Detect POS/NEG threshold events from electrochemistry traces and export paired segments for review.',
+    why: 'Use this for current traces where positive and negative events should be paired by timing.',
     tag: 'txt csv',
     domain: 'EChem',
     href: '/echem/photocurrent',
@@ -170,14 +219,25 @@ const GUI_ITEMS = [
     id: 'echem_pv',
     name: 'Photovoltage Detector',
     desc: 'Detect square-pulse photovoltage signals with detrending options and export positive/negative pulses.',
+    why: 'Use this for voltage traces that need pulse detection and optional baseline detrending.',
     tag: 'Detrend SG',
     domain: 'EChem',
     href: '/echem/photovoltage',
   },
   {
+    id: 'echem_lineshape',
+    name: 'EChem Lineshape',
+    desc: 'Compare electrochemistry trace shapes and normalized responses across files.',
+    why: 'Use this when the shape of the response curve matters more than single peak values.',
+    tag: 'Shape',
+    domain: 'EChem',
+    href: '/echem/lineshape',
+  },
+  {
     id: 'rhd_viewer',
-    name: 'RHD Viewer',
+    name: 'Intan RHD Viewer',
     desc: 'Browse .rhd recordings, preview channels, and export selected/all channels as CSV.',
+    why: 'Use this first when raw Intan recordings need channel inspection or conversion.',
     tag: 'rhd channels',
     domain: 'EMG',
     href: '/emg/rhd',
@@ -186,6 +246,7 @@ const GUI_ITEMS = [
     id: 'emg_peaks',
     name: 'RHD Peak Selector',
     desc: 'Load channel CSVs, detect peaks with filters, group patterns, and export centered event segments.',
+    why: 'Use this after RHD export when EMG events need peak-centered windows.',
     tag: 'Groups Export',
     domain: 'EMG',
     href: '/emg/peaks',
@@ -194,15 +255,17 @@ const GUI_ITEMS = [
     id: 'csv_viewer',
     name: 'CSV Viewer',
     desc: 'Browse CSV files, choose X/Y columns, and overlay multiple files with export options.',
+    why: 'Use this as a general trace viewer for quick CSV inspection and merged plots.',
     tag: 'CSV Merge',
     domain: 'Data',
     href: '/csv',
   },
   {
     id: 'fluorescence',
-    name: 'Fluorescence GUI',
-    desc: 'Dedicated GUI-adapted fluorescence tools for TIFF normalization and annotated GIF export.',
-    tag: 'TIFF GIF',
+    name: 'TIFF Stack Browser',
+    desc: 'Browse fluorescence TIFF stacks, tune display settings, and export selected stacks with Fiji macros.',
+    why: 'Use this as the fluorescence entry point when starting from TIFF stack files.',
+    tag: 'TIFF',
     domain: 'Imaging',
     href: '/fluorescence',
   },
@@ -210,116 +273,172 @@ const GUI_ITEMS = [
     id: 'fluorescence_lif',
     name: 'Leica LIF Browser',
     desc: 'Open Leica .lif projects, browse subfiles in acquisition-time order, preview channels, and save the ordered manifest.',
+    why: 'Use this when the input is a Leica LIF project rather than plain TIFF files.',
     tag: 'Leica LIF',
     domain: 'Imaging',
     href: '/fluorescence/lif',
   },
   {
+    id: 'fluorescence_roi',
+    name: 'Fluorescence ROI Analysis',
+    desc: 'Select TIFF stack pairs, draw ROIs, run sequence metrics, and export CSV, plots, previews, and GIFs.',
+    why: 'Use this for per-ROI intensity time courses across fluorescence stack sequences.',
+    tag: 'ROI',
+    domain: 'Imaging',
+    href: '/fluorescence/roi',
+  },
+  {
+    id: 'fluorescence_gif',
+    name: 'Annotated GIF Export',
+    desc: 'Queue TIFF stacks, add scale bars, timestamps, optional ROI overlays, and export publication-preview GIFs.',
+    why: 'Use this when the final artifact is a time-lapse GIF or ROI/kymograph preview.',
+    tag: 'GIF',
+    domain: 'Imaging',
+    href: '/fluorescence/gif',
+  },
+  {
+    id: 'fluorescence_3d_stacking',
+    name: '3D Stack Builder',
+    desc: 'Preview volume slices and export reconstructed fluorescence stack views.',
+    why: 'Use this when the fluorescence workflow is volume-oriented rather than sequence-oriented.',
+    tag: '3D',
+    domain: 'Imaging',
+    href: '/fluorescence/3d-stacking',
+  },
+  {
     id: 'histology',
     name: 'Histology Namer',
     desc: 'Preview Overview.vsi main and label images, then manually rename folders and QuPath display names.',
+    why: 'Use this for histology folder cleanup before downstream image analysis.',
     tag: 'VSI rename',
     domain: 'Histology',
     href: '/histology',
   },
 ];
 
-const DEFAULT_COMMON = [
-  'abf_batch',
-  'abf_peaks',
-  'echem_pc',
-  'rhd_viewer',
-  'emg_peaks',
-  'fluorescence',
-  'fluorescence_lif',
-  'histology',
-  'csv_viewer',
-];
+const DEFAULT_RECENT = ['abf_viewer', 'echem_pc', 'rhd_viewer', 'fluorescence', 'fluorescence_roi', 'csv_viewer'];
+const USAGE_KEY = 'dp_gui_usage_v2';
+const PIN_KEY = 'dp_gui_pins_v1';
 
-const STORAGE_KEY = 'dp_gui_common_v1';
-let commonSet = new Set();
-
-function loadCommonSet() {
+function loadJsonMap(key) {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return new Set(DEFAULT_COMMON);
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set(DEFAULT_COMMON);
-    return new Set(parsed);
+    const parsed = JSON.parse(localStorage.getItem(key) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
-    return new Set(DEFAULT_COMMON);
+    return {};
   }
 }
 
-function saveCommonSet() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(commonSet)));
+function saveJsonMap(key, value) {
+  localStorage.setItem(key, JSON.stringify(value || {}));
 }
 
-function toggleCommon(id) {
-  if (commonSet.has(id)) commonSet.delete(id);
-  else commonSet.add(id);
-  saveCommonSet();
-  renderGuiBoards();
+function getPins() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PIN_KEY) || '[]');
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
 }
 
-function makeGuiCard(item, isCommon) {
+function savePins(pins) {
+  localStorage.setItem(PIN_KEY, JSON.stringify(Array.from(pins)));
+}
+
+function trackOpen(id) {
+  const usage = loadJsonMap(USAGE_KEY);
+  const rec = usage[id] || {count: 0, last: 0};
+  usage[id] = {count: Number(rec.count || 0) + 1, last: Date.now()};
+  saveJsonMap(USAGE_KEY, usage);
+}
+
+function scoreItem(item, usage, pins) {
+  const rec = usage[item.id] || {};
+  return [
+    pins.has(item.id) ? 1 : 0,
+    Number(rec.last || 0),
+    Number(rec.count || 0),
+    item.name,
+  ];
+}
+
+function byUsage(a, b, usage, pins) {
+  const aa = scoreItem(a, usage, pins);
+  const bb = scoreItem(b, usage, pins);
+  return (bb[0] - aa[0]) || (bb[1] - aa[1]) || (bb[2] - aa[2]) || aa[3].localeCompare(bb[3]);
+}
+
+function makeGuiCard(item, pins) {
   const card = document.createElement('div');
   card.className = 'dash-card gui-card';
-
-  const actionText = isCommon ? 'Move to Other' : 'Mark Common';
+  const pinned = pins.has(item.id);
   card.innerHTML = `
-    <a class="gui-link" href="${item.href}">
+    <a class="gui-link" href="${item.href}" data-tool-id="${item.id}">
       <div class="dash-card-name">${item.name}</div>
       <div class="dash-card-desc">${item.desc}</div>
     </a>
+    <details>
+      <summary>What's this for?</summary>
+      <div>${item.why}</div>
+    </details>
     <div class="gui-card-footer">
       <div class="gui-tag-wrap">
         <span class="dash-card-tag" style="margin-top:0;">${item.tag}</span>
         <span class="gui-domain">${item.domain}</span>
       </div>
-      <button class="btn-secondary gui-pin" type="button">${actionText}</button>
+      <button class="btn-secondary gui-pin" type="button">${pinned ? 'Unpin' : 'Pin'}</button>
     </div>
   `;
-
-  const btn = card.querySelector('button');
-  btn.addEventListener('click', (ev) => {
+  card.querySelector('a').addEventListener('click', () => trackOpen(item.id));
+  card.querySelector('button').addEventListener('click', ev => {
     ev.preventDefault();
     ev.stopPropagation();
-    toggleCommon(item.id);
+    if (pins.has(item.id)) pins.delete(item.id);
+    else pins.add(item.id);
+    savePins(pins);
+    renderGuiBoards();
   });
-
   return card;
 }
 
-function renderGuiBoards() {
-  const commonGrid = document.getElementById('commonGuiGrid');
-  const otherGrid = document.getElementById('otherGuiGrid');
-  commonGrid.innerHTML = '';
-  otherGrid.innerHTML = '';
-
-  const commonItems = [];
-  const otherItems = [];
-  for (const item of GUI_ITEMS) {
-    if (commonSet.has(item.id)) commonItems.push(item);
-    else otherItems.push(item);
+function renderGrid(id, items, pins, emptyText) {
+  const grid = document.getElementById(id);
+  grid.innerHTML = '';
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-recent">${emptyText}</div>`;
+    return;
   }
+  items.forEach(item => grid.appendChild(makeGuiCard(item, pins)));
+}
 
-  commonItems.forEach((item) => commonGrid.appendChild(makeGuiCard(item, true)));
-  otherItems.forEach((item) => otherGrid.appendChild(makeGuiCard(item, false)));
+function renderGuiBoards() {
+  const usage = loadJsonMap(USAGE_KEY);
+  const pins = getPins();
+  const usedItems = GUI_ITEMS.filter(item => usage[item.id] || pins.has(item.id));
+  const recentItems = (usedItems.length ? usedItems : GUI_ITEMS.filter(item => DEFAULT_RECENT.includes(item.id)))
+    .slice()
+    .sort((a, b) => byUsage(a, b, usage, pins))
+    .slice(0, 8);
+  const allItems = GUI_ITEMS.slice().sort((a, b) => byUsage(a, b, usage, pins));
 
-  document.getElementById('commonCount').textContent = `(${commonItems.length})`;
-  document.getElementById('otherCount').textContent = `(${otherItems.length})`;
+  renderGrid('recentGuiGrid', recentItems, pins, 'Open a tool and it will appear here.');
+  renderGrid('allGuiGrid', allItems, pins, '');
+  document.getElementById('recentCount').textContent = `(${recentItems.length})`;
+  document.getElementById('allCount').textContent = `(${allItems.length})`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  commonSet = loadCommonSet();
   renderGuiBoards();
-
-  document.getElementById('resetGuiPrefs').addEventListener('click', () => {
-    commonSet = new Set(DEFAULT_COMMON);
-    saveCommonSet();
+  document.getElementById('resetGuiUsage').addEventListener('click', () => {
+    localStorage.removeItem(USAGE_KEY);
     renderGuiBoards();
-    toast('GUI groups reset to defaults');
+    toast('Tool usage reset');
+  });
+  document.querySelectorAll('.demo-actions a').forEach(link => {
+    link.addEventListener('click', () => {
+      toast('Opening demo data from examples/');
+    });
   });
 });
 </script>

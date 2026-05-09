@@ -137,6 +137,52 @@ class WebAppSmokeTests(unittest.TestCase):
                 response = self.client.get(route)
                 self.assertEqual(response.status_code, 200)
 
+    def test_templates_do_not_expose_developer_absolute_paths(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for folder in (root / "web_templates", root / "web_static"):
+            for source in folder.rglob("*"):
+                if source.suffix not in {".html", ".js", ".css"}:
+                    continue
+                text = source.read_text(encoding="utf-8")
+                if "/Users/" + "guangqing" in text or "Desktop/" + "UChicago" in text:
+                    offenders.append(str(source.relative_to(root)))
+        self.assertEqual([], offenders)
+
+    def test_nav_exposes_domain_groups_and_version(self) -> None:
+        response = self.client.get("/")
+        html = response.data.decode("utf-8")
+        self.assertIn("Fluorescence", html)
+        self.assertIn("Photocurrent", html)
+        self.assertIn("Intan RHD Viewer", html)
+        self.assertIn("v0.2.0", html)
+
+    def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_dry_run_") as tmp:
+            root = Path(tmp)
+            source = root / "ctrl_T1_sample_1_A_0001.abf"
+            source.write_bytes(b"not a real abf")
+
+            response = self.client.post(
+                "/api/abf_batch/process",
+                json={
+                    "folder": str(root),
+                    "main": "ctrl",
+                    "treat": "T1",
+                    "powers": "0, 1",
+                    "move_files": True,
+                    "reindex_seq": True,
+                    "dry_run": True,
+                },
+            )
+            payload = response.get_json()
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(payload["ok"])
+            self.assertTrue(payload["data"]["dry_run"])
+            self.assertGreaterEqual(payload["data"]["planned_count"], 1)
+            self.assertTrue(source.exists())
+            self.assertTrue(Path(payload["data"]["operation_log_path"]).exists())
+
     def test_fluorescence_refactor_keeps_route_contracts(self) -> None:
         routes = {str(rule.rule) for rule in self.client.application.url_map.iter_rules()}
         expected = {

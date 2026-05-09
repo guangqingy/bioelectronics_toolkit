@@ -82,6 +82,10 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Batch Behavior</div>
   <label class="checkbox-row">
+    <input type="checkbox" id="dryRun" checked>
+    <span>Dry run only (plan and log, no files moved)</span>
+  </label>
+  <label class="checkbox-row">
     <input type="checkbox" id="moveFiles" checked>
     <span>Reorganize into {main}_{treat}/sample_{id}/</span>
   </label>
@@ -196,7 +200,19 @@ function suggestTokens() {
     });
 }
 
-function runBatch() {
+function renderOperationPlan(plan) {
+  if (!plan || !plan.length) {
+    return '<div class="file-list-empty">No filesystem moves or renames planned.</div>';
+  }
+  const rows = plan.slice(0, 100).map(op => ({
+    'Action': op.action || '',
+    'From': op.source || '',
+    'To': op.destination || ''
+  }));
+  return buildTable(rows, ['Action', 'From', 'To']);
+}
+
+async function runBatch() {
   const folder = document.getElementById('folderPath').value.trim();
   const main = document.getElementById('mainToken').value.trim();
   const treat = document.getElementById('treatToken').value.trim();
@@ -208,20 +224,43 @@ function runBatch() {
   const peak_window = parseInt(document.getElementById('peakWin').value, 10);
   const move_files = document.getElementById('moveFiles').checked;
   const reindex_seq = document.getElementById('reindexSeq').checked;
+  const dry_run = document.getElementById('dryRun').checked;
 
   if (!folder || !main || !treat) {
     toast('Enter all required parameters', true);
     return;
   }
 
-  btnBusy('btnRun', true, 'Processing...');
-  setStatus('status', 'Running batch analysis...', 'loading');
-
   const payload = {
     folder, main, treat, powers,
     i_ch, v_ch, bl_pre0, bl_pre1, peak_window,
-    move_files, reindex_seq
+    move_files, reindex_seq, dry_run
   };
+
+  if ((move_files || reindex_seq) && !dry_run) {
+    const total = _files.length || 'all matching';
+    const confirmed = await dpConfirmAction({
+      title: 'Apply ABF filesystem changes?',
+      subtitle: 'Dry run is off, so this can move or rename files on disk.',
+      danger: true,
+      confirmText: 'Apply Changes',
+      html: `
+        <div>This run may modify <strong>${escHtml(total)}</strong> ABF file(s).</div>
+        <ul>
+          <li>Move destination pattern: <code>${escHtml(folder)}/${escHtml(main)}_${escHtml(treat)}/sample_{id}/</code></li>
+          <li>Sequence renumbering: <strong>${reindex_seq ? 'enabled' : 'disabled'}</strong></li>
+          <li>An operation log will be written under <code>.dataprocess_cache/operation_logs/</code>.</li>
+        </ul>
+      `,
+    });
+    if (!confirmed) {
+      setStatus('status', 'Batch cancelled before filesystem changes', 'warning');
+      return;
+    }
+  }
+
+  btnBusy('btnRun', true, dry_run ? 'Planning...' : 'Processing...');
+  setStatus('status', dry_run ? 'Planning batch operation...' : 'Running batch analysis...', 'loading');
 
   dpRunJobEndpoint('/api/abf_batch/process_job', payload, {
     interval_ms: 1000,
@@ -233,6 +272,34 @@ function runBatch() {
   })
     .then(r => {
       if (r.error) throw new Error(r.error);
+      if (r.dry_run) {
+        document.getElementById('resultBody').innerHTML = `
+          ${renderOperationPlan(r.plan || [])}
+          <div class="status-bar status-ok" style="padding-top:8px">
+            <span class="status-text">Operation log: ${r.operation_log_path || 'not written'}</span>
+          </div>
+        `;
+        document.getElementById('resultCard').style.display = 'block';
+        document.getElementById('resultHeader').textContent = 'Dry Run Plan (' + (r.planned_count || 0) + ' operation(s))';
+        setStatus('status', 'Dry run complete: ' + (r.planned_count || 0) + ' operation(s) planned', 'ok');
+        toast('Dry run complete');
+        recordRunHistory({
+          view: 'abf_batch',
+          title: 'ABF Batch Dry Run',
+          status: 'ok',
+          project_root: folder,
+          input_files: (_files || []).map(f => ({path: (typeof f === 'string' ? f : f.path), role: 'source_abf'})).filter(f => f.path),
+          outputs: r.operation_log_path ? [{path: r.operation_log_path, type: 'operation_log'}] : [],
+          parameters: payload,
+          warnings: r.warnings || [],
+          metadata: {
+            planned_count: r.planned_count || 0,
+            moved_count: r.moved_count || 0,
+            renamed_count: r.renamed_count || 0,
+          },
+        });
+        return;
+      }
       const rows = (r.results || []).map(row => ({
         'File': row.file || '',
         'Status': row.status || 'ok',
@@ -255,7 +322,10 @@ function runBatch() {
         status: wn ? 'warning' : 'ok',
         project_root: folder,
         input_files: (_files || []).map(f => ({path: (typeof f === 'string' ? f : f.path), role: 'source_abf'})).filter(f => f.path),
-        outputs: r.csv_path ? [{path: r.csv_path, type: 'summary_csv'}] : [],
+        outputs: [
+          ...(r.csv_path ? [{path: r.csv_path, type: 'summary_csv'}] : []),
+          ...(r.operation_log_path ? [{path: r.operation_log_path, type: 'operation_log'}] : []),
+        ],
         parameters: payload,
         warnings: r.warnings || [],
         metadata: {

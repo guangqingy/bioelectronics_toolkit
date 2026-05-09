@@ -12,6 +12,12 @@
 
 {% include "partials/top_nav.html" %}
 
+<div id="errorBanner" class="error-banner" role="alert" aria-live="assertive" hidden>
+  <div class="error-banner-title">Error</div>
+  <div id="errorBannerText" class="error-banner-text"></div>
+  <button class="btn-icon error-banner-close" type="button" onclick="dismissErrorBanner()">Dismiss</button>
+</div>
+
 <!-- ─── Page body ─── -->
 {% block body %}
 <div class="app-shell">
@@ -30,15 +36,40 @@
 <!-- ─── Toast ─── -->
 <div id="toast"></div>
 
+<div id="shortcutModal" class="modal-overlay" aria-hidden="true">
+  <div class="modal-card shortcut-card" role="dialog" aria-modal="true" aria-labelledby="shortcutTitle">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title" id="shortcutTitle">Keyboard Shortcuts</div>
+        <div class="prefs-sub">Available everywhere unless a text field has focus.</div>
+      </div>
+      <button class="btn-icon" type="button" onclick="closeShortcutModal()">Close</button>
+    </div>
+    <div class="modal-body">
+      <div class="shortcut-grid">
+        <div><kbd>?</kbd><span>Show this help</span></div>
+        <div><kbd>Esc</kbd><span>Close dialogs or dismiss an error banner</span></div>
+        <div><kbd>↑</kbd><kbd>↓</kbd><span>Move through the focused file list</span></div>
+        <div><kbd>Enter</kbd><span>Open the focused file-list item</span></div>
+        <div><kbd>Cmd/Ctrl</kbd><kbd>S</kbd><span>Save the active file profile when the page supports it</span></div>
+        <div><kbd>Cmd/Ctrl</kbd><kbd>E</kbd><span>Run the visible export action when available</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 {% include "partials/preferences_modal.html" %}
 
 <!-- ─── Shared JS utilities ─── -->
 <script>
 const APP_LABEL = {{ ('Leica LIF Browser' if standalone_lif else 'DataProcess Web') | tojson }};
+const APP_VERSION = {{ app_version | tojson }};
+const APP_COMMIT = {{ app_commit | tojson }};
 const CURRENT_VIEW = {{ (active|default('index')) | tojson }};
 const DEFAULT_DATA_DIR = {{ default_data_dir | tojson }};
-const GENERIC_SETTINGS_ENABLED = {{ ((active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif']) | tojson }};
-const GENERIC_FILE_PROFILE_ENABLED = {{ ((active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks']) | tojson }};
+const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') || '';
+const GENERIC_SETTINGS_ENABLED = {{ ((active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif']) | tojson }} && !DEMO_MODE;
+const GENERIC_FILE_PROFILE_ENABLED = {{ ((active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks']) | tojson }} && !DEMO_MODE;
 let _prefsCache = null;
 let _prefsPath = '';
 let _genericPrefs = {};

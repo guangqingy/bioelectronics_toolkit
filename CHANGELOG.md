@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+- WebGUI version/commit display, keyboard-shortcut help, persistent error
+  banner, generic file-list filters, and status progress bars.
+- ABF batch dry-run mode with custom confirmation for filesystem changes and
+  operation logs under `.dataprocess_cache/operation_logs/`.
+
+### Changed
+- Dashboard now starts with demo-data entry points, recently used tools, and an
+  all-tools board instead of requiring manual tool grouping.
+- Top navigation is grouped by domain with dropdown menus and full tool names.
+- Form affordances now include clearer units/tooltips for photocurrent
+  detection controls, reset buttons for marked parameter sections, danger
+  button styling, larger base text, and visible focus outlines.
+
+### Fixed
+- Removed the hard-coded developer path from the ABF viewer template.
+- Restricted automatic default-path filling to actual folder/file/path inputs
+  so token and parameter fields are not overwritten.
 
 ## [0.2.0] - 2026-05-09
 
