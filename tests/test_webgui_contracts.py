@@ -158,6 +158,13 @@ class WebAppSmokeTests(unittest.TestCase):
                 for needle in needles:
                     self.assertNotIn(needle, html)
 
+    def test_abf_viewer_does_not_auto_scan_empty_path(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "abf_viewer.html").read_text(encoding="utf-8")
+        self.assertIn('if (folderInput.value.trim())', template)
+        self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', template)
+        self.assertNotIn('DEFAULT_DATA_DIR + "/examples"', template)
+
     def test_nav_exposes_domain_groups_and_version(self) -> None:
         response = self.client.get("/")
         html = response.data.decode("utf-8")

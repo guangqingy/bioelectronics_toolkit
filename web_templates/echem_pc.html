@@ -323,7 +323,7 @@ function exportSegments() {
 window.addEventListener('load', () => {
   setStatus('status', 'Ready', 'ok');
   if (new URLSearchParams(window.location.search).get('demo') === 'echem') {
-    document.getElementById('folderPath').value = DEFAULT_DATA_DIR + '/examples';
+    document.getElementById('folderPath').value = DEFAULT_EXAMPLES_DIR || 'examples';
     scanFolder();
   }
 });

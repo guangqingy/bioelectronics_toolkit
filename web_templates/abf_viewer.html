@@ -606,13 +606,18 @@ document.getElementById("rNorm").addEventListener("change", function() {
 window.addEventListener("load", function() {
   const ctrl = document.getElementById("ctrlPanel");
   const main = document.getElementById("mainContent");
+  const folderInput = document.getElementById("folderPath");
   if (ctrl) ctrl.classList.add("abf-panel");
   if (main) main.classList.add("abf-main");
   if (new URLSearchParams(window.location.search).get("demo") === "abf") {
-    document.getElementById("folderPath").value = DEFAULT_DATA_DIR + "/examples";
+    folderInput.value = DEFAULT_EXAMPLES_DIR || "examples";
   }
   renderQueue();
-  scanFolder();
+  if (folderInput.value.trim()) {
+    scanFolder();
+  } else {
+    setStatusBar("Choose an ABF folder to begin.", "");
+  }
 });
 </script>
 {% endblock %}
