@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}EChem Photovoltage{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/echem/data">
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanFolder')">Browse</button>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Data Files</div>
+  <div id="fileList" class="file-list"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Analysis Window (s)</div>
+  <label class="checkbox-row" style="margin-bottom:7px">
+    <input type="checkbox" id="useAll" onchange="toggleWindow(this.checked)">
+    <span>Use full file</span>
+  </label>
+  <div id="windowRow">
+    <div class="param-row">
+      <div class="param-label">Start</div>
+      <input type="number" id="t0" class="input-sm" value="0" step="0.1">
+    </div>
+    <div class="param-row">
+      <div class="param-label">End</div>
+      <input type="number" id="t1" class="input-sm" value="10" step="0.1">
+    </div>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Detrend</div>
+  <div class="param-row">
+    <div class="param-label">Method</div>
+    <select id="detrendMethod">
+      <option value="median">Rolling median</option>
+      <option value="savgol">Savitzky-Golay</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Window (ms)</div>
+    <input type="number" id="baselineWinMs" class="input-sm" value="50" step="1" min="1">
+  </div>
+  <div class="param-row">
+    <div class="param-label">SG win (ms)</div>
+    <input type="number" id="sgWinMs" class="input-sm" value="51" step="1" min="3">
+  </div>
+  <div class="param-row">
+    <div class="param-label">SG poly</div>
+    <input type="number" id="sgPoly" class="input-sm" value="3" step="1" min="1">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Detection Parameters</div>
+  <div class="param-row">
+    <div class="param-label">Peak min (V)</div>
+    <input type="number" id="peakMinV" class="input-sm" value="0.01" step="0.001" min="0">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Min width (ms)</div>
+    <input type="number" id="minWidthMs" class="input-sm" value="5" step="0.1" min="0.1">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Min spacing (ms)</div>
+    <input type="number" id="minSpacingMs" class="input-sm" value="10" step="0.1" min="0.1">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Polarity</div>
+  <div class="param-row">
+    <div class="param-label">Mode</div>
+    <select id="polarity">
+      <option value="positive">Positive</option>
+      <option value="negative">Negative</option>
+    </select>
+  </div>
+  <label class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="showDetrended"><span>Show detrended trace</span></label>
+</div>
+
+<button class="btn-primary" id="btnDetect" data-label="Detect Pulses" onclick="detect()">Detect Pulses</button>
+
+<hr class="sep">
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Export</div>
+  <div class="btn-row">
+    <button class="btn-secondary" onclick="restoreAllPulses()">Restore All</button>
+    <button class="btn-secondary" onclick="exportCSV()">Pulses CSV</button>
+    <button class="btn-secondary" onclick="exportSegments()">Summary + Pulse Files</button>
+  </div>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">EChem Photovoltage</div>
+    <div class="view-sub" id="fileInfo">Select a file to preview the trace, then run detection.</div>
+  </div>
+
+  <div id="plotArea" class="plot-area">
+    <div class="plot-placeholder">Select a file to preview</div>
+  </div>
+
+  <div class="result-card" id="pulsesCard" style="display:none">
+    <div class="result-card-header">
+      <span>Detected Pulses</span>
+      <span id="pulsesCount" style="font-weight:400;color:var(--silver)"></span>
+    </div>
+    <div class="result-card-body" style="padding:0">
+      <div class="data-table-wrap">
+        <table id="pulsesTable" class="dp-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Time (s)</th>
+              <th>Polarity</th>
+              <th>Amplitude</th>
+              <th>Duration (ms)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _currentFile = null;
+let _pulses = [];
+let _lastWindow = null;
+let _lastParams = null;
+
+window.dpCurrentFilePath = () => _currentFile || '';
+window.dpCurrentProjectRoot = () => document.getElementById('folderPath').value.trim();
+window.dpCollectFileProfilePayload = () => ({
+  pulses: _pulses.map(p => ({...p})),
+  lastWindow: _lastWindow,
+  lastParams: _lastParams,
+});
+window.dpApplyFileProfilePayload = payload => {
+  if (!payload || typeof payload !== 'object') return;
+  if (Array.isArray(payload.pulses)) _pulses = payload.pulses.map(p => ({...p}));
+  _lastWindow = payload.lastWindow || null;
+  _lastParams = payload.lastParams || null;
+  updateTable();
+};
+window.dpAfterFileProfileApplied = () => {
+  toggleWindow(document.getElementById('useAll').checked);
+  updateTable();
+};
+window.dpApplyRunManifest = manifest => {
+  dpApplyRunManifestFallback(manifest);
+  const inputPath = dpFirstManifestInput(manifest);
+  if (inputPath) {
+    _currentFile = inputPath;
+    document.getElementById('folderPath').value = manifest.project_root || dpPathDir(inputPath);
+    document.getElementById('fileInfo').textContent = baseName(inputPath) + ' · parameters loaded from run manifest';
+  }
+  const params = manifest.parameters || {};
+  if (Array.isArray(params.pulses)) _pulses = params.pulses.map(p => ({...p}));
+  if (params.window) _lastWindow = params.window;
+  _lastParams = params.params || params;
+  toggleWindow(document.getElementById('useAll').checked);
+  updateTable();
+};
+
+function baseName(p) { return (p || '').split('/').pop() || p; }
+function num(v, d) { return Number(v || 0).toFixed(d); }
+
+function toggleWindow(useAll) {
+  const row = document.getElementById('windowRow');
+  row.style.opacity = useAll ? '0.35' : '1';
+  row.querySelectorAll('input').forEach(el => el.disabled = useAll);
+}
+
+function scanFolder() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) { setStatus('status', 'Enter a folder path', 'error'); return; }
+  setStatus('status', 'Scanning…', 'loading');
+  api('/api/echem_pv/browse', { folder })
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      const files = (d.files || []).map(f => typeof f === 'string' ? {name: baseName(f), path: f} : f);
+      buildFileList('fileList', files, el => selectFile(el, el.dataset.path));
+      if (files.length) selectFile(document.querySelector('#fileList .file-item'), files[0].path);
+      setStatus('status', files.length + ' file(s) found', 'ok');
+    })
+    .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function selectFile(el, path) {
+  document.querySelectorAll('#fileList .file-item').forEach(e => e.classList.remove('active'));
+  if (el) el.classList.add('active');
+  _currentFile = path;
+  _pulses = [];
+  _lastWindow = null;
+  _lastParams = null;
+  updateTable();
+  setStatus('status', 'Loading…', 'loading');
+  api('/api/echem_pv/load', { path })
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      setPlot('plotArea', d.img);
+      document.getElementById('t1').value = d.duration || 10;
+      document.getElementById('fileInfo').textContent =
+        baseName(path)
+        + (d.n_points ? ' · ' + d.n_points + ' pts' : '')
+        + (d.duration ? ' · ' + Number(d.duration).toFixed(1) + ' s' : '');
+      loadGenericFileProfileForCurrent(true).finally(() => setStatus('status', 'Ready', 'ok'));
+    })
+    .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function detect() {
+  if (!_currentFile) { setStatus('status', 'No file selected', 'error'); return; }
+  const useAll = document.getElementById('useAll').checked;
+  const t0 = parseFloat(document.getElementById('t0').value);
+  const t1 = parseFloat(document.getElementById('t1').value);
+  const baseline_method = document.getElementById('detrendMethod').value;
+  const baseline_win_ms = parseFloat(document.getElementById('baselineWinMs').value);
+  const sg_window_ms = parseFloat(document.getElementById('sgWinMs').value);
+  const sg_poly = parseInt(document.getElementById('sgPoly').value, 10);
+  const peak_min_v = parseFloat(document.getElementById('peakMinV').value);
+  const min_width_ms = parseFloat(document.getElementById('minWidthMs').value);
+  const min_spacing_ms = parseFloat(document.getElementById('minSpacingMs').value);
+  const polarity = document.getElementById('polarity').value;
+  const show_detrended = document.getElementById('showDetrended').checked;
+
+  btnBusy('btnDetect', true, 'Detecting…');
+  setStatus('status', 'Detecting pulses…', 'loading');
+  api('/api/echem_pv/detect', {
+    path: _currentFile,
+    t0,
+    t1,
+    use_all: useAll,
+    baseline_method,
+    baseline_win_ms,
+    sg_window_ms,
+    sg_poly,
+    peak_min_v,
+    min_width_ms,
+    min_spacing_ms,
+    polarity,
+    show_detrended
+  }).then(d => {
+    if (d.error) throw new Error(d.error);
+    setPlot('plotArea', d.img);
+    _pulses = (d.pulses || []).map(p => Object.assign({}, p, {_removed: false}));
+    _lastWindow = d.window || null;
+    _lastParams = d.params || null;
+    updateTable();
+    setStatus('status', 'Detected ' + _pulses.length + ' pulse(s)', 'ok');
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
+    .finally(() => btnBusy('btnDetect', false, 'Detect Pulses'));
+}
+
+function activePulses() {
+  return _pulses.filter(p => !p._removed);
+}
+
+function togglePulseRemoved(idx) {
+  if (idx < 0 || idx >= _pulses.length) return;
+  _pulses[idx]._removed = !_pulses[idx]._removed;
+  updateTable();
+}
+
+function restoreAllPulses() {
+  if (!_pulses.length) {
+    setStatus('status', 'No detection results to restore', 'error');
+    return;
+  }
+  _pulses.forEach(p => { p._removed = false; });
+  updateTable();
+  setStatus('status', 'All pulses restored', 'ok');
+}
+
+function updateTable() {
+  const tbody = document.querySelector('#pulsesTable tbody');
+  const card  = document.getElementById('pulsesCard');
+  if (!_pulses.length) { card.style.display = 'none'; tbody.innerHTML = ''; return; }
+  card.style.display = '';
+  const nActive = activePulses().length;
+  document.getElementById('pulsesCount').textContent = nActive + ' / ' + _pulses.length + ' active';
+  tbody.innerHTML = _pulses.map((p, i) => {
+    const removed = !!p._removed;
+    const rowStyle = removed ? ' style="opacity:0.45;text-decoration:line-through"' : '';
+    const btnLabel = removed ? 'Undo' : 'Remove';
+    const amp = (p.amp_det_V !== undefined) ? p.amp_det_V : (p.amplitude ?? p.height);
+    const width = (p.width_ms !== undefined) ? p.width_ms : p.duration;
+    const pol = p.polarity_label ?? ((p.polarity ?? 1) >= 0 ? 'Pos' : 'Neg');
+    return `<tr${rowStyle}><td>${i+1}</td><td>${num(p.time ?? p.t, 3)}</td><td>${pol}</td><td>${num(amp, 4)}</td><td>${num(width, 3)}</td><td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" onclick="togglePulseRemoved(${i})">${btnLabel}</button></td></tr>`;
+  }).join('');
+}
+
+function exportCSV() {
+  exportSegments();
+}
+
+function exportSegments() {
+  const pulses = activePulses();
+  if (!_currentFile || !pulses.length) { setStatus('status', 'No active pulses to export', 'error'); return; }
+  setStatus('status', 'Saving CSV...', 'loading');
+
+  const payload = {
+    path: _currentFile,
+    pulses,
+    mode: 'save',
+    window: _lastWindow,
+    params: _lastParams,
+    pulse_window_ms: 50
+  };
+
+  if (!_lastParams) {
+    payload.baseline_method = document.getElementById('detrendMethod').value;
+    payload.baseline_win_ms = parseFloat(document.getElementById('baselineWinMs').value);
+    payload.sg_window_ms = parseFloat(document.getElementById('sgWinMs').value);
+    payload.sg_poly = parseInt(document.getElementById('sgPoly').value, 10);
+    payload.peak_min_v = parseFloat(document.getElementById('peakMinV').value);
+    payload.min_width_ms = parseFloat(document.getElementById('minWidthMs').value);
+    payload.min_spacing_ms = parseFloat(document.getElementById('minSpacingMs').value);
+  }
+
+  dpRunJobEndpoint('/api/echem_pv/export_job', payload, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Saving pulse exports${pct}${msg}`, 'loading');
+    },
+  }).then(d => {
+    setStatus('status', 'Saved summary + ' + (d.saved_count || 0) + ' pulse file(s): ' + (d.saved_path || 'ok'), 'ok');
+    recordRunHistory({
+      view: 'echem_pv',
+      title: 'EChem Photovoltage Pulse Export',
+      status: 'ok',
+      project_root: document.getElementById('folderPath').value.trim(),
+      input_files: [{path: _currentFile, role: 'source_echem'}],
+      outputs: dpAsPathRecords(d.saved_paths || (d.summary_path ? [d.summary_path] : []), 'photovoltage_pulse_output'),
+      parameters: payload,
+      metadata: {
+        saved_folder: d.saved_path || '',
+        saved_count: d.saved_count || 0,
+      },
+    });
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+window.addEventListener('load', () => setStatus('status', 'Ready', 'ok'));
+</script>
+{% endblock %}

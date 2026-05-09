@@ -1,0 +1,1140 @@
+{% extends "base.html" %}
+{% block title %}3D Stacking{% endblock %}
+
+{% block head %}
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<style>
+.stack-file-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.stack-file-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--silver);
+}
+.stack-file-count {
+  font-size: 11px;
+  color: var(--pewter);
+  background: var(--ash);
+  border: 1px solid var(--cloud);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.stack-available-list {
+  max-height: 235px;
+  overflow-y: auto;
+}
+.stack-available-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.stack-available-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stack-available-meta {
+  color: var(--silver);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.stack-file-row {
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(180deg, #fff, #fbfbfc);
+  border-radius: 8px;
+  padding: 9px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 2px rgba(23, 26, 32, 0.03);
+}
+.stack-file-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.stack-file-index {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #eef2ff;
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+}
+.stack-file-summary {
+  flex: 1;
+  min-width: 0;
+}
+.stack-file-name {
+  color: var(--carbon);
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stack-file-sub {
+  color: var(--silver);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
+}
+.stack-pill-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.stack-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  border-radius: 999px;
+  border: 1px solid #dbe4ff;
+  background: #f2f5ff;
+  color: var(--blue);
+  padding: 1px 7px;
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.stack-pill-muted {
+  border-color: var(--cloud);
+  background: var(--ash);
+  color: var(--pewter);
+}
+.stack-file-path-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stack-mini-label {
+  width: 42px;
+  flex-shrink: 0;
+  color: var(--silver);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.stack-file-path-row input[type="text"] {
+  min-width: 0;
+  flex: 1;
+  height: 30px;
+  font-size: 11.5px;
+  background: #fff;
+}
+.stack-file-path-row .btn-icon {
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+}
+.stack-channel-ranges {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--cloud);
+  border-radius: 8px;
+  background: #fbfcff;
+}
+.stack-channel-range-row {
+  display: grid;
+  grid-template-columns: 42px 34px 44px 1fr 1fr 1fr;
+  gap: 5px;
+  align-items: center;
+}
+.stack-channel-range-row input {
+  min-width: 0;
+  height: 28px;
+  font-size: 11px;
+}
+.stack-channel-range-row input[type="color"] {
+  width: 38px;
+  padding: 2px;
+  background: #fff;
+  cursor: pointer;
+}
+.stack-channel-range-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  justify-self: center;
+}
+.stack-channel-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--pewter);
+  font-size: 11px;
+  font-weight: 700;
+}
+.stack-channel-swatch {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stack-channel-range-head {
+  color: var(--silver);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+</style>
+{% endblock %}
+
+{% block controls %}
+{% if not has_tiff or not has_pil %}
+<div class="ctrl-section">
+  <div class="status-bar status-error">tifffile and/or Pillow not installed. Install with: pip install tifffile Pillow</div>
+</div>
+{% else %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/tiff/folder">
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanTiffFolder')">Browse</button>
+  </div>
+  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="scanTiffFolder()">Scan TIFF Folder</button>
+</div>
+
+<div class="ctrl-section">
+  <div class="stack-file-head">
+    <div class="stack-file-title">Available TIFFs</div>
+    <div class="stack-file-count" id="availableCount">0 files</div>
+  </div>
+  <div id="availableTiffList" class="file-list stack-available-list"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="stack-file-head">
+    <div class="stack-file-title">Selected TIFF</div>
+    <div class="stack-file-count" id="selectedBadge">not loaded</div>
+  </div>
+  <div class="stack-file-row">
+    <div class="stack-file-top">
+      <div class="stack-file-index">3D</div>
+      <div class="stack-file-summary">
+        <div class="stack-file-name" id="selectedName">No TIFF selected</div>
+        <div class="stack-file-sub" id="selectedSub">Use folder scan or choose a .tif/.tiff file</div>
+      </div>
+      <div class="stack-pill-row" id="selectedPills">
+        <span class="stack-pill stack-pill-muted">not scanned</span>
+      </div>
+    </div>
+    <div class="stack-file-path-row">
+      <span class="stack-mini-label">File</span>
+      <input type="text" id="tiffPath" placeholder="/path/to/stack.tiff" onchange="clearLoadedInfo()">
+      <button class="btn-icon" title="Choose TIFF" onclick="pickFile('tiffPath','loadTiffStack')">…</button>
+      <button class="btn-secondary" id="btnLoadTiff" data-label="Load" style="min-height:30px;padding:4px 9px" onclick="loadTiffStack()">Load</button>
+    </div>
+  </div>
+</div>
+
+<div class="ctrl-section" id="sliceSection" style="display:none">
+  <div class="ctrl-label">Slice Preview</div>
+  <div class="param-row">
+    <div class="param-label">LUT</div>
+    <select id="lutSelect" class="input-sm" onchange="refreshSlicePreview()">
+      <option>Gray</option>
+      <option>Red</option>
+      <option>Green</option>
+      <option>Blue</option>
+      <option>Magenta</option>
+      <option>Cyan</option>
+      <option>Yellow</option>
+    </select>
+  </div>
+  <div class="lif-slider-row">
+    <span>C</span>
+    <input type="range" id="cSlider" min="0" max="0" value="0" oninput="onDimSlide()">
+    <span id="cLabel">1 / 1</span>
+  </div>
+  <div class="lif-slider-row">
+    <span>Z</span>
+    <input type="range" id="zSlider" min="0" max="0" value="0" oninput="onDimSlide()">
+    <span id="zLabel">1 / 1</span>
+  </div>
+  <div class="lif-slider-row">
+    <span>T</span>
+    <input type="range" id="tSlider" min="0" max="0" value="0" oninput="onDimSlide()">
+    <span id="tLabel">1 / 1</span>
+  </div>
+  <div id="extraDimControls"></div>
+</div>
+
+<div class="ctrl-section" id="renderSection" style="display:none">
+  <div class="ctrl-label">3D Render</div>
+  <div class="param-row">
+    <div class="param-label">Channel</div>
+    <select id="volumeChannelMode" style="flex:1">
+      <option value="composite" selected>Composite channels</option>
+      <option value="current">Current C only</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Detail</div>
+    <select id="volumeQuality" style="flex:1">
+      <option value="balanced" selected>Balanced</option>
+      <option value="fast">Fast</option>
+      <option value="high">High</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Signal %</div>
+    <input type="number" id="volumeThreshold" class="input-sm" value="98.8" min="80" max="99.95" step="0.1" style="flex:1;width:auto!important">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Denoise</div>
+    <select id="volumeDenoise" style="flex:1">
+      <option value="Off" selected>Off</option>
+      <option value="Light">Light</option>
+      <option value="Medium">Medium</option>
+      <option value="Strong">Strong</option>
+    </select>
+  </div>
+  <div id="channelRangeControls" class="stack-channel-ranges"></div>
+  <label class="checkbox-row" style="margin-top:8px">
+    <input type="checkbox" id="showScaleBar" checked>
+    <span>Show 3D scale bar</span>
+  </label>
+  <div class="param-row">
+    <div class="param-label">Bar µm</div>
+    <input type="number" id="scaleBarUm" class="input-sm" value="20" min="0" step="1" style="flex:1;width:auto!important">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Output</div>
+    <input type="text" id="outputName" placeholder="(auto based on TIFF)" style="font-size:11.5px">
+  </div>
+  <button class="btn-primary" id="btnPreview3D" data-label="Preview 3D" onclick="generateVolume3D()" style="width:100%;margin-top:8px">Preview 3D</button>
+  <button class="btn-secondary" id="btnExport3D" data-label="Export 3D HTML" onclick="exportVolume3D()" style="width:100%;margin-top:8px">Export 3D HTML</button>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endif %}
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">3D Stacking</div>
+    <div class="view-sub" id="stackMeta">Choose a TIFF stack, preview slices, then render or export an interactive 3D view.</div>
+  </div>
+
+  <div class="stacking-layout">
+    <div class="result-card stacking-viewer-card">
+      <div class="result-card-header">
+        3D Volume Viewer
+        <span id="viewerName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
+      </div>
+      <div class="result-card-body lif-preview-body">
+        <div class="lif-3d-viewport" id="volumeViewport">
+          <div class="lif-3d-placeholder" id="volumePlaceholder">Scan a folder or choose a TIFF stack</div>
+          <div class="lif-3d-hud">
+            <div class="lif-3d-title" id="volumeTitle">3D TIFF Stack</div>
+            <div class="lif-3d-meta" id="volumeMeta">Mouse drag rotates · wheel zooms · right drag pans</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="stacking-side">
+      <div class="result-card">
+        <div class="result-card-header">Stack Details</div>
+        <div class="result-card-body" id="stackDetailBody">
+          <div class="file-list-empty">No TIFF stack loaded</div>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-card-header">Slice Preview</div>
+        <div class="result-card-body lif-preview-body">
+          <div id="slicePreview" class="lif-preview stacking-slice-preview">
+            <div class="plot-placeholder">Selected slice preview appears here</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultArea" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HAS_TIFF = {{ has_tiff | tojson }};
+const HAS_PIL = {{ has_pil | tojson }};
+
+let _availableTiffs = [];
+let _availableActiveIndex = -1;
+let _currentInfo = null;
+let _previewTimer = null;
+let _threePromise = null;
+let _renderer = null;
+let _scene = null;
+let _camera = null;
+let _controls = null;
+let _anim = null;
+let _resizeObserver = null;
+
+function escHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function fileBasename(path) {
+  return String(path || '').split(/[\\/]/).pop() || '';
+}
+
+function compactPath(path) {
+  const s = String(path || '');
+  if (s.length <= 48) return s;
+  return '…' + s.slice(-47);
+}
+
+function stackDims(info) {
+  return (info && info.dimensions) || {};
+}
+
+function formatNumber(value, digits) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 'n/a';
+  return n.toFixed(digits || 3).replace(/0+$/, '').replace(/\.$/, '');
+}
+
+function formatDimText(info) {
+  if (!info) return 'not scanned';
+  const d = stackDims(info);
+  const parts = [`${d.x || 0}x${d.y || 0}`];
+  if ((d.z || 1) > 1) parts.push(`Z${d.z}`);
+  if ((d.c || 1) > 1) parts.push(`C${d.c}`);
+  if ((d.t || 1) > 1) parts.push(`T${d.t}`);
+  return parts.join(' · ');
+}
+
+function renderAvailableTiffList() {
+  const el = document.getElementById('availableTiffList');
+  const count = document.getElementById('availableCount');
+  if (count) count.textContent = `${_availableTiffs.length} files`;
+  if (!el) return;
+  if (!_availableTiffs.length) {
+    el.innerHTML = '<div class="file-list-empty">No TIFF stacks scanned</div>';
+    return;
+  }
+  el.innerHTML = _availableTiffs.map((f, i) => {
+    const info = f.info || {};
+    const active = i === _availableActiveIndex ? 'active' : '';
+    const stackTag = info.can_3d ? '3D' : 'flat';
+    const meta = info.error ? info.error : `${formatDimText(info)} · ${info.axes || '?'}`;
+    return `
+      <div class="file-item stack-available-item ${active}" onclick="selectAvailableTiff(${i})">
+        <span class="stack-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
+        <span class="stack-available-meta">${escHtml(meta)}</span>
+        <span class="stack-pill ${info.can_3d ? '' : 'stack-pill-muted'}">${stackTag}</span>
+      </div>`;
+  }).join('');
+}
+
+async function scanTiffFolder() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) {
+    setStatus('status', 'Please choose a TIFF folder', 'error');
+    return;
+  }
+  setStatus('status', 'Scanning TIFF folder...', 'loading');
+  try {
+    const d = await api('/api/fluorescence/browse', {folder});
+    if (d.error) throw new Error(d.error);
+    _availableTiffs = (d.files || []).map(f => ({name: f.name || fileBasename(f.path), path: f.path || '', info: null}));
+    _availableActiveIndex = _availableTiffs.length ? 0 : -1;
+    renderAvailableTiffList();
+    if (_availableTiffs.length) await scanAvailableInfo();
+    setStatus('status', `${_availableTiffs.length} TIFF file(s) found`, _availableTiffs.length ? 'ok' : 'error');
+  } catch (e) {
+    setStatus('status', 'Folder scan failed: ' + e.message, 'error');
+  }
+}
+
+async function scanAvailableInfo() {
+  const paths = _availableTiffs.map(f => f.path).filter(Boolean);
+  if (!paths.length) return;
+  setStatus('status', 'Scanning TIFF stack metadata...', 'loading');
+  try {
+    const d = await api('/api/fluorescence/3d/tiff_info_batch', {paths});
+    if (d.error) throw new Error(d.error);
+    const infoMap = d.info || {};
+    _availableTiffs.forEach(f => { f.info = infoMap[f.path] || null; });
+    renderAvailableTiffList();
+  } catch (e) {
+    setStatus('status', 'Metadata scan failed: ' + e.message, 'error');
+  }
+}
+
+function selectAvailableTiff(i) {
+  if (i < 0 || i >= _availableTiffs.length) return;
+  _availableActiveIndex = i;
+  const f = _availableTiffs[i];
+  document.getElementById('tiffPath').value = f.path || '';
+  renderAvailableTiffList();
+  loadTiffStack(f.info || null);
+}
+
+function clearLoadedInfo() {
+  _currentInfo = null;
+  updateSelectedSummary(null);
+  document.getElementById('sliceSection').style.display = 'none';
+  document.getElementById('renderSection').style.display = 'none';
+  document.getElementById('channelRangeControls').innerHTML = '';
+  document.getElementById('stackDetailBody').innerHTML = '<div class="file-list-empty">No TIFF stack loaded</div>';
+  document.getElementById('slicePreview').innerHTML = '<div class="plot-placeholder">Selected slice preview appears here</div>';
+  clearVolume3D();
+}
+
+function updateSelectedSummary(info) {
+  const path = document.getElementById('tiffPath').value.trim();
+  document.getElementById('selectedName').textContent = info?.name || fileBasename(path) || 'No TIFF selected';
+  document.getElementById('selectedSub').textContent = path ? compactPath(path) : 'Use folder scan or choose a .tif/.tiff file';
+  document.getElementById('selectedBadge').textContent = info ? (info.can_3d ? 'Z-stack' : 'flat TIFF') : 'not loaded';
+  const pills = document.getElementById('selectedPills');
+  if (!info) {
+    pills.innerHTML = '<span class="stack-pill stack-pill-muted">not scanned</span>';
+    return;
+  }
+  const d = stackDims(info);
+  pills.innerHTML = `
+    <span class="stack-pill">${escHtml(info.axes || '?')}</span>
+    <span class="stack-pill">${d.z || 1} Z</span>
+    <span class="stack-pill ${Number(d.c || 1) > 1 ? '' : 'stack-pill-muted'}">${d.c || 1} C</span>`;
+}
+
+async function loadTiffStack(prefetchedInfo) {
+  const path = document.getElementById('tiffPath').value.trim();
+  if (!path) {
+    setStatus('status', 'Choose a TIFF stack', 'error');
+    return;
+  }
+  btnBusy('btnLoadTiff', true, 'Loading...');
+  setStatus('status', 'Loading TIFF stack metadata...', 'loading');
+  try {
+    let info = prefetchedInfo;
+    if (!info || info.error) {
+      const d = await api('/api/fluorescence/3d/tiff_info', {path});
+      if (d.error) throw new Error(d.error);
+      info = d.info;
+    }
+    _currentInfo = info;
+    updateSelectedSummary(info);
+    renderStackDetails();
+    updatePreviewControls();
+    renderChannelRangeControls();
+    document.getElementById('sliceSection').style.display = '';
+    document.getElementById('renderSection').style.display = '';
+    document.getElementById('btnPreview3D').disabled = !info.can_3d;
+    document.getElementById('btnExport3D').disabled = !info.can_3d;
+    document.getElementById('viewerName').textContent = info.name || fileBasename(path);
+    document.getElementById('outputName').value = (info.name || fileBasename(path)).replace(/\.(tif|tiff)$/i, '');
+    clearVolume3D(info.can_3d ? 'Click Preview 3D to build the volume' : 'This TIFF has only one readable Z/slice plane');
+    refreshSlicePreview();
+    setStatus('status', info.can_3d ? 'TIFF stack loaded' : 'TIFF loaded, but it is not a Z-stack', info.can_3d ? 'ok' : 'error');
+  } catch (e) {
+    setStatus('status', 'TIFF load failed: ' + e.message, 'error');
+    showLog('TIFF Load Error', e.message || String(e));
+  } finally {
+    btnBusy('btnLoadTiff', false, 'Load');
+  }
+}
+
+function renderStackDetails() {
+  const body = document.getElementById('stackDetailBody');
+  const info = _currentInfo;
+  if (!info) {
+    body.innerHTML = '<div class="file-list-empty">No TIFF stack loaded</div>';
+    return;
+  }
+  const d = stackDims(info);
+  const cal = info.calibration || {};
+  body.innerHTML = `
+    <div class="lif-detail-title">${escHtml(info.name || fileBasename(info.path))}</div>
+    <div class="lif-detail-muted">${escHtml(compactPath(info.path || ''))}</div>
+    <div class="lif-detail-grid">
+      <span>Axes</span><strong>${escHtml(info.axes || '')}</strong>
+      <span>Shape</span><strong>${escHtml((info.shape || []).join(' × '))}</strong>
+      <span>Dimensions</span><strong>${escHtml(formatDimText(info))}</strong>
+      <span>Dtype</span><strong>${escHtml(info.dtype || '')}</strong>
+      <span>Pixel size</span><strong>${formatNumber(cal.pixel_width_um, 4)} um/px</strong>
+      <span>Z spacing</span><strong>${formatNumber(cal.z_spacing_um, 4)} um</strong>
+    </div>
+    <div class="lif-export-note">Scale: ${escHtml(cal.pixel_source || 'fallback')}<br>Z: ${escHtml(cal.z_source || 'fallback')}</div>
+  `;
+  document.getElementById('stackMeta').textContent =
+    `${info.name || 'TIFF stack'} · ${d.z || 1} Z · ${d.c || 1} channel(s) · ${formatNumber(cal.pixel_width_um, 4)} um/px`;
+}
+
+function renderChannelRangeControls() {
+  const el = document.getElementById('channelRangeControls');
+  if (!el) return;
+  if (!_currentInfo) {
+    el.innerHTML = '';
+    return;
+  }
+  const d = stackDims(_currentInfo);
+  const cCount = Math.max(1, Number(d.c || 1));
+  const signalDefault = Math.max(0, Math.min(99.95, parseFloat(document.getElementById('volumeThreshold')?.value || '98.8') || 98.8));
+  const colors = ['#3b82f6', '#22c55e', '#ef4444', '#d946ef', '#06b6d4', '#eab308'];
+  const rows = [
+    `<div class="stack-channel-range-row stack-channel-range-head">
+      <span>C</span><span>Use</span><span>Color</span><span>Low %</span><span>High %</span><span>Signal %</span>
+    </div>`
+  ];
+  for (let i = 0; i < cCount; i += 1) {
+    const color = colors[i % colors.length];
+    rows.push(`
+      <div class="stack-channel-range-row">
+        <span class="stack-channel-label"><i class="stack-channel-swatch" id="chanSwatch_${i}" style="background:${color}"></i>C${i + 1}</span>
+        <input type="checkbox" id="chanEnabled_${i}" checked title="Render/export C${i + 1}">
+        <input type="color" id="chanColor_${i}" value="${color}" oninput="document.getElementById('chanSwatch_${i}').style.background=this.value">
+        <input type="number" id="chanLow_${i}" value="1" min="0" max="99" step="0.1">
+        <input type="number" id="chanHigh_${i}" value="99.7" min="0.1" max="100" step="0.1">
+        <input type="number" id="chanSignal_${i}" value="${signalDefault.toFixed(1)}" min="0" max="99.95" step="0.1">
+      </div>`);
+  }
+  el.innerHTML = rows.join('');
+}
+
+function setSliderDim(id, labelId, count) {
+  const slider = document.getElementById(id);
+  const label = document.getElementById(labelId);
+  if (!slider || !label) return;
+  const n = Math.max(1, Number(count) || 1);
+  slider.max = String(n - 1);
+  if (Number(slider.value) >= n) slider.value = '0';
+  slider.disabled = n <= 1;
+  label.textContent = `${Number(slider.value) + 1} / ${n}`;
+}
+
+function updateSliderLabel(id, labelId) {
+  const slider = document.getElementById(id);
+  const label = document.getElementById(labelId);
+  if (!slider || !label) return;
+  label.textContent = `${Number(slider.value || 0) + 1} / ${Number(slider.max || 0) + 1}`;
+}
+
+function updateExtraControls() {
+  const el = document.getElementById('extraDimControls');
+  if (!el) return;
+  const extras = stackDims(_currentInfo).extras || [];
+  if (!extras.length) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = extras.map(extra => {
+    const count = Math.max(1, Number(extra.count || 1));
+    const label = escHtml(extra.axis || ('D' + extra.index));
+    return `
+      <div class="lif-slider-row lif-extra-dim-row">
+        <span>${label}</span>
+        <input type="range" id="extraAxis_${extra.index}" min="0" max="${count - 1}" value="0" oninput="onDimSlide()">
+        <span id="extraAxisLabel_${extra.index}">1 / ${count}</span>
+      </div>`;
+  }).join('');
+}
+
+function updatePreviewControls() {
+  const d = stackDims(_currentInfo);
+  setSliderDim('cSlider', 'cLabel', d.c || 1);
+  setSliderDim('zSlider', 'zLabel', d.z || 1);
+  setSliderDim('tSlider', 'tLabel', d.t || 1);
+  updateExtraControls();
+}
+
+function extraIndicesPayload() {
+  const extras = stackDims(_currentInfo).extras || [];
+  const out = {};
+  extras.forEach(extra => {
+    const slider = document.getElementById(`extraAxis_${extra.index}`);
+    const label = document.getElementById(`extraAxisLabel_${extra.index}`);
+    const value = parseInt((slider && slider.value) || '0', 10);
+    out[String(extra.index)] = value;
+    if (label) label.textContent = `${value + 1} / ${Math.max(1, Number(extra.count || 1))}`;
+  });
+  return out;
+}
+
+function onDimSlide() {
+  updateSliderLabel('cSlider', 'cLabel');
+  updateSliderLabel('zSlider', 'zLabel');
+  updateSliderLabel('tSlider', 'tLabel');
+  extraIndicesPayload();
+  refreshSlicePreview();
+}
+
+function currentPreviewPayload() {
+  return {
+    path: document.getElementById('tiffPath').value.trim(),
+    c: parseInt(document.getElementById('cSlider').value || '0', 10),
+    z: parseInt(document.getElementById('zSlider').value || '0', 10),
+    t: parseInt(document.getElementById('tSlider').value || '0', 10),
+    extra_indices: extraIndicesPayload(),
+    lut: document.getElementById('lutSelect').value,
+    p_low: 1,
+    p_high: 99,
+  };
+}
+
+function refreshSlicePreview() {
+  if (!_currentInfo) return;
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(loadSlicePreview, 120);
+}
+
+async function loadSlicePreview() {
+  const preview = document.getElementById('slicePreview');
+  preview.innerHTML = '<div class="plot-placeholder">Loading slice...</div>';
+  try {
+    const d = await api('/api/fluorescence/3d/preview_slice', currentPreviewPayload());
+    if (d.error) throw new Error(d.error);
+    preview.innerHTML = `<img src="data:image/png;base64,${d.img}" alt="TIFF slice"/>`;
+  } catch (e) {
+    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${escHtml(e.message)}</div>`;
+    setStatus('status', 'Preview error', 'error');
+  }
+}
+
+function volumeQualitySettings(forExport) {
+  const quality = document.getElementById('volumeQuality')?.value || 'balanced';
+  const thresholdRaw = parseFloat(document.getElementById('volumeThreshold')?.value || (forExport ? '98.6' : '98.8'));
+  const threshold = Math.max(80, Math.min(99.95, Number.isFinite(thresholdRaw) ? thresholdRaw : 98.8));
+  const table = {
+    fast: forExport
+      ? {max_points: 65000, max_xy: 170, max_z: 80}
+      : {max_points: 45000, max_xy: 140, max_z: 55},
+    balanced: forExport
+      ? {max_points: 110000, max_xy: 220, max_z: 120}
+      : {max_points: 70000, max_xy: 180, max_z: 80},
+    high: forExport
+      ? {max_points: 210000, max_xy: 340, max_z: 180}
+      : {max_points: 135000, max_xy: 260, max_z: 140},
+  };
+  return {...(table[quality] || table.balanced), threshold_percentile: threshold};
+}
+
+function channelRangesPayload() {
+  const d = stackDims(_currentInfo);
+  const cCount = Math.max(1, Number(d.c || 1));
+  const globalSignal = Math.max(0, Math.min(99.95, parseFloat(document.getElementById('volumeThreshold')?.value || '98.8') || 98.8));
+  const ranges = {};
+  for (let i = 0; i < cCount; i += 1) {
+    let low = parseFloat(document.getElementById(`chanLow_${i}`)?.value || '1');
+    let high = parseFloat(document.getElementById(`chanHigh_${i}`)?.value || '99.7');
+    let signal = parseFloat(document.getElementById(`chanSignal_${i}`)?.value || String(globalSignal));
+    const color = document.getElementById(`chanColor_${i}`)?.value || '';
+    const enabled = document.getElementById(`chanEnabled_${i}`)?.checked !== false;
+    if (!Number.isFinite(low)) low = 1;
+    if (!Number.isFinite(high)) high = 99.7;
+    if (!Number.isFinite(signal)) signal = globalSignal;
+    low = Math.max(0, Math.min(99, low));
+    high = Math.max(low + 0.1, Math.min(100, high));
+    signal = Math.max(0, Math.min(99.95, signal));
+    ranges[String(i)] = {enabled, low, high, signal, color};
+  }
+  return ranges;
+}
+
+function hasEnabledChannel() {
+  const ranges = channelRangesPayload();
+  return Object.values(ranges).some(r => r && r.enabled);
+}
+
+function currentVolumePayload(forExport) {
+  const scaleBarRaw = parseFloat(document.getElementById('scaleBarUm')?.value || '20');
+  return {
+    ...currentPreviewPayload(),
+    ...volumeQualitySettings(!!forExport),
+    channel_mode: document.getElementById('volumeChannelMode')?.value || 'composite',
+    denoise: document.getElementById('volumeDenoise')?.value || 'Off',
+    channel_ranges: channelRangesPayload(),
+    show_scale_bar: document.getElementById('showScaleBar')?.checked !== false,
+    scale_bar_um: Number.isFinite(scaleBarRaw) ? Math.max(0, scaleBarRaw) : 0,
+  };
+}
+
+window.dpApplyRunManifest = async manifest => {
+  dpApplyRunManifestFallback(manifest);
+  const params = manifest.parameters || {};
+  const inputPath = params.path || dpFirstManifestInput(manifest);
+  if (inputPath) {
+    document.getElementById('tiffPath').value = inputPath;
+    document.getElementById('folderPath').value = manifest.project_root || dpPathDir(inputPath);
+  }
+  if (params.volume_quality) document.getElementById('volumeQuality').value = params.volume_quality;
+  if (params.output_name) document.getElementById('outputName').value = params.output_name;
+  if (inputPath && HAS_TIFF) {
+    await loadTiffStack();
+    if (params.channel_ranges && typeof params.channel_ranges === 'object') {
+      Object.entries(params.channel_ranges).forEach(([idx, rec]) => {
+        if (!rec || typeof rec !== 'object') return;
+        const enabled = document.getElementById(`chanEnabled_${idx}`);
+        const color = document.getElementById(`chanColor_${idx}`);
+        const low = document.getElementById(`chanLow_${idx}`);
+        const high = document.getElementById(`chanHigh_${idx}`);
+        const signal = document.getElementById(`chanSignal_${idx}`);
+        if (enabled) enabled.checked = rec.enabled !== false;
+        if (color && rec.color) color.value = rec.color;
+        if (low && rec.low !== undefined) low.value = rec.low;
+        if (high && rec.high !== undefined) high.value = rec.high;
+        if (signal && rec.signal !== undefined) signal.value = rec.signal;
+      });
+    }
+  }
+  setStatus('status', '3D stacking parameters loaded from run manifest', 'ok');
+};
+
+function setVolumeMessage(message) {
+  const placeholder = document.getElementById('volumePlaceholder');
+  if (placeholder) {
+    placeholder.textContent = message || '';
+    placeholder.style.display = message ? 'flex' : 'none';
+  }
+}
+
+function disposeVolume3D() {
+  if (_anim) {
+    cancelAnimationFrame(_anim);
+    _anim = null;
+  }
+  if (_resizeObserver) {
+    _resizeObserver.disconnect();
+    _resizeObserver = null;
+  }
+  if (_scene) {
+    _scene.traverse(obj => {
+      if (obj.geometry && typeof obj.geometry.dispose === 'function') obj.geometry.dispose();
+      if (obj.material) {
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(mat => mat && typeof mat.dispose === 'function' && mat.dispose());
+      }
+    });
+  }
+  if (_renderer) {
+    const canvas = _renderer.domElement;
+    _renderer.dispose();
+    if (canvas && canvas.parentNode) canvas.parentNode.removeChild(canvas);
+  }
+  _renderer = null;
+  _scene = null;
+  _camera = null;
+  _controls = null;
+}
+
+function clearVolume3D(message) {
+  disposeVolume3D();
+  setVolumeMessage(message || 'Scan a folder or choose a TIFF stack');
+  document.getElementById('volumeTitle').textContent = '3D TIFF Stack';
+  document.getElementById('volumeMeta').textContent = 'Mouse drag rotates · wheel zooms · right drag pans';
+}
+
+function loadThreeModules() {
+  if (!_threePromise) {
+    _threePromise = Promise.all([
+      import('three'),
+      import('three/addons/controls/OrbitControls.js'),
+    ]).then(([THREE, controls]) => ({THREE, OrbitControls: controls.OrbitControls}));
+  }
+  return _threePromise;
+}
+
+function makeScaleLabelSprite(THREE, text, radius) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.font = '28px -apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif';
+  ctx.fillStyle = 'rgba(0,0,0,0.72)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
+  const texture = new THREE.CanvasTexture(canvas);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: texture, transparent: true}));
+  sprite.scale.set(Math.max(18, radius * 0.42), Math.max(4.5, radius * 0.105), 1);
+  return sprite;
+}
+
+function addScaleBar3D(THREE, scene, sphere, volume) {
+  const render = volume?.render || {};
+  const len = Number(render.scale_bar_um || 0);
+  if (!render.show_scale_bar || !Number.isFinite(len) || len <= 0) return;
+  const radius = Math.max(10, sphere.radius || 100);
+  const barLen = len;
+  const x0 = sphere.center.x - radius * 0.82;
+  const y0 = sphere.center.y - radius * 0.86;
+  const z0 = sphere.center.z - radius * 0.86;
+  const points = [
+    new THREE.Vector3(x0, y0, z0),
+    new THREE.Vector3(x0 + barLen, y0, z0),
+  ];
+  const line = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(points),
+    new THREE.LineBasicMaterial({color: 0xffffff})
+  );
+  scene.add(line);
+
+  const tickHeight = radius * 0.035;
+  [x0, x0 + barLen].forEach(x => {
+    const tick = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(x, y0 - tickHeight, z0),
+        new THREE.Vector3(x, y0 + tickHeight, z0),
+      ]),
+      new THREE.LineBasicMaterial({color: 0xffffff})
+    );
+    scene.add(tick);
+  });
+
+  const labelText = `${len.toFixed(len >= 10 ? 0 : 1).replace(/\.0$/, '')} µm`;
+  const label = makeScaleLabelSprite(THREE, labelText, radius);
+  label.position.set(x0 + barLen / 2, y0 + radius * 0.075, z0);
+  scene.add(label);
+}
+
+async function renderVolume3D(volume) {
+  const viewport = document.getElementById('volumeViewport');
+  if (!viewport || !volume || !volume.render) return;
+  setVolumeMessage('Loading 3D engine...');
+  const {THREE, OrbitControls} = await loadThreeModules();
+  disposeVolume3D();
+
+  const positions = volume.render.positions || [];
+  const colors = volume.render.colors || [];
+  if (!positions.length || !colors.length) throw new Error('No 3D points returned');
+
+  const rect = viewport.getBoundingClientRect();
+  const width = Math.max(360, Math.floor(rect.width || 900));
+  const height = Math.max(360, Math.floor(rect.height || 620));
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x08090c);
+  const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 100000);
+  const renderer = new THREE.WebGLRenderer({antialias: true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(width, height);
+  viewport.appendChild(renderer.domElement);
+
+  const geom = new THREE.BufferGeometry();
+  geom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geom.computeBoundingSphere();
+  scene.add(new THREE.Points(geom, new THREE.PointsMaterial({
+    size: volume.render.point_size || 1,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.92,
+    sizeAttenuation: true,
+  })));
+
+  const sphere = geom.boundingSphere || new THREE.Sphere(new THREE.Vector3(0, 0, 0), 100);
+  const radius = Math.max(10, sphere.radius || 100);
+  scene.add(new THREE.AxesHelper(radius * 0.7));
+  const grid = new THREE.GridHelper(radius * 2.2, 10, 0x2c3445, 0x151923);
+  grid.rotation.x = Math.PI / 2;
+  scene.add(grid);
+  addScaleBar3D(THREE, scene, sphere, volume);
+  scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+
+  camera.position.set(
+    sphere.center.x + radius * 1.6,
+    sphere.center.y + radius * 1.25,
+    sphere.center.z + radius * 1.8
+  );
+  camera.near = Math.max(0.01, radius / 1000);
+  camera.far = Math.max(1000, radius * 12);
+  camera.updateProjectionMatrix();
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.copy(sphere.center);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.08;
+  controls.update();
+
+  _scene = scene;
+  _camera = camera;
+  _renderer = renderer;
+  _controls = controls;
+
+  const dims = volume.dimensions || {};
+  const cal = volume.calibration || {};
+  document.getElementById('volumeTitle').textContent = volume.title || '3D TIFF Stack';
+  document.getElementById('volumeMeta').textContent =
+    `${volume.render.n_points || 0} points · Z ${dims.z_sampled || dims.z || 0}/${dims.z || 0} · C ${(dims.channels_rendered || []).length || 1}/${dims.c || 1} · ${formatNumber(cal.pixel_width_um, 4)} um/px · Z ${formatNumber(cal.z_spacing_um, 4)} um`;
+  setVolumeMessage('');
+
+  const resize = () => {
+    if (!_renderer || !_camera) return;
+    const r = viewport.getBoundingClientRect();
+    const w = Math.max(360, Math.floor(r.width || width));
+    const h = Math.max(360, Math.floor(r.height || height));
+    _camera.aspect = w / h;
+    _camera.updateProjectionMatrix();
+    _renderer.setSize(w, h);
+  };
+  _resizeObserver = new ResizeObserver(resize);
+  _resizeObserver.observe(viewport);
+  resize();
+
+  const animate = () => {
+    if (!_renderer || !_scene || !_camera) return;
+    _controls?.update();
+    _renderer.render(_scene, _camera);
+    _anim = requestAnimationFrame(animate);
+  };
+  animate();
+}
+
+async function generateVolume3D() {
+  if (!_currentInfo || !_currentInfo.can_3d) {
+    setStatus('status', 'Load a TIFF Z-stack first', 'error');
+    return;
+  }
+  if (!hasEnabledChannel()) {
+    setStatus('status', 'Select at least one channel to render', 'error');
+    return;
+  }
+  btnBusy('btnPreview3D', true, 'Building...');
+  setVolumeMessage('Building 3D TIFF stack...');
+  setStatus('status', 'Rendering 3D stack preview...', 'loading');
+  try {
+    const d = await api('/api/fluorescence/3d/volume', currentVolumePayload(false));
+    if (d.error) throw new Error(d.error);
+    await renderVolume3D(d.volume);
+    setStatus('status', `3D preview ready: ${d.volume.render.n_points || 0} points`, 'ok');
+  } catch (e) {
+    setVolumeMessage('3D preview error: ' + (e.message || String(e)));
+    setStatus('status', '3D preview error: ' + (e.message || String(e)), 'error');
+    showLog('3D Preview Error', e.message || String(e));
+  } finally {
+    btnBusy('btnPreview3D', false, 'Preview 3D');
+  }
+}
+
+async function exportVolume3D() {
+  if (!_currentInfo || !_currentInfo.can_3d) {
+    setStatus('status', 'Load a TIFF Z-stack first', 'error');
+    return;
+  }
+  if (!hasEnabledChannel()) {
+    setStatus('status', 'Select at least one channel to export', 'error');
+    return;
+  }
+  btnBusy('btnExport3D', true, 'Exporting...');
+  setStatus('status', 'Exporting standalone 3D viewer...', 'loading');
+  try {
+    const d = await dpRunJobEndpoint('/api/fluorescence/3d/export_volume_job', {
+      ...currentVolumePayload(true),
+      output_name: document.getElementById('outputName').value.trim(),
+      overwrite: true,
+    }, {
+      interval_ms: 1000,
+      on_update: job => {
+        const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+        const msg = job.message ? ` · ${job.message}` : '';
+        setStatus('status', `Exporting standalone 3D viewer${pct}${msg}`, 'loading');
+      },
+    });
+    if (d.error) throw new Error(d.error);
+    setStatus('status', `3D viewer saved: ${d.output_path}`, 'ok');
+    showLog('3D Viewer Export', `Saved ${d.n_points || 0} rendered voxel point(s)\n${d.output_path}`);
+    const outputName = document.getElementById('outputName').value.trim();
+    recordRunHistory({
+      view: 'fluorescence_3d_stacking',
+      title: '3D TIFF viewer export',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(document.getElementById('tiffPath').value.trim()),
+      parameters: Object.assign(currentVolumePayload(true), {
+        operation: 'export_volume_3d',
+        output_name: outputName,
+        volume_quality: document.getElementById('volumeQuality')?.value || 'balanced',
+      }),
+      input_files: [{path: document.getElementById('tiffPath').value.trim(), type: 'tiff', role: 'source_stack'}],
+      outputs: [{path: d.output_path, type: 'html', role: '3d_viewer'}],
+      metadata: {
+        n_points: d.n_points || 0,
+        z_sampled: d.z_sampled || 0,
+        channels_rendered: d.channels_rendered || [],
+        calibration: d.calibration || {},
+      },
+    });
+    toast('3D viewer export complete');
+  } catch (e) {
+    setStatus('status', '3D export error: ' + (e.message || String(e)), 'error');
+    showLog('3D Export Error', e.message || String(e));
+  } finally {
+    btnBusy('btnExport3D', false, 'Export 3D HTML');
+  }
+}
+
+function showLog(title, text) {
+  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${escHtml(text)}</pre>`;
+  upsertResultCard('stackLogCard', title, body);
+}
+
+function upsertResultCard(cardId, title, bodyHtml) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'flex';
+  let card = document.getElementById(cardId);
+  if (!card) {
+    card = document.createElement('div');
+    card.id = cardId;
+    card.className = 'result-card';
+    area.prepend(card);
+  }
+  card.innerHTML = `
+    <div class="result-card-header">${escHtml(title)}</div>
+    <div class="result-card-body">${bodyHtml}</div>`;
+}
+
+window.addEventListener('load', () => {
+  if (!HAS_TIFF || !HAS_PIL) {
+    setStatus('status', 'tifffile and Pillow are required', 'error');
+  } else {
+    setStatus('status', 'Ready', 'ok');
+    renderAvailableTiffList();
+  }
+});
+</script>
+{% endblock %}

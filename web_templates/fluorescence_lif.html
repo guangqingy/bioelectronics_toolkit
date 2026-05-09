@@ -1,0 +1,753 @@
+{% extends "base.html" %}
+{% block title %}Leica LIF Browser{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/lif/data">
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanLifFolder')">Browse</button>
+  </div>
+  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="scanLifFolder()">Scan .lif Files</button>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">LIF Projects</div>
+  <div id="lifFileList" class="file-list" style="max-height:150px"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Selected Project</div>
+  <div class="input-row">
+    <input type="text" id="lifPath" class="input-path" placeholder="/path/to/project.lif">
+    <button class="btn-icon" onclick="pickFile('lifPath','loadLifProject')">Browse</button>
+  </div>
+  <button class="btn-primary" id="btnLoadLif" data-label="Load Project" onclick="loadLifProject()" style="margin-top:8px">Load Project</button>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Project Order</div>
+  <div class="param-row">
+    <div class="param-label">Sort</div>
+    <select id="sortMode" onchange="onSortChange()" style="flex:1">
+      <option value="time" selected>Acquisition time</option>
+      <option value="original">Leica project order</option>
+      <option value="name">Name</option>
+    </select>
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" id="btnManifest" onclick="exportLifManifest()" disabled>Save CSV</button>
+    <button class="btn-secondary" id="btnExportAllTiff" onclick="exportAllTiff()" disabled>Export All TIFF</button>
+  </div>
+</div>
+
+<div class="ctrl-section" id="subfileSection" style="display:none">
+  <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
+    <span>Project Browser</span>
+    <span id="lifBrowserCount" class="lif-browser-count"></span>
+  </div>
+  <div id="lifSubfileList" class="file-list lif-subfile-list"></div>
+</div>
+
+<div class="ctrl-section" id="previewSection" style="display:none">
+  <div class="ctrl-label">Preview</div>
+  <div class="param-row">
+    <div class="param-label">LUT</div>
+    <select id="lutSelect" class="input-sm" onchange="refreshLifPreview()">
+      <option>Gray</option>
+      <option>Red</option>
+      <option>Green</option>
+      <option>Blue</option>
+      <option>Magenta</option>
+      <option>Cyan</option>
+      <option>Yellow</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Lo %</div>
+    <input type="number" id="pLow" class="input-sm" value="1" step="0.5" min="0" max="49" onchange="refreshLifPreview()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Hi %</div>
+    <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" onchange="refreshLifPreview()">
+  </div>
+  <div class="lif-slider-row">
+    <span>C</span>
+    <input type="range" id="cSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <span id="cLabel">1 / 1</span>
+  </div>
+  <div class="lif-slider-row">
+    <span>Z</span>
+    <input type="range" id="zSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <span id="zLabel">1 / 1</span>
+  </div>
+  <div class="lif-slider-row">
+    <span>T</span>
+    <input type="range" id="tSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <span id="tLabel">1 / 1</span>
+  </div>
+  <div class="lif-slider-row">
+    <span>M</span>
+    <input type="range" id="mSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <span id="mLabel">1 / 1</span>
+  </div>
+  <div id="extraDimControls"></div>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">Leica LIF Browser</div>
+    <div class="view-sub" id="lifMeta">Open a Leica .lif project to browse subfiles in time order, rename exports, and save TIFF stacks.</div>
+  </div>
+
+  <div class="lif-layout">
+    <div class="result-card lif-preview-card">
+      <div class="result-card-header">
+        Frame Preview
+        <span id="lifPreviewName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
+      </div>
+      <div class="result-card-body lif-preview-body">
+        <div id="lifPreview" class="lif-preview">
+          <div class="plot-placeholder">Select a subfile from the Project Browser</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="result-card lif-detail-card">
+      <div class="result-card-header">Selected Subfile</div>
+      <div class="result-card-body" id="lifDetailBody">
+        <div class="file-list-empty">No subfile selected</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultArea" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const HAS_READLIF = {{ has_readlif | tojson }};
+const HAS_PIL = {{ has_pil | tojson }};
+const HAS_TIFF = {{ has_tiff | tojson }};
+
+let _lifPath = '';
+let _lifFiles = [];
+let _lifRecords = [];
+let _lifDisplayRecords = [];
+let _lifRenameMap = {};
+let _lifActiveIndex = null;
+let _lifPreviewDebounce = null;
+
+function escapeHtml(s) {
+  return String(s || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeAttr(s) {
+  return escapeHtml(s).replace(/`/g, '&#96;');
+}
+
+function renameStorageKey(path) {
+  return 'dp_lif_rename_v1:' + String(path || '');
+}
+
+function loadRenameMap(path) {
+  try {
+    const raw = localStorage.getItem(renameStorageKey(path));
+    const parsed = raw ? JSON.parse(raw) : {};
+    _lifRenameMap = (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+  } catch {
+    _lifRenameMap = {};
+  }
+}
+
+function saveRenameMap() {
+  if (!_lifPath) return;
+  localStorage.setItem(renameStorageKey(_lifPath), JSON.stringify(_lifRenameMap));
+}
+
+function displayName(rec) {
+  if (!rec) return '';
+  const custom = _lifRenameMap[String(rec.index)];
+  return (custom && String(custom).trim()) || rec.name || ('Subfile ' + (Number(rec.index) + 1));
+}
+
+function hasCustomName(rec) {
+  return !!(rec && _lifRenameMap[String(rec.index)] && String(_lifRenameMap[String(rec.index)]).trim());
+}
+
+function planeCount(rec) {
+  const planeDims = Array.isArray(rec.plane_dimensions) ? rec.plane_dimensions : [];
+  let total = Math.max(1, Number(rec.channels || 1));
+  if (planeDims.length) {
+    planeDims.forEach(dim => { total *= Math.max(1, Number(dim.count || 1)); });
+    return total;
+  }
+  const d = rec.dimensions || {};
+  return total *
+    Math.max(1, Number(d.t || 1)) *
+    Math.max(1, Number(d.z || 1)) *
+    Math.max(1, Number(d.m || 1));
+}
+
+function scanLifFolder() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) { setStatus('status', 'Enter a folder path', 'error'); return; }
+  setStatus('status', 'Scanning .lif files...', 'loading');
+
+  api('/api/fluorescence/lif/browse', { folder }).then(d => {
+    if (d.error) throw new Error(d.error);
+    _lifFiles = d.files || [];
+    renderLifFileList();
+    setStatus('status', `${_lifFiles.length} LIF project(s) found`, 'ok');
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function renderLifFileList() {
+  const el = document.getElementById('lifFileList');
+  if (!_lifFiles.length) {
+    el.innerHTML = '<div class="file-list-empty">No .lif files found</div>';
+    return;
+  }
+  el.innerHTML = _lifFiles.map((f, i) => `
+    <div class="file-item" data-idx="${i}" onclick="selectLifFile(${i})">${escapeHtml(f.name)}</div>
+  `).join('');
+}
+
+function selectLifFile(i) {
+  const rec = _lifFiles[i];
+  if (!rec) return;
+  document.querySelectorAll('#lifFileList .file-item').forEach(e => e.classList.remove('active'));
+  document.querySelector(`#lifFileList .file-item[data-idx="${i}"]`)?.classList.add('active');
+  document.getElementById('lifPath').value = rec.path;
+  loadLifProject();
+}
+
+function loadLifProject() {
+  const path = document.getElementById('lifPath').value.trim();
+  if (!path) { setStatus('status', 'Choose a .lif file', 'error'); return; }
+  if (!HAS_READLIF) {
+    setStatus('status', 'readlif is not installed: python -m pip install readlif', 'error');
+    return;
+  }
+  if (!HAS_PIL) {
+    setStatus('status', 'Pillow is not installed', 'error');
+    return;
+  }
+
+  _lifPath = path;
+  _lifActiveIndex = null;
+  loadRenameMap(path);
+  btnBusy('btnLoadLif', true, 'Loading...');
+  setStatus('status', 'Reading Leica project metadata...', 'loading');
+  document.getElementById('lifSubfileList').innerHTML = '<div class="file-list-empty">Loading LIF project...</div>';
+  document.getElementById('subfileSection').style.display = '';
+
+  api('/api/fluorescence/lif/info', {
+    path,
+    sort: document.getElementById('sortMode').value,
+  }).then(d => {
+    btnBusy('btnLoadLif', false, 'Load Project');
+    if (d.error) throw new Error(d.error);
+    _lifRecords = d.records || [];
+    sortLifRecords();
+    renderLifBrowser();
+    document.getElementById('btnManifest').disabled = !_lifRecords.length;
+    document.getElementById('btnExportAllTiff').disabled = !_lifRecords.length || !HAS_TIFF;
+    const timed = d.timestamp_count || 0;
+    document.getElementById('lifMeta').textContent =
+      `${d.name || 'LIF project'} · ${d.n_images || 0} subfiles · ${timed} with timestamp metadata`;
+    setStatus('status', 'Ready', 'ok');
+    if (_lifDisplayRecords.length) selectLifRecord(_lifDisplayRecords[0].index);
+  }).catch(e => {
+    btnBusy('btnLoadLif', false, 'Load Project');
+    setStatus('status', 'Error: ' + e.message, 'error');
+    showLog('LIF Load Error', e.message || String(e));
+  });
+}
+
+function onSortChange() {
+  if (!_lifRecords.length) return;
+  sortLifRecords();
+  renderLifBrowser();
+}
+
+function sortLifRecords() {
+  const mode = document.getElementById('sortMode').value;
+  _lifDisplayRecords = [..._lifRecords].sort((a, b) => {
+    if (mode === 'original') return (a.original_order || 0) - (b.original_order || 0);
+    if (mode === 'name') {
+      const an = String(displayName(a) || a.full_name || '').toLowerCase();
+      const bn = String(displayName(b) || b.full_name || '').toLowerCase();
+      return an.localeCompare(bn) || ((a.original_order || 0) - (b.original_order || 0));
+    }
+    const at = Number.isFinite(Number(a.sort_value));
+    const bt = Number.isFinite(Number(b.sort_value));
+    if (at && bt) return Number(a.sort_value) - Number(b.sort_value) || ((a.original_order || 0) - (b.original_order || 0));
+    if (at) return -1;
+    if (bt) return 1;
+    return (a.original_order || 0) - (b.original_order || 0);
+  });
+}
+
+function dimText(rec) {
+  const d = rec.dimensions || {};
+  const parts = [`${d.x || 0}x${d.y || 0}`];
+  if ((d.z || 1) > 1) parts.push(`Z${d.z}`);
+  if ((d.t || 1) > 1) parts.push(`T${d.t}`);
+  if ((d.m || 1) > 1) parts.push(`M${d.m}`);
+  (rec.extra_dimensions || []).forEach(dim => {
+    if (Number(dim.count || 1) > 1) parts.push(`${dim.label || ('D' + dim.id)}${dim.count}`);
+  });
+  parts.push(`C${rec.channels || 1}`);
+  return parts.join(' · ');
+}
+
+function fmtMetaNumber(v, suffix) {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n <= 0) return 'not found';
+  const text = n >= 100 ? n.toFixed(2) : n >= 10 ? n.toFixed(3) : n.toFixed(4);
+  return text.replace(/0+$/, '').replace(/\.$/, '') + (suffix || '');
+}
+
+function pixelSizeText(rec) {
+  const cal = rec.calibration || {};
+  const x = fmtMetaNumber(cal.pixel_width_um, ' um/px');
+  const y = fmtMetaNumber(cal.pixel_height_um, ' um/px');
+  if (x === 'not found' && y === 'not found') return 'not found';
+  if (x === y) return x;
+  return `${x} x ${y}`;
+}
+
+function renderLifBrowser() {
+  renderLifSubfileList();
+  renderSelectedDetail();
+  document.getElementById('lifBrowserCount').textContent = _lifDisplayRecords.length ? `${_lifDisplayRecords.length}` : '';
+}
+
+function renderLifSubfileList() {
+  const el = document.getElementById('lifSubfileList');
+  if (!_lifDisplayRecords.length) {
+    el.innerHTML = '<div class="file-list-empty">No subfiles found</div>';
+    return;
+  }
+  el.innerHTML = _lifDisplayRecords.map((rec, i) => {
+    const active = Number(rec.index) === Number(_lifActiveIndex) ? 'active' : '';
+    const customLine = hasCustomName(rec) ? `<span class="lif-subfile-original">Original: ${escapeHtml(rec.name || '')}</span>` : '';
+    return `
+      <div class="file-item lif-subfile-item ${active}" onclick="selectLifRecord(${rec.index})">
+        <span class="lif-order">${i + 1}</span>
+        <span class="lif-subfile-main">${escapeHtml(displayName(rec))}</span>
+        <span class="lif-subfile-time">${escapeHtml(rec.acquired_at || 'Leica order')} · LIF ${rec.original_order || ''} · ${escapeHtml(dimText(rec))}</span>
+        ${customLine}
+      </div>`;
+  }).join('');
+}
+
+function findRecord(index) {
+  return _lifRecords.find(r => Number(r.index) === Number(index));
+}
+
+function selectLifRecord(index) {
+  const rec = findRecord(index);
+  if (!rec) return;
+  _lifActiveIndex = Number(index);
+  renderLifBrowser();
+  document.getElementById('previewSection').style.display = '';
+  document.getElementById('lifPreviewName').textContent = displayName(rec);
+  updatePreviewControls(rec);
+  refreshLifPreview();
+}
+
+function renderSelectedDetail() {
+  const body = document.getElementById('lifDetailBody');
+  const rec = findRecord(_lifActiveIndex);
+  if (!rec) {
+    body.innerHTML = '<div class="file-list-empty">No subfile selected</div>';
+    return;
+  }
+  const d = rec.dimensions || {};
+  const planes = planeCount(rec);
+  const stackLine = planes > 1 ? `${planes} planes will export as one multi-page TIFF stack.` : 'Single plane TIFF export.';
+  body.innerHTML = `
+    <div class="lif-detail-title">${escapeHtml(displayName(rec))}</div>
+    ${hasCustomName(rec) ? `<div class="lif-detail-muted">Original: ${escapeHtml(rec.name || '')}</div>` : ''}
+    <div class="lif-detail-grid">
+      <span>Project order</span><strong>${rec.original_order || ''}</strong>
+      <span>Time</span><strong>${escapeHtml(rec.acquired_at || 'No timestamp')}</strong>
+      <span>Folder</span><strong>${escapeHtml(rec.folder || 'Project')}</strong>
+      <span>Dimensions</span><strong>${escapeHtml(dimText(rec))}</strong>
+      <span>Planes</span><strong>${planes}</strong>
+      <span>Bit depth</span><strong>${escapeHtml((rec.bit_depth || []).join('/') || '')}</strong>
+      <span>Pixel size</span><strong>${escapeHtml(pixelSizeText(rec))}</strong>
+      <span>Z spacing</span><strong>${escapeHtml(fmtMetaNumber((rec.calibration || {}).z_spacing_um, ' um'))}</strong>
+      <span>T interval</span><strong>${escapeHtml(fmtMetaNumber((rec.calibration || {}).frame_interval_s, ' s'))}</strong>
+    </div>
+    <div class="param-row" style="margin-top:12px">
+      <div class="param-label">Export name</div>
+      <input type="text" id="renameInput" value="${escapeAttr(displayName(rec))}" placeholder="output name" style="font-size:12px">
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="btnApplyRename" onclick="applySelectedRename()">Rename</button>
+      <button class="btn-secondary" onclick="resetSelectedRename()">Reset</button>
+    </div>
+    <div class="lif-export-note">${escapeHtml(stackLine)}</div>
+    <button class="btn-primary" id="btnExportTiff" data-label="Export Selected TIFF" onclick="exportSelectedTiff()" style="margin-top:10px" ${HAS_TIFF ? '' : 'disabled'}>Export Selected TIFF</button>
+  `;
+}
+
+function syncRenameFromInput() {
+  const rec = findRecord(_lifActiveIndex);
+  if (!rec) return '';
+  const input = document.getElementById('renameInput');
+  const raw = input ? input.value.trim() : '';
+  if (raw && raw !== rec.name) {
+    _lifRenameMap[String(rec.index)] = raw;
+  } else {
+    delete _lifRenameMap[String(rec.index)];
+  }
+  saveRenameMap();
+  return displayName(rec);
+}
+
+function applySelectedRename() {
+  const rec = findRecord(_lifActiveIndex);
+  if (!rec) return;
+  syncRenameFromInput();
+  if (document.getElementById('sortMode').value === 'name') sortLifRecords();
+  renderLifBrowser();
+  document.getElementById('lifPreviewName').textContent = displayName(rec);
+  setStatus('status', 'Rename saved for export/list display', 'ok');
+}
+
+function resetSelectedRename() {
+  const rec = findRecord(_lifActiveIndex);
+  if (!rec) return;
+  delete _lifRenameMap[String(rec.index)];
+  saveRenameMap();
+  if (document.getElementById('sortMode').value === 'name') sortLifRecords();
+  renderLifBrowser();
+  document.getElementById('lifPreviewName').textContent = displayName(rec);
+  setStatus('status', 'Rename reset', 'ok');
+}
+
+function setSliderDim(id, labelId, count) {
+  const slider = document.getElementById(id);
+  const label = document.getElementById(labelId);
+  if (!slider || !label) return;
+  const n = Math.max(1, Number(count) || 1);
+  slider.max = String(n - 1);
+  if (Number(slider.value) >= n) slider.value = '0';
+  slider.disabled = n <= 1;
+  label.textContent = `${Number(slider.value) + 1} / ${n}`;
+}
+
+function extraPreviewDims(rec) {
+  return (rec.extra_dimensions || []).filter(dim => Number(dim.count || 1) > 1);
+}
+
+function renderExtraDimControls(rec) {
+  const el = document.getElementById('extraDimControls');
+  if (!el) return;
+  const dims = extraPreviewDims(rec);
+  const currentValues = {};
+  dims.forEach(dim => {
+    const id = Number(dim.id);
+    const slider = document.getElementById(`extraDimSlider_${id}`);
+    if (slider) currentValues[id] = Number(slider.value || 0);
+  });
+  if (!dims.length) {
+    el.innerHTML = '';
+    return;
+  }
+  el.innerHTML = dims.map(dim => {
+    const id = Number(dim.id);
+    const count = Math.max(1, Number(dim.count || 1));
+    const value = Math.max(0, Math.min(count - 1, Number(currentValues[id] || 0)));
+    const label = escapeHtml(dim.label || ('D' + id));
+    return `
+      <div class="lif-slider-row lif-extra-dim-row" data-dim-id="${id}">
+        <span>${label}</span>
+        <input type="range" id="extraDimSlider_${id}" min="0" max="${count - 1}" value="${value}" oninput="onLifDimSlide()">
+        <span id="extraDimLabel_${id}">1 / ${count}</span>
+      </div>`;
+  }).join('');
+}
+
+function updatePreviewControls(rec) {
+  const d = rec.dimensions || {};
+  setSliderDim('cSlider', 'cLabel', rec.channels || 1);
+  setSliderDim('zSlider', 'zLabel', d.z || 1);
+  setSliderDim('tSlider', 'tLabel', d.t || 1);
+  setSliderDim('mSlider', 'mLabel', d.m || 1);
+  renderExtraDimControls(rec);
+  extraPreviewDims(rec).forEach(dim => {
+    setSliderDim(`extraDimSlider_${Number(dim.id)}`, `extraDimLabel_${Number(dim.id)}`, dim.count || 1);
+  });
+}
+
+function onLifDimSlide() {
+  const rec = findRecord(_lifActiveIndex);
+  if (rec) updatePreviewControls(rec);
+  refreshLifPreview();
+}
+
+function currentPreviewPayload() {
+  const rec = findRecord(_lifActiveIndex);
+  const requestedDims = {};
+  extraPreviewDims(rec || {}).forEach(dim => {
+    const id = Number(dim.id);
+    const slider = document.getElementById(`extraDimSlider_${id}`);
+    requestedDims[String(id)] = parseInt((slider && slider.value) || '0', 10);
+  });
+  return {
+    path: _lifPath,
+    image_index: _lifActiveIndex,
+    c: parseInt(document.getElementById('cSlider').value || '0', 10),
+    z: parseInt(document.getElementById('zSlider').value || '0', 10),
+    t: parseInt(document.getElementById('tSlider').value || '0', 10),
+    m: parseInt(document.getElementById('mSlider').value || '0', 10),
+    requested_dims: requestedDims,
+    lut: document.getElementById('lutSelect').value,
+    p_low: parseFloat(document.getElementById('pLow').value || '1'),
+    p_high: parseFloat(document.getElementById('pHigh').value || '99'),
+  };
+}
+
+function lifRunParameters(extra) {
+  return Object.assign({
+    path: _lifPath,
+    sort_mode: document.getElementById('sortMode').value,
+    rename_map: _lifRenameMap,
+    order_indices: _lifDisplayRecords.map(r => r.index),
+    preview: currentPreviewPayload(),
+  }, extra || {});
+}
+
+window.dpApplyRunManifest = manifest => {
+  dpApplyRunManifestFallback(manifest);
+  const params = manifest.parameters || {};
+  const inputPath = params.path || dpFirstManifestInput(manifest);
+  if (inputPath) {
+    _lifPath = inputPath;
+    document.getElementById('lifPath').value = inputPath;
+    document.getElementById('folderPath').value = manifest.project_root || dpPathDir(inputPath);
+  }
+  if (params.sort_mode) document.getElementById('sortMode').value = params.sort_mode;
+  if (params.rename_map && typeof params.rename_map === 'object') {
+    _lifRenameMap = params.rename_map;
+    saveRenameMap();
+  }
+  if (inputPath && HAS_READLIF && HAS_PIL) loadLifProject();
+  setStatus('status', 'LIF parameters loaded from run manifest', 'ok');
+};
+
+function refreshLifPreview() {
+  if (!_lifPath || _lifActiveIndex === null) return;
+  clearTimeout(_lifPreviewDebounce);
+  _lifPreviewDebounce = setTimeout(loadLifPreview, 120);
+}
+
+function loadLifPreview() {
+  const preview = document.getElementById('lifPreview');
+  preview.innerHTML = '<div class="plot-placeholder">Loading frame...</div>';
+  api('/api/fluorescence/lif/preview', currentPreviewPayload()).then(d => {
+    if (d.error) throw new Error(d.error);
+    preview.innerHTML = `<img src="data:image/png;base64,${d.img}" alt="LIF frame"/>`;
+  }).catch(e => {
+    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${escapeHtml(e.message)}</div>`;
+    setStatus('status', 'Preview error', 'error');
+  });
+}
+
+function exportLifManifest() {
+  if (!_lifPath || !_lifDisplayRecords.length) {
+    setStatus('status', 'No LIF order to export', 'error');
+    return;
+  }
+  syncRenameFromInput();
+  btnBusy('btnManifest', true, 'Saving...');
+  const order_indices = _lifDisplayRecords.map(r => r.index);
+  api('/api/fluorescence/lif/export_manifest', {
+    path: _lifPath,
+    order_indices,
+    rename_map: _lifRenameMap,
+  }).then(d => {
+    btnBusy('btnManifest', false, 'Save CSV');
+    if (d.error) throw new Error(d.error);
+    setStatus('status', `Saved order CSV: ${d.output_path}`, 'ok');
+    showLog('LIF Order CSV', `${d.rows || 0} rows saved\n${d.output_path}`);
+    recordRunHistory({
+      view: 'fluorescence_lif',
+      title: 'LIF order CSV',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(_lifPath),
+      parameters: lifRunParameters({operation: 'export_manifest_csv'}),
+      input_files: [{path: _lifPath, type: 'lif'}],
+      outputs: [{path: d.output_path, type: 'csv', role: 'lif_order'}],
+      metadata: {rows: d.rows || 0},
+    });
+    toast('LIF order CSV saved');
+  }).catch(e => {
+    btnBusy('btnManifest', false, 'Save CSV');
+    setStatus('status', 'Export error: ' + e.message, 'error');
+    showLog('LIF Export Error', e.message || String(e));
+  });
+}
+
+async function runLifBackgroundJob(endpoint, payload, label) {
+  return dpRunJobEndpoint(endpoint, payload, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `${label}${pct}${msg}`, 'loading');
+    },
+  });
+}
+
+function exportSelectedTiff() {
+  const rec = findRecord(_lifActiveIndex);
+  if (!rec || !_lifPath) {
+    setStatus('status', 'No subfile selected', 'error');
+    return;
+  }
+  if (!HAS_TIFF) {
+    setStatus('status', 'tifffile is not installed', 'error');
+    return;
+  }
+  const outputName = syncRenameFromInput();
+  renderLifBrowser();
+  btnBusy('btnExportTiff', true, 'Exporting...');
+  setStatus('status', 'Exporting selected subfile to TIFF...', 'loading');
+
+  runLifBackgroundJob('/api/fluorescence/lif/export_tiff_job', {
+    path: _lifPath,
+    image_index: rec.index,
+    output_name: outputName,
+    overwrite: true,
+  }, 'Exporting selected subfile to TIFF').then(d => {
+    btnBusy('btnExportTiff', false, 'Export Selected TIFF');
+    if (d.error) throw new Error(d.error);
+    setStatus('status', `TIFF saved: ${d.output_path}`, 'ok');
+    showLog('TIFF Export', `Saved ${d.planes || 1} plane(s)\n${d.output_path}\n\nMetadata JSON:\n${d.metadata_path || ''}`);
+    recordRunHistory({
+      view: 'fluorescence_lif',
+      title: 'LIF selected TIFF export',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(_lifPath),
+      parameters: lifRunParameters({operation: 'export_selected_tiff', image_index: rec.index, output_name: outputName}),
+      input_files: [{path: _lifPath, type: 'lif', image_index: rec.index, name: rec.name || ''}],
+      outputs: [
+        {path: d.output_path, type: 'tiff', role: 'exported_tiff'},
+        {path: d.metadata_path, type: 'json', role: 'metadata'},
+      ].filter(x => x.path),
+      metadata: {planes: d.planes || 1, shape: d.shape || [], calibration: d.calibration || {}},
+    });
+    toast('TIFF export complete');
+  }).catch(e => {
+    btnBusy('btnExportTiff', false, 'Export Selected TIFF');
+    setStatus('status', 'TIFF export error: ' + e.message, 'error');
+    showLog('TIFF Export Error', e.message || String(e));
+  });
+}
+
+function exportAllTiff() {
+  if (!_lifPath || !_lifDisplayRecords.length) {
+    setStatus('status', 'No LIF project loaded', 'error');
+    return;
+  }
+  if (!HAS_TIFF) {
+    setStatus('status', 'tifffile is not installed', 'error');
+    return;
+  }
+  syncRenameFromInput();
+  btnBusy('btnExportAllTiff', true, 'Exporting...');
+  setStatus('status', `Exporting ${_lifDisplayRecords.length} subfiles to TIFF...`, 'loading');
+  const order_indices = _lifDisplayRecords.map(r => r.index);
+
+  runLifBackgroundJob('/api/fluorescence/lif/export_tiff_batch_job', {
+    path: _lifPath,
+    order_indices,
+    rename_map: _lifRenameMap,
+    overwrite: true,
+  }, `Exporting ${_lifDisplayRecords.length} subfiles to TIFF`).then(d => {
+    btnBusy('btnExportAllTiff', false, 'Export All TIFF');
+    if (d.error) throw new Error(d.error);
+    const failed = d.failed || 0;
+    setStatus('status', `TIFF batch export: ${d.success || 0} saved, ${failed} failed`, failed ? 'error' : 'ok');
+    const lines = [
+      `Output folder: ${d.output_dir}`,
+      `Success: ${d.success || 0}`,
+      `Failed: ${failed}`,
+      '',
+      'Each TIFF has calibration tags plus a *_metadata.json sidecar with Leica dimensions, scale, and settings.',
+    ];
+    if (failed && d.failed_files) {
+      lines.push('', ...d.failed_files.slice(0, 8).map(x => `${x.name || x.image_index}: ${x.error}`));
+    }
+    showLog('TIFF Batch Export', lines.join('\n'));
+    const outputs = [];
+    (d.outputs || []).forEach(item => {
+      if (item.output_path) outputs.push({path: item.output_path, type: 'tiff', role: 'exported_tiff', image_index: item.image_index});
+      if (item.metadata_path) outputs.push({path: item.metadata_path, type: 'json', role: 'metadata', image_index: item.image_index});
+    });
+    recordRunHistory({
+      view: 'fluorescence_lif',
+      title: 'LIF batch TIFF export',
+      status: failed ? 'warning' : 'ok',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(_lifPath),
+      parameters: lifRunParameters({operation: 'export_all_tiff', output_dir: d.output_dir}),
+      input_files: [{path: _lifPath, type: 'lif'}],
+      outputs,
+      warnings: failed && d.failed_files ? d.failed_files.map(x => `${x.name || x.image_index}: ${x.error}`) : [],
+      metadata: {output_dir: d.output_dir, success: d.success || 0, failed},
+    });
+    toast('TIFF batch export finished');
+  }).catch(e => {
+    btnBusy('btnExportAllTiff', false, 'Export All TIFF');
+    setStatus('status', 'Batch export error: ' + e.message, 'error');
+    showLog('TIFF Batch Export Error', e.message || String(e));
+  });
+}
+
+function showLog(title, text) {
+  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${escapeHtml(text)}</pre>`;
+  upsertResultCard('lifLogCard', title, body);
+}
+
+function upsertResultCard(cardId, title, bodyHtml) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'flex';
+  let card = document.getElementById(cardId);
+  if (!card) {
+    card = document.createElement('div');
+    card.id = cardId;
+    card.className = 'result-card';
+    area.prepend(card);
+  }
+  card.innerHTML = `
+    <div class="result-card-header">${escapeHtml(title)}</div>
+    <div class="result-card-body">${bodyHtml}</div>`;
+}
+
+window.addEventListener('load', () => {
+  if (!HAS_READLIF) {
+    setStatus('status', 'readlif is not installed: python -m pip install readlif', 'error');
+  } else if (!HAS_PIL) {
+    setStatus('status', 'Pillow is not installed', 'error');
+  } else if (!HAS_TIFF) {
+    setStatus('status', 'tifffile is not installed: TIFF export is disabled', 'error');
+  } else {
+    setStatus('status', 'Ready', 'ok');
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "updated_at": "",
+  "global": {
+    "default_folder": "",
+    "use_default_on_empty": true
+  },
+  "views": {}
+}

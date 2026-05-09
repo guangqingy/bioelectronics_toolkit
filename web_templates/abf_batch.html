@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}ABF Batch Processor{% endblock %}
+
+{% block controls %}
+{% if not has_abf %}
+<div style="background:#fee; border:1px solid #f99; border-radius:4px; padding:12px; font-size:12px; line-height:1.4;">
+  <strong>PyABF not installed.</strong><br>Run: <code>pip install pyabf</code>
+</div>
+{% endif %}
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/files">
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanFolder')" title="Scan folder">Browse</button>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Files Found</div>
+  <div id="fileCount" style="padding:8px; background:var(--ash); border-radius:4px; font-size:13px; line-height:1.6;">0 files</div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Filename Tokens</div>
+  <div class="param-row">
+    <div class="param-label">Main Tok</div>
+    <input type="text" id="mainToken" class="input-path" placeholder="control">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Treat Tok</div>
+    <input type="text" id="treatToken" class="input-path" placeholder="T1">
+  </div>
+  <button class="btn-secondary" onclick="suggestTokens()" style="width:100%; margin-top:8px;">Auto-detect Tokens</button>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Power Series</div>
+  <select id="powerPreset" class="input-group" onchange="applyPowerPreset()" style="margin-bottom:8px;">
+    <option value="10-step-normal">10-step (normal)</option>
+    <option value="10-step-20x">10-step (20x)</option>
+    <option value="12-step-old">12-step (old)</option>
+    <option value="25-step-wide">25-step (wide)</option>
+    <option value="custom">Custom</option>
+  </select>
+  <input type="text" id="powers" class="input-path" placeholder="0, 0.1, 0.3, 1, 3" value="0, 0.1, 0.3, 1, 3">
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Channels</div>
+  <div class="param-row">
+    <div class="param-label">I Ch</div>
+    <input type="number" id="iCh" class="input-xs" value="0" min="0" max="10">
+  </div>
+  <div class="param-row">
+    <div class="param-label">V Ch</div>
+    <input type="number" id="vCh" class="input-xs" value="1" min="0" max="10">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Baseline (ms)</div>
+  <div class="param-row">
+    <div class="param-label">Start</div>
+    <input type="number" id="blPre0" class="input-xs" value="0" min="0">
+  </div>
+  <div class="param-row">
+    <div class="param-label">End</div>
+    <input type="number" id="blPre1" class="input-xs" value="50" min="0">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Peak Window</div>
+  <div class="param-row">
+    <div class="param-label">Win ms</div>
+    <input type="number" id="peakWin" class="input-xs" value="200" min="1">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Batch Behavior</div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="moveFiles" checked>
+    <span>Reorganize into {main}_{treat}/sample_{id}/</span>
+  </label>
+  <label class="checkbox-row" style="margin-top:4px">
+    <input type="checkbox" id="reindexSeq">
+    <span>Renumber sequences (group min -> 0)</span>
+  </label>
+</div>
+
+<button id="btnRun" class="btn-primary" onclick="runBatch()">Run Batch</button>
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">ABF Batch Processor</div>
+    <div class="view-sub">Scan, tokenize, and batch summarize traces</div>
+  </div>
+  <div class="view-preview">
+    <div class="result-card">
+      <div class="result-card-header">Detected Files</div>
+      <div class="result-card-body">
+        <div id="fileTableWrap" class="data-table-wrap"></div>
+      </div>
+    </div>
+  </div>
+  <div class="view-results">
+    <div id="resultCard" class="result-card" style="display:none;">
+      <div class="result-card-header" id="resultHeader">Results</div>
+      <div class="result-card-body">
+        <div id="resultBody"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _files = [];
+const POWER_PRESETS = {
+  '10-step-normal': '3.71, 2.79, 1.86, 0.995, 0.648, 0.553, 0.308, 0.100, 0.0574, 0.0210',
+  '10-step-20x': '92.75, 69.75, 46.50, 24.875, 16.20, 13.825, 7.70, 2.50, 1.435, 0.525',
+  '12-step-old': '99.822, 86.014, 44.818, 16.071, 8.828, 3.169, 0.656, 0.556, 0.31, 0.101, 0.058, 0.021',
+  '25-step-wide': '103.6, 90.9, 80, 70, 60, 50, 20, 15, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0.86, 0.68, 0.6, 0.47, 0.36, 0.22, 0.075'
+};
+
+function applyPowerPreset() {
+  const key = document.getElementById('powerPreset').value;
+  if (key !== 'custom' && POWER_PRESETS[key]) {
+    document.getElementById('powers').value = POWER_PRESETS[key];
+  }
+}
+
+function scanFolder() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) {
+    setStatus('status', 'Enter folder path', 'error');
+    toast('Enter folder path', true);
+    return;
+  }
+
+  setStatus('status', 'Scanning folder...', 'loading');
+  api('/api/abf_batch/browse', { folder })
+    .then(r => {
+      if (r.error) throw new Error(r.error);
+      _files = r.files || [];
+      document.getElementById('fileCount').textContent = _files.length + ' files';
+
+      if (_files.length === 0) {
+        document.getElementById('fileTableWrap').innerHTML = '<div class="file-list-empty">No ABF files found</div>';
+        setStatus('status', 'No files found', 'error');
+        return;
+      }
+
+      const cols = ['File', 'Size (bytes)', 'Channels'];
+      const rows = _files.slice(0, 100).map(f => ({
+        'File': f.name || f,
+        'Size (bytes)': f.size || '\u2014',
+        'Channels': f.channels || '\u2014'
+      }));
+      document.getElementById('fileTableWrap').innerHTML = buildTable(rows, cols);
+      setStatus('status', 'Ready', 'ok');
+    })
+    .catch(e => {
+      setStatus('status', 'Scan failed', 'error');
+      toast('Scan failed: ' + e.message, true);
+    });
+}
+
+function suggestTokens() {
+  if (_files.length === 0) {
+    toast('Scan folder first', true);
+    return;
+  }
+
+  setStatus('status', 'Analyzing filenames...', 'loading');
+  const fileNames = _files.map(f => typeof f === 'string' ? f : f.name);
+
+  api('/api/abf_batch/scan_tokens', { files: fileNames })
+    .then(r => {
+      if (r.error) throw new Error(r.error);
+      if (r.main_token) document.getElementById('mainToken').value = r.main_token;
+      if (r.treat_token) document.getElementById('treatToken').value = r.treat_token;
+      setStatus('status', 'Tokens suggested', 'ok');
+      toast('Tokens auto-detected');
+    })
+    .catch(e => {
+      setStatus('status', 'Suggestion failed', 'error');
+      toast('Could not suggest tokens: ' + e.message, true);
+    });
+}
+
+function runBatch() {
+  const folder = document.getElementById('folderPath').value.trim();
+  const main = document.getElementById('mainToken').value.trim();
+  const treat = document.getElementById('treatToken').value.trim();
+  const powers = document.getElementById('powers').value.trim();
+  const i_ch = parseInt(document.getElementById('iCh').value, 10);
+  const v_ch = parseInt(document.getElementById('vCh').value, 10);
+  const bl_pre0 = parseInt(document.getElementById('blPre0').value, 10);
+  const bl_pre1 = parseInt(document.getElementById('blPre1').value, 10);
+  const peak_window = parseInt(document.getElementById('peakWin').value, 10);
+  const move_files = document.getElementById('moveFiles').checked;
+  const reindex_seq = document.getElementById('reindexSeq').checked;
+
+  if (!folder || !main || !treat) {
+    toast('Enter all required parameters', true);
+    return;
+  }
+
+  btnBusy('btnRun', true, 'Processing...');
+  setStatus('status', 'Running batch analysis...', 'loading');
+
+  const payload = {
+    folder, main, treat, powers,
+    i_ch, v_ch, bl_pre0, bl_pre1, peak_window,
+    move_files, reindex_seq
+  };
+
+  dpRunJobEndpoint('/api/abf_batch/process_job', payload, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Running batch analysis${pct}${msg}`, 'loading');
+    },
+  })
+    .then(r => {
+      if (r.error) throw new Error(r.error);
+      const rows = (r.results || []).map(row => ({
+        'File': row.file || '',
+        'Status': row.status || 'ok',
+        'Main': row.main_val || '\u2014',
+        'Treat': row.treat_val || '\u2014',
+        'Peaks': row.peak_count || 0
+      }));
+
+      document.getElementById('resultBody').innerHTML = buildTable(rows, ['File', 'Status', 'Main', 'Treat', 'Peaks']);
+      document.getElementById('resultCard').style.display = 'block';
+      const mv = Number(r.moved_count || 0);
+      const rn = Number(r.renamed_count || 0);
+      const wn = Array.isArray(r.warnings) ? r.warnings.length : 0;
+      document.getElementById('resultHeader').textContent = 'Results (' + rows.length + ' files | moved=' + mv + ' | renamed=' + rn + ' | warn=' + wn + ')';
+      setStatus('status', 'Batch complete', 'ok');
+      toast('Batch processing complete');
+      recordRunHistory({
+        view: 'abf_batch',
+        title: 'ABF Batch Processing',
+        status: wn ? 'warning' : 'ok',
+        project_root: folder,
+        input_files: (_files || []).map(f => ({path: (typeof f === 'string' ? f : f.path), role: 'source_abf'})).filter(f => f.path),
+        outputs: r.csv_path ? [{path: r.csv_path, type: 'summary_csv'}] : [],
+        parameters: payload,
+        warnings: r.warnings || [],
+        metadata: {
+          processed: r.n || rows.length,
+          moved_count: mv,
+          renamed_count: rn,
+        },
+      });
+    })
+    .catch(e => {
+      setStatus('status', 'Batch failed', 'error');
+      toast('Batch failed: ' + e.message, true);
+    })
+    .finally(() => btnBusy('btnRun', false, 'Run Batch'));
+}
+
+window.addEventListener('load', () => {
+  document.getElementById('powerPreset').value = '10-step-normal';
+  applyPowerPreset();
+});
+</script>
+{% endblock %}

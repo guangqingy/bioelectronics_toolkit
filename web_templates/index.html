@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+
+{% block head %}
+<style>
+.gui-board-section { margin-bottom: 16px; }
+.gui-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.gui-board-title {
+  font-size: 13px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--silver);
+  font-weight: 600;
+}
+.gui-board-count {
+  color: var(--pewter);
+  font-size: 12px;
+  margin-left: 6px;
+}
+.gui-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gui-link {
+  text-decoration: none;
+}
+.gui-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.gui-tag-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.gui-domain {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--blue);
+  background: #edf2ff;
+  border-radius: 3px;
+  padding: 2px 6px;
+}
+.gui-pin {
+  min-height: 28px;
+  font-size: 11px;
+  padding: 4px 8px;
+}
+</style>
+{% endblock %}
+
+{% block body %}
+<div style="padding-top: var(--nav-h);">
+  <div class="page-header" style="padding: 48px 32px 32px;">
+    <div class="page-eyebrow">Guangqing Yang · UChicago</div>
+    <div class="page-title">DataProcess</div>
+    <div class="page-sub">Unified web interface for electrophysiology, electrochemistry, fluorescence imaging, and analysis</div>
+  </div>
+
+  <div style="padding: 0 32px 48px; max-width: 1300px;">
+    <div style="margin-bottom: 36px;">
+      <div class="gui-board-head">
+        <div class="ctrl-label" style="margin:0;">GUI Workspace</div>
+        <button class="btn-secondary" id="resetGuiPrefs" type="button" style="font-size:11px;padding:4px 8px;">Reset Common/Other</button>
+      </div>
+      <div class="result-card" style="margin-bottom: 12px;">
+        <div class="result-card-body" style="padding: 12px 16px; font-size: 12px; color: var(--pewter);">
+          Fluorescence is now managed as a dedicated GUI tool (not in general scripts). Use the card buttons to manually move tools between Common GUI and Other GUI.
+        </div>
+      </div>
+
+      <div class="gui-board-section">
+        <div class="gui-board-head">
+          <div class="gui-board-title">Common GUI <span class="gui-board-count" id="commonCount"></span></div>
+        </div>
+        <div class="dash-grid" id="commonGuiGrid"></div>
+      </div>
+
+      <div class="gui-board-section">
+        <div class="gui-board-head">
+          <div class="gui-board-title">Other GUI <span class="gui-board-count" id="otherCount"></span></div>
+        </div>
+        <div class="dash-grid" id="otherGuiGrid"></div>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 36px;">
+      <div class="ctrl-label" style="margin-bottom: 12px;">General Script Pipelines</div>
+      <div class="dash-grid">
+        <a class="dash-card" href="/scripts/photocurrent">
+          <div class="dash-card-name">Photocurrent Pipelines</div>
+          <div class="dash-card-desc">Standardized model workflows for intensity-response, peak overlays, heatmaps, decay curves, and long-term stability.</div>
+          <span class="dash-card-tag">General pipeline</span>
+        </a>
+        <a class="dash-card" href="/scripts/emg">
+          <div class="dash-card-name">EMG Pipelines</div>
+          <div class="dash-card-desc">Standardized EMG model workflows for representative waveform, overlay envelope, group bar diagram, and heatmap analysis.</div>
+          <span class="dash-card-tag">General pipeline</span>
+        </a>
+        <a class="dash-card" href="/scripts/echem_curves">
+          <div class="dash-card-name">EChem Curve Pipelines</div>
+          <div class="dash-card-desc">Device-level photocurrent and photovoltage curve scripts based on chamber/index summary exports.</div>
+          <span class="dash-card-tag">General pipeline</span>
+        </a>
+        <a class="dash-card" href="/scripts/viability">
+          <div class="dash-card-name">Viability Pipelines</div>
+          <div class="dash-card-desc">Control-versus-device live/dead quantification scripts for two supported subcutaneous datasets.</div>
+          <span class="dash-card-tag">General pipeline</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const GUI_ITEMS = [
+  {
+    id: 'abf_viewer',
+    name: 'ABF Viewer',
+    desc: 'Browse .abf files, select sweep and channel, preview with baseline subtraction and R-normalization. Export SVG / PNG / CSV.',
+    tag: 'pyabf',
+    domain: 'ABF',
+    href: '/abf/viewer',
+  },
+  {
+    id: 'abf_batch',
+    name: 'Batch Processor',
+    desc: 'Scan a folder of .abf files, auto-parse filenames, extract photocurrent peaks, and generate per-file and summary CSV outputs.',
+    tag: 'Batch CSV',
+    domain: 'ABF',
+    href: '/abf/batch',
+  },
+  {
+    id: 'abf_figure',
+    name: 'Figure Generator',
+    desc: 'Load summary CSVs, queue multiple folders, and plot peak/integral metrics with linear and log x-ranges.',
+    tag: 'Comparison',
+    domain: 'ABF',
+    href: '/abf/figure',
+  },
+  {
+    id: 'abf_peaks',
+    name: 'Peak Detection',
+    desc: 'R-normalized peak detection with configurable window and threshold controls, exporting peak summary CSV.',
+    tag: 'scipy peaks',
+    domain: 'ABF',
+    href: '/abf/peaks',
+  },
+  {
+    id: 'echem_pc',
+    name: 'Photocurrent Detector',
+    desc: 'Detect POS/NEG threshold events from electrochemistry traces and export paired segments for review.',
+    tag: 'txt csv',
+    domain: 'EChem',
+    href: '/echem/photocurrent',
+  },
+  {
+    id: 'echem_pv',
+    name: 'Photovoltage Detector',
+    desc: 'Detect square-pulse photovoltage signals with detrending options and export positive/negative pulses.',
+    tag: 'Detrend SG',
+    domain: 'EChem',
+    href: '/echem/photovoltage',
+  },
+  {
+    id: 'rhd_viewer',
+    name: 'RHD Viewer',
+    desc: 'Browse .rhd recordings, preview channels, and export selected/all channels as CSV.',
+    tag: 'rhd channels',
+    domain: 'EMG',
+    href: '/emg/rhd',
+  },
+  {
+    id: 'emg_peaks',
+    name: 'RHD Peak Selector',
+    desc: 'Load channel CSVs, detect peaks with filters, group patterns, and export centered event segments.',
+    tag: 'Groups Export',
+    domain: 'EMG',
+    href: '/emg/peaks',
+  },
+  {
+    id: 'csv_viewer',
+    name: 'CSV Viewer',
+    desc: 'Browse CSV files, choose X/Y columns, and overlay multiple files with export options.',
+    tag: 'CSV Merge',
+    domain: 'Data',
+    href: '/csv',
+  },
+  {
+    id: 'fluorescence',
+    name: 'Fluorescence GUI',
+    desc: 'Dedicated GUI-adapted fluorescence tools for TIFF normalization and annotated GIF export.',
+    tag: 'TIFF GIF',
+    domain: 'Imaging',
+    href: '/fluorescence',
+  },
+  {
+    id: 'fluorescence_lif',
+    name: 'Leica LIF Browser',
+    desc: 'Open Leica .lif projects, browse subfiles in acquisition-time order, preview channels, and save the ordered manifest.',
+    tag: 'Leica LIF',
+    domain: 'Imaging',
+    href: '/fluorescence/lif',
+  },
+  {
+    id: 'histology',
+    name: 'Histology Namer',
+    desc: 'Preview Overview.vsi main and label images, then manually rename folders and QuPath display names.',
+    tag: 'VSI rename',
+    domain: 'Histology',
+    href: '/histology',
+  },
+];
+
+const DEFAULT_COMMON = [
+  'abf_batch',
+  'abf_peaks',
+  'echem_pc',
+  'rhd_viewer',
+  'emg_peaks',
+  'fluorescence',
+  'fluorescence_lif',
+  'histology',
+  'csv_viewer',
+];
+
+const STORAGE_KEY = 'dp_gui_common_v1';
+let commonSet = new Set();
+
+function loadCommonSet() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return new Set(DEFAULT_COMMON);
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return new Set(DEFAULT_COMMON);
+    return new Set(parsed);
+  } catch {
+    return new Set(DEFAULT_COMMON);
+  }
+}
+
+function saveCommonSet() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(Array.from(commonSet)));
+}
+
+function toggleCommon(id) {
+  if (commonSet.has(id)) commonSet.delete(id);
+  else commonSet.add(id);
+  saveCommonSet();
+  renderGuiBoards();
+}
+
+function makeGuiCard(item, isCommon) {
+  const card = document.createElement('div');
+  card.className = 'dash-card gui-card';
+
+  const actionText = isCommon ? 'Move to Other' : 'Mark Common';
+  card.innerHTML = `
+    <a class="gui-link" href="${item.href}">
+      <div class="dash-card-name">${item.name}</div>
+      <div class="dash-card-desc">${item.desc}</div>
+    </a>
+    <div class="gui-card-footer">
+      <div class="gui-tag-wrap">
+        <span class="dash-card-tag" style="margin-top:0;">${item.tag}</span>
+        <span class="gui-domain">${item.domain}</span>
+      </div>
+      <button class="btn-secondary gui-pin" type="button">${actionText}</button>
+    </div>
+  `;
+
+  const btn = card.querySelector('button');
+  btn.addEventListener('click', (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    toggleCommon(item.id);
+  });
+
+  return card;
+}
+
+function renderGuiBoards() {
+  const commonGrid = document.getElementById('commonGuiGrid');
+  const otherGrid = document.getElementById('otherGuiGrid');
+  commonGrid.innerHTML = '';
+  otherGrid.innerHTML = '';
+
+  const commonItems = [];
+  const otherItems = [];
+  for (const item of GUI_ITEMS) {
+    if (commonSet.has(item.id)) commonItems.push(item);
+    else otherItems.push(item);
+  }
+
+  commonItems.forEach((item) => commonGrid.appendChild(makeGuiCard(item, true)));
+  otherItems.forEach((item) => otherGrid.appendChild(makeGuiCard(item, false)));
+
+  document.getElementById('commonCount').textContent = `(${commonItems.length})`;
+  document.getElementById('otherCount').textContent = `(${otherItems.length})`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  commonSet = loadCommonSet();
+  renderGuiBoards();
+
+  document.getElementById('resetGuiPrefs').addEventListener('click', () => {
+    commonSet = new Set(DEFAULT_COMMON);
+    saveCommonSet();
+    renderGuiBoards();
+    toast('GUI groups reset to defaults');
+  });
+});
+</script>
+{% endblock %}

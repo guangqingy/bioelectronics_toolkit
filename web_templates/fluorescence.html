@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+{% block title %}Fluorescence TIFF Viewer{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/tiff/data">
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanFolder')">Browse</button>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">TIFF Files</div>
+  <div id="fileList" class="file-list"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">File Profile</div>
+  <div class="input-group">
+    <select id="tiffProfileSelect" onchange="loadSelectedTiffProfile(false)">
+      <option value="">No file selected</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" onclick="saveTiffFileProfile(false)">Save</button>
+      <button class="btn-secondary" type="button" onclick="saveTiffFileProfile(true)">Save As</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" onclick="loadSelectedTiffProfile(false)">Load</button>
+      <button class="btn-secondary" type="button" onclick="deleteSelectedTiffProfile()">Delete</button>
+    </div>
+    <label class="checkbox-row">
+      <input type="checkbox" id="tiffAutoLoadProfile" checked>
+      <span>Auto-load saved profile for selected file</span>
+    </label>
+  </div>
+  <div class="status-bar" id="tiffProfileStatus"></div>
+</div>
+
+<div class="ctrl-section" id="previewSection">
+  <div class="ctrl-label">Display</div>
+  <div class="param-row">
+    <div class="param-label">LUT</div>
+    <select id="lutSelect" class="input-sm" onchange="refreshPreview()">
+      <option>Gray</option>
+      <option>Red</option>
+      <option>Green</option>
+      <option>Blue</option>
+      <option>Magenta</option>
+      <option>Cyan</option>
+      <option>Yellow</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Mode</div>
+    <select id="displayMode" onchange="onDisplayModeChange()">
+      <option value="single" selected>Single slice</option>
+      <option value="max">Max projection</option>
+      <option value="mean">Mean projection</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Lo %</div>
+    <input type="number" id="pLow" class="input-sm" value="1" step="0.5" min="0" max="49" onchange="refreshPreview()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Hi %</div>
+    <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" onchange="refreshPreview()">
+  </div>
+  <div class="btn-row">
+    <button class="btn-secondary" type="button" onclick="setContrastPreset(0, 100)">Full</button>
+    <button class="btn-secondary" type="button" onclick="setContrastPreset(1, 99)">Auto</button>
+    <button class="btn-secondary" type="button" onclick="setContrastPreset(3, 99.7)">High</button>
+  </div>
+  <div style="margin-top:8px">
+    <div class="frame-slider-wrap">
+      <input type="range" id="frameSlider" min="0" max="0" value="0" oninput="onFrameSlide()">
+      <span class="frame-badge" id="frameLabel">0 / 0</span>
+    </div>
+  </div>
+  <div class="param-row" id="zRangeRow" style="margin-top:7px;display:none">
+    <div class="param-label">Slices</div>
+    <input type="number" id="zStart" value="1" min="1" step="1" onchange="refreshPreview()" style="font-size:11.5px">
+    <input type="number" id="zEnd" value="1" min="1" step="1" onchange="refreshPreview()" style="font-size:11.5px">
+  </div>
+  <div class="btn-row" style="margin-top:7px">
+    <button class="btn-secondary" type="button" onclick="stepFrame(-1)">Prev</button>
+    <button class="btn-secondary" type="button" onclick="stepFrame(1)">Next</button>
+  </div>
+</div>
+
+<div class="ctrl-section" id="stackExportSection">
+  <div class="ctrl-label">TIFF Stack Export</div>
+  <div style="font-size:11px;color:var(--silver);margin-bottom:8px">Select a TIFF to load per-slice settings, then adjust LUT/range/background/denoise.</div>
+  <div id="stackRows" style="display:flex;flex-direction:column;gap:6px;max-height:260px;overflow:auto;border:1px solid var(--cloud);border-radius:8px;padding:6px"></div>
+  <label class="checkbox-row" style="margin-top:8px">
+    <input type="checkbox" id="batchUseTemplate" checked>
+    <span>Batch apply current include/LUT/background/denoise</span>
+  </label>
+  <label class="checkbox-row">
+    <input type="checkbox" id="batchLockRanges">
+    <span>Batch also lock current min/max</span>
+  </label>
+  <label class="checkbox-row">
+    <input type="checkbox" id="autoRerange" checked>
+    <span>Auto re-range after denoise/background change</span>
+  </label>
+  <button class="btn-primary" id="btnStackExport" onclick="runStackExportCurrent()" style="margin-top:6px">Export TIFF + Fiji macro</button>
+  <button class="btn-secondary" id="btnStackBatch" onclick="runStackExportBatch()" style="width:100%;margin-top:8px">Export All Listed Files</button>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Saved Settings</div>
+  <div class="btn-row">
+    <button class="btn-secondary" type="button" onclick="saveTiffDefaults()">Save Defaults</button>
+    <button class="btn-secondary" type="button" onclick="resetTiffDefaults()">Reset</button>
+  </div>
+  <div class="status-bar" id="tiffPrefsStatus"></div>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">TIFF Browser & Adjustment</div>
+    <div class="view-sub" id="tiffMeta">Browse TIFF stacks, tune contrast/LUT, inspect slices or projections, then export adjusted stacks.</div>
+  </div>
+
+  <!-- Frame preview -->
+  <div class="tiff-preview" id="tiffPreview">
+    <div class="plot-placeholder">Select a TIFF file to preview frames</div>
+  </div>
+
+  <!-- Results / log -->
+  <div id="resultArea" style="display:flex;flex-direction:column;gap:12px"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let _currentFile = null;
+let _nFrames = 0;
+let _frameDebounce = null;
+let _listedFiles = [];
+let _stackSettings = [];
+let _tiffPrefs = {};
+let _tiffProfileState = null;
+
+const STACK_LUT_OPTIONS = ['Red', 'Blue', 'Gray', 'Green', 'Magenta', 'Cyan', 'Yellow'];
+const STACK_BG_OPTIONS = ['Off', 'Light', 'Medium', 'Strong'];
+const STACK_DENOISE_OPTIONS = ['Off', 'Light', 'Medium', 'Strong'];
+
+function _optHtml(options, selected) {
+  return options.map(o => `<option value="${o}"${o === selected ? ' selected' : ''}>${o}</option>`).join('');
+}
+
+window.dpApplyRunManifest = manifest => {
+  dpApplyRunManifestFallback(manifest);
+  const inputPath = dpFirstManifestInput(manifest);
+  if (inputPath) {
+    _currentFile = inputPath;
+    document.getElementById('folderPath').value = manifest.project_root || dpPathDir(inputPath);
+  }
+  const params = manifest.parameters || {};
+  if (params.display) applyTiffPrefs(params.display);
+  if (Array.isArray(params.settings)) {
+    _stackSettings = params.settings.map(s => ({...s}));
+    renderStackRows();
+  }
+  if (_currentFile) {
+    document.getElementById('tiffMeta').textContent = _currentFile.split('/').pop() + ' · parameters loaded from run manifest';
+    refreshPreview();
+  }
+};
+
+function scanFolder() {
+  const folder = document.getElementById('folderPath').value.trim();
+  if (!folder) { setStatus('status', 'Enter a folder path', 'error'); return; }
+  setStatus('status', 'Scanning…', 'loading');
+
+  api('/api/fluorescence/browse', { folder }).then(d => {
+    if (d.error) throw new Error(d.error);
+    _listedFiles = d.files || [];
+    buildFileList('fileList', _listedFiles, el => selectFile(el, el.dataset.path));
+    setStatus('status', _listedFiles.length + ' file(s) found', 'ok');
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function collectTiffPrefs() {
+  return {
+    folderPath: document.getElementById('folderPath').value.trim(),
+    lut: document.getElementById('lutSelect').value,
+    displayMode: document.getElementById('displayMode').value,
+    pLow: document.getElementById('pLow').value,
+    pHigh: document.getElementById('pHigh').value,
+    zStart: document.getElementById('zStart').value,
+    zEnd: document.getElementById('zEnd').value,
+    batchUseTemplate: !!document.getElementById('batchUseTemplate').checked,
+    batchLockRanges: !!document.getElementById('batchLockRanges').checked,
+    autoRerange: !!document.getElementById('autoRerange').checked,
+  };
+}
+
+function tiffProjectRoot() {
+  return document.getElementById('folderPath').value.trim();
+}
+
+function collectTiffFilePayload() {
+  return {
+    stackSettings: _stackSettings.length ? collectStackSettingsFromUI() : [],
+  };
+}
+
+function applyTiffFilePayload(payload) {
+  if (!payload || typeof payload !== 'object') return;
+  if (Array.isArray(payload.stackSettings) && payload.stackSettings.length) {
+    _stackSettings = payload.stackSettings.map(s => ({...s}));
+    renderStackRows();
+  }
+}
+
+function renderTiffProfileOptions(data) {
+  _tiffProfileState = data || null;
+  const select = document.getElementById('tiffProfileSelect');
+  if (!select) return;
+  if (!_currentFile) {
+    select.innerHTML = '<option value="">No file selected</option>';
+    return;
+  }
+  const selected = data?.selected_profile || data?.last_profile || '';
+  select.innerHTML = fileProfileOptionsHtml(data?.profiles || {}, selected);
+}
+
+async function loadTiffProfileForFile(auto) {
+  if (!_currentFile) return null;
+  try {
+    const data = await loadFileProfile('fluorescence', _currentFile, tiffProjectRoot(), '');
+    renderTiffProfileOptions(data);
+    const shouldApply = !!data.profile && (!auto || document.getElementById('tiffAutoLoadProfile')?.checked);
+    if (shouldApply) {
+      applyTiffPrefs(data.profile.settings || {});
+      applyTiffFilePayload(data.profile.payload || {});
+      setStatus('tiffProfileStatus', `Loaded file profile: ${data.selected_profile || data.last_profile || 'default'}`, data.stale ? 'warning' : 'ok');
+    } else if (auto && document.getElementById('tiffAutoLoadProfile')?.checked && !data.profile) {
+      const created = await saveFileProfile('fluorescence', _currentFile, tiffProjectRoot(), 'default', collectTiffPrefs(), collectTiffFilePayload());
+      renderTiffProfileOptions(created);
+      setStatus('tiffProfileStatus', 'Created default file profile for this TIFF.', 'ok');
+    } else {
+      setStatus('tiffProfileStatus', 'No saved profile for this TIFF yet.', '');
+    }
+    return data;
+  } catch (e) {
+    setStatus('tiffProfileStatus', 'File profile not loaded: ' + e.message, 'warning');
+    return null;
+  }
+}
+
+async function loadSelectedTiffProfile(auto) {
+  if (!_currentFile) { setStatus('tiffProfileStatus', 'Select a TIFF first.', 'error'); return; }
+  const name = document.getElementById('tiffProfileSelect').value;
+  if (!name) { setStatus('tiffProfileStatus', 'No profile selected.', 'error'); return; }
+  try {
+    const data = await loadFileProfile('fluorescence', _currentFile, tiffProjectRoot(), name);
+    renderTiffProfileOptions(data);
+    if (data.profile) {
+      applyTiffPrefs(data.profile.settings || {});
+      applyTiffFilePayload(data.profile.payload || {});
+      refreshPreview();
+      setStatus('tiffProfileStatus', `Loaded file profile: ${name}`, data.stale ? 'warning' : 'ok');
+    }
+  } catch (e) {
+    setStatus('tiffProfileStatus', 'Load failed: ' + e.message, 'error');
+  }
+}
+
+async function saveTiffFileProfile(saveAs) {
+  if (!_currentFile) { setStatus('tiffProfileStatus', 'Select a TIFF first.', 'error'); return; }
+  let name = document.getElementById('tiffProfileSelect').value || 'default';
+  if (saveAs) {
+    name = promptProfileName(name);
+    if (!name) return;
+  }
+  try {
+    const data = await saveFileProfile('fluorescence', _currentFile, tiffProjectRoot(), name, collectTiffPrefs(), collectTiffFilePayload());
+    renderTiffProfileOptions(data);
+    setStatus('tiffProfileStatus', `Saved file profile: ${name}`, 'ok');
+    toast('TIFF file profile saved');
+  } catch (e) {
+    setStatus('tiffProfileStatus', 'Save failed: ' + e.message, 'error');
+  }
+}
+
+async function deleteSelectedTiffProfile() {
+  if (!_currentFile) return;
+  const name = document.getElementById('tiffProfileSelect').value;
+  if (!name || !confirm(`Delete file profile "${name}"?`)) return;
+  try {
+    const data = await deleteFileProfile('fluorescence', _currentFile, tiffProjectRoot(), name);
+    renderTiffProfileOptions(data);
+    setStatus('tiffProfileStatus', `Deleted file profile: ${name}`, 'ok');
+  } catch (e) {
+    setStatus('tiffProfileStatus', 'Delete failed: ' + e.message, 'error');
+  }
+}
+
+function applyTiffPrefs(prefs) {
+  if (!prefs || typeof prefs !== 'object') return;
+  const setVal = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value !== undefined && value !== null) el.value = value;
+  };
+  const setChecked = (id, value) => {
+    const el = document.getElementById(id);
+    if (el && value !== undefined) el.checked = !!value;
+  };
+  setVal('folderPath', prefs.folderPath);
+  setVal('lutSelect', prefs.lut);
+  setVal('displayMode', prefs.displayMode);
+  setVal('pLow', prefs.pLow);
+  setVal('pHigh', prefs.pHigh);
+  setVal('zStart', prefs.zStart);
+  setVal('zEnd', prefs.zEnd);
+  setChecked('batchUseTemplate', prefs.batchUseTemplate);
+  setChecked('batchLockRanges', prefs.batchLockRanges);
+  setChecked('autoRerange', prefs.autoRerange);
+  onDisplayModeChange(false);
+}
+
+async function saveTiffDefaults() {
+  _tiffPrefs.defaults = collectTiffPrefs();
+  _tiffPrefs.updated_at = new Date().toISOString();
+  await saveViewPreferences('fluorescence', _tiffPrefs);
+  setStatus('tiffPrefsStatus', 'Defaults saved.', 'ok');
+  toast('TIFF defaults saved');
+}
+
+async function resetTiffDefaults() {
+  _tiffPrefs = {};
+  await saveViewPreferences('fluorescence', _tiffPrefs);
+  setStatus('tiffPrefsStatus', 'Defaults reset.', 'ok');
+  toast('TIFF defaults reset');
+}
+
+async function selectFile(el, path) {
+  document.querySelectorAll('#fileList .file-item').forEach(e => e.classList.remove('active'));
+  el.classList.add('active');
+  _currentFile = path;
+  setStatus('status', 'Loading TIFF info…', 'loading');
+
+  api('/api/fluorescence/info', { path }).then(async d => {
+    if (d.error) throw new Error(d.error);
+    _nFrames = d.n_frames;
+    const slider = document.getElementById('frameSlider');
+    slider.max = Math.max(0, _nFrames - 1);
+    slider.value = 0;
+    document.getElementById('frameLabel').textContent = '1 / ' + _nFrames;
+    document.getElementById('zStart').max = _nFrames;
+    document.getElementById('zEnd').max = _nFrames;
+    document.getElementById('zStart').value = 1;
+    document.getElementById('zEnd').value = _nFrames;
+    onDisplayModeChange(false);
+    document.getElementById('tiffMeta').textContent =
+      d.n_frames + ' frames · ' + d.width + '×' + d.height + ' · ' + d.dtype;
+    await loadStackDefaults();
+    await loadTiffProfileForFile(true);
+    refreshPreview();
+    setStatus('status', 'Ready', 'ok');
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function refreshPreview() {
+  if (!_currentFile) return;
+  clearTimeout(_frameDebounce);
+  _frameDebounce = setTimeout(_doPreview, 120);
+}
+
+function setContrastPreset(low, high) {
+  document.getElementById('pLow').value = low;
+  document.getElementById('pHigh').value = high;
+  refreshPreview();
+}
+
+function onDisplayModeChange(doRefresh = true) {
+  const mode = document.getElementById('displayMode').value;
+  document.getElementById('zRangeRow').style.display = mode === 'single' ? 'none' : '';
+  if (doRefresh) refreshPreview();
+}
+
+function stepFrame(delta) {
+  const slider = document.getElementById('frameSlider');
+  const max = parseInt(slider.max || '0', 10);
+  const next = Math.max(0, Math.min(max, parseInt(slider.value || '0', 10) + delta));
+  slider.value = next;
+  onFrameSlide();
+}
+
+function onFrameSlide() {
+  const idx = parseInt(document.getElementById('frameSlider').value, 10);
+  document.getElementById('frameLabel').textContent = (idx + 1) + ' / ' + _nFrames;
+  refreshPreview();
+}
+
+function _doPreview() {
+  const frame  = parseInt(document.getElementById('frameSlider').value, 10);
+  const lut    = document.getElementById('lutSelect').value;
+  const p_low  = parseFloat(document.getElementById('pLow').value) || 1;
+  const p_high = parseFloat(document.getElementById('pHigh').value) || 99;
+  const mode = document.getElementById('displayMode').value;
+  const z_start = Math.max(0, (parseInt(document.getElementById('zStart').value || '1', 10) || 1) - 1);
+  const z_end = Math.max(0, (parseInt(document.getElementById('zEnd').value || '1', 10) || 1) - 1);
+  api('/api/fluorescence/preview_frame', {
+    path: _currentFile, frame, lut, p_low, p_high, mode, z_start, z_end
+  }).then(d => {
+    if (d.error) { document.getElementById('tiffPreview').innerHTML = '<div class="plot-placeholder">Error: ' + d.error + '</div>'; return; }
+    document.getElementById('tiffPreview').innerHTML =
+      `<img src="data:image/png;base64,${d.img}" alt="frame ${frame}"/>`;
+    if (d.mode && d.mode !== 'single') {
+      document.getElementById('frameLabel').textContent = `${d.mode} ${d.z_start + 1}-${d.z_end + 1} / ${_nFrames}`;
+    }
+  });
+}
+
+function renderStackRows() {
+  const box = document.getElementById('stackRows');
+  if (!box) return;
+  if (!_stackSettings.length) {
+    box.innerHTML = '<div class="file-list-empty">No stack settings loaded</div>';
+    return;
+  }
+
+  box.innerHTML = _stackSettings.map((s, i) => {
+    const idx = parseInt(s.page_index, 10) + 1;
+    return `
+      <div style="display:grid;grid-template-columns:18px 52px 78px 78px 78px 72px 72px 46px 50px;gap:4px;align-items:center;font-size:11px;border:1px solid var(--cloud);border-radius:6px;padding:4px 5px">
+        <input type="checkbox" id="stack_include_${i}" ${s.include ? 'checked' : ''} onchange="onStackSettingChange(${i})">
+        <div>Stack ${idx}</div>
+        <select id="stack_lut_${i}" onchange="onStackSettingChange(${i})">${_optHtml(STACK_LUT_OPTIONS, s.lut || 'Gray')}</select>
+        <select id="stack_bg_${i}" onchange="onStackPreprocessChange(${i})">${_optHtml(STACK_BG_OPTIONS, s.background || 'Off')}</select>
+        <select id="stack_dn_${i}" onchange="onStackPreprocessChange(${i})">${_optHtml(STACK_DENOISE_OPTIONS, s.denoise || 'Off')}</select>
+        <input type="number" id="stack_min_${i}" value="${Number(s.min || 0).toFixed(2)}" step="0.01" onchange="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
+        <input type="number" id="stack_max_${i}" value="${Number(s.max || 1).toFixed(2)}" step="0.01" onchange="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
+        <button type="button" class="btn-icon" style="height:24px" onclick="autoRangeStack(${i})">Auto</button>
+        <button type="button" class="btn-icon" style="height:24px" onclick="resetRangeStack(${i})">Reset</button>
+      </div>`;
+  }).join('');
+}
+
+function updateSettingFromInputs(i) {
+  const s = _stackSettings[i];
+  if (!s) return;
+  s.include = !!document.getElementById(`stack_include_${i}`)?.checked;
+  s.lut = document.getElementById(`stack_lut_${i}`)?.value || 'Gray';
+  s.background = document.getElementById(`stack_bg_${i}`)?.value || 'Off';
+  s.denoise = document.getElementById(`stack_dn_${i}`)?.value || 'Off';
+
+  let minV = parseFloat(document.getElementById(`stack_min_${i}`)?.value || String(s.min || 0));
+  let maxV = parseFloat(document.getElementById(`stack_max_${i}`)?.value || String(s.max || 1));
+  if (!Number.isFinite(minV)) minV = parseFloat(s.min || 0);
+  if (!Number.isFinite(maxV)) maxV = parseFloat(s.max || 1);
+  if (!(maxV > minV)) maxV = minV + 1.0;
+
+  s.min = minV;
+  s.max = maxV;
+
+  const minEl = document.getElementById(`stack_min_${i}`);
+  const maxEl = document.getElementById(`stack_max_${i}`);
+  if (minEl) minEl.value = Number(minV).toFixed(2);
+  if (maxEl) maxEl.value = Number(maxV).toFixed(2);
+}
+
+function onStackSettingChange(i) {
+  updateSettingFromInputs(i);
+}
+
+function onStackPreprocessChange(i) {
+  updateSettingFromInputs(i);
+  const auto = !!document.getElementById('autoRerange')?.checked;
+  if (auto) autoRangeStack(i);
+}
+
+function collectStackSettingsFromUI() {
+  const out = [];
+  for (let i = 0; i < _stackSettings.length; i += 1) {
+    updateSettingFromInputs(i);
+    const s = _stackSettings[i];
+    out.push({
+      include: !!s.include,
+      page_index: parseInt(s.page_index, 10),
+      lut: s.lut || 'Gray',
+      background: s.background || 'Off',
+      denoise: s.denoise || 'Off',
+      min: parseFloat(s.min),
+      max: parseFloat(s.max),
+    });
+  }
+  return out;
+}
+
+function loadStackDefaults() {
+  if (!_currentFile) return Promise.resolve();
+  return api('/api/fluorescence/stack_defaults', { path: _currentFile }).then(d => {
+    if (d.error) throw new Error(d.error);
+    _stackSettings = d.settings || [];
+    renderStackRows();
+  }).catch(e => {
+    _stackSettings = [];
+    renderStackRows();
+    showLog('Stack Defaults Error', e.message || String(e));
+  });
+}
+
+function autoRangeStack(i) {
+  const s = _stackSettings[i];
+  if (!_currentFile || !s) return;
+  updateSettingFromInputs(i);
+  api('/api/fluorescence/stack_auto_range', {
+    path: _currentFile,
+    page_index: parseInt(s.page_index, 10),
+    background: s.background || 'Off',
+    denoise: s.denoise || 'Off',
+  }).then(d => {
+    if (d.error) throw new Error(d.error);
+    s.min = parseFloat(d.min);
+    s.max = parseFloat(d.max);
+    const minEl = document.getElementById(`stack_min_${i}`);
+    const maxEl = document.getElementById(`stack_max_${i}`);
+    if (minEl) minEl.value = Number(s.min).toFixed(2);
+    if (maxEl) maxEl.value = Number(s.max).toFixed(2);
+  }).catch(e => {
+    setStatus('status', 'Auto range error: ' + e.message, 'error');
+  });
+}
+
+function resetRangeStack(i) {
+  const s = _stackSettings[i];
+  if (!s) return;
+  const minV = Number(s.data_min ?? s.default_min ?? s.min ?? 0);
+  const maxV0 = Number(s.data_max ?? s.default_max ?? s.max ?? (minV + 1));
+  const maxV = maxV0 > minV ? maxV0 : (minV + 1.0);
+  s.min = minV;
+  s.max = maxV;
+  const minEl = document.getElementById(`stack_min_${i}`);
+  const maxEl = document.getElementById(`stack_max_${i}`);
+  if (minEl) minEl.value = Number(minV).toFixed(2);
+  if (maxEl) maxEl.value = Number(maxV).toFixed(2);
+}
+
+function tiffStackOutputRecords(d) {
+  const out = [];
+  if (d.combined_tiff) out.push({path: d.combined_tiff, type: 'combined_tiff'});
+  if (d.macro) out.push({path: d.macro, type: 'fiji_macro'});
+  if (d.json) out.push({path: d.json, type: 'settings_json'});
+  (d.stack_files || []).forEach(p => out.push({path: p, type: 'stack_tiff'}));
+  return out;
+}
+
+function runStackExportCurrent() {
+  if (!_currentFile) { setStatus('status', 'No file selected', 'error'); return; }
+  if (!_stackSettings.length) { setStatus('status', 'No stack settings loaded', 'error'); return; }
+  btnBusy('btnStackExport', true, 'Exporting…');
+  setStatus('status', 'Exporting current TIFF…', 'loading');
+  const settings = collectStackSettingsFromUI();
+
+  dpRunJobEndpoint('/api/fluorescence/stack_export_job', {
+    input_path: _currentFile,
+    settings,
+  }, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Exporting current TIFF${pct}${msg}`, 'loading');
+    },
+  }).then(d => {
+    btnBusy('btnStackExport', false, 'Export TIFF + Fiji macro');
+    if (d.error) {
+      setStatus('status', 'Error: ' + d.error, 'error');
+      showLog('Stack Export Error', d.error);
+      return;
+    }
+    setStatus('status', 'Export finished', 'ok');
+    const stacks = (d.stack_files || []).map(p => `<li><code style="font-size:11px">${p}</code></li>`).join('');
+    const body = `
+      <div style="font-size:12.5px;color:var(--graphite);line-height:1.8">
+        <div><strong>Combined TIFF:</strong> <code style="font-size:11px">${d.combined_tiff}</code></div>
+        <div><strong>Fiji macro:</strong> <code style="font-size:11px">${d.macro}</code></div>
+        <div><strong>Settings JSON:</strong> <code style="font-size:11px">${d.json}</code></div>
+        <div style="margin-top:6px"><strong>Stack TIFF files:</strong></div>
+        <ul style="margin:4px 0 0 18px;padding:0">${stacks}</ul>
+      </div>`;
+    upsertResultCard('stackExportCard', 'TIFF Stack Export', body);
+    toast('TIFF stack export complete');
+    recordRunHistory({
+      view: 'fluorescence',
+      title: 'TIFF Stack Export',
+      status: 'ok',
+      project_root: tiffProjectRoot(),
+      input_files: [{path: _currentFile, role: 'source_tiff'}],
+      outputs: tiffStackOutputRecords(d),
+      parameters: {
+        settings,
+        display: collectTiffPrefs(),
+      },
+      metadata: {
+        mode: 'single',
+      },
+    });
+  }).catch(e => {
+    btnBusy('btnStackExport', false, 'Export TIFF + Fiji macro');
+    setStatus('status', 'Network error', 'error');
+    showLog('Stack Export Network Error', e.message || String(e));
+  });
+}
+
+function runStackExportBatch() {
+  const paths = (_listedFiles || []).map(f => f.path).filter(Boolean);
+  if (!paths.length) { setStatus('status', 'No TIFF files listed', 'error'); return; }
+
+  const useTemplate = !!document.getElementById('batchUseTemplate')?.checked;
+  const lockRanges = !!document.getElementById('batchLockRanges')?.checked;
+  const templateSettings = useTemplate ? collectStackSettingsFromUI() : [];
+
+  btnBusy('btnStackBatch', true, 'Exporting…');
+  setStatus('status', `Batch exporting ${paths.length} file(s)…`, 'loading');
+
+  dpRunJobEndpoint('/api/fluorescence/stack_export_batch_job', {
+    paths,
+    use_template: useTemplate,
+    lock_ranges: lockRanges,
+    template_settings: templateSettings,
+  }, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Batch exporting ${paths.length} file(s)${pct}${msg}`, 'loading');
+    },
+  }).then(d => {
+    btnBusy('btnStackBatch', false, 'Export All Listed Files');
+    if (d.error) {
+      setStatus('status', 'Error: ' + d.error, 'error');
+      showLog('Batch Export Error', d.error);
+      return;
+    }
+    const failed = d.failed_files || [];
+    const failedLines = failed.slice(0, 10).map(x => `<li><code style="font-size:11px">${x.input}</code>: ${x.error}</li>`).join('');
+    const body = `
+      <div style="font-size:12.5px;color:var(--graphite);line-height:1.8">
+        <div><strong>Success:</strong> ${d.success || 0}</div>
+        <div><strong>Failed:</strong> ${d.failed || 0}</div>
+        ${failed.length ? `<div style="margin-top:6px"><strong>Failed files:</strong></div><ul style="margin:4px 0 0 18px;padding:0">${failedLines}</ul>` : ''}
+      </div>`;
+    upsertResultCard('stackBatchCard', 'TIFF Batch Export', body);
+    setStatus('status', `Batch export finished: ${d.success || 0} success, ${d.failed || 0} failed`, (d.failed || 0) ? 'error' : 'ok');
+    toast('Batch export finished');
+    const outputs = [];
+    (d.outputs || []).forEach(item => {
+      tiffStackOutputRecords(item).forEach(rec => outputs.push(Object.assign({source_input: item.input || ''}, rec)));
+    });
+    recordRunHistory({
+      view: 'fluorescence',
+      title: 'TIFF Batch Stack Export',
+      status: (d.failed || 0) ? 'warning' : 'ok',
+      project_root: tiffProjectRoot(),
+      input_files: paths.map(p => ({path: p, role: 'source_tiff'})),
+      outputs,
+      parameters: {
+        use_template: useTemplate,
+        lock_ranges: lockRanges,
+        template_settings: templateSettings,
+      },
+      warnings: (d.failed_files || []).map(x => `${x.input}: ${x.error}`),
+      metadata: {
+        mode: 'batch',
+        success: d.success || 0,
+        failed: d.failed || 0,
+      },
+    });
+  }).catch(e => {
+    btnBusy('btnStackBatch', false, 'Export All Listed Files');
+    setStatus('status', 'Network error', 'error');
+    showLog('Batch Export Network Error', e.message || String(e));
+  });
+}
+
+function showLog(title, text) {
+  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${text}</pre>`;
+  upsertResultCard('flLogCard', title, body);
+}
+
+function upsertResultCard(cardId, title, bodyHtml) {
+  const area = document.getElementById('resultArea');
+  area.style.display = 'flex';
+  let card = document.getElementById(cardId);
+  if (!card) {
+    card = document.createElement('div');
+    card.id = cardId;
+    card.className = 'result-card';
+    area.prepend(card);
+  }
+  card.innerHTML = `
+    <div class="result-card-header">${title}</div>
+    <div class="result-card-body">${bodyHtml}</div>`;
+}
+
+window.addEventListener('load', () => {
+  setStatus('status', 'Ready', 'ok');
+  document.getElementById('stackRows').innerHTML = '<div class="file-list-empty">Select a TIFF file to load stack settings</div>';
+  loadViewPreferences('fluorescence').then(data => {
+    _tiffPrefs = data || {};
+    applyTiffPrefs(_tiffPrefs.defaults || {});
+    if (_tiffPrefs.defaults && _tiffPrefs.defaults.folderPath) {
+      setStatus('tiffPrefsStatus', 'Defaults loaded.', 'ok');
+    }
+  }).catch(() => setStatus('tiffPrefsStatus', 'Defaults not loaded.', 'warning'));
+});
+
+document.addEventListener('dp:prefs-saved', event => {
+  if (!event.detail || event.detail.view !== 'fluorescence') return;
+  _tiffPrefs = event.detail.data || {};
+  applyTiffPrefs(_tiffPrefs.defaults || {});
+  setStatus('tiffPrefsStatus', 'Defaults updated from Settings.', 'ok');
+});
+</script>
+{% endblock %}

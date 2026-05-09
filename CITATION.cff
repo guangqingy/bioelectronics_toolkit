@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+title: bioelectronics_toolkit
+message: >-
+  If you use this software in your research, please cite it using the metadata
+  below.
+type: software
+authors:
+  - given-names: Guangqing
+    family-names: Yang
+    email: guangqing@uchicago.edu
+    affiliation: The University of Chicago
+abstract: >-
+  Desktop GUIs and a lightweight Flask web app for processing data from common
+  bioelectronics and electrophysiology instruments — patch-clamp recordings
+  (Axon .abf), Intan .rhd EMG, fluorescence imaging (TIFF / LIF),
+  electrochemistry photocurrent and photovoltage, histology naming, and a
+  quartz-crystal-microbalance monitor.
+keywords:
+  - bioelectronics
+  - electrophysiology
+  - patch-clamp
+  - EMG
+  - fluorescence
+  - electrochemistry
+  - ABF
+  - RHD
+license: MIT
+repository-code: https://github.com/guangqingy/bioelectronics_toolkit
+version: 0.1.0
+date-released: "2026-05-09"

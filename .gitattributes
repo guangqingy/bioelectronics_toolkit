@@ -1,0 +1,28 @@
+# Keep text diffs stable across macOS/Linux/Windows.
+* text=auto eol=lf
+
+# Python and web source files should always be normal text.
+*.py text eol=lf
+*.pyi text eol=lf
+*.js text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.sh text eol=lf
+
+# Do not try to line-diff binary research artifacts.
+*.abf binary
+*.rhd binary
+*.lif binary
+*.tif binary
+*.tiff binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.zip binary

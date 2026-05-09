@@ -1,0 +1,98 @@
+# Contributing to bioelectronics_toolkit
+
+Thanks for your interest in contributing. This is a research-lab toolkit, so
+the bar is "useful and consistent" rather than "production-grade." Small,
+focused PRs are easier to review than large omnibus ones.
+
+## Getting set up
+
+```bash
+git clone git@github.com:guangqingy/bioelectronics_toolkit.git
+cd bioelectronics_toolkit
+
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+
+pip install -e ".[dev]"            # installs runtime + ruff + pytest
+pre-commit install                 # auto-format on each commit
+cp config.example.json config.json # optional: customize default paths
+```
+
+## Branch & commit conventions
+
+- Work in a topic branch off `main`: `git switch -c feat/lif-zoom-fix`.
+- Commits follow [Conventional Commits](https://www.conventionalcommits.org):
+  - `feat(emg): add bandpass filter to RHD viewer`
+  - `fix(echem): correct lineshape baseline window`
+  - `docs(readme): clarify config.json fallback order`
+  - `chore: bump ruff to 0.4.10`
+  - `refactor(web_api): extract shared response envelope`
+  - `test(fluorescence): smoke test for ROI export`
+- One logical change per commit. If you find yourself writing "and" in the
+  message, that's two commits.
+
+## Before opening a PR
+
+Run locally:
+
+```bash
+ruff check .
+python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
+python3 -m unittest discover -s tests -v
+```
+
+CI runs the same checks across Python 3.10 – 3.12. Green CI is required
+to merge.
+
+Update [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` describing
+user-visible changes.
+
+## Adding or changing a GUI workflow
+
+The WebGUI is the canonical user surface. Root `*_gui.py` files should stay
+thin compatibility launchers that open the matching WebGUI route by default.
+
+1. Put reusable analysis logic in `services/<domain>/`.
+2. Update the Web route/template first.
+3. If a Tkinter fallback is still needed, keep it in `desktop_apps/legacy/` and
+   make it call the same service logic where practical.
+4. Add or update the route mapping in `desktop_apps/web_launcher.py`.
+5. Register or adjust console scripts in `pyproject.toml`.
+6. Add tests under `tests/` for the service, launcher, and API contract.
+7. Update `README.md`, `WEB_README.md`, and the relevant `docs/` note.
+
+## Adding a new web blueprint
+
+Follow the contract documented in [`WEB_README.md`](./WEB_README.md):
+
+- Expose `register_xxx_routes(app, ctx)` from `web_api/xxx.py`.
+- Use shared helpers from `ctx` (`err`, `fig_to_b64`, `float_or`, …).
+- Templates follow the `block controls / block main / block scripts` pattern
+  in `web_templates/base.html`.
+- Register the blueprint once from `web_app.py`.
+
+## Repository style
+
+- Python source targets Python 3.10+.
+- Use LF line endings and UTF-8 text; `.gitattributes` and `.editorconfig`
+  enforce the baseline.
+- Keep generated outputs, local settings, data folders, caches, and notebooks
+  out of git unless they are tiny documented examples.
+- New service modules should be import-safe and testable without launching a
+  GUI or browser.
+- Prefer small route modules over growing `web_app.py` or a single monolithic
+  domain file.
+
+## Reporting bugs
+
+Use the bug-report issue template. Always include:
+
+- Which tool / script
+- Python version and OS
+- Toolkit commit (`git rev-parse --short HEAD`)
+- A minimal repro and the full traceback if applicable
+
+## License
+
+By contributing, you agree that your contributions are released under the
+[MIT License](./LICENSE).

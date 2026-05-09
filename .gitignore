@@ -1,0 +1,59 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# ---- Local editor / agent settings ----
+.claude/
+.vscode/
+
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+build/
+dist/
+.ipynb_checkpoints/
+
+# ---- Excluded data folders (too large for GitHub) ----
+/2025_Hydrophobic/
+/2025_Pixeless/
+/2025_Subcellular_Stimulation/
+/2025_Subcutaneous/
+
+# ---- Per-user local config (copy config.example.json -> config.json) ----
+config.json
+web_gui_settings.json
+.dataprocess_cache/
+**/.dataprocess_cache/
+
+# ---- Python virtual / conda environments ----
+.venv/
+venv/
+env/
+.conda/
+
+# ---- Temporary / scratch scripts ----
+temp*.py
+tmp*.py
+scratch*.py
+
+# ---- Large data archives ----
+*.zip
+*.tar.gz
+*.tar.bz2
+
+# ---- Jupyter ----
+*.ipynb_checkpoints/
+
+# ---- Local environment / secrets (just in case) ----
+.env
+.env.local
+*.local

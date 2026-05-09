@@ -1,0 +1,960 @@
+{% extends "base.html" %}
+{% block title %}Script Panels{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section pipeline-ctrl-intro">
+  <div class="page-eyebrow">Analysis</div>
+  <div class="pipeline-ctrl-title">Pipeline Runner</div>
+  <div class="pipeline-ctrl-sub">Choose a model, set paths, run, then review every generated file.</div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Workflow</div>
+  <div class="input-group">
+    <select id="catSelect" onchange="switchCat(this.value)">
+      <option value="photocurrent">Photocurrent Analysis</option>
+      <option value="emg">EMG Analysis</option>
+      <option value="echem_curves">Echem Curves</option>
+      <option value="viability">Cell Viability</option>
+    </select>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Scripts</div>
+  <div class="file-list script-list" id="scriptList"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Input Root</div>
+  <div class="input-group">
+    <input type="text" id="dataDir" class="input-path" placeholder="/path/to/project/data"/>
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" onclick="pickFolder('dataDir', 'setDataDir')">Browse</button>
+      <button class="btn-secondary" type="button" onclick="setDataDir()">Apply to Params</button>
+    </div>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Run</div>
+  <button class="btn-primary" id="btnRun" onclick="runScript()">Run Script</button>
+  <div id="status" class="status-bar"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Saved Settings</div>
+  <div class="input-group">
+    <select id="contextSelect" onchange="restoreSelectedContext()">
+      <option value="">No saved context</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" onclick="saveCurrentDefaults()">Save Defaults</button>
+      <button class="btn-secondary" type="button" onclick="saveCurrentContext()">Save Context</button>
+    </div>
+    <button class="btn-secondary btn-block" type="button" onclick="resetCurrentDefaults()">Reset Script Defaults</button>
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Output</div>
+  <div class="input-group">
+    <input type="text" id="outputDir" class="input-path" placeholder="Output folder appears after a run"/>
+    <button class="btn-secondary btn-block" type="button" onclick="openOutput()">Open Output Folder</button>
+  </div>
+</div>
+{% endblock %}
+
+{% block main %}
+<div class="pipeline-shell">
+  <section class="pipeline-hero">
+    <div class="pipeline-hero-main">
+      <div class="page-eyebrow">Selected Pipeline</div>
+      <h1 class="pipeline-title" id="scriptTitleBar">Select a script</h1>
+      <p class="pipeline-desc" id="scriptDesc">Choose a category and script to configure parameters.</p>
+      <div class="pipeline-badges" id="scriptBadges"></div>
+    </div>
+    <div class="pipeline-run-summary" id="runSummary">
+      <div class="pipeline-summary-k">Run Status</div>
+      <div class="pipeline-summary-v">Idle</div>
+      <div class="pipeline-summary-sub">No script has been run in this session.</div>
+    </div>
+  </section>
+
+  <div id="paramForm"></div>
+
+  <section class="result-card pipeline-output-card">
+    <div class="result-card-header">
+      <span>Outputs</span>
+      <span class="pipeline-header-note" id="outputCount">No files yet</span>
+    </div>
+    <div class="result-card-body pipeline-output-body">
+      <div id="outputFigs" class="figure-grid"></div>
+      <div id="outputManifest" class="artifact-empty">Run a script to preview figures and inspect generated data files.</div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// ─── Script registry ───
+const SCRIPTS = {
+  photocurrent: [
+    {
+      id: 'pc_line_chart',
+      name: 'Intensity-Response Curve',
+      desc: 'Plot photocurrent peak or integral vs. power density on linear and log x-axes. Each series maps to one summary CSV folder.',
+      script: 'model_line_chart.py',
+      params: [
+        { key: 'base_dir',    label: 'Base directory',    type: 'path',   desc: 'Leave blank for Subcutaneous group_2_electrode defaults' },
+        { key: 'output_dir',  label: 'Output folder name',type: 'text',   desc: 'Created under base_dir', default: 'electrode_peaks' },
+        { key: 'series',      label: 'Series (one per line)', type: 'textarea',
+          desc: 'Optional override: Label | subfolder_name. Blank uses the Subcutaneous electrode panel.',
+          default: '' },
+        { key: 'metrics',     label: 'Metrics',           type: 'checkboxes',
+          options: ['peak','integral'], defaults: ['peak','integral'] },
+        { key: 'x_lin_range', label: 'Linear x-ranges',  type: 'text',   desc: 'Semicolon-separated ranges', default: '0-1; 0-4' },
+        { key: 'x_log_range', label: 'Log x-ranges',     type: 'text',   desc: 'Semicolon-separated ranges', default: '0.01-1; 0.01-4' },
+      ]
+    },
+    {
+      id: 'pc_peaks_overlay',
+      name: 'Peak Overlay Traces',
+      desc: 'Align photocurrent waveforms to first significant peak, average by intensity. Requires *_segment.csv files from Batch Processor.',
+      script: 'model_peaks_overlay.py',
+      params: [
+        { key: 'base_dir',    label: 'Base directory',    type: 'path', desc: 'Leave blank for Subcutaneous group_2_electrode defaults' },
+        { key: 'output_dir',  label: 'Output folder',     type: 'text', default: 'overlay_two_panel' },
+        { key: 'materials',   label: 'Materials (one per line)', type: 'textarea',
+          desc: 'Optional override: Display Name | subfolder_name. Blank uses the Subcutaneous electrode panel.',
+          default: '' },
+        { key: 'pre_ms',      label: 'Pre-peak window (ms)',  type: 'number', default: '10' },
+        { key: 'post_ms',     label: 'Post-peak window (ms)', type: 'number', default: '30' },
+        { key: 'n_intensity', label: 'Intensity anchor count',type: 'number', default: '10' },
+        { key: 'prom_thresh', label: 'Peak prominence threshold', type: 'number', default: '0.1' },
+      ]
+    },
+    {
+      id: 'pc_heatmap',
+      name: 'Heatmap with Trace Overlay',
+      desc: '2D spatial heatmap (cells × power levels) with individual photocurrent traces overlaid per cell.',
+      script: 'model_heatmap.py',
+      params: [
+        { key: 'base_dir',   label: 'Base directory',    type: 'path', desc: 'Leave blank for Subcutaneous group_2_electrode defaults' },
+        { key: 'output_dir', label: 'Output folder',     type: 'text', default: 'electrode_heatmap_withpeaks' },
+        { key: 'materials',  label: 'Materials (label | subfolder, one per line)', type: 'textarea',
+          desc: 'Optional override. Blank uses the Subcutaneous electrode panel.',
+          default: '' },
+        { key: 'pre_ms',     label: 'Pre-peak window (ms)',  type: 'number', default: '10' },
+        { key: 'post_ms',    label: 'Post-peak window (ms)', type: 'number', default: '30' },
+      ]
+    },
+    {
+      id: 'pc_decay',
+      name: 'Decay Curve',
+      desc: 'Generate intensity-vs-cycle decay curves using the same Subcutaneous workflow across projects.',
+      script: 'model_decay_curve.py',
+      params: [
+        { key: 'base_dir',   label: 'Base directory',   type: 'path', desc: 'Leave blank for Subcutaneous group_8_decay defaults' },
+        { key: 'output_dir', label: 'Output folder',    type: 'text', default: 'decay_line_chart' },
+        { key: 'materials',  label: 'Materials (label | subfolder)',type: 'textarea', desc: 'Optional override. Blank uses the Subcutaneous decay panel.', default: '' },
+        { key: 'file_str',   label: 'Date subfolder (optional)', type: 'text', desc: 'Blank uses the built-in 20251024_decay folder' },
+        { key: 'seq_to_time_factor', label: 'Seq→time factor (s)', type: 'number', default: '2' },
+        { key: 'x_lim',      label: 'X limits (cycles)', type: 'text', default: '0,400' },
+        { key: 'y_lim',      label: 'Y limits (optional)', type: 'text', default: '0,1.2' },
+      ]
+    },
+    {
+      id: 'pc_longterm',
+      name: 'Long-term Stability Bar',
+      desc: 'Track mean photocurrent over multiple recording dates. Bars = mean ± SEM, dots = individual samples.',
+      script: 'model_longterm_bar.py',
+      params: [
+        { key: 'base_dir',   label: 'Base directory',   type: 'path', desc: 'Leave blank for Subcutaneous group_10_long_term defaults' },
+        { key: 'output_dir', label: 'Output folder',    type: 'text', default: 'longterm_bars' },
+        { key: 'material',   label: 'Material subfolder', type: 'text', desc: 'Optional single-material override. Blank exports all configured materials.', default: '' },
+        { key: 'dates',      label: 'Dates (YYYYMMDD, one per line)', type: 'textarea',
+          desc: 'Optional override. Blank uses the built-in Subcutaneous date panel.', default: '' },
+      ]
+    },
+  ],
+  emg: [
+    {
+      id: 'emg_demo',
+      name: 'Representative Waveform',
+      desc: 'Display a single annotated EMG burst for publication figures.',
+      script: 'model_demo_single_peak.py',
+      params: [
+        { key: 'csv_path',   label: 'CSV file path',    type: 'path', desc: 'From RHD Viewer export (time_s, value_uV)' },
+        { key: 'output_dir', label: 'Output folder',    type: 'text', default: 'demo_figures' },
+        { key: 't_center',   label: 'Peak time (ms)',    type: 'number', desc: 'Approximate peak location', default: '0' },
+        { key: 'window_ms',  label: 'Display window (ms)', type: 'number', default: '200' },
+        { key: 'title',      label: 'Figure title',     type: 'text', default: '' },
+        { key: 'scale_bar',  label: 'Scale bar (µV)',   type: 'number', default: '100' },
+      ]
+    },
+    {
+      id: 'emg_overlay',
+      name: 'Overlay + Mean Envelope',
+      desc: 'Overlay aligned EMG bursts with mean ± SEM envelope.',
+      script: 'model_overlay_mean.py',
+      params: [
+        { key: 'peaks_dir',  label: 'Grouped peaks folder', type: 'path', desc: 'Folder with per-peak segment CSVs from EMG Peak Selector' },
+        { key: 'output_dir', label: 'Output folder',        type: 'text', default: 'overlay_figures' },
+        { key: 'group',      label: 'Group filter',         type: 'text', desc: 'Leave blank for all groups', default: '' },
+        { key: 'pre_ms',     label: 'Pre-peak (ms)',        type: 'number', default: '50' },
+        { key: 'post_ms',    label: 'Post-peak (ms)',       type: 'number', default: '150' },
+        { key: 'show_indiv', label: 'Show individual traces', type: 'checkbox', default: true },
+        { key: 'alpha',      label: 'Individual trace alpha', type: 'number', default: '0.15' },
+      ]
+    },
+    {
+      id: 'emg_bar',
+      name: 'Group Bar Diagram',
+      desc: 'Compare peak amplitudes across groups with statistical brackets.',
+      script: 'model_bar_diagram.py',
+      params: [
+        { key: 'peaks_dir',  label: 'Peaks summary folder', type: 'path' },
+        { key: 'output_dir', label: 'Output folder',        type: 'text', default: 'bar_diagrams' },
+        { key: 'groups',     label: 'Group order (comma-separated)', type: 'text', default: 'A,B,C' },
+        { key: 'metric',     label: 'Metric column',        type: 'text', default: 'height' },
+        { key: 'stat_test',  label: 'Statistical test',     type: 'select', options: ['anova_tukey','ttest'], default: 'anova_tukey' },
+      ]
+    },
+    {
+      id: 'emg_heatmap',
+      name: 'Amplitude Heatmap',
+      desc: '2D heatmap of peak amplitude across channels and conditions.',
+      script: 'model_heatmap.py',
+      params: [
+        { key: 'peaks_dir',  label: 'Peaks summary folder', type: 'path' },
+        { key: 'output_dir', label: 'Output folder',        type: 'text', default: 'heatmaps' },
+        { key: 'row_var',    label: 'Row variable',         type: 'text', default: 'channel', desc: 'Column name for rows (e.g. channel)' },
+        { key: 'col_var',    label: 'Column variable',      type: 'text', default: 'condition', desc: 'Column name for columns (e.g. intensity)' },
+        { key: 'value_var',  label: 'Value variable',       type: 'text', default: 'height' },
+        { key: 'colormap',   label: 'Colormap',             type: 'select', options: ['Blues','Reds','viridis','RdBu_r'], default: 'Blues' },
+      ]
+    },
+  ],
+  echem_curves: [
+    {
+      id: 'echem_pc_curve',
+      name: 'Photocurrent Curve',
+      desc: 'Plot mean |ΔI| vs. light energy from pairs_summary.csv. Self-contained script — uses hardcoded paths relative to the script file.',
+      script: 'model_photocurrent_curve.py',
+      params: []
+    },
+    {
+      id: 'echem_pv_curve',
+      name: 'Photovoltage Curve',
+      desc: 'Plot mean |ΔV| vs. light energy from pulses_summary.csv. Self-contained script — uses hardcoded paths relative to the script file.',
+      script: 'model_photovoltage_curve.py',
+      params: []
+    },
+  ],
+  viability: [
+    {
+      id: 'viab_watershed_area',
+      name: 'Watershed Area Ratio',
+      desc: 'Cell viability from watershed-based area quantification in Live_and_Dead_20250902/result.txt. Self-contained.',
+      script: 'model_watershed_area_ratio.py',
+      params: []
+    },
+    {
+      id: 'viab_stardist_auto',
+      name: 'StarDist Auto Detection Ratio',
+      desc: 'Cell viability from StarDist auto-recognition results in live_and_dead_20251103/control.csv + device.csv. Self-contained.',
+      script: 'model_stardist_auto_ratio.py',
+      params: []
+    },
+  ],
+};
+
+let _curCat = 'photocurrent';
+let _curScript = null;
+let _pollTimer = null;
+let _scriptPrefs = {};
+let _activeRunContext = null;
+const _recordedScriptRuns = new Set();
+
+const CATEGORY_LABELS = {
+  photocurrent: 'Photocurrent Analysis',
+  emg: 'EMG Analysis',
+  echem_curves: 'Echem Curves',
+  viability: 'Cell Viability',
+};
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function ensureScriptPrefs(data) {
+  const out = data && typeof data === 'object' ? data : {};
+  out.defaults = out.defaults && typeof out.defaults === 'object' ? out.defaults : {};
+  out.selected_by_category = out.selected_by_category && typeof out.selected_by_category === 'object' ? out.selected_by_category : {};
+  out.script_defaults = out.script_defaults && typeof out.script_defaults === 'object' ? out.script_defaults : {};
+  out.last_params_by_script = out.last_params_by_script && typeof out.last_params_by_script === 'object' ? out.last_params_by_script : {};
+  out.file_contexts = out.file_contexts && typeof out.file_contexts === 'object' ? out.file_contexts : {};
+  return out;
+}
+
+async function loadScriptPreferences() {
+  try {
+    _scriptPrefs = ensureScriptPrefs(await loadViewPreferences('scripts'));
+  } catch (e) {
+    _scriptPrefs = ensureScriptPrefs({});
+    toast('Pipeline settings were not loaded', true);
+  }
+}
+
+async function persistScriptPreferences(silent) {
+  try {
+    await saveViewPreferences('scripts', _scriptPrefs);
+  } catch (e) {
+    if (!silent) toast('Could not save pipeline settings', true);
+  }
+}
+
+function applyScriptPageDefaults(defaults, updateCategory) {
+  if (!defaults || typeof defaults !== 'object') return;
+  if (defaults.dataDir !== undefined) document.getElementById('dataDir').value = defaults.dataDir || '';
+  if (defaults.outputDir !== undefined) document.getElementById('outputDir').value = defaults.outputDir || '';
+  if (updateCategory && defaults.catSelect && Object.prototype.hasOwnProperty.call(SCRIPTS, defaults.catSelect)) {
+    switchCat(defaults.catSelect, {skipPersist: true});
+  }
+}
+
+function storedParamsForCurrentScript() {
+  if (!_curScript) return {};
+  const explicit = _scriptPrefs.script_defaults[_curScript.id];
+  if (explicit && explicit.params) return explicit.params;
+  const last = _scriptPrefs.last_params_by_script[_curScript.id];
+  if (last && last.params) return last.params;
+  return {};
+}
+
+function savedParamValue(p) {
+  const params = storedParamsForCurrentScript();
+  if (Object.prototype.hasOwnProperty.call(params, p.key)) return params[p.key];
+  return p.default;
+}
+
+function basename(path) {
+  const parts = String(path || '').split(/[\\/]/).filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : String(path || '');
+}
+
+function primaryPathFromParams(params) {
+  for (const key of ['csv_path', 'peaks_dir', 'base_dir', 'data_dir', 'input_path', 'model_dir']) {
+    if (params && params[key]) return String(params[key]);
+  }
+  return document.getElementById('dataDir').value.trim();
+}
+
+function pipelineInputFiles(params) {
+  const keys = ['csv_path', 'input_path', 'peaks_dir', 'base_dir', 'data_dir', 'model_dir'];
+  const seen = new Set();
+  const out = [];
+  keys.forEach(key => {
+    const value = params && params[key];
+    if (!value) return;
+    const text = String(value).trim();
+    if (!text || seen.has(text)) return;
+    seen.add(text);
+    out.push({path: text, role: key});
+  });
+  return out;
+}
+
+async function recordPipelineRun(d) {
+  if (!d || d.running || d.done === false) return;
+  const jobKey = d.job_id || `${_curScript?.id || 'manual'}_${Date.now()}`;
+  if (_recordedScriptRuns.has(jobKey)) return;
+  _recordedScriptRuns.add(jobKey);
+
+  const params = (_activeRunContext && _activeRunContext.params) || collectParams();
+  const title = (_activeRunContext && _activeRunContext.scriptName) || (_curScript && _curScript.name) || 'Pipeline script';
+  const status = d.ok === false ? 'error' : 'ok';
+  const result = await recordRunHistory({
+    run_id: d.job_id ? `scripts_${d.job_id}` : '',
+    view: 'scripts',
+    title,
+    status,
+    project_root: document.getElementById('dataDir').value.trim() || dpPathDir(primaryPathFromParams(params)) || document.getElementById('outputDir').value.trim() || d.output_dir,
+    input_files: pipelineInputFiles(params),
+    outputs: d.artifacts || [],
+    parameters: params,
+    errors: d.ok === false && (d.stderr || d.message) ? [d.stderr || d.message] : [],
+    warnings: d.ok !== false && d.stderr ? [d.stderr] : [],
+    metadata: {
+      category: (_activeRunContext && _activeRunContext.category) || _curCat,
+      script_id: (_activeRunContext && _activeRunContext.scriptId) || (_curScript && _curScript.id) || '',
+      output_dir: d.output_dir || '',
+      message: d.message || '',
+    },
+  });
+  if (result && result.manifest_path) {
+    setStatus('status', `${status === 'ok' ? 'Completed' : 'Finished with errors'}; manifest saved: ${result.manifest_path}`, status === 'ok' ? 'ok' : 'err');
+  }
+}
+
+function contextKey(cat, scriptId, primaryPath, name) {
+  return [cat, scriptId, primaryPath || name || 'manual'].join('|');
+}
+
+function rememberLastSession(params) {
+  if (!_curScript) return;
+  _scriptPrefs = ensureScriptPrefs(_scriptPrefs);
+  _scriptPrefs.last_category = _curCat;
+  _scriptPrefs.selected_by_category[_curCat] = _curScript.id;
+  _scriptPrefs.last_data_dir = document.getElementById('dataDir').value.trim();
+  _scriptPrefs.last_output_dir = document.getElementById('outputDir').value.trim();
+  _scriptPrefs.last_params_by_script[_curScript.id] = {
+    params: params || collectParams(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function upsertContext(name, params, auto) {
+  if (!_curScript) return null;
+  const primary = primaryPathFromParams(params);
+  const key = contextKey(_curCat, _curScript.id, primary, name);
+  _scriptPrefs.file_contexts[key] = {
+    name: name || `${basename(primary) || _curScript.name}`,
+    cat: _curCat,
+    script_id: _curScript.id,
+    script_name: _curScript.name,
+    primary_path: primary,
+    data_dir: document.getElementById('dataDir').value.trim(),
+    output_dir: document.getElementById('outputDir').value.trim(),
+    params,
+    auto: !!auto,
+    updated_at: new Date().toISOString(),
+  };
+  return key;
+}
+
+function autoCacheContext(params) {
+  const primary = primaryPathFromParams(params);
+  if (!primary) return;
+  upsertContext(`${basename(primary)} · ${_curScript.name}`, params, true);
+}
+
+function renderContextOptions(selectedKey) {
+  const select = document.getElementById('contextSelect');
+  if (!select || !_curScript) return;
+  const contexts = Object.entries(_scriptPrefs.file_contexts || {})
+    .filter(([, ctx]) => ctx.cat === _curCat && ctx.script_id === _curScript.id)
+    .sort((a, b) => String(b[1].updated_at || '').localeCompare(String(a[1].updated_at || '')));
+  const rows = ['<option value="">Saved contexts</option>'].concat(contexts.map(([key, ctx]) => {
+    const label = `${ctx.auto ? 'Auto' : 'Saved'}: ${ctx.name || basename(ctx.primary_path) || key}`;
+    return `<option value="${escapeHtml(key)}"${key === selectedKey ? ' selected' : ''}>${escapeHtml(label)}</option>`;
+  }));
+  select.innerHTML = rows.join('');
+}
+
+function clearRunOutputs(message) {
+  clearTimeout(_pollTimer);
+  document.getElementById('outputFigs').innerHTML = '';
+  const manifest = document.getElementById('outputManifest');
+  manifest.className = 'artifact-empty';
+  manifest.textContent = message || 'Run a script to preview figures and inspect generated data files.';
+  document.getElementById('outputCount').textContent = 'No files yet';
+}
+
+function setRunSummary(kind, title, sub) {
+  const summary = document.getElementById('runSummary');
+  summary.className = 'pipeline-run-summary' + (kind ? ` ${kind}` : '');
+  summary.innerHTML = `
+    <div class="pipeline-summary-k">Run Status</div>
+    <div class="pipeline-summary-v">${escapeHtml(title || 'Idle')}</div>
+    <div class="pipeline-summary-sub">${escapeHtml(sub || '')}</div>`;
+}
+
+function switchCat(cat, opts = {}) {
+  if (!Object.prototype.hasOwnProperty.call(SCRIPTS, cat)) {
+    cat = 'photocurrent';
+  }
+  _curCat = cat;
+  _curScript = null;
+  const catSelect = document.getElementById('catSelect');
+  if (catSelect) catSelect.value = cat;
+  renderScriptList();
+  const firstScript = (SCRIPTS[_curCat] || [])[0];
+  const preferred = opts.scriptId || _scriptPrefs.selected_by_category?.[_curCat];
+  const preferredExists = (SCRIPTS[_curCat] || []).some(s => s.id === preferred);
+  if (firstScript) {
+    selectScript(preferredExists ? preferred : firstScript.id, opts);
+  } else {
+    document.getElementById('paramForm').innerHTML = '';
+    document.getElementById('scriptTitleBar').textContent = 'Select a script';
+    document.getElementById('scriptDesc').textContent = 'Choose a category and script to configure parameters.';
+    document.getElementById('scriptBadges').innerHTML = '';
+    clearRunOutputs();
+    setRunSummary('', 'Idle', 'No script has been run in this session.');
+  }
+
+  const targetPath = `/scripts/${cat}`;
+  if (window.location.pathname !== targetPath) {
+    window.history.replaceState(null, '', targetPath);
+  }
+}
+
+function renderScriptList() {
+  const list = document.getElementById('scriptList');
+  const scripts = SCRIPTS[_curCat] || [];
+  list.innerHTML = scripts.map(s =>
+    `<div class="file-item script-item" data-id="${s.id}" onclick="selectScript('${s.id}')">
+       <div class="script-item-name">${escapeHtml(s.name)}</div>
+       <div class="script-item-path">${escapeHtml(s.script)}</div>
+     </div>`
+  ).join('');
+}
+
+function selectScript(id, opts = {}) {
+  _curScript = SCRIPTS[_curCat].find(s => s.id === id);
+  if (!_curScript) return;
+  // Mark active
+  document.querySelectorAll('#scriptList .file-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+  document.getElementById('scriptTitleBar').textContent = _curScript.name;
+  document.getElementById('scriptDesc').textContent = _curScript.desc;
+  const modelBadge = ((_curScript.script || '').startsWith('model_'))
+    ? '<span class="pipeline-badge ok">model entry</span>'
+    : '<span class="pipeline-badge">script entry</span>';
+  document.getElementById('scriptBadges').innerHTML = `
+    <span class="pipeline-badge">${escapeHtml(CATEGORY_LABELS[_curCat] || _curCat)}</span>
+    <span class="pipeline-badge mono">${escapeHtml(_curScript.script)}</span>
+    ${modelBadge}`;
+  renderParamForm(_curScript.params);
+  clearRunOutputs('Ready. Set parameters and run the selected script.');
+  setRunSummary('', 'Ready', `${_curScript.params.length} configurable parameter${_curScript.params.length === 1 ? '' : 's'}.`);
+  renderContextOptions();
+  if (!opts.skipPersist) {
+    rememberLastSession(collectParams());
+    persistScriptPreferences(true);
+  }
+}
+
+function renderParamForm(params) {
+  const form = document.getElementById('paramForm');
+  const body = params.length
+    ? `<div class="pipeline-param-grid">${params.map(p => renderParam(p)).join('')}</div>`
+    : '<div class="artifact-empty">This script is self-contained and does not require panel parameters.</div>';
+  form.innerHTML = `
+    <div class="result-card pipeline-param-card">
+      <div class="result-card-header">
+        <span>Parameters</span>
+        <span class="pipeline-header-note">${params.length ? params.length + ' fields' : 'No fields'}</span>
+      </div>
+      <div class="result-card-body pipeline-param-body">
+        ${body}
+      </div>
+    </div>`;
+}
+
+function renderParam(p) {
+  const id = 'param_' + p.key;
+  const rawValue = savedParamValue(p);
+  const value = escapeHtml(Array.isArray(rawValue) ? rawValue.join('\n') : (rawValue ?? ''));
+  const placeholder = escapeHtml(p.desc || '');
+  let field = '';
+  if (p.type === 'path' || p.type === 'text') {
+    if (p.type === 'path') {
+      field = `
+        <div class="path-field">
+          <input type="text" id="${id}" class="input-path" value="${value}" placeholder="${placeholder}"/>
+          <button class="btn-icon" type="button" onclick="pickParamPath('${id}', '${p.key}')">Browse</button>
+        </div>`;
+    } else {
+      field = `<input type="text" id="${id}" value="${value}" placeholder="${placeholder}"/>`;
+    }
+  } else if (p.type === 'number') {
+    field = `<input type="number" id="${id}" value="${value}" step="any"/>`;
+  } else if (p.type === 'textarea') {
+    field = `<textarea id="${id}" rows="5" class="param-textarea">${value}</textarea>`;
+  } else if (p.type === 'select') {
+    field = `<select id="${id}">${(p.options||[]).map(o=>`<option${o===rawValue?' selected':''}>${escapeHtml(o)}</option>`).join('')}</select>`;
+  } else if (p.type === 'checkbox') {
+    field = `<label class="checkbox-row"><input type="checkbox" id="${id}" ${rawValue?' checked':''}/> Enable</label>`;
+  } else if (p.type === 'checkboxes') {
+    const selected = Array.isArray(rawValue) ? rawValue : (p.defaults || []);
+    field = (p.options||[]).map(o =>
+      `<label class="checkbox-row"><input type="checkbox" name="${id}" value="${escapeHtml(o)}" ${selected.includes(o)?'checked':''}/> ${escapeHtml(o)}</label>`
+    ).join('');
+  }
+  return `
+    <div class="pipeline-param-row">
+      <div class="pipeline-param-label">${escapeHtml(p.label)}<div class="param-desc">${escapeHtml(p.desc||'')}</div></div>
+      <div class="param-field">${field}</div>
+    </div>`;
+}
+
+function pickParamPath(inputId, key) {
+  const fileLike = /(^|_)(csv|file|input_path|output_path)($|_)/.test(key) && !/(^|_)dir($|_)/.test(key);
+  if (fileLike) {
+    pickFile(inputId);
+  } else {
+    pickFolder(inputId);
+  }
+}
+
+function collectParams() {
+  if (!_curScript) return {};
+  const vals = {};
+  _curScript.params.forEach(p => {
+    const id = 'param_' + p.key;
+    if (p.type === 'checkboxes') {
+      vals[p.key] = [...document.querySelectorAll(`input[name="${id}"]:checked`)].map(el=>el.value);
+    } else if (p.type === 'checkbox') {
+      const el = document.getElementById(id);
+      vals[p.key] = el ? el.checked : false;
+    } else {
+      const el = document.getElementById(id);
+      vals[p.key] = el ? el.value : '';
+    }
+  });
+  return vals;
+}
+
+function setParamValues(params) {
+  if (!_curScript || !params) return;
+  _curScript.params.forEach(p => {
+    if (!Object.prototype.hasOwnProperty.call(params, p.key)) return;
+    const id = 'param_' + p.key;
+    if (p.type === 'checkboxes') {
+      const selected = Array.isArray(params[p.key]) ? params[p.key] : String(params[p.key] || '').split(',').map(x => x.trim());
+      document.querySelectorAll(`input[name="${id}"]`).forEach(el => {
+        el.checked = selected.includes(el.value);
+      });
+    } else if (p.type === 'checkbox') {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!params[p.key];
+    } else {
+      const el = document.getElementById(id);
+      if (el) el.value = Array.isArray(params[p.key]) ? params[p.key].join('\n') : (params[p.key] ?? '');
+    }
+  });
+}
+
+async function saveCurrentDefaults() {
+  if (!_curScript) { toast('Select a script first', true); return; }
+  const params = collectParams();
+  _scriptPrefs.script_defaults[_curScript.id] = {
+    params,
+    updated_at: new Date().toISOString(),
+  };
+  rememberLastSession(params);
+  await persistScriptPreferences();
+  toast('Defaults saved for this script');
+}
+
+async function resetCurrentDefaults() {
+  if (!_curScript) return;
+  delete _scriptPrefs.script_defaults[_curScript.id];
+  delete _scriptPrefs.last_params_by_script[_curScript.id];
+  renderParamForm(_curScript.params);
+  renderContextOptions();
+  rememberLastSession(collectParams());
+  await persistScriptPreferences();
+  toast('Script defaults reset');
+}
+
+async function saveCurrentContext() {
+  if (!_curScript) { toast('Select a script first', true); return; }
+  const params = collectParams();
+  applySharedPaths(params);
+  const primary = primaryPathFromParams(params);
+  const suggested = `${basename(primary) || _curScript.name} · ${_curScript.name}`;
+  const name = window.prompt('Context name', suggested);
+  if (!name) return;
+  const key = upsertContext(name, params, false);
+  rememberLastSession(params);
+  await persistScriptPreferences();
+  renderContextOptions(key);
+  toast('Context saved');
+}
+
+async function restoreSelectedContext() {
+  const key = document.getElementById('contextSelect').value;
+  if (!key) return;
+  const ctx = _scriptPrefs.file_contexts[key];
+  if (!ctx) return;
+  if (ctx.cat && ctx.cat !== _curCat) {
+    switchCat(ctx.cat, {scriptId: ctx.script_id, skipPersist: true});
+  } else if (ctx.script_id && (!_curScript || ctx.script_id !== _curScript.id)) {
+    selectScript(ctx.script_id, {skipPersist: true});
+  }
+  if (ctx.data_dir) document.getElementById('dataDir').value = ctx.data_dir;
+  if (ctx.output_dir) document.getElementById('outputDir').value = ctx.output_dir;
+  setParamValues(ctx.params || {});
+  rememberLastSession(ctx.params || collectParams());
+  await persistScriptPreferences(true);
+  renderContextOptions(key);
+  toast('Context restored');
+}
+
+function applySharedPaths(params) {
+  const dataDir = document.getElementById('dataDir').value.trim();
+  if (dataDir) {
+    if (Object.prototype.hasOwnProperty.call(params, 'peaks_dir') && !params.peaks_dir) {
+      params.peaks_dir = dataDir;
+    } else if (Object.prototype.hasOwnProperty.call(params, 'base_dir') && !params.base_dir) {
+      params.base_dir = dataDir;
+    } else if (Object.prototype.hasOwnProperty.call(params, 'csv_path') && !params.csv_path) {
+      params.csv_path = dataDir;
+    } else if (Object.prototype.hasOwnProperty.call(params, 'input_path') && !params.input_path) {
+      params.input_path = dataDir;
+    } else if (Object.prototype.hasOwnProperty.call(params, 'data_dir') && !params.data_dir) {
+      params.data_dir = dataDir;
+    } else if (Object.prototype.hasOwnProperty.call(params, 'model_dir') && !params.model_dir) {
+      params.model_dir = dataDir;
+    }
+  }
+
+  const outDir = document.getElementById('outputDir').value.trim();
+  if (outDir && Object.prototype.hasOwnProperty.call(params, 'output_dir') && !params.output_dir) {
+    params.output_dir = outDir;
+  }
+}
+
+async function runScript() {
+  if (!_curScript) { toast('Select a script first', true); return; }
+  const params = collectParams();
+  applySharedPaths(params);
+  _activeRunContext = {
+    category: _curCat,
+    scriptId: _curScript.id,
+    scriptName: _curScript.name,
+    params: JSON.parse(JSON.stringify(params)),
+  };
+  rememberLastSession(params);
+  autoCacheContext(params);
+  renderContextOptions();
+  await persistScriptPreferences(true);
+  btnBusy('btnRun', true, 'Running…');
+  setStatus('status', 'Running script…');
+  setRunSummary('running', 'Running', _curScript.name);
+  clearRunOutputs('Waiting for output files...');
+  try {
+    const d = await api('/api/scripts/run', {
+      cat: _curCat,
+      script_id: _curScript.id,
+      params
+    });
+    if (d.error) {
+      btnBusy('btnRun', false, 'Run Script');
+      setStatus('status', 'Error: ' + d.error, 'err');
+      setRunSummary('error', 'Failed', d.error);
+      toast('Script error', true);
+      return;
+    }
+    if (d.running) {
+      renderRunResult(d);
+      setStatus('status', 'Script is still running. Output panel will refresh automatically.', 'loading');
+      pollJob(d.job_id, 0);
+      return;
+    }
+    finishRun(d);
+  } catch(e) {
+    btnBusy('btnRun', false, 'Run Script');
+    setStatus('status', 'Network error', 'err');
+    setRunSummary('error', 'Network error', e.message || 'Request failed');
+    toast('Network error', true);
+  }
+}
+
+function finishRun(d) {
+  btnBusy('btnRun', false, 'Run Script');
+  renderRunResult(d);
+  if (d.ok === false) {
+    const msg = d.stderr || d.message || 'Script finished with errors.';
+    setStatus('status', 'Error: ' + msg, 'err');
+    setRunSummary('error', 'Finished with errors', msg);
+    toast('Script finished with errors', true);
+    recordPipelineRun(d);
+    return;
+  }
+  setStatus('status', d.message || 'Done.', 'ok');
+  setRunSummary('ok', 'Completed', `${(d.artifacts || []).length} output file${(d.artifacts || []).length === 1 ? '' : 's'} detected.`);
+  toast('Script completed');
+  recordPipelineRun(d);
+}
+
+function pollJob(jobId, attempt) {
+  if (!jobId) {
+    btnBusy('btnRun', false, 'Run Script');
+    return;
+  }
+  if (attempt > 170) {
+    btnBusy('btnRun', false, 'Run Script');
+    setStatus('status', 'Still running after several minutes. Check the output folder.', 'warning');
+    setRunSummary('running', 'Still running', 'The script may still be working in Python.');
+    return;
+  }
+  _pollTimer = setTimeout(async () => {
+    try {
+      const d = await api('/api/scripts/status', {job_id: jobId});
+      if (d.error) {
+        btnBusy('btnRun', false, 'Run Script');
+        setStatus('status', d.error, 'err');
+        setRunSummary('error', 'Status unavailable', d.error);
+        return;
+      }
+      if (!d.done) {
+        renderRunResult(d);
+        setStatus('status', 'Running script…', 'loading');
+        pollJob(jobId, attempt + 1);
+        return;
+      }
+      finishRun(d);
+    } catch (e) {
+      btnBusy('btnRun', false, 'Run Script');
+      setStatus('status', 'Network error while checking status', 'err');
+      setRunSummary('error', 'Status check failed', e.message || 'Request failed');
+    }
+  }, 2000);
+}
+
+function renderRunResult(d) {
+  if (d.output_dir) {
+    document.getElementById('outputDir').value = d.output_dir;
+    rememberLastSession(collectParams());
+    persistScriptPreferences(true);
+  }
+  renderFigures(d.figures || []);
+  renderArtifactManifest(d.artifacts || [], !!d.running || d.done === false);
+}
+
+function renderFigures(figures) {
+  const figs = document.getElementById('outputFigs');
+  figs.innerHTML = '';
+  if (!figures.length) return;
+  figures.forEach(fig => {
+    const card = document.createElement('div');
+    card.className = 'result-card figure-card';
+    card.innerHTML = `
+      <div class="result-card-header">
+        <span>${escapeHtml(fig.name || 'Output')}</span>
+        <span class="pipeline-header-note">PNG preview</span>
+      </div>
+      <div class="result-card-body figure-card-body">
+        <img src="data:image/png;base64,${fig.img}" alt="${escapeHtml(fig.name || 'Output figure')}"/>
+      </div>`;
+    figs.appendChild(card);
+  });
+}
+
+function renderArtifactManifest(artifacts, running) {
+  const count = artifacts.length;
+  const updated = artifacts.filter(a => a.updated).length;
+  document.getElementById('outputCount').textContent = count
+    ? `${count} file${count === 1 ? '' : 's'}${updated ? `, ${updated} updated` : ''}`
+    : (running ? 'Waiting for files' : 'No files found');
+
+  const target = document.getElementById('outputManifest');
+  if (!count) {
+    target.className = 'artifact-empty';
+    target.textContent = running
+      ? 'The script is running. Output files will appear here after completion.'
+      : 'No matching output files were detected in the resolved output folder.';
+    return;
+  }
+
+  target.className = 'artifact-list';
+  target.innerHTML = artifacts.map(a => `
+    <div class="artifact-row" title="${escapeHtml(a.path || '')}">
+      <div class="artifact-ext">${escapeHtml((a.ext || 'file').toUpperCase())}</div>
+      <div class="artifact-main">
+        <div class="artifact-name">${escapeHtml(a.rel || a.name || '')}</div>
+        <div class="artifact-meta">${formatBytes(a.size)} · ${formatMtime(a.mtime)}</div>
+      </div>
+      ${a.updated ? '<div class="artifact-updated">updated</div>' : ''}
+    </div>`).join('');
+}
+
+function formatBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatMtime(seconds) {
+  if (!seconds) return 'mtime unavailable';
+  return new Date(seconds * 1000).toLocaleString();
+}
+
+function setDataDir() {
+  const v = document.getElementById('dataDir').value;
+  // Pre-fill base_dir param if visible
+  const el = document.getElementById('param_base_dir') ||
+             document.getElementById('param_peaks_dir') ||
+             document.getElementById('param_csv_path') ||
+             document.getElementById('param_input_path') ||
+             document.getElementById('param_model_dir') ||
+             document.getElementById('param_data_dir');
+  if (el) el.value = v;
+  if (_curScript) {
+    rememberLastSession(collectParams());
+    persistScriptPreferences(true);
+  }
+}
+
+function openOutput() {
+  const d = document.getElementById('outputDir').value;
+  if (!d) { toast('No output directory set', true); return; }
+  api('/api/scripts/open_folder', {path: d}).then(r => {
+    if (r.error) toast(r.error, true);
+  });
+}
+
+window.dpApplyRunManifest = async manifest => {
+  await loadScriptPreferences();
+  const meta = manifest.metadata || {};
+  const params = manifest.parameters || {};
+  if (manifest.project_root) document.getElementById('dataDir').value = manifest.project_root;
+  if (meta.output_dir) document.getElementById('outputDir').value = meta.output_dir;
+  const cat = meta.category || 'photocurrent';
+  switchCat(cat, {scriptId: meta.script_id, skipPersist: true});
+  setParamValues(params);
+  rememberLastSession(params);
+  renderContextOptions();
+  setRunSummary('', 'Parameters Loaded', manifest.title || 'Run manifest');
+  setStatus('status', 'Pipeline parameters loaded from run manifest', 'ok');
+};
+
+// Init
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadScriptPreferences();
+  applyScriptPageDefaults(_scriptPrefs.defaults || {}, false);
+  if (_scriptPrefs.last_data_dir && !_scriptPrefs.defaults.dataDir) document.getElementById('dataDir').value = _scriptPrefs.last_data_dir;
+  if (_scriptPrefs.last_output_dir && !_scriptPrefs.defaults.outputDir) document.getElementById('outputDir').value = _scriptPrefs.last_output_dir;
+  const queryCat = new URLSearchParams(window.location.search).get('cat');
+  const routeCat = {{ cat | tojson }};
+  const routeCatExplicit = {{ cat_explicit | tojson }};
+  const defaultCat = _scriptPrefs.defaults.catSelect;
+  const initialCat = queryCat || (routeCatExplicit ? routeCat : defaultCat || _scriptPrefs.last_category) || routeCat || 'photocurrent';
+  const initialScript = _scriptPrefs.selected_by_category?.[initialCat];
+  switchCat(initialCat, {scriptId: initialScript, skipPersist: true});
+  renderContextOptions();
+});
+
+document.addEventListener('dp:prefs-saved', (event) => {
+  if (event.detail && event.detail.view === 'scripts') {
+    _scriptPrefs = ensureScriptPrefs(event.detail.data);
+    applyScriptPageDefaults(_scriptPrefs.defaults || {}, true);
+    if (_curScript) {
+      renderContextOptions();
+    }
+  }
+});
+</script>
+{% endblock %}

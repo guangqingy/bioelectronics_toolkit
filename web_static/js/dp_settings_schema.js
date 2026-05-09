@@ -1,0 +1,173 @@
+/* Settings labels, route map, and editable-default schemas. */
+
+const SETTINGS_VIEW_ORDER = [
+  'global',
+  'csv_viewer',
+  'abf_viewer',
+  'abf_batch',
+  'abf_figure',
+  'abf_peaks',
+  'echem_pc',
+  'echem_pv',
+  'echem_lineshape',
+  'rhd_viewer',
+  'emg_peaks',
+  'fluorescence',
+  'fluorescence_lif',
+  'fluorescence_3d_stacking',
+  'fluorescence_roi',
+  'fluorescence_gif',
+  'histology',
+  'scripts',
+  'run_history',
+];
+
+const SETTINGS_VIEW_LABELS = {
+  global: 'Global Defaults',
+  index: 'Home',
+  csv_viewer: 'CSV Viewer',
+  abf_viewer: 'ABF Viewer',
+  abf_batch: 'ABF Batch',
+  abf_figure: 'ABF Figures',
+  abf_peaks: 'ABF Peak Detection',
+  echem_pc: 'EChem Photocurrent',
+  echem_pv: 'EChem Photovoltage',
+  echem_lineshape: 'EChem Lineshape',
+  rhd_viewer: 'RHD Viewer',
+  emg_peaks: 'EMG Peaks',
+  fluorescence: 'TIFF Browser',
+  fluorescence_lif: 'LIF Browser',
+  fluorescence_3d_stacking: '3D Stacking',
+  fluorescence_roi: 'ROI Analysis',
+  fluorescence_gif: 'GIF Builder',
+  histology: 'Histology',
+  scripts: 'Pipelines',
+  run_history: 'Run History',
+};
+
+const VIEW_URLS = {
+  csv_viewer: '/csv',
+  abf_viewer: '/abf/viewer',
+  abf_batch: '/abf/batch',
+  abf_figure: '/abf/figure',
+  abf_peaks: '/abf/peaks',
+  echem_pc: '/echem/photocurrent',
+  echem_pv: '/echem/photovoltage',
+  echem_lineshape: '/echem/lineshape',
+  rhd_viewer: '/emg/rhd',
+  emg_peaks: '/emg/peaks',
+  fluorescence: '/fluorescence',
+  fluorescence_lif: '/fluorescence/lif',
+  fluorescence_3d_stacking: '/fluorescence/3d-stacking',
+  fluorescence_roi: '/fluorescence/roi',
+  fluorescence_gif: '/fluorescence/gif',
+  histology: '/histology',
+  scripts: '/scripts',
+  run_history: '/runs',
+};
+
+const LUT_OPTIONS = ['Gray', 'Green', 'Red', 'Blue', 'Cyan', 'Magenta', 'Yellow', 'Fire', 'Ice'];
+const SETTINGS_SCHEMAS = {
+  csv_viewer: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'CSV folder', type: 'path'},
+    {section: 'Plot'}, {id: 'xCol', label: 'Default X column', type: 'text'}, {id: 'yCol', label: 'Default Y column', type: 'text'},
+    {id: 'xMin', label: 'X min', type: 'number'}, {id: 'xMax', label: 'X max', type: 'number'},
+    {id: 'yMin', label: 'Y min', type: 'number'}, {id: 'yMax', label: 'Y max', type: 'number'},
+    {id: 'dsf', label: 'Downsample', type: 'select', options: ['1', '2', '5', '10', '20', '50', '100']},
+    {section: 'Merge'}, {id: 'mergeDropFirst', label: 'Drop first row during merge', type: 'checkbox'},
+  ],
+  abf_viewer: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'ABF folder', type: 'path'},
+    {section: 'Trace'}, {id: 'sweepNum', label: 'Sweep', type: 'number'}, {id: 'channel', label: 'Channel', type: 'select'},
+    {id: 'rNorm', label: 'Normalize resistance', type: 'checkbox'}, {id: 'iCh', label: 'Current channel', type: 'select'}, {id: 'vCh', label: 'Voltage channel', type: 'select'},
+    {section: 'Baseline'}, {id: 'blPre0', label: 'Baseline start ms', type: 'number'}, {id: 'blPre1', label: 'Baseline end ms', type: 'number'},
+    {section: 'Axes'}, {id: 'xMin', label: 'X min', type: 'number'}, {id: 'xMax', label: 'X max', type: 'number'}, {id: 'yMin', label: 'Y min', type: 'number'}, {id: 'yMax', label: 'Y max', type: 'number'}, {id: 'dsf', label: 'Downsample', type: 'select'},
+  ],
+  abf_batch: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'ABF folder', type: 'path'},
+    {section: 'Filename Tokens'}, {id: 'mainToken', label: 'Main token', type: 'text'}, {id: 'treatToken', label: 'Treatment token', type: 'text'},
+    {section: 'Power Series'}, {id: 'powerPreset', label: 'Power preset', type: 'select', options: [
+      ['10-step-normal', '10-step normal'], ['10-step-20x', '10-step 20x'], ['12-step-old', '12-step old'], ['25-step-wide', '25-step wide'], ['custom', 'Custom']
+    ]}, {id: 'powers', label: 'Powers', type: 'text'},
+    {section: 'Channels'}, {id: 'iCh', label: 'Current channel', type: 'number'}, {id: 'vCh', label: 'Voltage channel', type: 'number'},
+    {section: 'Detection'}, {id: 'blPre0', label: 'Baseline start ms', type: 'number'}, {id: 'blPre1', label: 'Baseline end ms', type: 'number'}, {id: 'peakWin', label: 'Peak window ms', type: 'number'},
+    {section: 'Batch Behavior'}, {id: 'moveFiles', label: 'Reorganize files', type: 'checkbox'}, {id: 'reindexSeq', label: 'Renumber sequences', type: 'checkbox'},
+  ],
+  abf_figure: [
+    {section: 'Paths'}, {id: 'mainFolder', label: 'Main folder', type: 'path'}, {id: 'outputName', label: 'Output folder name', type: 'text'},
+    {section: 'Queue'}, {id: 'queueLabel', label: 'Queue label', type: 'text'},
+    {section: 'Metrics'}, {id: 'metPeak', label: 'Peak', type: 'checkbox'}, {id: 'metInt', label: 'Integral', type: 'checkbox'},
+    {section: 'Axis Windows'}, {id: 'xLin', label: 'Linear ranges', type: 'text'}, {id: 'xLog', label: 'Log ranges', type: 'text'},
+  ],
+  abf_peaks: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'ABF folder', type: 'path'},
+    {section: 'Channels'}, {id: 'channel', label: 'Channel', type: 'number'}, {id: 'iCh', label: 'Current channel', type: 'number'}, {id: 'vCh', label: 'Voltage channel', type: 'number'}, {id: 'rNorm', label: 'Normalize resistance', type: 'checkbox'},
+    {section: 'Window'}, {id: 'useAll', label: 'Use full file', type: 'checkbox'}, {id: 't0', label: 'Start s', type: 'number'}, {id: 't1', label: 'End s', type: 'number'},
+    {section: 'Peak Detection'}, {id: 'polarity', label: 'Polarity', type: 'select'}, {id: 'pkHeight', label: 'Peak height', type: 'number'}, {id: 'pkProm', label: 'Prominence', type: 'number'}, {id: 'pkDist', label: 'Distance', type: 'number'}, {id: 'exportWinMs', label: 'Export window ms', type: 'number'},
+  ],
+  echem_pc: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'Data folder', type: 'path'},
+    {section: 'Window'}, {id: 'useAll', label: 'Use full file', type: 'checkbox'}, {id: 't0', label: 'Start s', type: 'number'}, {id: 't1', label: 'End s', type: 'number'},
+    {section: 'Detection'}, {id: 'posMin', label: 'POS min mA', type: 'number'}, {id: 'negMin', label: 'NEG min abs', type: 'number'}, {id: 'minDelay', label: 'Min delay ms', type: 'number'}, {id: 'maxDelay', label: 'Max delay ms', type: 'number'}, {id: 'minPosDist', label: 'Min POS distance', type: 'number'},
+  ],
+  echem_pv: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'Data folder', type: 'path'},
+    {section: 'Window'}, {id: 'useAll', label: 'Use full file', type: 'checkbox'}, {id: 't0', label: 'Start s', type: 'number'}, {id: 't1', label: 'End s', type: 'number'},
+    {section: 'Detrend'}, {id: 'detrendMethod', label: 'Method', type: 'select'}, {id: 'baselineWinMs', label: 'Baseline window ms', type: 'number'}, {id: 'sgWinMs', label: 'S-G window ms', type: 'number'}, {id: 'sgPoly', label: 'S-G polynomial', type: 'number'},
+    {section: 'Peaks'}, {id: 'peakMinV', label: 'Peak min V', type: 'number'}, {id: 'minWidthMs', label: 'Min width ms', type: 'number'}, {id: 'minSpacingMs', label: 'Min spacing ms', type: 'number'}, {id: 'polarity', label: 'Polarity', type: 'select'}, {id: 'showDetrended', label: 'Show detrended trace', type: 'checkbox'},
+  ],
+  echem_lineshape: [
+    {section: 'Paths'}, {id: 'baseDir', label: 'Material base folder', type: 'path'},
+    {section: 'Selection'}, {id: 'material', label: 'Material', type: 'text'}, {id: 'indexK', label: 'Index', type: 'number'}, {id: 'kind', label: 'Kind', type: 'select'},
+    {section: 'Window'}, {id: 'cropT0', label: 'Crop start s', type: 'number'}, {id: 'cropT1', label: 'Crop end s', type: 'number'}, {id: 'xOffset', label: 'X offset', type: 'number'},
+    {section: 'Axes'}, {id: 'yMin', label: 'Y min', type: 'number'}, {id: 'yMax', label: 'Y max', type: 'number'},
+  ],
+  rhd_viewer: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'RHD folder', type: 'path'},
+    {section: 'Axes'}, {id: 'xMin', label: 'X min', type: 'number'}, {id: 'xMax', label: 'X max', type: 'number'}, {id: 'yMin', label: 'Y min', type: 'number'}, {id: 'yMax', label: 'Y max', type: 'number'},
+    {section: 'Export'}, {id: 'mergePair', label: 'Merge split pair', type: 'checkbox'}, {id: 'wideCsv', label: 'Wide TSV export', type: 'checkbox'},
+  ],
+  emg_peaks: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'EMG folder', type: 'path'},
+    {section: 'Detection'}, {id: 'pkPolarity', label: 'Polarity', type: 'select'}, {id: 'pkHeight', label: 'Peak height', type: 'number'}, {id: 'pkProm', label: 'Prominence', type: 'number'}, {id: 'pkDist', label: 'Distance', type: 'number'}, {id: 'pkDur', label: 'Duration ms', type: 'number'}, {id: 'pkMinW', label: 'Min width', type: 'number'}, {id: 'pkWlen', label: 'Wlen', type: 'number'}, {id: 'pkAdaptive', label: 'Adaptive sigma', type: 'checkbox'}, {id: 'pkSigmaProm', label: 'Sigma prominence', type: 'number'}, {id: 'pkSigmaHeight', label: 'Sigma height', type: 'number'}, {id: 'detectMode', label: 'Detection mode', type: 'select'},
+    {section: 'Axes'}, {id: 'xMin', label: 'X min', type: 'number'}, {id: 'xMax', label: 'X max', type: 'number'},
+    {section: 'Grouping'}, {id: 'grpPeriod', label: 'Period s', type: 'number'}, {id: 'grpGapFac', label: 'Gap factor', type: 'number'}, {id: 'grpStart', label: 'Start group', type: 'number'}, {id: 'groupInput', label: 'Group label', type: 'text'},
+  ],
+  fluorescence: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'TIFF folder', type: 'path'},
+    {section: 'Display'}, {id: 'lut', element: 'lutSelect', label: 'LUT', type: 'select', options: LUT_OPTIONS}, {id: 'displayMode', label: 'Display mode', type: 'select', options: [['single', 'Single slice'], ['max', 'Max projection'], ['mean', 'Mean projection']]}, {id: 'pLow', label: 'Contrast low percentile', type: 'number'}, {id: 'pHigh', label: 'Contrast high percentile', type: 'number'}, {id: 'zStart', label: 'Projection start slice', type: 'number'}, {id: 'zEnd', label: 'Projection end slice', type: 'number'},
+    {section: 'Batch'}, {id: 'batchUseTemplate', label: 'Use current display as template', type: 'checkbox'}, {id: 'batchLockRanges', label: 'Lock stack ranges', type: 'checkbox'}, {id: 'autoRerange', label: 'Auto rerange', type: 'checkbox'},
+  ],
+  fluorescence_lif: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'LIF folder', type: 'path'}, {id: 'lifPath', label: 'LIF file', type: 'path'},
+    {section: 'Browsing'}, {id: 'sortMode', label: 'Sort mode', type: 'select'},
+    {section: 'Display'}, {id: 'lutSelect', label: 'LUT', type: 'select', options: LUT_OPTIONS}, {id: 'pLow', label: 'Contrast low percentile', type: 'number'}, {id: 'pHigh', label: 'Contrast high percentile', type: 'number'},
+  ],
+  fluorescence_3d_stacking: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'TIFF folder', type: 'path'}, {id: 'tiffPath', label: 'TIFF file', type: 'path'},
+    {section: 'Slice Preview'}, {id: 'lutSelect', label: 'Preview LUT', type: 'select', options: LUT_OPTIONS},
+    {section: 'Volume'}, {id: 'volumeChannelMode', label: 'Channel mode', type: 'select'}, {id: 'volumeQuality', label: 'Quality', type: 'select'}, {id: 'volumeThreshold', label: 'Signal threshold percentile', type: 'number'}, {id: 'volumeDenoise', label: 'Denoise', type: 'select'},
+    {section: 'Export'}, {id: 'showScaleBar', label: 'Show scale bar', type: 'checkbox'}, {id: 'scaleBarUm', label: 'Scale bar um', type: 'number'}, {id: 'outputName', label: 'Output name', type: 'text'},
+  ],
+  fluorescence_roi: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'TIFF folder', type: 'path'},
+    {section: 'Preview'}, {id: 'lutSelect', label: 'LUT', type: 'select', options: LUT_OPTIONS}, {id: 'previewScale', label: 'Preview scale', type: 'select'},
+    {section: 'ROI Drawing'}, {id: 'drawShape', label: 'Drawing shape', type: 'select', options: [['polygon', 'Polygon'], ['rect', 'Rectangle'], ['ellipse', 'Ellipse']]}, {id: 'ringWidthPx', label: 'Ring width px', type: 'number'}, {id: 'ringCount', label: 'Ring count', type: 'number'}, {id: 'ringWidthUm', label: 'Ring width um', type: 'number'}, {id: 'bgMode', label: 'Background mode', type: 'select'},
+    {section: 'Analysis'}, {id: 'metric', label: 'Metric', type: 'select'}, {id: 'plotMetric', label: 'Plot metric', type: 'select'}, {id: 'refSequence', label: 'Reference sequence', type: 'text'}, {id: 'outPrefix', label: 'Output prefix', type: 'text'},
+    {section: 'Export Labels'}, {id: 'scaleBarUm', label: 'Scale bar um', type: 'number'}, {id: 'gifFrameMs', label: 'GIF frame ms', type: 'number'}, {id: 'pixelSizeUm', label: 'Pixel size um', type: 'number'}, {id: 'scaleLabel', label: 'Scale label', type: 'text'}, {id: 'labelScale', label: 'Label scale', type: 'number'}, {id: 'showPreviewName', label: 'Show preview name', type: 'checkbox'}, {id: 'showScaleBar', label: 'Show scale bar', type: 'checkbox'},
+  ],
+  fluorescence_gif: [
+    {section: 'Paths'}, {id: 'folderPath', label: 'TIFF folder', type: 'path'},
+    {section: 'GIF Export'}, {id: 'gifFps', label: 'FPS', type: 'number'}, {id: 'gifLut', label: 'LUT', type: 'select', options: LUT_OPTIONS}, {id: 'gifBarUm', label: 'Scale bar um', type: 'number'}, {id: 'gifAutoScale', label: 'Auto scale from TIFF metadata', type: 'checkbox'}, {id: 'gifPxPerUm', label: 'Manual px per um', type: 'number'}, {id: 'gifLabelMode', label: 'Label mode', type: 'select'}, {id: 'gifCropMode', label: 'Crop mode', type: 'select'}, {id: 'gifCropPadding', label: 'Crop padding px', type: 'number'}, {id: 'gifShowRoiOverlay', label: 'Show ROI overlay', type: 'checkbox'}, {id: 'gifOutput', label: 'GIF output name', type: 'text'},
+    {section: 'ROI Time Analysis'}, {id: 'gifBgMode', label: 'Background mode', type: 'select'}, {id: 'gifRoiMetric', label: 'Metric', type: 'select'}, {id: 'gifRoiPlotMetric', label: 'Plot metric', type: 'select'}, {id: 'gifRoiRefFrame', label: 'Reference frame', type: 'number'}, {id: 'gifRoiPrefix', label: 'Output prefix', type: 'text'},
+    {section: 'Kymograph'}, {id: 'gifKymoValueMode', label: 'Value mode', type: 'select'}, {id: 'gifKymoBins', label: 'Bins', type: 'number'}, {id: 'gifKymoLowPct', label: 'Low percentile', type: 'number'}, {id: 'gifKymoHighPct', label: 'High percentile', type: 'number'}, {id: 'gifKymoThresholds', label: 'Thresholds', type: 'text'}, {id: 'gifKymoPercentiles', label: 'Percentiles', type: 'text'}, {id: 'gifKymoTopMeans', label: 'Top means', type: 'text'}, {id: 'gifKymoPeakLine', label: 'Peak line', type: 'checkbox'}, {id: 'gifKymoMeanLine', label: 'Mean line', type: 'checkbox'}, {id: 'gifKymoSmoothIntensity', label: 'Intensity smoothing', type: 'number'}, {id: 'gifKymoSmoothTime', label: 'Time smoothing', type: 'number'}, {id: 'gifKymoSmoothLines', label: 'Smooth lines', type: 'checkbox'}, {id: 'gifKymoRefFrame', label: 'Reference frame', type: 'number'}, {id: 'gifKymoRefStat', label: 'Reference statistic', type: 'select'}, {id: 'gifKymoPrefix', label: 'Output prefix', type: 'text'},
+  ],
+  histology: [
+    {section: 'Paths'}, {id: 'projectPath', label: 'Histology project folder', type: 'path'}, {id: 'qupathProject', label: 'QuPath project file', type: 'path'},
+    {section: 'Naming'}, {id: 'rotateDeg', label: 'Rotation', type: 'select'}, {id: 'newName', label: 'New name', type: 'text'}, {id: 'suffixList', label: 'Suffix list', type: 'textarea'}, {id: 'suffixPick', label: 'Selected suffix', type: 'select'}, {id: 'useSuffix', label: 'Append suffix', type: 'checkbox'}, {id: 'updateQuPath', label: 'Update QuPath name', type: 'checkbox'},
+  ],
+  scripts: [
+    {section: 'Paths'}, {id: 'dataDir', label: 'Default pipeline data folder', type: 'path'}, {id: 'outputDir', label: 'Default output folder', type: 'path'},
+    {section: 'Browsing'}, {id: 'catSelect', label: 'Default pipeline group', type: 'select', options: [['photocurrent', 'Photocurrent'], ['emg', 'EMG'], ['echem_curves', 'Echem Curves'], ['viability', 'Viability']]},
+  ],
+};

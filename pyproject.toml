@@ -1,0 +1,122 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bioelectronics-toolkit"
+version = "0.1.0"
+description = "Desktop GUIs and a lightweight Flask web app for processing bioelectronics and electrophysiology data (ABF, RHD, TIFF, electrochemistry CSV)."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+authors = [
+    { name = "Guangqing Yang", email = "guangqing@uchicago.edu" }
+]
+keywords = [
+    "bioelectronics",
+    "electrophysiology",
+    "patch-clamp",
+    "EMG",
+    "fluorescence",
+    "electrochemistry",
+    "ABF",
+    "RHD",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Medical Science Apps.",
+]
+dependencies = [
+    "flask>=3.0",
+    "matplotlib>=3.7",
+    "numpy>=1.24",
+    "pandas>=2.0",
+    "pyabf>=2.3",
+    "scipy>=1.10",
+    "Pillow>=10.0",
+    "pyserial>=3.5",
+    "tifffile>=2023.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4",
+]
+
+[project.urls]
+Repository = "https://github.com/guangqingy/bioelectronics_toolkit"
+
+# ---------------------------------------------------------------------------
+# Entry points – desktop commands open the canonical WebGUI page by default.
+# Use the matching root compatibility module with `--legacy` for Tkinter.
+# ---------------------------------------------------------------------------
+[project.scripts]
+bte-abf-batch      = "desktop_apps.web_launcher:abf_batch_main"
+bte-abf-peaks      = "desktop_apps.web_launcher:abf_peaks_main"
+bte-abf-sweep      = "desktop_apps.web_launcher:abf_sweep_main"
+bte-abf-pc-viewer  = "desktop_apps.web_launcher:abf_pc_viewer_main"
+bte-abf-pc-figure  = "desktop_apps.web_launcher:abf_pc_figure_main"
+bte-echem-pc       = "desktop_apps.web_launcher:echem_pc_main"
+bte-echem-pv       = "desktop_apps.web_launcher:echem_pv_main"
+bte-emg-viewer     = "desktop_apps.web_launcher:emg_rhd_main"
+bte-emg-peaks      = "desktop_apps.web_launcher:emg_peaks_main"
+bte-fl-roi         = "desktop_apps.web_launcher:fluorescence_roi_main"
+bte-fl-lut         = "desktop_apps.web_launcher:fluorescence_lut_main"
+bte-fl-gif         = "fluorescence_tiff_to_gif:main"
+bte-csv-viewer     = "desktop_apps.web_launcher:csv_viewer_main"
+bte-histology      = "desktop_apps.web_launcher:histology_main"
+bte-web            = "web_app:main"
+
+# ---------------------------------------------------------------------------
+# Setuptools – keep root compatibility modules and package the maintained code.
+# ---------------------------------------------------------------------------
+[tool.setuptools]
+py-modules = [
+    "abf_batch_processor_gui",
+    "abf_peak_detection_gui",
+    "abf_photocurrent_figure_gui",
+    "abf_photocurrent_viewer_gui",
+    "abf_sweep_viewer_gui",
+    "config",
+    "csv_folder_viewer_gui",
+    "echem_photocurrent_gui",
+    "echem_photovoltage_gui",
+    "emg_peak_selector_gui",
+    "emg_rhd_viewer_gui",
+    "fluorescence_lut_gui",
+    "fluorescence_roi_gui",
+    "fluorescence_tiff_to_gif",
+    "histology_naming_gui",
+    "importrhdutilities",
+    "web_app",
+]
+
+[tool.setuptools.packages.find]
+include = ["desktop_apps*", "services*", "web_api*"]
+
+# ---------------------------------------------------------------------------
+# Ruff linter (optional – run with `ruff check .`)
+# ---------------------------------------------------------------------------
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+# Baseline CI lint: catch syntax-level and undefined-name issues without
+# failing legacy scientific scripts on historical style/layout differences.
+select = ["E9", "F63", "F7", "F82"]
+ignore = ["E402"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy this file to config.json and edit. config.json is gitignored, so your edits stay local. Leaving a value as null or removing the key falls back to a sensible default (project root for paths).",
+
+  "default_start_dir": null
+}
