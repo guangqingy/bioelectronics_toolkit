@@ -1,0 +1,34 @@
+{% set generic_prefs_enabled = (active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif'] %}
+{% set generic_file_profile_enabled = (active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks'] %}
+{% if generic_file_profile_enabled %}
+<div class="ctrl-section generic-file-profile-section" id="genericFileProfileSection">
+  <div class="ctrl-label">File Profile</div>
+  <div class="input-group">
+    <select id="genericFileProfileSelect" onchange="loadSelectedGenericFileProfile(false)">
+      <option value="">No file selected</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn-secondary" type="button" onclick="loadSelectedGenericFileProfile(false)">Load</button>
+      <button class="btn-secondary" type="button" onclick="saveGenericFileProfile(false)">Save</button>
+      <button class="btn-secondary" type="button" onclick="saveGenericFileProfile(true)">Save As</button>
+    </div>
+    <button class="btn-secondary btn-block" type="button" onclick="deleteSelectedGenericFileProfile()">Delete Profile</button>
+    <label class="checkbox-row">
+      <input type="checkbox" id="genericAutoLoadProfile" checked>
+      <span>Auto-load saved profile for selected file</span>
+    </label>
+  </div>
+  <div class="status-bar" id="genericFileProfileStatus"></div>
+</div>
+{% endif %}
+{% if generic_prefs_enabled %}
+<div class="ctrl-section generic-settings-section" id="genericSettingsSection">
+  <div class="ctrl-label">Page Settings</div>
+  <div class="btn-row">
+    <button class="btn-secondary" type="button" onclick="saveGenericPageDefaults()">Save Defaults</button>
+    <button class="btn-secondary" type="button" onclick="restoreGenericPageDefaults()">Restore</button>
+  </div>
+  <button class="btn-secondary btn-block" type="button" onclick="resetGenericPageDefaults()" style="margin-top:6px">Reset Page Defaults</button>
+  <div class="status-bar" id="genericPrefsStatus"></div>
+</div>
+{% endif %}

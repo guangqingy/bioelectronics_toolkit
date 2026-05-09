@@ -29,6 +29,7 @@ DataProcess/
 │   ├── response.py             # Unified API envelope
 │   ├── jobs.py                 # In-memory background job manager
 │   ├── system.py               # Local file picker and shutdown routes
+│   ├── pages.py                # Browser page route registration
 │   ├── path_policy.py          # Shared filename/output-path helpers
 │   ├── preferences.py          # Global and per-view defaults
 │   ├── file_profiles.py        # Per-file cached UI settings
@@ -37,6 +38,7 @@ DataProcess/
 │   ├── fluorescence_*_routes.py# Focused fluorescence route groups
 │   └── *_viewer.py, *_pc.py... # Other domain-specific route modules
 ├── web_templates/              # Jinja pages, one main template per view
+│   └── partials/               # Shared navigation, panels, and modal fragments
 ├── web_static/
 │   ├── style.css
 │   ├── css/                    # Page-specific CSS extracted from templates
@@ -144,8 +146,9 @@ Every tool page should follow the base shell:
 
 Common browser helpers belong in `web_static/js/*.js`, not inline in
 `base.html`. Stable page-specific code belongs under `web_static/js/pages/`,
-and page-specific CSS belongs under `web_static/css/`. Keep only small
-Jinja-dependent bootstrapping inline.
+and page-specific CSS belongs under `web_static/css/`. Shared Jinja markup
+belongs under `web_templates/partials/` so `base.html` stays a thin shell. Keep
+only small Jinja-dependent bootstrapping inline.
 
 ## Route Module Contract
 
@@ -159,6 +162,8 @@ def register_example_routes(app, ctx):
 Guidelines:
 
 - Keep route registration in `web_app.py`.
+- Keep page routes in `web_api/pages.py` and local system routes in
+  `web_api/system.py`; `web_app.py` should remain the composition root.
 - Use shared helpers from `ctx`, such as `err`, `fig_to_b64`, `float_or`,
   `int_or`, `browse_files`, and optional dependency flags.
 - Put data loading, numeric transforms, detection logic, file naming, and export
@@ -168,6 +173,10 @@ Guidelines:
 - Return JSON dictionaries or `api_ok(...)`/`api_error(...)`; the envelope
   middleware is the fallback.
 - Provide job-backed routes for long-running exports and batch operations.
+- Prefer `submit_json_task(...)` for new jobs. Use `submit_flask_route_job(...)`
+  only as a compatibility bridge while an older route still owns the work.
+- New save/export routes should return explicit `outputs=[...]` records through
+  `api_ok(...)`; the response inference layer exists for older route shapes.
 - Keep download-only streaming endpoints synchronous unless there is a separate
   save-to-disk workflow.
 

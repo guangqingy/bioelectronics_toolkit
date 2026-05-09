@@ -1,0 +1,39 @@
+<nav class="top-nav">
+  <div class="nav-inner">
+    <a class="nav-brand" href="{% if standalone_lif %}/fluorescence/lif{% else %}/{% endif %}">{% if standalone_lif %}Leica LIF Browser{% else %}DataProcess{% endif %}</a>
+    <div class="nav-sep"></div>
+    <div class="nav-group">
+      {% if standalone_lif %}
+      <a class="nav-item active" href="/fluorescence/lif">LIF</a>
+      {% else %}
+      <a class="nav-item {% if active=='abf_viewer' %}active{% endif %}" href="/abf/viewer">ABF</a>
+      <a class="nav-item {% if active=='abf_batch' %}active{% endif %}" href="/abf/batch">Batch</a>
+      <a class="nav-item {% if active=='abf_figure' %}active{% endif %}" href="/abf/figure">Figures</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='echem_pc' %}active{% endif %}" href="/echem/photocurrent">PC</a>
+      <a class="nav-item {% if active=='echem_pv' %}active{% endif %}" href="/echem/photovoltage">PV</a>
+      <a class="nav-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape">Lineshape</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd">RHD</a>
+      <a class="nav-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks">Peaks</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='csv_viewer' %}active{% endif %}" href="/csv">CSV</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='fluorescence' %}active{% endif %}" href="/fluorescence">TIFF</a>
+      <a class="nav-item {% if active=='fluorescence_lif' %}active{% endif %}" href="/fluorescence/lif">LIF</a>
+      <a class="nav-item {% if active=='fluorescence_3d_stacking' %}active{% endif %}" href="/fluorescence/3d-stacking">3D Stacking</a>
+      <a class="nav-item {% if active=='fluorescence_roi' %}active{% endif %}" href="/fluorescence/roi">ROI</a>
+      <a class="nav-item {% if active=='fluorescence_gif' %}active{% endif %}" href="/fluorescence/gif">GIF</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='histology' %}active{% endif %}" href="/histology">Histology</a>
+      <div class="nav-sep"></div>
+      <a class="nav-item {% if active=='scripts' %}active{% endif %}" href="/scripts">Pipelines</a>
+      <a class="nav-item {% if active=='run_history' %}active{% endif %}" href="/runs">Runs</a>
+      {% endif %}
+    </div>
+    <div class="nav-right">
+      <button id="prefsBtn" class="nav-settings" type="button" onclick="openPrefsModal()">Settings</button>
+      <button id="logoutBtn" class="nav-logout" type="button" onclick="logoutServer()">Log Out</button>
+    </div>
+  </div>
+</nav>

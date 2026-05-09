@@ -13,7 +13,11 @@ def sanitize_name_part(value: object, fallback: str = "output") -> str:
     return cleaned or fallback
 
 
-def resolve_output_dir(source_path: object, output_dir: object = "", default_suffix: str = "outputs") -> Path:
+def resolve_output_dir(
+    source_path: object,
+    output_dir: object = "",
+    default_suffix: str = "outputs",
+) -> Path:
     """Resolve a user-provided output directory relative to a source file."""
     source = Path(str(source_path or "")).expanduser()
     raw_output = str(output_dir or "").strip()

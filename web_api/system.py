@@ -83,7 +83,8 @@ def register_system_routes(app, ctx) -> None:
     def api_system_select_folder():
         try:
             d = request.json or {}
-            path = _choose_folder(_default_picker_dir(base_dir, str(d.get("start", "") or "").strip()))
+            default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
+            path = _choose_folder(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
         except Exception:
             return err(traceback.format_exc())
@@ -92,7 +93,8 @@ def register_system_routes(app, ctx) -> None:
     def api_system_select_file():
         try:
             d = request.json or {}
-            path = _choose_file(_default_picker_dir(base_dir, str(d.get("start", "") or "").strip()))
+            default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
+            path = _choose_file(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
         except Exception:
             return err(traceback.format_exc())

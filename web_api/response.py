@@ -138,10 +138,26 @@ def _normalize_output_record(value: Any, key: str = "") -> dict[str, Any] | None
     return rec
 
 
+def _direct_output_records(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or not value:
+        return []
+    records: list[dict[str, Any]] = []
+    for item in value:
+        rec = _normalize_output_record(item, "outputs")
+        if not rec:
+            return []
+        records.append(rec)
+    return records
+
+
 def infer_outputs(payload: Any) -> list[dict[str, Any]]:
     """Extract stable output records from legacy route payload shapes."""
     if not isinstance(payload, dict):
         return []
+
+    direct_outputs = _direct_output_records(payload.get("outputs"))
+    if direct_outputs:
+        return direct_outputs
 
     source = payload
     if _is_envelope(payload) and isinstance(payload.get("data"), dict):

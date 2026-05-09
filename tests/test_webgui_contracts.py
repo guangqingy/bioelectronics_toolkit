@@ -51,6 +51,20 @@ class ApiEnvelopeTests(unittest.TestCase):
 
         self.assertEqual(envelope["outputs"], [{"path": "/tmp/movie.gif", "type": "gif"}])
 
+    def test_explicit_output_records_take_precedence_over_legacy_paths(self) -> None:
+        envelope = make_envelope(
+            {
+                "ok": True,
+                "saved_path": "/tmp/result.csv",
+                "outputs": [{"path": "/tmp/result.csv", "type": "csv", "role": "full_csv"}],
+            }
+        )
+
+        self.assertEqual(
+            envelope["outputs"],
+            [{"path": "/tmp/result.csv", "type": "csv", "role": "full_csv"}],
+        )
+
 
 class JobManagerContractTests(unittest.TestCase):
     def test_job_record_gets_inferred_outputs(self) -> None:
@@ -214,6 +228,21 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(job["status"], "succeeded")
             self.assertTrue(Path(job["outputs"][0]["path"]).exists())
             self.assertEqual(job["data"]["saved_path"], job["outputs"][0]["path"])
+            self.assertEqual(job["outputs"][0]["role"], "full_csv")
+
+    def test_csv_jobs_do_not_wrap_flask_routes(self) -> None:
+        source = Path(__file__).resolve().parents[1] / "web_api" / "csv_viewer.py"
+        text = source.read_text(encoding="utf-8")
+        self.assertIn("submit_json_task", text)
+        self.assertNotIn("submit_flask_route_job", text)
+
+    def test_web_app_keeps_page_and_system_routes_out_of_composition_root(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        web_app = (root / "web_app.py").read_text(encoding="utf-8")
+        self.assertNotIn('@app.route("/")', web_app)
+        self.assertNotIn("/api/system/select_folder", web_app)
+        self.assertIn("register_page_routes", web_app)
+        self.assertIn("register_system_routes", web_app)
 
     def test_run_history_package_job_uses_service_task_contract(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_run_history_test_") as tmp:

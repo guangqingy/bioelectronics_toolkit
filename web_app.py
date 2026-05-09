@@ -20,7 +20,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from flask import Flask, render_template, request
+from flask import Flask, request
 
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
@@ -33,12 +33,13 @@ from web_api.echem_lineshape import register_echem_lineshape_routes
 from web_api.echem_pc import register_echem_pc_routes
 from web_api.echem_pv import register_echem_pv_routes
 from web_api.emg_peaks import register_emg_peaks_routes
-from web_api.file_profiles import register_file_profile_routes
 from web_api.figure_generator import register_figure_generator_routes
+from web_api.file_profiles import register_file_profile_routes
 from web_api.fluorescence import register_fluorescence_routes
 from web_api.histology import register_histology_routes
 from web_api.jobs import JobManager, register_job_routes
 from web_api.lif_viewer import register_lif_viewer_routes
+from web_api.pages import register_page_routes
 from web_api.preferences import register_preferences_routes
 from web_api.response import api_error, register_api_envelope
 from web_api.rhd_viewer import register_rhd_viewer_routes
@@ -250,6 +251,7 @@ _web_api_ctx = WebApiContext(
 
 
 register_api_envelope(app)
+register_page_routes(app, _web_api_ctx)
 register_csv_viewer_routes(app, _web_api_ctx)
 register_abf_viewer_routes(app, _web_api_ctx)
 register_abf_batch_routes(app, _web_api_ctx)
@@ -270,129 +272,6 @@ register_system_routes(app, _web_api_ctx)
 register_job_routes(app, _web_api_ctx)
 
 
-@app.route("/")
-def index():
-    return render_template("index.html", active="index")
-
-
-@app.route("/csv")
-def csv_viewer():
-    return render_template("csv_viewer.html", active="csv_viewer")
-
-
-@app.route("/abf/viewer")
-def abf_viewer():
-    return render_template("abf_viewer.html", active="abf_viewer", has_abf=HAS_ABF)
-
-
-@app.route("/abf/batch")
-def abf_batch():
-    return render_template("abf_batch.html", active="abf_batch", has_abf=HAS_ABF)
-
-
-@app.route("/abf/figure")
-def abf_figure():
-    return render_template("abf_figure.html", active="abf_figure")
-
-
-@app.route("/abf/peaks")
-def abf_peaks():
-    return render_template("abf_peakdet.html", active="abf_peaks", has_abf=HAS_ABF)
-
-
-@app.route("/echem/photocurrent")
-def echem_pc():
-    return render_template("echem_pc.html", active="echem_pc")
-
-
-@app.route("/echem/photovoltage")
-def echem_pv():
-    return render_template("echem_pv.html", active="echem_pv")
-
-
-@app.route("/echem/lineshape")
-def echem_lineshape():
-    return render_template("echem_lineshape.html", active="echem_lineshape")
-
-
-@app.route("/emg/rhd")
-def rhd_viewer():
-    return render_template("rhd_viewer.html", active="rhd_viewer", has_rhd=HAS_RHD)
-
-
-@app.route("/emg/peaks")
-def emg_peaks():
-    return render_template("emg_peaks.html", active="emg_peaks", has_scipy=HAS_SCIPY)
-
-
-@app.route("/fluorescence")
-def fluorescence():
-    return render_template(
-        "fluorescence.html",
-        active="fluorescence",
-        has_tiff=HAS_TIFF,
-        has_pil=HAS_PIL,
-    )
-
-
-@app.route("/fluorescence/roi")
-def fluorescence_roi():
-    return render_template(
-        "fluorescence_roi.html",
-        active="fluorescence_roi",
-        has_tiff=HAS_TIFF,
-    )
-
-
-@app.route("/fluorescence/lif")
-def fluorescence_lif():
-    return render_template(
-        "fluorescence_lif.html",
-        active="fluorescence_lif",
-        has_readlif=HAS_READLIF,
-        has_pil=HAS_PIL,
-        has_tiff=HAS_TIFF,
-    )
-
-
-@app.route("/fluorescence/3d-stacking")
-def fluorescence_3d_stacking():
-    return render_template(
-        "fluorescence_3d_stacking.html",
-        active="fluorescence_3d_stacking",
-        has_tiff=HAS_TIFF,
-        has_pil=HAS_PIL,
-    )
-
-
-@app.route("/histology")
-def histology():
-    return render_template("histology.html", active="histology")
-
-
-@app.route("/fluorescence/gif")
-def fluorescence_gif():
-    return render_template(
-        "fluorescence_gif.html",
-        active="fluorescence_gif",
-        has_tiff=HAS_TIFF,
-        has_pil=HAS_PIL,
-    )
-
-
-@app.route("/scripts")
-@app.route("/scripts/<cat>")
-def scripts(cat="photocurrent"):
-    if cat not in {"photocurrent", "emg", "echem_curves", "viability"}:
-        cat = "photocurrent"
-    return render_template("scripts.html", active="scripts", cat=cat, cat_explicit=request.path != "/scripts")
-
-
-@app.route("/runs")
-def run_history_page():
-    return render_template("run_history.html", active="run_history")
-
-
 PORT = 7433
 
 
@@ -403,7 +282,8 @@ def _open_browser():
 
 def main() -> None:
     os.chdir(BASE_DIR)
-    if os.environ.get("DATAPROCESS_WEB_NO_BROWSER", "").strip().lower() not in {"1", "true", "yes", "on"}:
+    no_browser = os.environ.get("DATAPROCESS_WEB_NO_BROWSER", "").strip().lower()
+    if no_browser not in {"1", "true", "yes", "on"}:
         threading.Thread(target=_open_browser, daemon=True).start()
     print(f"\n  DataProcess Web  ->  http://localhost:{PORT}\n")
     app.run(host="127.0.0.1", port=PORT, debug=False, threaded=True)
