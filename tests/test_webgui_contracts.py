@@ -173,7 +173,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Intan RHD Viewer", html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
-        self.assertIn("v0.2.0", html)
+        self.assertIn("v0.3.0", html)
         self.assertNotIn("unknown", html.lower())
 
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
@@ -182,8 +182,8 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.2.0")
-        self.assertTrue(payload["label"].startswith("v0.2.0"))
+        self.assertEqual(payload["version"], "0.3.0")
+        self.assertTrue(payload["label"].startswith("v0.3.0"))
         self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:

@@ -60,16 +60,19 @@ app = Flask(
 
 
 def _project_version() -> str:
-    try:
-        return importlib.metadata.version("bioelectronics-toolkit")
-    except importlib.metadata.PackageNotFoundError:
-        pyproject = BASE_DIR / "pyproject.toml"
+    pyproject = BASE_DIR / "pyproject.toml"
+    if pyproject.exists():
         try:
             text = pyproject.read_text(encoding="utf-8")
             match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
-            return match.group(1) if match else "0+unknown"
+            if match:
+                return match.group(1)
         except Exception:
-            return "0+unknown"
+            pass
+    try:
+        return importlib.metadata.version("bioelectronics-toolkit")
+    except importlib.metadata.PackageNotFoundError:
+        return "0+unknown"
 
 
 def _git_commit() -> str:

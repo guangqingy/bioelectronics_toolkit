@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioelectronics-toolkit"
-version = "0.2.0"
+version = "0.3.0"
 description = "Desktop GUIs and a lightweight Flask web app for processing bioelectronics and electrophysiology data (ABF, RHD, TIFF, electrochemistry CSV)."
 readme = "README.md"
 license = { file = "LICENSE" }
