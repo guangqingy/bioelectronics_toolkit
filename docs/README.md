@@ -12,6 +12,8 @@ from `pipeline_readmes/`, which documents data-analysis workflows.
   canonical reference.
 - [Desktop strategy](desktop_strategy.md): how desktop launcher modules should
   stay thin Web launchers or service-backed clients.
+- [GitHub repository checklist](github_repository_checklist.md): web-UI settings
+  that cannot be represented directly in code.
 
 ## When To Update
 
@@ -21,3 +23,4 @@ Update these docs when:
 - A WebGUI route becomes the canonical implementation for a workflow.
 - Shared analysis logic is extracted into a new service module.
 - The package layout, console entry points, or local cache paths change.
+- GitHub repository metadata, release settings, or social preview assets change.

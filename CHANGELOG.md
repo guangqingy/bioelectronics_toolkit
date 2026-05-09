@@ -7,8 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+No unreleased changes yet.
+
+## [0.2.0] - 2026-05-09
+
 ### Added
-- `services/fluorescence/` shared service layer for stack/LUT export, ROI
+- `services/fluorescence/` shared service layer for stack export, ROI
   metrics, and TIFF-to-GIF rendering.
 - Web-first desktop launcher package under `desktop_apps/`, with legacy
   Tkinter applications preserved under `desktop_apps/legacy/`.
@@ -23,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Repository-level maintenance docs for structure, desktop/Web parity, and
   desktop migration strategy.
 - `.gitattributes` for stable LF line endings and binary data handling.
+- Tiny synthetic example data under `examples/` for ABF, electrochemistry CSV,
+  and fluorescence TIFF smoke/demo workflows.
+- WebGUI screenshots and favicon assets under `web_static/img/` and
+  `web_static/favicon.ico`.
+- `tests/__init__.py` so unittest modules are also importable as a package.
 
 ### Changed
 - Desktop GUI launchers now act as thin WebGUI launchers by default; pass
@@ -39,9 +48,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   behavior are documented as the canonical interface.
 - CSV, electrochemistry, ABF, EMG, and RHD Web routes now delegate more core
   numeric/data-loading behavior to shared services.
+- Background job endpoints now use body-driven `submit_json_task(...)` workers
+  instead of manufacturing Flask request contexts.
+- `pyproject.toml` is now the single dependency source of truth; the duplicate
+  hand-maintained `requirements.txt` has been removed.
+- The Intan RHD reference parser moved from the repository root to
+  `vendor/intan/importrhdutilities.py`.
+- The `bte-web` command now exposes normal `--help`, `--host`, `--port`, and
+  `--no-browser` CLI options.
+- Development dependencies now list Ruff only; tests continue to run with
+  stdlib `unittest`.
 
 ### Fixed
 - Removed a Python 2-era `unichr` branch from `importrhdutilities.py`.
+
+### Known Migration Notes
+- `bte-fl-lut` opens the WebGUI fluorescence page by default, but the dedicated
+  LUT editor still lives in `desktop_apps.legacy.fluorescence_lut_gui` until
+  `services/fluorescence/lut.py` is added.
 
 ## [0.1.0] - 2026-05-09
 
@@ -63,10 +87,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `config.example.json` and finally to the project root.
 - Project metadata via `pyproject.toml` (PEP 621), including `[project.scripts]`
   console-script entry points (`bte-abf-batch`, `bte-echem-pc`, `bte-web`, …).
-- MIT license, top-level README, dependency manifest (`requirements.txt`),
-  and pipeline documentation under `pipeline_readmes/`.
+- MIT license, top-level README, dependency metadata, and pipeline
+  documentation under `pipeline_readmes/`.
 - GitHub Actions CI workflow (lint + unittest + compileall).
 - `sync_to_github.sh` helper script for quick chore-style syncs.
 
-[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/guangqingy/bioelectronics_toolkit/releases/tag/v0.1.0

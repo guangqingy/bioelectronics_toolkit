@@ -13,7 +13,7 @@ cd bioelectronics_toolkit
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
-pip install -e ".[dev]"            # installs runtime + ruff + pytest
+pip install -e ".[dev]"            # installs runtime dependencies + ruff
 pre-commit install                 # auto-format on each commit
 cp config.example.json config.json # optional: customize default paths
 ```

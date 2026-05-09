@@ -7,6 +7,7 @@ A browser frontend for electrophysiology, electrochemistry,
 fluorescence imaging, and scripted data analysis.
 """
 
+import argparse
 import base64
 import io
 import os
@@ -20,7 +21,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from flask import Flask, request
+from flask import Flask, request, send_from_directory
 
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
@@ -60,6 +61,11 @@ def inject_template_defaults():
     return {"default_data_dir": str(BASE_DIR)}
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "favicon.ico")
+
+
 plt.rcParams.update(
     {
         "font.family": "sans-serif",
@@ -90,7 +96,7 @@ except ImportError:
 
 rhd = None
 try:
-    import importrhdutilities as rhd
+    from vendor.intan import importrhdutilities as rhd
 
     HAS_RHD = True
 except ImportError:
@@ -280,13 +286,22 @@ def _open_browser():
     webbrowser.open(f"http://localhost:{PORT}")
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    global PORT
+
+    parser = argparse.ArgumentParser(description="Start the local DataProcess WebGUI server.")
+    parser.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
+    parser.add_argument("--port", type=int, default=PORT, help="Port to serve on.")
+    parser.add_argument("--no-browser", action="store_true", help="Do not open a browser automatically.")
+    args = parser.parse_args(argv)
+
+    PORT = int(args.port)
     os.chdir(BASE_DIR)
     no_browser = os.environ.get("DATAPROCESS_WEB_NO_BROWSER", "").strip().lower()
-    if no_browser not in {"1", "true", "yes", "on"}:
+    if not args.no_browser and no_browser not in {"1", "true", "yes", "on"}:
         threading.Thread(target=_open_browser, daemon=True).start()
     print(f"\n  DataProcess Web  ->  http://localhost:{PORT}\n")
-    app.run(host="127.0.0.1", port=PORT, debug=False, threaded=True)
+    app.run(host=args.host, port=PORT, debug=False, threaded=True)
 
 
 if __name__ == "__main__":

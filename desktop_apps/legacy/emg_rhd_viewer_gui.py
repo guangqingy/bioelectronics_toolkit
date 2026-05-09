@@ -14,7 +14,7 @@ RHD Folder + Channel Viewer (macOS-safe; no scroll-zoom)
     * Add / Remove (row 1), Move Up / Move Down (row 2), Add ALL (row 3), Export Queue (row 4)
 - NEW: Swap two segments of the signal by specifying time ranges A and B (supports unequal lengths; swaps blocks).
 
-Dependencies: numpy, pandas, matplotlib, tkinter, importrhdutilities
+Dependencies: numpy, pandas, matplotlib, tkinter, vendor.intan.importrhdutilities
 """
 
 import os
@@ -30,10 +30,10 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 
 # ---------- RHD import ----------
 try:
-    import importrhdutilities as rhd
+    from vendor.intan import importrhdutilities as rhd
 except Exception as e:
     raise RuntimeError(
-        "Cannot import importrhdutilities.py. Place it beside this script or on PYTHONPATH."
+        "Cannot import vendor.intan.importrhdutilities. Install the package or run from the repository root."
     ) from e
 
 # --------------------------- Global style ---------------------------

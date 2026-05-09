@@ -46,6 +46,11 @@ below it.
   selection, GIF LUT rendering, scale-bar/timestamp overlays, and GIF/preview
   writing. The desktop TIFF-to-GIF script and Web GIF routes share these
   primitives.
+- LUT editing is the one remaining fluorescence workflow with a dedicated
+  legacy Tkinter implementation (`desktop_apps.legacy.fluorescence_lut_gui`).
+  `bte-fl-lut` opens the WebGUI fluorescence page by default, but track the
+  legacy editor explicitly until a `services/fluorescence/lut.py` migration
+  lands.
 - `services/csv_tools.py`, `services/echem.py`, `services/abf.py`,
   `services/emg.py`, and `services/rhd.py` now own the first shared primitives
   for CSV trace merging, electrochemistry parsing/detection, ABF baseline/peak

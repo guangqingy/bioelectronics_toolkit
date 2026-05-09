@@ -6,6 +6,8 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://docs.astral.sh/ruff/)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org)
 
+![DataProcess WebGUI screenshot](web_static/img/screenshot_home.png)
+
 A collection of desktop GUIs and a lightweight Flask web app for processing
 data from common bioelectronics and electrophysiology instruments. Tools cover
 electrochemistry (photocurrent / photovoltage), EMG and patch-clamp recordings
@@ -49,7 +51,9 @@ The source launcher modules are grouped under `desktop_apps/launchers/`.
 | --- | --- |
 | `bte-emg-viewer` | Viewer for Intan `.rhd` recordings. |
 | `bte-emg-peaks` | Manual / semi-automatic peak selection on EMG traces. |
-| `importrhdutilities.py` | Helper module for parsing `.rhd` files (used by the viewer). |
+
+Intan `.rhd` parsing is provided by the vendored reference parser under
+`vendor/intan/`.
 
 ### Fluorescence imaging
 
@@ -93,7 +97,7 @@ python3 -m venv .venv
 source .venv/bin/activate          # on Windows: .venv\Scripts\activate
 
 # 3. install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 
 Tkinter is part of the Python standard library on macOS and Windows. On Linux
@@ -155,8 +159,40 @@ python3 -m desktop_apps.launchers.fluorescence_roi_gui --legacy
 ```
 
 If a legacy tool complains about missing dependencies (e.g. `pyabf`,
-`pyserial`), make sure your virtualenv is active and `pip install -r
-requirements.txt` ran without errors.
+`pyserial`), make sure your virtualenv is active and `pip install -e .` ran
+without errors.
+
+Installed commands include normal CLI help:
+
+```bash
+bte-abf-batch --help      # WebGUI launcher options
+bte-abf-batch --legacy    # force the old Tkinter window when available
+bte-web --help            # Flask/WebGUI entry point
+```
+
+## Try It In 30 Seconds
+
+The repository includes tiny synthetic examples under [`examples/`](./examples/)
+so a fresh clone can exercise the UI without lab data:
+
+```bash
+pip install -e .
+python3 web_app.py
+```
+
+Then open `http://127.0.0.1:7433` and try:
+
+| File | Suggested page |
+| --- | --- |
+| `examples/sample_patch_clamp.abf` | ABF viewer / peak detection |
+| `examples/sample_echem_photocurrent.csv` | Photocurrent or CSV viewer |
+| `examples/sample_fluorescence_stack.tif` | TIFF / ROI / GIF pages |
+
+Additional screenshots:
+
+![ABF viewer screenshot](web_static/img/screenshot_abf_viewer.png)
+
+![Fluorescence ROI screenshot](web_static/img/screenshot_fluorescence_roi.png)
 
 ## Project layout
 
@@ -164,7 +200,6 @@ requirements.txt` ran without errors.
 bioelectronics_toolkit/
 ├── README.md                       # this file
 ├── LICENSE                         # MIT
-├── requirements.txt
 ├── config.py                       # config loader
 ├── config.example.json             # config template (copy to config.json)
 ├── web_gui_settings.example.json    # Web GUI local settings template
@@ -174,7 +209,8 @@ bioelectronics_toolkit/
 │   ├── launchers/                  # thin WebGUI/CLI entry modules
 │   ├── web_launcher.py             # maps desktop commands to WebGUI pages
 │   └── legacy/                     # historical Tkinter applications
-├── importrhdutilities.py            # Intan `.rhd` parsing helper
+├── vendor/intan/                   # vendored Intan `.rhd` reference parser
+├── examples/                       # tiny synthetic demo data
 │
 ├── web_app.py                      # Flask app entry point
 ├── web_api/                        # route modules per domain
@@ -196,12 +232,15 @@ bioelectronics_toolkit/
 - Repository organization and desktop/Web parity notes are indexed in
   [`docs/README.md`](./docs/README.md).
 - Shared algorithms should live under `services/` before they are reused by
-  both WebGUI routes and desktop entry points. Fluorescence stack/LUT, ROI
+  both WebGUI routes and desktop entry points. Fluorescence stack export, ROI
   metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
   parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
   channel/merge helpers now use this layer. Thin user-facing launchers live in
   `desktop_apps/launchers/`; large historical Tkinter apps live under
   `desktop_apps/legacy/`.
+- `bte-fl-lut` opens the WebGUI fluorescence page by default, but its dedicated
+  LUT editor still lives in `desktop_apps.legacy.fluorescence_lut_gui` until
+  `services/fluorescence/lut.py` is added.
 - Pipeline-level documentation (per analysis flow) lives under
   [`pipeline_readmes/`](./pipeline_readmes/).
 - Before committing Web GUI changes, run:

@@ -54,7 +54,7 @@ The following groups were changed without altering analysis algorithms, plotting
 - Helper modules now print a short usage note when run directly:
   - `2025_Subcellular_Stimulation/FL_Image/mito_mos_vs_none_layer_compare.py`
   - `2025_Subcutaneous/EMG/emg_model_utils.py`
-  - `importrhdutilities.py`
+  - `vendor/intan/importrhdutilities.py`
 
 Mechanical changes applied:
 - Wrapped bottom execution blocks in `def main() -> None`.

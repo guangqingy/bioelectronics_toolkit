@@ -18,6 +18,8 @@ DataProcess/
 +-- services/                 # UI-independent processing services
 +-- web_templates/            # Jinja templates
 +-- web_static/               # CSS and shared JavaScript
++-- vendor/                   # vendored reference parsers kept out of root
++-- examples/                 # tiny synthetic demo data
 +-- tests/                    # smoke and contract tests
 +-- pipeline_readmes/         # domain pipeline notes and audits
 +-- docs/                     # repository-level maintenance notes
@@ -59,11 +61,15 @@ problem.
   available through `--legacy` while users migrate.
 - When desktop and Web need the same algorithm, extract the algorithm into a
   shared service module and have both surfaces import it. The fluorescence
-  stack/LUT workflow now uses `services/fluorescence/stack.py`, ROI metrics use
+  stack workflow now uses `services/fluorescence/stack.py`, ROI metrics use
   `services/fluorescence/roi.py`, and basic TIFF-to-GIF rendering uses
   `services/fluorescence/gif.py`. CSV, echem, ABF, EMG, and RHD helpers now
   also have service modules, so Web routes should not reimplement those core
   algorithms inline.
+- Keep vendored reference parsers under `vendor/` when they are not maintained
+  as first-party services. The Intan RHD parser lives under
+  `vendor/intan/importrhdutilities.py`; `services/rhd.py` wraps the parts the
+  app uses.
 - Keep strict lint focused on maintained code. CI runs a whole-repository
   baseline for fatal issues, but the `E/F/W/I` style gate is intentionally
   limited to `services/`, `tests/`, and desktop launcher code while Web API

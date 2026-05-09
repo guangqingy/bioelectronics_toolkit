@@ -50,7 +50,7 @@ def register_rhd_viewer_routes(app, ctx):
 
     def _rhd_export_all_payload(d: dict) -> dict:
         if not has_rhd:
-            raise ValueError("importrhdutilities.py not found")
+            raise ValueError("Intan RHD parser is not available")
 
         path = d.get("path", "")
         mode = d.get("mode", "download")
@@ -122,7 +122,7 @@ def register_rhd_viewer_routes(app, ctx):
 
     def _rhd_export_queue_payload(d: dict) -> dict:
         if not has_rhd:
-            raise ValueError("importrhdutilities.py not found")
+            raise ValueError("Intan RHD parser is not available")
 
         paths = d.get("paths", [])
         if not isinstance(paths, list) or not paths:
@@ -196,7 +196,7 @@ def register_rhd_viewer_routes(app, ctx):
     @app.route("/api/rhd/load", methods=["POST"])
     def api_rhd_load():
         if not has_rhd:
-            return err("importrhdutilities.py not found in DataProcess folder")
+            return err("Intan RHD parser is not available")
 
         path = (request.json or {}).get("path", "")
         try:
@@ -236,7 +236,7 @@ def register_rhd_viewer_routes(app, ctx):
     @app.route("/api/rhd/plot", methods=["POST"])
     def api_rhd_plot():
         if not has_rhd:
-            return err("importrhdutilities.py not found")
+            return err("Intan RHD parser is not available")
 
         d = request.json or {}
         path = d.get("path", "")
@@ -284,7 +284,7 @@ def register_rhd_viewer_routes(app, ctx):
     @app.route("/api/rhd/export_channel", methods=["GET", "POST"])
     def api_rhd_export_channel():
         if not has_rhd:
-            return err("importrhdutilities.py not found")
+            return err("Intan RHD parser is not available")
 
         d = request_data()
         path = d.get("path", "")

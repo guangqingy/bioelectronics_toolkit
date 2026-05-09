@@ -18,7 +18,7 @@ is still needed for a one-off workflow.
 | Electrochemistry | `bte-echem-pc`, `bte-echem-pv` | `/echem/photocurrent`, `/echem/photovoltage` | File parsing, baseline/detrend helpers, and PC/PV detection primitives are now service-backed. Web remains the reference for stable outputs and defaults. |
 | RHD viewer | `bte-emg-viewer` | `/emg/rhd`, `web_api/rhd_viewer.py` | Channel naming, channel resolution, paired split-file merge, and wide export table helpers are service-backed. Web adds recursive browse, jobs, profiles, and manifests. |
 | EMG peaks | `bte-emg-peaks` | `/emg/peaks`, `web_api/emg_peaks.py` | EMG column selection, numeric cleaning, sampling-rate inference, adaptive peak kwargs, and polarity-aware detection helpers are service-backed. Web has the stronger integration with grouped export and run records. |
-| TIFF/LUT | `bte-fl-lut` | `/fluorescence`, `web_api/fluorescence.py` | Close feature overlap for LUT/range/background/denoise/export. Web adds profiles, jobs, batch manifests, and should be canonical. |
+| TIFF/LUT | `bte-fl-lut` | `/fluorescence`, `web_api/fluorescence.py` | Default launcher opens WebGUI, while the dedicated LUT editor remains the legacy Tkinter fallback. TIFF stack export is service-backed; `services/fluorescence/lut.py` remains pending. |
 | Fluorescence ROI | `bte-fl-roi` | `/fluorescence/roi`, `web_api/fluorescence.py` | Not full parity. Web adds per-file profiles, job-backed exports, radial/concentric ROI outputs, and DeltaF/F0 paths. Desktop keeps some older advanced plot options. |
 | TIFF to GIF | `bte-fl-gif` | `/fluorescence/gif`, `web_api/fluorescence.py` | Core TIFF reading, slice selection, LUT rendering, scale bar, timestamp, GIF, and preview output are service-backed. Web remains richer for queue/merge workflows, ROI overlays, crop/ROI previews, analysis CSVs, kymographs, profiles, and jobs. |
 | LIF viewer | none | `/fluorescence/lif`, `web_api/lif_viewer.py` | Web-only. This is acceptable if documented as a WebGUI-only workflow. |
@@ -32,8 +32,9 @@ the desktop and Web layers call those services.
 
 Good first targets:
 
-- Fluorescence TIFF/LUT export and sidecar handling. The initial shared service
-  now lives in `services/fluorescence/stack.py`.
+- Fluorescence TIFF stack export and sidecar handling. The initial shared
+  service now lives in `services/fluorescence/stack.py`; LUT editing remains a
+  documented migration gap.
 - Fluorescence ROI metric calculation. The initial shared metric service now
   lives in `services/fluorescence/roi.py`; Web ROI routes and the desktop ROI
   GUI have started using it.
