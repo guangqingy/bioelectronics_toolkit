@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Maintenance prompt documenting repository standards for future feature
+  integration, WebGUI/service layering, pipeline registration, testing, and
+  release updates.
+
 ## [0.3.0] - 2026-05-09
 
 ### Added

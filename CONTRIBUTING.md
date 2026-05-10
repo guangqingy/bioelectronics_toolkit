@@ -60,6 +60,10 @@ The WebGUI is the canonical user surface. Launcher modules under
 `desktop_apps/launchers/` should stay thin compatibility entry points that open
 the matching WebGUI route by default.
 
+For larger feature work, start by copying the maintenance prompt in
+[`docs/feature_integration_prompt.md`](./docs/feature_integration_prompt.md)
+into the planning or coding session.
+
 1. Put reusable analysis logic in `services/<domain>/`.
 2. Update the Web route/template first.
 3. If a Tkinter fallback is still needed, keep it in `desktop_apps/legacy/` and

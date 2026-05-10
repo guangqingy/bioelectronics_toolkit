@@ -14,6 +14,8 @@ notes live under `docs/pipelines/`.
   stay thin Web launchers or service-backed clients.
 - [Pipeline registry](pipeline_registry.md): how the WebGUI Pipeline Runner
   discovers categories, scripts, parameters, and local availability.
+- [Feature integration prompt](feature_integration_prompt.md): copy-paste
+  prompt for future WebGUI, service, launcher, and pipeline integration work.
 - [GitHub repository checklist](github_repository_checklist.md): web-UI settings
   that cannot be represented directly in code.
 
