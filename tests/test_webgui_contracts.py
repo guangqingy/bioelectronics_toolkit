@@ -3,8 +3,8 @@ from __future__ import annotations
 import tempfile
 import time
 import unittest
-from unittest import mock
 from pathlib import Path
+from unittest import mock
 
 from web_api import system as system_api
 from web_api.jobs import JobManager
@@ -226,6 +226,9 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/stack_export_job",
             "/api/fluorescence/3d/volume",
             "/api/fluorescence/3d/export_volume_job",
+            "/api/fluorescence/3d/rotation_gif_preview",
+            "/api/fluorescence/3d/export_rotation_gif_job",
+            "/api/fluorescence/3d/intensity_distribution",
             "/api/fluorescence/gif_preview",
             "/api/fluorescence/make_gif_job",
             "/api/fluorescence/gif_roi/kymograph_export_job",
@@ -303,7 +306,7 @@ class WebAppSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="dataprocess_fl_test_") as tmp:
             source = Path(tmp) / "tiny_stack.tif"
             arr = np.arange(2 * 12 * 14, dtype=np.uint16).reshape(2, 12, 14)
-            tifffile.imwrite(source, arr)
+            tifffile.imwrite(source, arr, photometric="minisblack", metadata={"axes": "ZYX"})
 
             info = self.client.post("/api/fluorescence/info", json={"path": str(source)})
             info_payload = info.get_json()
@@ -328,6 +331,59 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(roi.status_code, 200)
             self.assertTrue(roi_payload["ok"])
             self.assertEqual(roi_payload["data"]["n_frames"], 2)
+
+    def test_fluorescence_3d_rotation_gif_and_distribution_routes(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+            from PIL import Image  # noqa: F401
+        except ImportError as exc:
+            self.skipTest(f"fluorescence optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_fl_3d_test_") as tmp:
+            source = Path(tmp) / "tiny_3d_stack.tif"
+            arr = np.zeros((4, 16, 18), dtype=np.uint16)
+            for z in range(arr.shape[0]):
+                arr[z, 4 + z : 8 + z, 5 + z : 9 + z] = 100 + z * 50
+            tifffile.imwrite(source, arr, photometric="minisblack", metadata={"axes": "ZYX"})
+
+            preview = self.client.post(
+                "/api/fluorescence/3d/rotation_gif_preview",
+                json={
+                    "path": str(source),
+                    "channel_mode": "current",
+                    "gif_frames": 8,
+                    "gif_size": 280,
+                    "gif_points": 1000,
+                    "max_points": 1000,
+                    "max_xy": 64,
+                    "max_z": 4,
+                    "threshold_percentile": 80,
+                    "show_scale_bar": True,
+                    "scale_bar_um": 5,
+                },
+            )
+            preview_payload = preview.get_json()
+            self.assertEqual(preview.status_code, 200)
+            self.assertTrue(preview_payload["ok"])
+            self.assertTrue(preview_payload["gif_b64"])
+
+            distribution = self.client.post(
+                "/api/fluorescence/3d/intensity_distribution",
+                json={
+                    "path": str(source),
+                    "distribution_channel": 0,
+                    "distribution_axis": "z",
+                    "distribution_metric": "mean",
+                    "output_name": "tiny",
+                },
+            )
+            distribution_payload = distribution.get_json()
+            self.assertEqual(distribution.status_code, 200)
+            self.assertTrue(distribution_payload["ok"])
+            self.assertEqual(len(distribution_payload["rows"]), 4)
+            self.assertTrue(distribution_payload["plot"])
+            self.assertTrue(Path(distribution_payload["csv_path"]).exists())
 
     def test_csv_export_and_job_contracts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_web_test_") as tmp:

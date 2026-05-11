@@ -754,42 +754,6 @@ scene.add(new THREE.AxesHelper(Math.max(20, sphere.radius * 0.65)));
 const grid = new THREE.GridHelper(Math.max(20, sphere.radius * 2.2), 10, 0x2c3445, 0x151923);
 grid.rotation.x = Math.PI / 2;
 scene.add(grid);
-function makeLabelSprite(text){{
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d');
-  canvas.width = 256;
-  canvas.height = 64;
-  ctx.font = '28px -apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  const texture = new THREE.CanvasTexture(canvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({{map:texture, transparent:true}}));
-  sprite.scale.set(Math.max(18, sphere.radius * 0.42), Math.max(4.5, sphere.radius * 0.105), 1);
-  return sprite;
-}}
-function addScaleBar(){{
-  const len = Number(data.render.scale_bar_um || 0);
-  if (!data.render.show_scale_bar || !Number.isFinite(len) || len <= 0) return;
-  const radius = Math.max(10, sphere.radius || 100);
-  const barLen = len;
-  const x0 = sphere.center.x - radius * 0.82;
-  const y0 = sphere.center.y - radius * 0.86;
-  const z0 = sphere.center.z - radius * 0.86;
-  const pts = [new THREE.Vector3(x0, y0, z0), new THREE.Vector3(x0 + barLen, y0, z0)];
-  const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({{color:0xffffff, linewidth:3}}));
-  scene.add(line);
-  const labelText = `${{len.toFixed(len >= 10 ? 0 : 1).replace(/\\.0$/, '')}} µm`;
-  const label = makeLabelSprite(labelText);
-  label.position.set(x0 + barLen / 2, y0 + radius * 0.055, z0);
-  scene.add(label);
-}}
-addScaleBar();
 camera.position.set(sphere.center.x + sphere.radius * 1.6, sphere.center.y + sphere.radius * 1.25, sphere.center.z + sphere.radius * 1.8);
 camera.near = Math.max(0.01, sphere.radius / 1000);
 camera.far = Math.max(1000, sphere.radius * 12);
@@ -1821,9 +1785,11 @@ animate();
         "has_tiff": has_tiff,
         "has_pil": has_pil,
         "jobs": jobs,
+        "fig_to_b64": fig_to_b64,
         "_FL_DENOISE_OPTIONS": _FL_DENOISE_OPTIONS,
         "_fl_bool": _fl_bool,
         "_fl_clean_choice": _fl_clean_choice,
+        "_fl_apply_optional_denoise": _fl_apply_optional_denoise,
         "_fl_frame_to_b64": _fl_frame_to_b64,
         "_fl_sanitize_prefix": _fl_sanitize_prefix,
         "_fl_tiff_plane_from_array": _fl_tiff_plane_from_array,

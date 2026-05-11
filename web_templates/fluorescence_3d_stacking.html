@@ -211,6 +211,53 @@
   letter-spacing: .08em;
   text-transform: uppercase;
 }
+.stack-subsection {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--cloud);
+}
+.stack-rotation-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.stack-rotation-preview {
+  min-height: 210px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #08090c;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.stack-rotation-preview img {
+  max-width: 100%;
+  max-height: 320px;
+  display: block;
+}
+.stack-distribution-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-top: 8px;
+}
+.stack-distribution-table th,
+.stack-distribution-table td {
+  border-bottom: 1px solid var(--cloud);
+  padding: 4px 5px;
+  text-align: right;
+}
+.stack-distribution-table th:first-child,
+.stack-distribution-table td:first-child {
+  text-align: left;
+}
+.stack-distribution-plot img {
+  width: 100%;
+  display: block;
+  border: 1px solid var(--cloud);
+  border-radius: 6px;
+  background: #fff;
+}
 </style>
 {% endblock %}
 
@@ -327,7 +374,7 @@
   <div id="channelRangeControls" class="stack-channel-ranges"></div>
   <label class="checkbox-row" style="margin-top:8px">
     <input type="checkbox" id="showScaleBar" checked>
-    <span>Show 3D scale bar</span>
+    <span>Show GIF scale bar</span>
   </label>
   <div class="param-row">
     <div class="param-label">Bar µm</div>
@@ -336,6 +383,60 @@
   <div class="param-row">
     <div class="param-label">Output</div>
     <input type="text" id="outputName" placeholder="(auto based on TIFF)" style="font-size:11.5px">
+  </div>
+  <div class="stack-subsection">
+    <div class="ctrl-label">Rotation GIF</div>
+    <div class="stack-rotation-grid">
+      <div class="param-row">
+        <div class="param-label">Axis</div>
+        <select id="rotationAxis" style="flex:1">
+          <option value="z" selected>Z</option>
+          <option value="y">Y</option>
+          <option value="x">X</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <div class="param-label">Dir</div>
+        <select id="rotationDirection" style="flex:1">
+          <option value="forward" selected>Forward</option>
+          <option value="reverse">Reverse</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <div class="param-label">Frames</div>
+        <input type="number" id="gifFrames" class="input-sm" value="48" min="8" max="120" step="4" style="flex:1;width:auto!important">
+      </div>
+      <div class="param-row">
+        <div class="param-label">FPS</div>
+        <input type="number" id="gifFps" class="input-sm" value="12" min="1" max="30" step="1" style="flex:1;width:auto!important">
+      </div>
+    </div>
+    <button class="btn-secondary" id="btnPreviewGif" data-label="Preview GIF" onclick="previewRotationGif()" style="width:100%;margin-top:8px">Preview GIF</button>
+    <button class="btn-secondary" id="btnExportGif" data-label="Export GIF" onclick="exportRotationGif()" style="width:100%;margin-top:8px">Export GIF</button>
+  </div>
+  <div class="stack-subsection">
+    <div class="ctrl-label">Intensity Distribution</div>
+    <div class="param-row">
+      <div class="param-label">Channel</div>
+      <select id="distributionChannel" style="flex:1"></select>
+    </div>
+    <div class="param-row">
+      <div class="param-label">Axis</div>
+      <select id="distributionAxis" style="flex:1">
+        <option value="z" selected>Z</option>
+        <option value="x">X</option>
+        <option value="y">Y</option>
+      </select>
+    </div>
+    <div class="param-row">
+      <div class="param-label">Metric</div>
+      <select id="distributionMetric" style="flex:1">
+        <option value="mean" selected>Mean</option>
+        <option value="sum">Sum</option>
+        <option value="max">Max</option>
+      </select>
+    </div>
+    <button class="btn-secondary" id="btnAnalyzeDistribution" data-label="Analyze" onclick="analyzeIntensityDistribution()" style="width:100%;margin-top:8px">Analyze</button>
   </div>
   <button class="btn-primary" id="btnPreview3D" data-label="Preview 3D" onclick="generateVolume3D()" style="width:100%;margin-top:8px">Preview 3D</button>
   <button class="btn-secondary" id="btnExport3D" data-label="Export 3D HTML" onclick="exportVolume3D()" style="width:100%;margin-top:8px">Export 3D HTML</button>
@@ -381,6 +482,14 @@
         <div class="result-card-body lif-preview-body">
           <div id="slicePreview" class="lif-preview stacking-slice-preview">
             <div class="plot-placeholder">Selected slice preview appears here</div>
+          </div>
+        </div>
+      </div>
+      <div class="result-card">
+        <div class="result-card-header">Rotation Preview</div>
+        <div class="result-card-body lif-preview-body">
+          <div id="rotationPreview" class="stack-rotation-preview">
+            <div class="plot-placeholder">Rotation GIF preview appears here</div>
           </div>
         </div>
       </div>
@@ -522,6 +631,7 @@ function clearLoadedInfo() {
   document.getElementById('channelRangeControls').innerHTML = '';
   document.getElementById('stackDetailBody').innerHTML = '<div class="file-list-empty">No TIFF stack loaded</div>';
   document.getElementById('slicePreview').innerHTML = '<div class="plot-placeholder">Selected slice preview appears here</div>';
+  document.getElementById('rotationPreview').innerHTML = '<div class="plot-placeholder">Rotation GIF preview appears here</div>';
   clearVolume3D();
 }
 
@@ -562,10 +672,14 @@ async function loadTiffStack(prefetchedInfo) {
     renderStackDetails();
     updatePreviewControls();
     renderChannelRangeControls();
+    renderDistributionControls();
     document.getElementById('sliceSection').style.display = '';
     document.getElementById('renderSection').style.display = '';
     document.getElementById('btnPreview3D').disabled = !info.can_3d;
     document.getElementById('btnExport3D').disabled = !info.can_3d;
+    document.getElementById('btnPreviewGif').disabled = !info.can_3d;
+    document.getElementById('btnExportGif').disabled = !info.can_3d;
+    document.getElementById('btnAnalyzeDistribution').disabled = !info.can_3d;
     document.getElementById('viewerName').textContent = info.name || fileBasename(path);
     document.getElementById('outputName').value = (info.name || fileBasename(path)).replace(/\.(tif|tiff)$/i, '');
     clearVolume3D(info.can_3d ? 'Click Preview 3D to build the volume' : 'This TIFF has only one readable Z/slice plane');
@@ -634,6 +748,16 @@ function renderChannelRangeControls() {
       </div>`);
   }
   el.innerHTML = rows.join('');
+}
+
+function renderDistributionControls() {
+  const select = document.getElementById('distributionChannel');
+  if (!select) return;
+  const d = stackDims(_currentInfo);
+  const cCount = Math.max(1, Number(d.c || 1));
+  const current = select.value || String(parseInt(document.getElementById('cSlider')?.value || '0', 10));
+  select.innerHTML = Array.from({length: cCount}, (_v, i) => `<option value="${i}">C${i + 1}</option>`).join('');
+  select.value = String(Math.max(0, Math.min(parseInt(current || '0', 10) || 0, cCount - 1)));
 }
 
 function setSliderDim(id, labelId, count) {
@@ -878,63 +1002,6 @@ function loadThreeModules() {
   return _threePromise;
 }
 
-function makeScaleLabelSprite(THREE, text, radius) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 64;
-  const ctx = canvas.getContext('2d');
-  ctx.font = '28px -apple-system,BlinkMacSystemFont,Helvetica,Arial,sans-serif';
-  ctx.fillStyle = 'rgba(0,0,0,0.72)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-  ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(text, canvas.width / 2, canvas.height / 2);
-  const texture = new THREE.CanvasTexture(canvas);
-  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: texture, transparent: true}));
-  sprite.scale.set(Math.max(18, radius * 0.42), Math.max(4.5, radius * 0.105), 1);
-  return sprite;
-}
-
-function addScaleBar3D(THREE, scene, sphere, volume) {
-  const render = volume?.render || {};
-  const len = Number(render.scale_bar_um || 0);
-  if (!render.show_scale_bar || !Number.isFinite(len) || len <= 0) return;
-  const radius = Math.max(10, sphere.radius || 100);
-  const barLen = len;
-  const x0 = sphere.center.x - radius * 0.82;
-  const y0 = sphere.center.y - radius * 0.86;
-  const z0 = sphere.center.z - radius * 0.86;
-  const points = [
-    new THREE.Vector3(x0, y0, z0),
-    new THREE.Vector3(x0 + barLen, y0, z0),
-  ];
-  const line = new THREE.Line(
-    new THREE.BufferGeometry().setFromPoints(points),
-    new THREE.LineBasicMaterial({color: 0xffffff})
-  );
-  scene.add(line);
-
-  const tickHeight = radius * 0.035;
-  [x0, x0 + barLen].forEach(x => {
-    const tick = new THREE.Line(
-      new THREE.BufferGeometry().setFromPoints([
-        new THREE.Vector3(x, y0 - tickHeight, z0),
-        new THREE.Vector3(x, y0 + tickHeight, z0),
-      ]),
-      new THREE.LineBasicMaterial({color: 0xffffff})
-    );
-    scene.add(tick);
-  });
-
-  const labelText = `${len.toFixed(len >= 10 ? 0 : 1).replace(/\.0$/, '')} µm`;
-  const label = makeScaleLabelSprite(THREE, labelText, radius);
-  label.position.set(x0 + barLen / 2, y0 + radius * 0.075, z0);
-  scene.add(label);
-}
-
 async function renderVolume3D(volume) {
   const viewport = document.getElementById('volumeViewport');
   if (!viewport || !volume || !volume.render) return;
@@ -975,7 +1042,6 @@ async function renderVolume3D(volume) {
   const grid = new THREE.GridHelper(radius * 2.2, 10, 0x2c3445, 0x151923);
   grid.rotation.x = Math.PI / 2;
   scene.add(grid);
-  addScaleBar3D(THREE, scene, sphere, volume);
   scene.add(new THREE.AmbientLight(0xffffff, 1.0));
 
   camera.position.set(
@@ -1105,6 +1171,148 @@ async function exportVolume3D() {
     showLog('3D Export Error', e.message || String(e));
   } finally {
     btnBusy('btnExport3D', false, 'Export 3D HTML');
+  }
+}
+
+function currentRotationGifPayload(forPreview) {
+  const framesRaw = parseInt(document.getElementById('gifFrames')?.value || '48', 10);
+  const fpsRaw = parseFloat(document.getElementById('gifFps')?.value || '12');
+  const payload = currentVolumePayload(!forPreview);
+  payload.rotation_axis = document.getElementById('rotationAxis')?.value || 'z';
+  payload.rotation_direction = document.getElementById('rotationDirection')?.value || 'forward';
+  payload.gif_frames = Number.isFinite(framesRaw) ? Math.max(8, Math.min(120, framesRaw)) : 48;
+  payload.gif_fps = Number.isFinite(fpsRaw) ? Math.max(1, Math.min(30, fpsRaw)) : 12;
+  payload.gif_size = forPreview ? 420 : 640;
+  payload.gif_points = forPreview ? 18000 : 45000;
+  if (forPreview) {
+    payload.gif_frames = Math.min(payload.gif_frames, 24);
+    payload.max_points = Math.min(payload.max_points || 70000, 26000);
+    payload.max_xy = Math.min(payload.max_xy || 180, 150);
+    payload.max_z = Math.min(payload.max_z || 80, 64);
+  }
+  return payload;
+}
+
+async function previewRotationGif() {
+  if (!_currentInfo || !_currentInfo.can_3d) {
+    setStatus('status', 'Load a TIFF Z-stack first', 'error');
+    return;
+  }
+  if (!hasEnabledChannel()) {
+    setStatus('status', 'Select at least one channel to render', 'error');
+    return;
+  }
+  const preview = document.getElementById('rotationPreview');
+  preview.innerHTML = '<div class="plot-placeholder">Building rotation preview...</div>';
+  btnBusy('btnPreviewGif', true, 'Building...');
+  setStatus('status', 'Rendering rotation GIF preview...', 'loading');
+  try {
+    const d = await api('/api/fluorescence/3d/rotation_gif_preview', currentRotationGifPayload(true));
+    if (d.error) throw new Error(d.error);
+    preview.innerHTML = `<img src="data:image/gif;base64,${d.gif_b64}" alt="3D rotation preview">`;
+    setStatus('status', `Rotation preview ready: ${d.frames || 0} frames`, 'ok');
+  } catch (e) {
+    preview.innerHTML = `<div class="plot-placeholder">Rotation preview error: ${escHtml(e.message)}</div>`;
+    setStatus('status', 'Rotation preview error: ' + (e.message || String(e)), 'error');
+    showLog('Rotation Preview Error', e.message || String(e));
+  } finally {
+    btnBusy('btnPreviewGif', false, 'Preview GIF');
+  }
+}
+
+async function exportRotationGif() {
+  if (!_currentInfo || !_currentInfo.can_3d) {
+    setStatus('status', 'Load a TIFF Z-stack first', 'error');
+    return;
+  }
+  if (!hasEnabledChannel()) {
+    setStatus('status', 'Select at least one channel to export', 'error');
+    return;
+  }
+  btnBusy('btnExportGif', true, 'Exporting...');
+  setStatus('status', 'Exporting 3D rotation GIF...', 'loading');
+  try {
+    const payload = {
+      ...currentRotationGifPayload(false),
+      output_name: document.getElementById('outputName').value.trim(),
+      overwrite: true,
+    };
+    const d = await dpRunJobEndpoint('/api/fluorescence/3d/export_rotation_gif_job', payload, {
+      interval_ms: 1000,
+      on_update: job => {
+        const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+        const msg = job.message ? ` · ${job.message}` : '';
+        setStatus('status', `Exporting 3D rotation GIF${pct}${msg}`, 'loading');
+      },
+    });
+    if (d.error) throw new Error(d.error);
+    setStatus('status', `Rotation GIF saved: ${d.output_path}`, 'ok');
+    showLog('3D Rotation GIF Export', `Saved ${d.frames || 0} frame(s)\n${d.output_path}`);
+    recordRunHistory({
+      view: 'fluorescence_3d_stacking',
+      title: '3D rotation GIF export',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(document.getElementById('tiffPath').value.trim()),
+      parameters: Object.assign(payload, {operation: 'export_rotation_gif'}),
+      input_files: [{path: document.getElementById('tiffPath').value.trim(), type: 'tiff', role: 'source_stack'}],
+      outputs: [{path: d.output_path, type: 'gif', role: '3d_rotation_gif'}],
+      metadata: {frames: d.frames || 0, fps: d.fps || 0, axis: d.axis || 'z'},
+    });
+    toast('3D rotation GIF export complete');
+  } catch (e) {
+    setStatus('status', 'Rotation GIF export error: ' + (e.message || String(e)), 'error');
+    showLog('Rotation GIF Export Error', e.message || String(e));
+  } finally {
+    btnBusy('btnExportGif', false, 'Export GIF');
+  }
+}
+
+async function analyzeIntensityDistribution() {
+  if (!_currentInfo || !_currentInfo.can_3d) {
+    setStatus('status', 'Load a TIFF Z-stack first', 'error');
+    return;
+  }
+  btnBusy('btnAnalyzeDistribution', true, 'Analyzing...');
+  setStatus('status', 'Analyzing channel intensity distribution...', 'loading');
+  try {
+    const payload = {
+      ...currentPreviewPayload(),
+      distribution_channel: parseInt(document.getElementById('distributionChannel')?.value || '0', 10),
+      distribution_axis: document.getElementById('distributionAxis')?.value || 'z',
+      distribution_metric: document.getElementById('distributionMetric')?.value || 'mean',
+      denoise: document.getElementById('volumeDenoise')?.value || 'Off',
+      output_name: document.getElementById('outputName').value.trim(),
+      overwrite: true,
+    };
+    const d = await api('/api/fluorescence/3d/intensity_distribution', payload);
+    if (d.error) throw new Error(d.error);
+    const rows = (d.rows || []).slice(0, 8).map(row => `
+      <tr>
+        <td>${escHtml(String(row.index))}</td>
+        <td>${formatNumber(row.coordinate_um, 3)}</td>
+        <td>${formatNumber(row.intensity, 3)}</td>
+      </tr>`).join('');
+    upsertResultCard('stackDistributionCard', `C${(d.channel || 0) + 1} ${String(d.axis || '').toUpperCase()} Distribution`, `
+      <div class="stack-distribution-plot"><img src="data:image/png;base64,${d.plot}" alt="Intensity distribution"></div>
+      <div class="lif-export-note">CSV: ${escHtml(d.csv_path || '')}</div>
+      <table class="stack-distribution-table">
+        <thead><tr><th>Index</th><th>µm</th><th>Intensity</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`);
+    setStatus('status', `Distribution saved: ${d.csv_path}`, 'ok');
+    recordRunHistory({
+      view: 'fluorescence_3d_stacking',
+      title: '3D intensity distribution',
+      project_root: document.getElementById('folderPath').value.trim() || dpPathDir(document.getElementById('tiffPath').value.trim()),
+      parameters: Object.assign(payload, {operation: 'intensity_distribution'}),
+      input_files: [{path: document.getElementById('tiffPath').value.trim(), type: 'tiff', role: 'source_stack'}],
+      outputs: [{path: d.csv_path, type: 'csv', role: 'intensity_distribution'}],
+      metadata: {axis: d.axis || 'z', metric: d.metric || 'mean', channel: d.channel || 0},
+    });
+  } catch (e) {
+    setStatus('status', 'Distribution error: ' + (e.message || String(e)), 'error');
+    showLog('Distribution Error', e.message || String(e));
+  } finally {
+    btnBusy('btnAnalyzeDistribution', false, 'Analyze');
   }
 }
 

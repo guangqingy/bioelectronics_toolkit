@@ -187,23 +187,25 @@ def draw_scale_bar(
     draw = image_draw_mod.Draw(img)
     w_img, h_img = img.size
     bar_px = max(2, min(w_img - 24, int(round(scale_bar_um * pixels_per_um))))
-    thickness = max(3, int(h_img * 0.01))
-    margin = 12
-    x2, y2 = w_img - margin, h_img - margin
+    thickness = max(3, int(h_img * 0.008))
+    margin = max(12, int(min(w_img, h_img) * 0.045))
+    x1, y1 = margin, h_img - margin
+    x2 = x1 + bar_px
     font = image_font_mod.load_default()
     scale_label = f"{scale_bar_um:g} um"
     bbox = draw.textbbox((0, 0), scale_label, font=font)
-    text_w, text_h = bbox[2] - bbox[0], bbox[3] - bbox[1]
-    text_x = max(3, min(x2 - text_w, x2 - bar_px))
-    text_y = max(3, y2 - thickness - text_h - 5)
-    bg_x0 = max(0, min(text_x, x2 - bar_px) - 3)
-    bg_y0 = max(0, text_y - 2)
-    bg_x1 = min(w_img, x2 + 3)
-    bg_y1 = min(h_img, y2 + 3)
-
-    draw.rectangle([bg_x0, bg_y0, bg_x1, bg_y1], fill=(0, 0, 0))
-    draw.text((text_x, text_y), scale_label, fill=(255, 255, 255), font=font)
-    draw.rectangle([x2 - bar_px, y2 - thickness, x2, y2], fill=(255, 255, 255))
+    text_h = bbox[3] - bbox[1]
+    text_y = max(3, y1 - text_h - thickness - 5)
+    draw.line((x1, y1, x2, y1), fill=(0, 0, 0), width=thickness + 2)
+    draw.line((x1, y1, x2, y1), fill=(255, 255, 255), width=thickness)
+    draw.text(
+        (x1, text_y),
+        scale_label,
+        fill=(255, 255, 255),
+        font=font,
+        stroke_width=2,
+        stroke_fill=(0, 0, 0),
+    )
 
 
 def draw_timestamp(
