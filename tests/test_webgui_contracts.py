@@ -3,8 +3,10 @@ from __future__ import annotations
 import tempfile
 import time
 import unittest
+from unittest import mock
 from pathlib import Path
 
+from web_api import system as system_api
 from web_api.jobs import JobManager
 from web_api.response import make_envelope
 
@@ -231,6 +233,24 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/roi/export_sequence_gif_job",
         }
         self.assertTrue(expected.issubset(routes), sorted(expected - routes))
+
+    def test_windows_picker_failure_returns_error_without_tk_fallback(self) -> None:
+        with (
+            mock.patch.object(system_api.sys, "platform", "win32"),
+            mock.patch.object(
+                system_api,
+                "_choose_windows_folder",
+                side_effect=system_api.PickerUnavailableError("picker unavailable"),
+            ),
+            mock.patch.object(system_api, "_choose_tk_folder") as tk_fallback,
+        ):
+            response = self.client.post("/api/system/select_folder", json={"start": ""})
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(payload["ok"])
+        self.assertIn("picker unavailable", payload["error"])
+        tk_fallback.assert_not_called()
 
     def test_extracted_page_assets_are_served(self) -> None:
         assets = (

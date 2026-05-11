@@ -16,6 +16,10 @@ from .response import api_ok
 _PICKER_LOCK = threading.Lock()
 
 
+class PickerUnavailableError(RuntimeError):
+    """Raised when a native file picker cannot be opened."""
+
+
 def _applescript_string(value) -> str:
     return str(value).replace("\\", "\\\\").replace('"', '\\"')
 
@@ -37,27 +41,58 @@ def _default_picker_dir(base_dir: Path, start: str) -> Path:
     return default_dir
 
 
-def _run_windows_picker(script: str, default_dir: Path) -> str:
+def _allow_windows_foreground() -> None:
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        user32 = ctypes.windll.user32
+        user32.AllowSetForegroundWindow.argtypes = [ctypes.c_uint]
+        user32.AllowSetForegroundWindow.restype = ctypes.c_bool
+        user32.AllowSetForegroundWindow(0xFFFFFFFF)
+    except Exception:
+        pass
+
+
+def _windows_picker_error(kind: str, detail: str = "") -> PickerUnavailableError:
+    message = (
+        f"Windows {kind} picker could not open. "
+        "Please paste the path manually, or check that PowerShell and Windows Forms "
+        "are allowed on this computer."
+    )
+    detail = detail.strip()
+    if detail:
+        message = f"{message} Detail: {detail}"
+    return PickerUnavailableError(message)
+
+
+def _run_windows_picker(script: str, default_dir: Path, kind: str) -> str:
     env = os.environ.copy()
     env["DP_PICKER_INITIAL_DIR"] = str(default_dir)
-    proc = subprocess.run(
-        [
-            "powershell.exe",
-            "-NoProfile",
-            "-STA",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            script,
-        ],
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        env=env,
-    )
+    _allow_windows_foreground()
+    try:
+        proc = subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-STA",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                script,
+            ],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            env=env,
+        )
+    except OSError as exc:
+        raise _windows_picker_error(kind, str(exc)) from exc
     if proc.returncode != 0:
-        raise RuntimeError(proc.stderr.strip() or "Windows file picker failed")
+        detail = proc.stderr.strip() or proc.stdout.strip()
+        raise _windows_picker_error(kind, detail)
     return proc.stdout.strip()
 
 
@@ -94,7 +129,7 @@ finally {
     $owner.Dispose()
 }
 """
-    return _run_windows_picker(script, default_dir)
+    return _run_windows_picker(script, default_dir, "folder")
 
 
 def _choose_windows_file(default_dir: Path) -> str:
@@ -131,7 +166,7 @@ finally {
     $owner.Dispose()
 }
 """
-    return _run_windows_picker(script, default_dir)
+    return _run_windows_picker(script, default_dir, "file")
 
 
 def _choose_tk_folder(default_dir: Path) -> str:
@@ -174,10 +209,7 @@ def _choose_folder(default_dir: Path) -> str:
             out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
             return out.stdout.strip() if out.returncode == 0 else ""
         if sys.platform == "win32":
-            try:
-                return _choose_windows_folder(default_dir)
-            except Exception:
-                return _choose_tk_folder(default_dir)
+            return _choose_windows_folder(default_dir)
         return _choose_tk_folder(default_dir)
 
 
@@ -191,10 +223,7 @@ def _choose_file(default_dir: Path) -> str:
             out = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
             return out.stdout.strip() if out.returncode == 0 else ""
         if sys.platform == "win32":
-            try:
-                return _choose_windows_file(default_dir)
-            except Exception:
-                return _choose_tk_file(default_dir)
+            return _choose_windows_file(default_dir)
         return _choose_tk_file(default_dir)
 
 
@@ -209,6 +238,8 @@ def register_system_routes(app, ctx) -> None:
             default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
             path = _choose_folder(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
+        except PickerUnavailableError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
@@ -219,6 +250,8 @@ def register_system_routes(app, ctx) -> None:
             default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
             path = _choose_file(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
+        except PickerUnavailableError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
