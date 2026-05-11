@@ -405,6 +405,7 @@ async function pickFolderForSettings(inputId) {
   if (!input) return;
   try {
     const d = await api('/api/system/select_folder', {start: input.value || ''});
+    if (d.error) throw new Error(d.error);
     if (d && d.path) input.value = d.path;
   } catch (e) {
     toast('Folder picker failed: ' + e.message, true);
@@ -532,6 +533,7 @@ async function pickFolder(inputId, afterFn) {
   if (!input) return;
   try {
     const d = await api('/api/system/select_folder', {start: await pickerStartForInput(input)});
+    if (d.error) throw new Error(d.error);
     if (d && d.path) {
       input.value = d.path;
       if (afterFn && typeof window[afterFn] === 'function') window[afterFn]();
@@ -546,6 +548,7 @@ async function pickFile(inputId, afterFn) {
   if (!input) return;
   try {
     const d = await api('/api/system/select_file', {start: await pickerStartForInput(input)});
+    if (d.error) throw new Error(d.error);
     if (d && d.path) {
       input.value = d.path;
       if (afterFn && typeof window[afterFn] === 'function') window[afterFn]();
