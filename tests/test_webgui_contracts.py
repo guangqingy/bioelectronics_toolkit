@@ -352,6 +352,7 @@ class WebAppSmokeTests(unittest.TestCase):
                 json={
                     "path": str(source),
                     "channel_mode": "current",
+                    "rotation_axis": "0.2x+0.8y",
                     "gif_frames": 8,
                     "gif_size": 280,
                     "gif_points": 1000,
@@ -367,6 +368,8 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(preview.status_code, 200)
             self.assertTrue(preview_payload["ok"])
             self.assertTrue(preview_payload["gif_b64"])
+            self.assertIn("x", preview_payload["axis"])
+            self.assertIn("y", preview_payload["axis"])
 
             distribution = self.client.post(
                 "/api/fluorescence/3d/intensity_distribution",

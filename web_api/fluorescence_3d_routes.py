@@ -4,12 +4,13 @@ import base64
 import csv
 import io
 import math
+import re
 import traceback
 from pathlib import Path
 
-from flask import jsonify, request
 import matplotlib.pyplot as plt
 import numpy as np
+from flask import jsonify, request
 
 from .jobs import submit_json_task
 from .response import api_ok
@@ -115,14 +116,68 @@ def register_fluorescence_3d_routes(app, fl):
             "outputs": [{"path": str(out_path), "type": "html", "role": "fluorescence_3d_viewer"}],
         }
 
-    def _rotation_matrix(axis: str, angle: float) -> np.ndarray:
+    def _rotation_axis_vector(axis: object) -> tuple[np.ndarray, str]:
+        raw = str(axis or "z").strip().lower()
+        text = raw.replace(" ", "").replace("*", "")
+        if text in {"x", "+x"}:
+            return np.asarray([1.0, 0.0, 0.0], dtype=np.float32), "x"
+        if text in {"y", "+y"}:
+            return np.asarray([0.0, 1.0, 0.0], dtype=np.float32), "y"
+        if text in {"z", "+z"}:
+            return np.asarray([0.0, 0.0, 1.0], dtype=np.float32), "z"
+        if "," in text:
+            try:
+                parts = [float(part) for part in text.split(",")]
+            except ValueError as exc:
+                raise ValueError(f"Invalid rotation axis: {raw}") from exc
+            if len(parts) != 3:
+                raise ValueError(f"Invalid rotation axis: {raw}")
+            vec = np.asarray(parts, dtype=np.float32)
+        else:
+            vec = np.zeros(3, dtype=np.float32)
+            consumed = [False] * len(text)
+            for match in re.finditer(r"([+-]?(?:\d+(?:\.\d*)?|\.\d+)?)([xyz])", text):
+                coeff_raw, axis_name = match.groups()
+                if coeff_raw in {"", "+"}:
+                    coeff = 1.0
+                elif coeff_raw == "-":
+                    coeff = -1.0
+                else:
+                    coeff = float(coeff_raw)
+                vec[{"x": 0, "y": 1, "z": 2}[axis_name]] += coeff
+                for i in range(match.start(), match.end()):
+                    consumed[i] = True
+            if any(not ok for ok in consumed):
+                raise ValueError(f"Invalid rotation axis: {raw}")
+        norm = float(np.linalg.norm(vec))
+        if not np.isfinite(norm) or norm <= 1e-8:
+            raise ValueError(f"Invalid rotation axis: {raw}")
+        vec = vec / norm
+        label_parts = []
+        for coeff, axis_name in zip(vec, ("x", "y", "z")):
+            if abs(float(coeff)) > 1e-4:
+                label_parts.append(f"{float(coeff):.3g}{axis_name}")
+        return vec.astype(np.float32), "+".join(label_parts).replace("+-", "-") or "z"
+
+    def _rotation_matrix(axis: str | np.ndarray, angle: float) -> np.ndarray:
+        if isinstance(axis, str):
+            axis_vec, _label = _rotation_axis_vector(axis)
+        else:
+            axis_vec = np.asarray(axis, dtype=np.float32)
+            norm = float(np.linalg.norm(axis_vec))
+            axis_vec = axis_vec / max(norm, 1e-8)
         c = math.cos(angle)
         s = math.sin(angle)
-        if axis == "x":
-            return np.asarray([[1, 0, 0], [0, c, -s], [0, s, c]], dtype=np.float32)
-        if axis == "y":
-            return np.asarray([[c, 0, s], [0, 1, 0], [-s, 0, c]], dtype=np.float32)
-        return np.asarray([[c, -s, 0], [s, c, 0], [0, 0, 1]], dtype=np.float32)
+        x, y, z = [float(v) for v in axis_vec]
+        one_c = 1.0 - c
+        return np.asarray(
+            [
+                [c + x * x * one_c, x * y * one_c - z * s, x * z * one_c + y * s],
+                [y * x * one_c + z * s, c + y * y * one_c, y * z * one_c - x * s],
+                [z * x * one_c - y * s, z * y * one_c + x * s, c + z * z * one_c],
+            ],
+            dtype=np.float32,
+        )
 
     def _draw_gif_scale_bar(draw, image_size: int, scale_px_per_um: float, scale_bar_um: float) -> None:
         if scale_bar_um <= 0 or scale_px_per_um <= 0:
@@ -157,7 +212,7 @@ def register_fluorescence_3d_routes(app, fl):
 
     def _rotation_gif_bytes(
         volume_payload: dict,
-        axis: str,
+        axis_vector: np.ndarray,
         direction: str,
         frame_count: int,
         fps: float,
@@ -171,7 +226,6 @@ def register_fluorescence_3d_routes(app, fl):
         render = volume_payload.get("render", {}) or {}
         positions = np.asarray(render.get("positions") or [], dtype=np.float32).reshape(-1, 3)
         colors = np.asarray(render.get("colors") or [], dtype=np.float32).reshape(-1, 3)
-        axis = axis if axis in {"x", "y", "z"} else "z"
         sign = -1.0 if direction in {"reverse", "ccw", "counterclockwise"} else 1.0
         frame_count = max(8, min(120, int(frame_count or 48)))
         fps = max(1.0, min(30.0, float(fps or 12.0)))
@@ -193,7 +247,7 @@ def register_fluorescence_3d_routes(app, fl):
         frames = []
         for i in range(frame_count):
             angle = sign * (2.0 * math.pi * i / frame_count)
-            rotated = positions @ (_rotation_matrix(axis, angle).T)
+            rotated = positions @ (_rotation_matrix(axis_vector, angle).T)
             view = rotated @ tilt.T
             xs = (view[:, 0] * scale + image_size / 2.0).astype(np.int32)
             ys = (image_size / 2.0 - view[:, 1] * scale).astype(np.int32)
@@ -232,7 +286,8 @@ def register_fluorescence_3d_routes(app, fl):
         if not has_pil:
             raise ValueError("Pillow is required")
         p, payload = _volume_payload_from_body(d, for_export=not preview)
-        axis = str(d.get("rotation_axis", "z") or "z").strip().lower()
+        axis_raw = str(d.get("rotation_axis", "z") or "z").strip()
+        axis_vector, axis_label = _rotation_axis_vector(axis_raw)
         direction = str(d.get("rotation_direction", "forward") or "forward").strip().lower()
         frame_default = 24 if preview else 48
         size_default = 420 if preview else 640
@@ -245,7 +300,7 @@ def register_fluorescence_3d_routes(app, fl):
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True) and scale_bar_um > 0
         gif_bytes = _rotation_gif_bytes(
             payload,
-            axis=axis,
+            axis_vector=axis_vector,
             direction=direction,
             frame_count=frame_count,
             fps=fps,
@@ -260,7 +315,8 @@ def register_fluorescence_3d_routes(app, fl):
             "n_points": min(int(payload.get("render", {}).get("n_points", 0)), max_gif_points),
             "frames": max(8, min(120, frame_count)),
             "fps": max(1.0, min(30.0, fps)),
-            "axis": axis if axis in {"x", "y", "z"} else "z",
+            "axis": axis_label,
+            "axis_raw": axis_raw,
             "scale_bar_um": scale_bar_um if show_scale_bar else 0,
         }
         if preview:

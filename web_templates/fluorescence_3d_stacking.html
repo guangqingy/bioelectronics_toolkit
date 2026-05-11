@@ -222,7 +222,8 @@
   gap: 7px;
 }
 .stack-rotation-preview {
-  min-height: 210px;
+  min-height: 520px;
+  height: min(68vh, 720px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,8 +233,14 @@
 }
 .stack-rotation-preview img {
   max-width: 100%;
-  max-height: 320px;
+  max-height: 100%;
   display: block;
+}
+.stack-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .stack-distribution-table {
   width: 100%;
@@ -389,11 +396,15 @@
     <div class="stack-rotation-grid">
       <div class="param-row">
         <div class="param-label">Axis</div>
-        <select id="rotationAxis" style="flex:1">
-          <option value="z" selected>Z</option>
-          <option value="y">Y</option>
-          <option value="x">X</option>
-        </select>
+        <input type="text" id="rotationAxis" list="rotationAxisOptions" value="z" placeholder="z or 0.2x+0.8y" style="flex:1">
+        <datalist id="rotationAxisOptions">
+          <option value="z"></option>
+          <option value="y"></option>
+          <option value="x"></option>
+          <option value="x+y"></option>
+          <option value="0.2x+0.8y"></option>
+          <option value="1,0,0"></option>
+        </datalist>
       </div>
       <div class="param-row">
         <div class="param-label">Dir</div>
@@ -454,17 +465,28 @@
   </div>
 
   <div class="stacking-layout">
-    <div class="result-card stacking-viewer-card">
-      <div class="result-card-header">
-        3D Volume Viewer
-        <span id="viewerName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
+    <div class="stack-main">
+      <div class="result-card stacking-viewer-card">
+        <div class="result-card-header">
+          3D Volume Viewer
+          <span id="viewerName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
+        </div>
+        <div class="result-card-body lif-preview-body">
+          <div class="lif-3d-viewport" id="volumeViewport">
+            <div class="lif-3d-placeholder" id="volumePlaceholder">Scan a folder or choose a TIFF stack</div>
+            <div class="lif-3d-hud">
+              <div class="lif-3d-title" id="volumeTitle">3D TIFF Stack</div>
+              <div class="lif-3d-meta" id="volumeMeta">Mouse drag rotates · wheel zooms · right drag pans</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <div class="result-card-body lif-preview-body">
-        <div class="lif-3d-viewport" id="volumeViewport">
-          <div class="lif-3d-placeholder" id="volumePlaceholder">Scan a folder or choose a TIFF stack</div>
-          <div class="lif-3d-hud">
-            <div class="lif-3d-title" id="volumeTitle">3D TIFF Stack</div>
-            <div class="lif-3d-meta" id="volumeMeta">Mouse drag rotates · wheel zooms · right drag pans</div>
+
+      <div class="result-card stacking-viewer-card">
+        <div class="result-card-header">Rotation Preview</div>
+        <div class="result-card-body lif-preview-body">
+          <div id="rotationPreview" class="stack-rotation-preview">
+            <div class="plot-placeholder">Rotation GIF preview appears here</div>
           </div>
         </div>
       </div>
@@ -482,14 +504,6 @@
         <div class="result-card-body lif-preview-body">
           <div id="slicePreview" class="lif-preview stacking-slice-preview">
             <div class="plot-placeholder">Selected slice preview appears here</div>
-          </div>
-        </div>
-      </div>
-      <div class="result-card">
-        <div class="result-card-header">Rotation Preview</div>
-        <div class="result-card-body lif-preview-body">
-          <div id="rotationPreview" class="stack-rotation-preview">
-            <div class="plot-placeholder">Rotation GIF preview appears here</div>
           </div>
         </div>
       </div>
