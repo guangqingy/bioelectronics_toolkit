@@ -108,14 +108,104 @@
     <input type="number" id="smoothMs" class="input-sm" step="any" value="5">
   </div>
   <div class="param-row">
+    <div class="param-label">Envelope ms</div>
+    <input type="number" id="envelopeSmoothMs" class="input-sm" step="any" value="0">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Smooth</div>
+    <select id="smoothMethod" style="flex:1">
+      <option value="moving" selected>Moving avg</option>
+      <option value="savgol">Savitzky-Golay</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">SG poly</div>
+    <input type="number" id="sgPoly" class="input-sm" step="1" value="2" min="1" max="5">
+  </div>
+  <div class="param-row">
     <div class="param-label" title="Polynomial degree for trend fit">Fit Deg</div>
     <input type="number" id="fitDegree" class="input-sm" step="1" value="1" min="1" max="5">
   </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="fitShowRaw" checked>
+    <span>Show raw fit trace</span>
+  </label>
+  <div class="param-row">
+    <div class="param-label">FFT Window</div>
+    <select id="fftWindow" style="flex:1">
+      <option value="hann" selected>Hann</option>
+      <option value="hamming">Hamming</option>
+      <option value="blackman">Blackman</option>
+      <option value="boxcar">Boxcar</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">FFT Max Hz</div>
+    <input type="number" id="fftMaxHz" class="input-sm" step="any">
+  </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="fftLog">
+    <span>Log FFT amplitude</span>
+  </label>
   <div class="param-row">
     <div class="param-label" title="Short-time Fourier transform window size">STFT ms</div>
     <input type="number" id="stftMs" class="input-sm" step="any" value="100">
   </div>
+  <div class="param-row">
+    <div class="param-label">STFT Overlap %</div>
+    <input type="number" id="stftOverlapPct" class="input-sm" step="any" value="50" min="0" max="95">
+  </div>
+  <div class="param-row">
+    <div class="param-label">STFT Max Hz</div>
+    <input type="number" id="stftMaxHz" class="input-sm" step="any">
+  </div>
+  <div class="param-row">
+    <div class="param-label">STFT Cmap</div>
+    <select id="stftCmap" style="flex:1">
+      <option value="viridis" selected>Viridis</option>
+      <option value="magma">Magma</option>
+      <option value="plasma">Plasma</option>
+      <option value="inferno">Inferno</option>
+      <option value="cividis">Cividis</option>
+    </select>
+  </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="stftLog">
+    <span>Log STFT magnitude</span>
+  </label>
   <button id="btnProcess" class="btn-primary" onclick="runProcessing()">Generate Processing Plot</button>
+</details>
+
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Figure Output</summary>
+  <div class="param-row">
+    <div class="param-label">Width in</div>
+    <input type="number" id="figWidthIn" class="input-sm" step="any" value="10" min="3" max="20" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Height in</div>
+    <input type="number" id="figHeightIn" class="input-sm" step="any" value="3.5" min="1.8" max="12" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">DPI</div>
+    <input type="number" id="figDpi" class="input-sm" step="1" value="300" min="72" max="1200" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Line Width</div>
+    <input type="number" id="traceLineWidth" class="input-sm" step="any" value="0.6" min="0.1" max="5" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Line Color</div>
+    <input type="color" id="traceColor" class="input-sm" value="#3E6AE1" onchange="plot()">
+  </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="showGrid" checked onchange="plot()">
+    <span>Grid</span>
+  </label>
+  <label class="checkbox-row">
+    <input type="checkbox" id="showTitle" checked onchange="plot()">
+    <span>Title</span>
+  </label>
 </details>
 
 <div class="ctrl-section">
@@ -216,8 +306,26 @@ window.dpCollectFileProfilePayload = () => ({
   filterNotchQ: document.getElementById('filterNotchQ')?.value || '',
   processType: document.getElementById('processType')?.value || 'envelope',
   smoothMs: document.getElementById('smoothMs')?.value || '',
+  envelopeSmoothMs: document.getElementById('envelopeSmoothMs')?.value || '',
+  smoothMethod: document.getElementById('smoothMethod')?.value || 'moving',
+  sgPoly: document.getElementById('sgPoly')?.value || '',
   fitDegree: document.getElementById('fitDegree')?.value || '',
+  fitShowRaw: document.getElementById('fitShowRaw')?.checked || false,
+  fftWindow: document.getElementById('fftWindow')?.value || 'hann',
+  fftMaxHz: document.getElementById('fftMaxHz')?.value || '',
+  fftLog: document.getElementById('fftLog')?.checked || false,
   stftMs: document.getElementById('stftMs')?.value || '',
+  stftOverlapPct: document.getElementById('stftOverlapPct')?.value || '',
+  stftMaxHz: document.getElementById('stftMaxHz')?.value || '',
+  stftCmap: document.getElementById('stftCmap')?.value || 'viridis',
+  stftLog: document.getElementById('stftLog')?.checked || false,
+  figWidthIn: document.getElementById('figWidthIn')?.value || '',
+  figHeightIn: document.getElementById('figHeightIn')?.value || '',
+  figDpi: document.getElementById('figDpi')?.value || '',
+  traceLineWidth: document.getElementById('traceLineWidth')?.value || '',
+  traceColor: document.getElementById('traceColor')?.value || '#3E6AE1',
+  showGrid: document.getElementById('showGrid')?.checked || false,
+  showTitle: document.getElementById('showTitle')?.checked || false,
 });
 window.dpApplyFileProfilePayload = payload => {
   if (!payload || typeof payload !== 'object') return;
@@ -245,12 +353,37 @@ window.dpApplyFileProfilePayload = payload => {
     ['filterNotchQ', 'filterNotchQ'],
     ['processType', 'processType'],
     ['smoothMs', 'smoothMs'],
+    ['envelopeSmoothMs', 'envelopeSmoothMs'],
+    ['smoothMethod', 'smoothMethod'],
+    ['sgPoly', 'sgPoly'],
     ['fitDegree', 'fitDegree'],
+    ['fftWindow', 'fftWindow'],
+    ['fftMaxHz', 'fftMaxHz'],
     ['stftMs', 'stftMs'],
+    ['stftOverlapPct', 'stftOverlapPct'],
+    ['stftMaxHz', 'stftMaxHz'],
+    ['stftCmap', 'stftCmap'],
+    ['figWidthIn', 'figWidthIn'],
+    ['figHeightIn', 'figHeightIn'],
+    ['figDpi', 'figDpi'],
+    ['traceLineWidth', 'traceLineWidth'],
+    ['traceColor', 'traceColor'],
   ].forEach(([key, id]) => {
     if (payload[key] !== undefined) {
       const el = document.getElementById(id);
       if (el) el.value = payload[key];
+    }
+  });
+  [
+    ['fitShowRaw', 'fitShowRaw'],
+    ['fftLog', 'fftLog'],
+    ['stftLog', 'stftLog'],
+    ['showGrid', 'showGrid'],
+    ['showTitle', 'showTitle'],
+  ].forEach(([key, id]) => {
+    if (typeof payload[key] === 'boolean') {
+      const el = document.getElementById(id);
+      if (el) el.checked = payload[key];
     }
   });
   if (payload.currentChannel) {
@@ -320,12 +453,35 @@ function currentViewParams() {
   };
 }
 
+function currentFigureParams() {
+  return {
+    fig_width_in: viewNumber('figWidthIn'),
+    fig_height_in: viewNumber('figHeightIn'),
+    fig_dpi: viewNumber('figDpi'),
+    trace_line_width: viewNumber('traceLineWidth'),
+    trace_color: document.getElementById('traceColor')?.value || '#3E6AE1',
+    show_grid: document.getElementById('showGrid')?.checked || false,
+    show_title: document.getElementById('showTitle')?.checked || false,
+  };
+}
+
 function currentProcessingParams() {
   return {
     process_type: document.getElementById('processType')?.value || 'envelope',
     smooth_ms: viewNumber('smoothMs'),
+    envelope_smooth_ms: viewNumber('envelopeSmoothMs'),
+    smooth_method: document.getElementById('smoothMethod')?.value || 'moving',
+    sg_poly: viewNumber('sgPoly'),
     fit_degree: viewNumber('fitDegree'),
+    fit_show_raw: document.getElementById('fitShowRaw')?.checked || false,
+    fft_window: document.getElementById('fftWindow')?.value || 'hann',
+    fft_max_hz: viewNumber('fftMaxHz'),
+    fft_log: document.getElementById('fftLog')?.checked || false,
     stft_ms: viewNumber('stftMs'),
+    stft_overlap_pct: viewNumber('stftOverlapPct'),
+    stft_max_hz: viewNumber('stftMaxHz'),
+    stft_cmap: document.getElementById('stftCmap')?.value || 'viridis',
+    stft_log: document.getElementById('stftLog')?.checked || false,
   };
 }
 
@@ -497,6 +653,7 @@ function rhdExportParams(extra) {
     x_max: viewNumber('xMax'),
     y_min: viewNumber('yMin'),
     y_max: viewNumber('yMax'),
+    ...currentFigureParams(),
   }, extra || {});
 }
 
@@ -664,6 +821,7 @@ function plot() {
     channel: channelAtStart,
     merge_pair: previewMergeEnabled(),
     ...currentViewParams(),
+    ...currentFigureParams(),
   };
 
   setStatus('status', 'Plotting...', 'loading');
@@ -695,6 +853,7 @@ function runProcessing() {
     merge_pair: previewMergeEnabled(),
     ...currentViewParams(),
     ...currentProcessingParams(),
+    ...currentFigureParams(),
   };
   btnBusy('btnProcess', true, 'Generating...');
   setStatus('status', 'Generating processing plot...', 'loading');
@@ -767,6 +926,13 @@ function exportFig(fmt) {
     if (viewParams[key] !== null && Number.isFinite(viewParams[key])) params.set(key, String(viewParams[key]));
   });
   params.set('filter_type', viewParams.filter_type || 'none');
+  const figureParams = currentFigureParams();
+  ['fig_width_in', 'fig_height_in', 'fig_dpi', 'trace_line_width'].forEach(key => {
+    if (figureParams[key] !== null && Number.isFinite(figureParams[key])) params.set(key, String(figureParams[key]));
+  });
+  params.set('trace_color', figureParams.trace_color || '#3E6AE1');
+  params.set('show_grid', figureParams.show_grid ? '1' : '0');
+  params.set('show_title', figureParams.show_title ? '1' : '0');
   const url = '/api/rhd/export_channel?' + params.toString();
   setStatus('status', 'Exporting current channel...', 'loading');
   fetch(url)

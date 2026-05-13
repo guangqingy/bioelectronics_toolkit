@@ -195,6 +195,14 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("split(/[\\\\/]/)", template)
         self.assertIn('id="filterType"', template)
         self.assertIn('id="processType"', template)
+        self.assertIn('id="envelopeSmoothMs"', template)
+        self.assertIn('id="smoothMethod"', template)
+        self.assertIn('id="fftWindow"', template)
+        self.assertIn('id="fftMaxHz"', template)
+        self.assertIn('id="stftOverlapPct"', template)
+        self.assertIn('id="figWidthIn"', template)
+        self.assertIn('id="traceLineWidth"', template)
+        self.assertIn("function currentFigureParams()", template)
         self.assertIn('id="processArea"', template)
         self.assertIn("/api/rhd/process", template)
         self.assertIn("let _fileLoadSeq", template)
@@ -300,6 +308,13 @@ class WebAppSmokeTests(unittest.TestCase):
                     "filter_type": "highpass",
                     "filter_low_hz": 1,
                     "process_type": "fft",
+                    "fft_window": "hamming",
+                    "fft_max_hz": 100,
+                    "fft_log": True,
+                    "fig_width_in": 6,
+                    "fig_height_in": 2.5,
+                    "trace_line_width": 1.5,
+                    "show_grid": False,
                 },
             )
             processed_payload = processed.get_json()
@@ -307,6 +322,8 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(processed.status_code, 200)
             self.assertTrue(processed_data["img"])
             self.assertEqual(processed_data["process_type"], "fft")
+            self.assertEqual(processed_data["fft_window"], "hamming")
+            self.assertLessEqual(processed_data["frequency_max"], 100)
 
     def test_rhd_svg_export_is_clean_and_numbered(self) -> None:
         import numpy as np
@@ -340,6 +357,10 @@ class WebAppSmokeTests(unittest.TestCase):
                         "x_max": 0.25,
                         "filter_type": "notch",
                         "filter_notch_hz": 60,
+                        "fig_width_in": 5,
+                        "fig_height_in": 3,
+                        "trace_line_width": 2.5,
+                        "trace_color": "#ff0000",
                     },
                 )
                 second = self.client.get(
@@ -363,6 +384,10 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(first_path.name.endswith("_1.svg"))
             self.assertTrue(second_path.name.endswith("_2.svg"))
             svg = first_path.read_text(encoding="utf-8")
+            self.assertIn('width="360"', svg)
+            self.assertIn('height="216"', svg)
+            self.assertIn('stroke="#ff0000"', svg)
+            self.assertIn('stroke-width="2.5"', svg)
             self.assertIn("<polyline", svg)
             self.assertNotIn("<g", svg)
             self.assertNotIn("<rect", svg)

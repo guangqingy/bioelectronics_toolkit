@@ -36,7 +36,10 @@ def clean_trace_svg(
     *,
     y_min=None,
     y_max=None,
+    width: float = 720.0,
+    height: float = 300.0,
     line_color: str = "#3E6AE1",
+    line_width: float = 1.2,
     max_points: int = 50000,
 ) -> bytes:
     """Build an ungrouped trace SVG with only axes, ticks, numbers, and data."""
@@ -50,7 +53,8 @@ def clean_trace_svg(
         x = x[::step]
         y = y[::step]
 
-    width, height = 720.0, 300.0
+    width = max(240.0, float(width))
+    height = max(160.0, float(height))
     left, right, top, bottom = 58.0, 14.0, 12.0, 38.0
     plot_w = width - left - right
     plot_h = height - top - bottom
@@ -91,7 +95,7 @@ def clean_trace_svg(
     text_style = 'font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#222"'
     line_style = (
         f'fill="none" stroke="{escape(str(line_color), quote=True)}" '
-        'stroke-width="1.2" vector-effect="non-scaling-stroke"'
+        f'stroke-width="{svg_num(line_width)}" vector-effect="non-scaling-stroke"'
     )
 
     parts = [
