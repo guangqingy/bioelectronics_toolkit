@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
-_SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+from services import output_naming
 
-
-def sanitize_name_part(value: object, fallback: str = "output") -> str:
-    """Return a filesystem-safe filename/prefix component."""
-    raw = str(value or "").strip() or fallback
-    cleaned = _SAFE_NAME_RE.sub("_", raw).strip("._")
-    return cleaned or fallback
+sanitize_name_part = output_naming.sanitize_name_part
 
 
 def resolve_output_dir(

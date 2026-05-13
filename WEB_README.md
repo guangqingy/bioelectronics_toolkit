@@ -59,13 +59,15 @@ DataProcess/
 ├── web_templates/              # Jinja pages, one main template per view
 │   └── partials/               # Shared navigation, panels, and modal fragments
 ├── web_static/
-│   ├── style.css
+│   ├── style.css              # CSS import hub
+│   ├── style/                 # Split shared CSS modules
 │   ├── css/                    # Page-specific CSS extracted from templates
 │   └── js/
-│       ├── dp_core.js
+│       ├── dp_core.js          # Shared namespace/bootstrap
+│       ├── dp_api.js, dp_dom.js, dp_keyboard.js, dp_palette.js
 │       ├── dp_settings_schema.js
 │       ├── dp_manifest.js
-│       ├── dp_settings.js
+│       ├── dp_settings_*.js
 │       ├── dp_profiles.js
 │       ├── dp_jobs.js
 │       └── pages/              # Page-specific JavaScript extracted from templates

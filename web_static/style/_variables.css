@@ -1,0 +1,28 @@
+/* ═══════════════════════════════════════════════════
+   DataProcess Web — Tesla-inspired design system
+   ═══════════════════════════════════════════════════ */
+
+/* ─── Variables ─── */
+:root {
+  --blue:       #3E6AE1;
+  --blue-hover: #3460d4;
+  --success:    #027A48;
+  --success-bg: #ECFDF3;
+  --warning:    #8a5b00;
+  --warning-bg: #FFF9E8;
+  --error:      #B42318;
+  --error-bg:   #FFF1F0;
+  --white:      #FFFFFF;
+  --ash:        #F4F4F4;
+  --carbon:     #171A20;
+  --graphite:   #393C41;
+  --pewter:     #5C5E62;
+  --silver:     #8E8E8E;
+  --cloud:      #EEEEEE;
+  --pale:       #D0D1D2;
+  --nav-h:      52px;
+  --ctrl-w:     450px;
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --trans:      0.25s;
+}

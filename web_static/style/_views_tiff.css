@@ -1,0 +1,95 @@
+/* ─── View main layout ─── */
+.view-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.view-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-md);
+  background: var(--white);
+}
+.view-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--carbon);
+}
+.view-sub {
+  font-size: 12px;
+  color: var(--pewter);
+}
+.view-preview { display: block; }
+.view-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Peak/pair table ─── */
+.pair-selected { background: #EEF2FF !important; }
+.pair-selected td { color: var(--blue); }
+
+/* ─── Separator ─── */
+.sep {
+  border: none;
+  border-top: 1px solid var(--cloud);
+  margin: 2px 0;
+}
+
+/* ─── Code / monospace ─── */
+code {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11.5px;
+  background: var(--ash);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--graphite);
+}
+pre {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11.5px;
+}
+
+/* ─── TIFF frame slider ─── */
+.frame-slider-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.frame-slider-wrap input[type="range"] {
+  flex: 1;
+  border: none;
+  padding: 0;
+  background: transparent;
+  accent-color: var(--blue);
+  width: auto;
+}
+.frame-badge {
+  font-size: 11px;
+  color: var(--pewter);
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
+}
+
+/* ─── Fluorescence / TIFF viewer ─── */
+.tiff-preview {
+  background: #111;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 320px;
+}
+.tiff-preview img {
+  max-width: 100%;
+  max-height: 480px;
+  display: block;
+  image-rendering: pixelated;
+}
+

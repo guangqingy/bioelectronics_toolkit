@@ -1,0 +1,98 @@
+/* ─── Data table ─── */
+.data-table-wrap {
+  overflow-x: auto;
+  max-height: 280px;
+  overflow-y: auto;
+}
+table.dp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  color: var(--graphite);
+}
+table.dp-table th {
+  background: var(--ash);
+  color: var(--pewter);
+  font-weight: 600;
+  font-size: 10.5px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--cloud);
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+}
+table.dp-table td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--cloud);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11.5px;
+}
+table.dp-table tr:last-child td { border-bottom: none; }
+table.dp-table tr:hover td { background: var(--ash); }
+
+/* ─── Dashboard cards ─── */
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  max-width: 1100px;
+}
+.dash-card {
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-md);
+  padding: 18px 16px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--trans), box-shadow var(--trans);
+  display: block;
+  background: var(--white);
+}
+.dash-card:hover {
+  border-color: #c2c8d4;
+  box-shadow: 0 4px 12px rgba(22,26,32,0.06);
+}
+.dash-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--carbon);
+  margin-bottom: 5px;
+}
+.dash-card-desc {
+  font-size: 12px;
+  color: var(--pewter);
+  line-height: 1.6;
+}
+.dash-card-tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--silver);
+  background: var(--ash);
+  padding: 2px 6px;
+  border-radius: 3px;
+  margin-top: 8px;
+}
+
+/* ─── Page header ─── */
+.page-header {
+  padding: 20px 0 4px;
+  max-width: 1100px;
+}
+.page-eyebrow {
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin-bottom: 3px;
+}
+.page-title {
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--carbon);
+  margin-bottom: 3px;
+}
+.page-sub { font-size: 13px; color: var(--pewter); }
+

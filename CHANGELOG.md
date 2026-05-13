@@ -22,6 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mode with correlation IDs.
 - Background job state is persisted to `.dataprocess_cache/jobs.sqlite`, and
   trace export naming now goes through a shared service helper.
+- Large WebGUI route modules have been thinned into service modules for ABF,
+  CSV, EMG, histology, jobs, run history, scripts, system pickers, file
+  profiles, and fluorescence route context sharing; the service-ratio CI check
+  now fails regressions instead of warning only.
+- Shared frontend assets are split into focused JS and CSS modules, with
+  oversized Fluorescence GIF/ROI page scripts broken into smaller page modules.
 
 ### Added
 - Opt-in anonymous local telemetry counters, disabled by default, for page opens

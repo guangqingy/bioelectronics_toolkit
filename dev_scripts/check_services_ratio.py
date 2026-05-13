@@ -56,6 +56,7 @@ def _source_lines(path: Path) -> int:
 
 
 def _service_candidates(module_name: str) -> list[Path]:
+    original_stem = module_name
     stem = module_name
     alias_names = list(SERVICE_ALIASES.get(module_name, []))
     for suffix in ("_routes", "_viewer"):
@@ -63,7 +64,7 @@ def _service_candidates(module_name: str) -> list[Path]:
             stem = stem[: -len(suffix)]
             break
 
-    names = [stem, *alias_names, *SERVICE_ALIASES.get(stem, [])]
+    names = [original_stem, stem, *alias_names, *SERVICE_ALIASES.get(stem, [])]
     if stem.startswith("fluorescence"):
         names.append("fluorescence")
     if stem.startswith("echem"):

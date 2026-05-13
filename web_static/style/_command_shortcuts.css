@@ -1,0 +1,105 @@
+.shortcut-card {
+  width: min(620px, 100%);
+}
+.command-card {
+  width: min(720px, 100%);
+}
+.command-search {
+  width: 100%;
+  min-height: 42px;
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.command-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+}
+.command-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--graphite);
+  cursor: pointer;
+  padding: 9px 10px;
+  text-align: left;
+}
+.command-item:hover,
+.command-item.active {
+  border-color: #d7e0f5;
+  background: #F2F5FF;
+}
+.command-main {
+  font-size: 14px;
+  font-weight: 650;
+}
+.command-meta {
+  color: var(--silver);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+}
+.command-empty {
+  border: 1px dashed #d7dbe3;
+  border-radius: var(--radius-sm);
+  color: var(--silver);
+  padding: 16px;
+  text-align: center;
+}
+.confirm-card {
+  width: min(560px, 100%);
+}
+.confirm-detail {
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-sm);
+  background: #FAFBFD;
+  color: var(--graphite);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 12px;
+}
+.confirm-detail ul {
+  margin: 6px 0 0 18px;
+}
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.shortcut-grid > div {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+  min-height: 32px;
+  border-bottom: 1px solid var(--cloud);
+  padding: 6px 0;
+}
+.shortcut-grid > div:last-child {
+  border-bottom: none;
+}
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 24px;
+  border: 1px solid #cfd6e3;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #FAFBFD;
+  color: var(--carbon);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+}
+.shortcut-grid span {
+  color: var(--graphite);
+  font-size: 13px;
+}

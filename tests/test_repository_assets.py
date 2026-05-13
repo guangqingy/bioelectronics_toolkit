@@ -66,6 +66,8 @@ class RepositoryAssetTests(unittest.TestCase):
         tracked = check_output(["git", "ls-files"], cwd=root, text=True).splitlines()
         for rel_path in tracked:
             path = root / rel_path
+            if not path.exists():
+                continue
             if path.suffix.lower() in excluded_suffixes:
                 continue
             try:

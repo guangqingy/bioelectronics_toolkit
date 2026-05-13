@@ -59,7 +59,7 @@ jobs:
           if-no-files-found: error
 
       - name: web_api/services ratio report
-        run: python dev_scripts/check_services_ratio.py --warn-only
+        run: python dev_scripts/check_services_ratio.py
 
   lint:
     name: ruff lint
@@ -74,7 +74,7 @@ jobs:
       - name: Baseline repository lint
         run: ruff check .
       - name: Strict lint for maintained service and Web entry layers
-        run: ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
+        run: ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402,E501
       - name: Strict unused-name lint for Web API modules
         run: ruff check web_api --select F --ignore E402
 

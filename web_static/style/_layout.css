@@ -1,0 +1,67 @@
+/* ─── App shell ─── */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+  padding-top: var(--nav-h);
+  gap: 0;
+}
+
+/* ─── Control panel (left) ─── */
+.ctrl-panel {
+  width: var(--ctrl-w);
+  flex-shrink: 0;
+  background: var(--white);
+  border-right: 1px solid var(--cloud);
+  padding: 16px 14px;
+  overflow-y: auto;
+  height: calc(100vh - var(--nav-h));
+  position: sticky;
+  top: var(--nav-h);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ─── Main content ─── */
+.main-content {
+  flex: 1;
+  min-width: 0;
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #F7F8FA;
+}
+
+/* ─── Ctrl section ─── */
+.ctrl-section {
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  padding: 10px 12px;
+}
+
+.ctrl-details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.ctrl-details > summary::-webkit-details-marker { display: none; }
+.ctrl-details > summary::after {
+  content: "▸";
+  float: right;
+  color: var(--silver);
+  font-size: 11px;
+}
+.ctrl-details[open] > summary::after { content: "▾"; }
+.ctrl-details[open] > summary { margin-bottom: 8px; }
+
+/* ─── Section labels ─── */
+.ctrl-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin-bottom: 7px;
+}
+

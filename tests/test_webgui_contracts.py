@@ -544,8 +544,8 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_extracted_page_assets_are_served(self) -> None:
         assets = (
             "/static/css/fluorescence_gif.css",
-            "/static/js/pages/fluorescence_gif.js",
-            "/static/js/pages/fluorescence_roi.js",
+            "/static/js/pages/fluorescence_gif_files.js",
+            "/static/js/pages/fluorescence_roi_profiles.js",
         )
         for route in assets:
             with self.subTest(route=route):
@@ -556,26 +556,31 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_core_js_exposes_command_palette_and_file_list_filter_contracts(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        core_js = (root / "web_static" / "js" / "dp_core.js").read_text(encoding="utf-8")
-        style_css = (root / "web_static" / "style.css").read_text(encoding="utf-8")
+        js_root = root / "web_static" / "js"
+        css_root = root / "web_static" / "style"
+        palette_js = (js_root / "dp_palette.js").read_text(encoding="utf-8")
+        keyboard_js = (js_root / "dp_keyboard.js").read_text(encoding="utf-8")
+        dom_js = (js_root / "dp_dom.js").read_text(encoding="utf-8")
+        params_js = (js_root / "dp_params.js").read_text(encoding="utf-8")
+        reset_css = (css_root / "_reset.css").read_text(encoding="utf-8")
 
-        self.assertIn("function openCommandPalette()", core_js)
-        self.assertIn("function closeCommandPalette()", core_js)
-        self.assertIn("metaKey || ev.ctrlKey", core_js)
-        self.assertIn("ev.key.toLowerCase() === 'k'", core_js)
-        self.assertIn("function filterFileList(listId)", core_js)
-        self.assertIn("function installFileListFilters()", core_js)
-        self.assertIn("function dpApplyParamGroups(selectId, attr)", core_js)
-        self.assertIn("function dpApplyToggleGroups(controlId, attr)", core_js)
-        self.assertIn("[hidden] { display: none !important; }", style_css)
-        self.assertNotIn("btn.click();\n        btn.click();", core_js)
+        self.assertIn("function openCommandPalette()", palette_js)
+        self.assertIn("function closeCommandPalette()", palette_js)
+        self.assertIn("metaKey || ev.ctrlKey", keyboard_js)
+        self.assertIn("ev.key.toLowerCase() === 'k'", keyboard_js)
+        self.assertIn("function filterFileList(listId)", dom_js)
+        self.assertIn("function installFileListFilters()", dom_js)
+        self.assertIn("function dpApplyParamGroups(selectId, attr)", params_js)
+        self.assertIn("function dpApplyToggleGroups(controlId, attr)", params_js)
+        self.assertIn("[hidden] { display: none !important; }", reset_css)
+        self.assertNotIn("btn.click();\n        btn.click();", keyboard_js)
 
     def test_settings_modal_uses_tabs_instead_of_one_long_panel(self) -> None:
         root = Path(__file__).resolve().parents[1]
         modal = (
             root / "web_templates" / "partials" / "preferences_modal.html"
         ).read_text(encoding="utf-8")
-        settings_js = (root / "web_static" / "js" / "dp_settings.js").read_text(
+        settings_js = (root / "web_static" / "js" / "dp_settings_modal.js").read_text(
             encoding="utf-8"
         )
 

@@ -1,0 +1,29 @@
+/* ─── Logout screen ─── */
+.logout-screen {
+  min-height: 100vh;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(140deg, #f1f3f7, #e6e9ef);
+}
+.logout-card {
+  width: min(420px, 100%);
+  border: 1px solid #d9dde6;
+  border-radius: 10px;
+  background: #fff;
+  padding: 22px 20px;
+  box-shadow: 0 10px 25px rgba(22, 26, 32, 0.08);
+}
+.logout-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--carbon);
+  margin-bottom: 6px;
+}
+.logout-sub {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--pewter);
+}
+

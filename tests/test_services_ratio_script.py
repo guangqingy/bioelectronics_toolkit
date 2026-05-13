@@ -11,7 +11,7 @@ class ServicesRatioScriptTests(unittest.TestCase):
         modules = {record.web_module for record in records}
 
         self.assertIn("web_api/fluorescence.py", modules)
-        self.assertTrue(any(record.status != "ok" for record in records))
+        self.assertFalse([record for record in records if record.status != "ok"])
 
 
 if __name__ == "__main__":

@@ -1,0 +1,218 @@
+/* ─── Leica LIF browser ─── */
+.lif-layout {
+  display: grid;
+  grid-template-columns: minmax(520px, 1.25fr) minmax(320px, 0.75fr);
+  gap: 12px;
+  align-items: start;
+}
+.lif-browser-card,
+.lif-preview-card,
+.lif-detail-card {
+  min-width: 0;
+}
+.lif-table-wrap {
+  overflow: auto;
+  max-height: calc(100vh - 220px);
+  min-height: 420px;
+}
+.lif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.lif-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--ash);
+  color: var(--pewter);
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  border-bottom: 1px solid var(--cloud);
+  padding: 7px 9px;
+  text-align: left;
+  white-space: nowrap;
+}
+.lif-table td {
+  border-bottom: 1px solid var(--cloud);
+  padding: 7px 9px;
+  vertical-align: top;
+  color: var(--graphite);
+}
+.lif-table tr {
+  cursor: pointer;
+}
+.lif-table tbody tr:hover td {
+  background: #FAFBFD;
+}
+.lif-table tr.active td {
+  background: #EEF2FF;
+  color: var(--carbon);
+}
+.lif-name {
+  font-weight: 500;
+  color: var(--carbon);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lif-path,
+.lif-source {
+  margin-top: 2px;
+  color: var(--silver);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10.5px;
+  max-width: 440px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lif-time {
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11px;
+  color: var(--graphite);
+  white-space: nowrap;
+}
+.lif-time-missing {
+  color: #a07834;
+}
+.lif-subfile-list {
+  max-height: 430px;
+}
+.lif-subfile-item {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 2px 7px;
+  align-items: center;
+  white-space: normal;
+}
+.lif-order {
+  grid-row: span 3;
+  color: var(--silver);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10.5px;
+}
+.lif-subfile-main {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.lif-subfile-time {
+  color: var(--silver);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lif-subfile-original {
+  color: var(--silver);
+  font-size: 10.5px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lif-browser-count {
+  font-size: 10px;
+  color: var(--silver);
+  letter-spacing: 0;
+}
+.lif-preview-body {
+  padding: 0;
+}
+.lif-preview {
+  min-height: 500px;
+  background: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.lif-preview img {
+  max-width: 100%;
+  max-height: calc(100vh - 220px);
+  display: block;
+  image-rendering: pixelated;
+}
+.lif-3d-section {
+  margin-top: 12px;
+  min-width: 0;
+}
+.lif-3d-viewport {
+  position: relative;
+  min-height: 560px;
+  height: min(70vh, 740px);
+  overflow: hidden;
+  background: #08090c;
+  border: 1px solid #1c2333;
+  border-radius: var(--radius-md);
+}
+.lif-3d-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.lif-3d-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  color: #9aa3b4;
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+  background: #08090c;
+}
+.lif-3d-hud {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 2;
+  max-width: min(520px, calc(100% - 24px));
+  padding: 9px 11px;
+  background: rgba(8, 9, 12, 0.76);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-sm);
+  color: #f4f6fb;
+  backdrop-filter: blur(12px);
+}
+.lif-3d-title {
+  font-size: 12.5px;
+  font-weight: 650;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lif-3d-meta {
+  margin-top: 3px;
+  color: #b7bfce;
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10.5px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.lif-volume-controls {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-sm);
+  background: #FAFBFD;
+}
+.lif-volume-controls .param-row {
+  margin: 0 0 7px;
+}
+.lif-volume-controls .param-row:last-child {
+  margin-bottom: 0;
+}
+

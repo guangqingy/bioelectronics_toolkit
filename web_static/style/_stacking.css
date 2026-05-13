@@ -1,0 +1,82 @@
+/* ─── 3D stacking ─── */
+.stacking-layout {
+  display: grid;
+  grid-template-columns: minmax(560px, 1fr) minmax(320px, 0.48fr);
+  gap: 12px;
+  align-items: start;
+}
+.stacking-viewer-card,
+.stacking-side {
+  min-width: 0;
+}
+.stacking-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stacking-slice-preview {
+  min-height: 260px;
+  max-height: 320px;
+}
+.stacking-slice-preview img {
+  max-height: 320px;
+}
+.lif-slider-row {
+  display: grid;
+  grid-template-columns: 18px 1fr 52px;
+  gap: 8px;
+  align-items: center;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--pewter);
+}
+.lif-slider-row input[type="range"] {
+  width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  accent-color: var(--blue);
+}
+.lif-slider-row input[type="range"]:disabled {
+  opacity: 0.42;
+}
+.lif-detail-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--carbon);
+  line-height: 1.3;
+  word-break: break-word;
+}
+.lif-detail-muted {
+  margin-top: 3px;
+  color: var(--silver);
+  font-size: 11px;
+  font-family: "SF Mono", "Menlo", monospace;
+  word-break: break-all;
+}
+.lif-detail-grid {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 5px 10px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+.lif-detail-grid span {
+  color: var(--silver);
+}
+.lif-detail-grid strong {
+  color: var(--graphite);
+  font-weight: 500;
+  min-width: 0;
+  word-break: break-word;
+}
+.lif-export-note {
+  margin-top: 10px;
+  border: 1px solid #d9dde6;
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+  color: var(--pewter);
+  background: #FAFBFD;
+  font-size: 12px;
+}
+
