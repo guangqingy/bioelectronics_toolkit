@@ -1,5 +1,4 @@
 import io
-from html import escape
 import traceback
 import zipfile
 from pathlib import Path
@@ -15,6 +14,7 @@ from services import rhd as rhd_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
+from .plot_export import clean_trace_svg, next_numbered_path
 from .response import api_ok
 
 
@@ -134,98 +134,6 @@ def register_rhd_viewer_routes(app, ctx):
             ax.grid(True, alpha=0.4)
         else:
             ax.grid(False)
-
-    def _rhd_next_numbered_path(base_path: Path) -> Path:
-        for idx in range(1, 10000):
-            candidate = base_path.with_name(f"{base_path.stem}_{idx}{base_path.suffix}")
-            if not candidate.exists():
-                return candidate
-        raise RuntimeError(f"Could not find available export name for {base_path.name}")
-
-    def _svg_num(value: float) -> str:
-        return f"{float(value):.6g}"
-
-    def _svg_ticks(vmin: float, vmax: float, n: int = 5) -> np.ndarray:
-        if not np.isfinite(vmin) or not np.isfinite(vmax):
-            return np.asarray([], dtype=float)
-        if vmax == vmin:
-            pad = 1.0 if vmin == 0 else abs(vmin) * 0.05
-            vmin -= pad
-            vmax += pad
-        return np.linspace(vmin, vmax, max(2, int(n)))
-
-    def _rhd_clean_trace_svg(t, y, y_min=None, y_max=None) -> bytes:
-        t = np.asarray(t, dtype=float)
-        y = np.asarray(y, dtype=float)
-        finite = np.isfinite(t) & np.isfinite(y)
-        t = t[finite]
-        y = y[finite]
-        width, height = 720.0, 300.0
-        left, right, top, bottom = 58.0, 14.0, 12.0, 38.0
-        plot_w = width - left - right
-        plot_h = height - top - bottom
-
-        if t.size:
-            xmin, xmax = float(t[0]), float(t[-1])
-            if xmax == xmin:
-                xmax = xmin + 1.0
-        else:
-            xmin, xmax = 0.0, 1.0
-
-        if y.size:
-            ymin = float(np.nanmin(y)) if y_min is None else float(y_min)
-            ymax = float(np.nanmax(y)) if y_max is None else float(y_max)
-        else:
-            ymin, ymax = 0.0, 1.0
-        if y_min is not None:
-            ymin = float(y_min)
-        if y_max is not None:
-            ymax = float(y_max)
-        if not np.isfinite(ymin) or not np.isfinite(ymax):
-            ymin, ymax = 0.0, 1.0
-        if ymax == ymin:
-            pad = 1.0 if ymin == 0 else abs(ymin) * 0.05
-            ymin -= pad
-            ymax += pad
-
-        def sx(x):
-            return left + (float(x) - xmin) / (xmax - xmin) * plot_w
-
-        def sy(v):
-            yy = top + (ymax - float(v)) / (ymax - ymin) * plot_h
-            return max(top, min(top + plot_h, yy))
-
-        points = " ".join(f"{_svg_num(sx(x))},{_svg_num(sy(v))}" for x, v in zip(t, y))
-        axis_style = 'stroke="#222" stroke-width="1" vector-effect="non-scaling-stroke"'
-        tick_style = 'stroke="#222" stroke-width="0.8" vector-effect="non-scaling-stroke"'
-        text_style = 'font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#222"'
-        line_style = 'fill="none" stroke="#3E6AE1" stroke-width="1.2" vector-effect="non-scaling-stroke"'
-
-        parts = [
-            f'<svg xmlns="http://www.w3.org/2000/svg" width="{int(width)}" height="{int(height)}" viewBox="0 0 {int(width)} {int(height)}">',
-            f'<line x1="{_svg_num(left)}" y1="{_svg_num(top + plot_h)}" x2="{_svg_num(left + plot_w)}" y2="{_svg_num(top + plot_h)}" {axis_style}/>',
-            f'<line x1="{_svg_num(left)}" y1="{_svg_num(top)}" x2="{_svg_num(left)}" y2="{_svg_num(top + plot_h)}" {axis_style}/>',
-        ]
-        for tick in _svg_ticks(xmin, xmax):
-            x = sx(tick)
-            parts.append(
-                f'<line x1="{_svg_num(x)}" y1="{_svg_num(top + plot_h)}" x2="{_svg_num(x)}" y2="{_svg_num(top + plot_h + 5)}" {tick_style}/>'
-            )
-            parts.append(
-                f'<text x="{_svg_num(x)}" y="{_svg_num(top + plot_h + 20)}" text-anchor="middle" {text_style}>{escape(f"{tick:g}")}</text>'
-            )
-        for tick in _svg_ticks(ymin, ymax):
-            y_pos = sy(tick)
-            parts.append(
-                f'<line x1="{_svg_num(left - 5)}" y1="{_svg_num(y_pos)}" x2="{_svg_num(left)}" y2="{_svg_num(y_pos)}" {tick_style}/>'
-            )
-            parts.append(
-                f'<text x="{_svg_num(left - 8)}" y="{_svg_num(y_pos + 4)}" text-anchor="end" {text_style}>{escape(f"{tick:g}")}</text>'
-            )
-        if points:
-            parts.append(f'<polyline points="{points}" {line_style}/>')
-        parts.append("</svg>")
-        return "\n".join(parts).encode("utf-8")
 
     def _rhd_process_trace(t, y, fs: float, d: dict) -> tuple[plt.Figure, dict]:
         mode = str(d.get("process_type") or "envelope").strip().lower()
@@ -580,10 +488,10 @@ def register_rhd_viewer_routes(app, ctx):
             y_view = y_view[::dsf]
 
             if str(fmt).lower() == "svg":
-                payload = _rhd_clean_trace_svg(t_view, y_view, y_min, y_max)
+                payload = clean_trace_svg(t_view, y_view, y_min=y_min, y_max=y_max, line_color=line_color)
                 if _mode_is_save(mode):
                     base_path = src.with_name(f"{out_stem}_{ch_name}.svg")
-                    out_path = _rhd_next_numbered_path(base_path)
+                    out_path = next_numbered_path(base_path)
                     out_path.write_bytes(payload)
                     return jsonify({"ok": True, "saved_path": str(out_path)})
                 return Response(
@@ -604,7 +512,7 @@ def register_rhd_viewer_routes(app, ctx):
             buf.seek(0)
             payload = buf.getvalue()
             if _mode_is_save(mode):
-                out_path = src.with_name(f"{out_stem}_{ch_name}.{fmt}")
+                out_path = next_numbered_path(src.with_name(f"{out_stem}_{ch_name}.{fmt}"))
                 out_path.write_bytes(payload)
                 return jsonify({"ok": True, "saved_path": str(out_path)})
             mt = "image/png" if fmt == "png" else "image/svg+xml"

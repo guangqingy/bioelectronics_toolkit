@@ -11,6 +11,7 @@ from web_api.common import mode_is_save
 
 from .jobs import submit_json_task
 from .path_policy import ensure_output_parent
+from .plot_export import clean_trace_svg, next_numbered_path
 from .response import api_ok
 
 
@@ -63,6 +64,7 @@ def register_csv_viewer_routes(app, ctx):
         if plotted == 0:
             plt.close(fig)
             raise ValueError("No mergeable rows found for selected columns/window")
+        ax.margins(x=0)
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
         ax.legend(fontsize=9, frameon=False)
@@ -103,7 +105,7 @@ def register_csv_viewer_routes(app, ctx):
 
     def _plot_export_payload(d: dict) -> dict:
         path = d.get("path", "")
-        fmt = d.get("fmt", "png")
+        fmt = str(d.get("fmt", "png") or "png").lower()
         x_col = d.get("x_col", "")
         y_col = d.get("y_col", "")
         x_min = float_or(d.get("x_min"), None)
@@ -127,8 +129,19 @@ def register_csv_viewer_routes(app, ctx):
                 "role": "plot_csv",
             }
 
+        if fmt == "svg":
+            return {
+                "payload": clean_trace_svg(x, y, y_min=y_min, y_max=y_max, line_color=line_color),
+                "out_path": src.with_name(f"{src.stem}_plot.svg"),
+                "mimetype": "image/svg+xml",
+                "download_name": f"{src.stem}_plot.svg",
+                "output_type": "svg",
+                "role": "plot",
+            }
+
         fig, ax = plt.subplots(figsize=(8, 4))
         ax.plot(x, y, color=line_color, lw=0.9)
+        ax.margins(x=0)
         ax.set_xlabel(x_col)
         ax.set_ylabel(y_col)
         apply_axes_limits(ax, None, None, y_min, y_max)
@@ -162,6 +175,8 @@ def register_csv_viewer_routes(app, ctx):
 
     def _write_payload_result(export: dict, role: str) -> dict:
         out_path = ensure_output_parent(Path(export["out_path"]))
+        if out_path.suffix.lower() in {".png", ".svg"}:
+            out_path = next_numbered_path(out_path)
         out_path.write_bytes(export["payload"])
         result = {"ok": True, "saved_path": str(out_path)}
         if "rows" in export:
@@ -217,6 +232,7 @@ def register_csv_viewer_routes(app, ctx):
             x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=dsf)
             fig, ax = plt.subplots(figsize=(8, 4))
             ax.plot(x, y, color=line_color, lw=0.9)
+            ax.margins(x=0)
             ax.set_xlabel(x_col)
             ax.set_ylabel(y_col)
             ax.grid(True, alpha=0.4)

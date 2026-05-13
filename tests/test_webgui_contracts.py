@@ -368,6 +368,38 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertNotIn("<rect", svg)
             self.assertNotIn("grid", svg.lower())
 
+    def test_csv_svg_export_uses_clean_numbered_trace_svg(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_csv_svg_") as tmp:
+            source = Path(tmp) / "trace.csv"
+            source.write_text("time,value\n0,1\n1,2\n2,0\n", encoding="utf-8")
+            saved_paths = []
+
+            for _ in range(2):
+                started = self.client.post(
+                    "/api/csv/export_job",
+                    json={
+                        "path": str(source),
+                        "x_col": "time",
+                        "y_col": "value",
+                        "fmt": "svg",
+                        "mode": "save",
+                    },
+                )
+                started_payload = started.get_json()
+                self.assertEqual(started.status_code, 200)
+                self.assertTrue(started_payload["ok"])
+                job = self._wait_for_api_job(started_payload["job_id"])
+                self.assertEqual(job["status"], "succeeded")
+                saved_paths.append(Path(job["outputs"][0]["path"]))
+
+            self.assertTrue(saved_paths[0].name.endswith("_1.svg"))
+            self.assertTrue(saved_paths[1].name.endswith("_2.svg"))
+            svg = saved_paths[0].read_text(encoding="utf-8")
+            self.assertIn("<polyline", svg)
+            self.assertNotIn("<g", svg)
+            self.assertNotIn("<rect", svg)
+            self.assertNotIn("grid", svg.lower())
+
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")
         payload = response.get_json()

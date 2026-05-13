@@ -12,6 +12,7 @@ from services import abf as abf_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
+from .plot_export import clean_trace_svg, next_numbered_path
 from .response import api_ok
 
 
@@ -157,6 +158,7 @@ def register_abf_viewer_routes(app, ctx):
 
             fig, ax = plt.subplots(figsize=(9, 4))
             ax.plot(t, y, color=line_color, lw=0.7)
+            ax.margins(x=0)
             ax.set_xlabel("Time (s)")
             ax.set_ylabel(y_unit)
             ch_name = abf.adcNames[ch] if ch < abf.channelCount else f"Ch{ch}"
@@ -261,6 +263,7 @@ def register_abf_viewer_routes(app, ctx):
 
             fig, ax = plt.subplots(figsize=(9, 4))
             ax.plot(t_full, y_full, color=line_color, lw=0.7)
+            ax.margins(x=0)
 
             if not use_all:
                 ax.axvspan(t0_plot, t1_plot, alpha=0.12, color="gray")
@@ -446,7 +449,7 @@ def register_abf_viewer_routes(app, ctx):
         if not has_abf or pyabf_mod is None:
             raise ValueError("pyabf not installed")
         path = d.get("path", "")
-        fmt = d.get("fmt", "png")
+        fmt = str(d.get("fmt", "png") or "png").lower()
         mode = d.get("mode", "download")
         sweep = int_or(d.get("sweep", 0), 0)
         ch = int_or(d.get("channel", 0), 0)
@@ -514,47 +517,47 @@ def register_abf_viewer_routes(app, ctx):
                 "mimetype": "text/csv",
                 "download_name": "abf_export.csv",
             }
+
+        if fmt == "svg":
+            payload = clean_trace_svg(t, y, y_min=y_min, y_max=y_max, line_color=line_color)
+            base_name = f"{src.stem}_preview_signal.svg" if signal_only else f"{src.stem}_s{sweep}_ch{ch}.svg"
+            if _mode_is_save(mode):
+                base_path = src.with_name(base_name)
+                out_path = next_numbered_path(base_path)
+                out_path.write_bytes(payload)
+                return {
+                    "kind": "save",
+                    "data": {
+                        "ok": True,
+                        "saved_path": str(out_path),
+                        "outputs": [_abf_output(out_path, "abf_trace_export")],
+                    },
+                }
+            return {
+                "kind": "download",
+                "payload": payload,
+                "mimetype": "image/svg+xml",
+                "download_name": base_name,
+            }
+
         fig, ax = plt.subplots(figsize=(9, 4))
         ax.plot(t, y, color=line_color, lw=0.7)
-        if signal_only and str(fmt).lower() == "svg":
-            if len(t):
-                ax.set_xlim(float(t[0]), float(t[-1]))
-            if y_min is not None or y_max is not None:
-                cur = ax.get_ylim()
-                ax.set_ylim(y_min if y_min is not None else cur[0], y_max if y_max is not None else cur[1])
-            ax.set_position([0, 0, 1, 1])
-            ax.set_title("")
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            for sp in ax.spines.values():
-                sp.set_visible(False)
-            ax.set_frame_on(False)
-            ax.axis("off")
-        else:
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel(y_unit)
-            apply_axes_limits(ax, None, None, y_min, y_max)
-            ax.grid(True, alpha=0.4)
+        ax.margins(x=0)
+        ax.set_xlabel("Time (s)")
+        ax.set_ylabel(y_unit)
+        apply_axes_limits(ax, None, None, y_min, y_max)
+        ax.grid(True, alpha=0.4)
         fig.tight_layout()
         buf = io.BytesIO()
         save_kw = {"format": fmt, "bbox_inches": "tight"}
         if fmt == "png":
             save_kw["dpi"] = 300
-        if signal_only and str(fmt).lower() == "svg":
-            save_kw["pad_inches"] = 0
-            save_kw["transparent"] = True
-            save_kw["facecolor"] = "none"
         fig.savefig(buf, **save_kw)
         plt.close(fig)
         buf.seek(0)
         payload = buf.getvalue()
         if _mode_is_save(mode):
-            if signal_only and str(fmt).lower() == "svg":
-                out_path = src.with_name(f"{src.stem}_preview_signal.svg")
-            else:
-                out_path = src.with_name(f"{src.stem}_s{sweep}_ch{ch}.{fmt}")
+            out_path = next_numbered_path(src.with_name(f"{src.stem}_s{sweep}_ch{ch}.{fmt}"))
             out_path.write_bytes(payload)
             return {
                 "kind": "save",
