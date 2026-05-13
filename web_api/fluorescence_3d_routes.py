@@ -57,6 +57,12 @@ def register_fluorescence_3d_routes(app, fl):
         threshold_percentile = float_or(d.get("threshold_percentile", threshold_default), threshold_default)
         channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
         denoise_mode = _fl_clean_choice(d.get("denoise"), _FL_DENOISE_OPTIONS, "Off")
+        interlayer_level = str(d.get("interlayer_level", "middle") or "middle").strip().lower()
+        density_mode = str(d.get("density_mode", "off") or "off").strip().lower()
+        density_radius_raw = d.get("density_radius_um", None)
+        density_radius_um = None if density_radius_raw is None or density_radius_raw == "" else float_or(density_radius_raw, 0.0)
+        density_min_raw = d.get("density_min_neighbors", None)
+        density_min_neighbors = None if density_min_raw is None or density_min_raw == "" else int_or(density_min_raw, 0)
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
         scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 20.0), 20.0))
         p = Path(path)
@@ -74,6 +80,10 @@ def register_fluorescence_3d_routes(app, fl):
             threshold_percentile=threshold_percentile,
             channel_ranges=channel_ranges,
             denoise_mode=denoise_mode,
+            interlayer_level=interlayer_level,
+            density_mode=density_mode,
+            density_radius_um=density_radius_um,
+            density_min_neighbors=density_min_neighbors,
             show_scale_bar=show_scale_bar,
             scale_bar_um=scale_bar_um,
         )
@@ -528,6 +538,12 @@ def register_fluorescence_3d_routes(app, fl):
         threshold_percentile = float_or(d.get("threshold_percentile", 98.8), 98.8)
         channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
         denoise_mode = _fl_clean_choice(d.get("denoise"), _FL_DENOISE_OPTIONS, "Off")
+        interlayer_level = str(d.get("interlayer_level", "middle") or "middle").strip().lower()
+        density_mode = str(d.get("density_mode", "off") or "off").strip().lower()
+        density_radius_raw = d.get("density_radius_um", None)
+        density_radius_um = None if density_radius_raw is None or density_radius_raw == "" else float_or(density_radius_raw, 0.0)
+        density_min_raw = d.get("density_min_neighbors", None)
+        density_min_neighbors = None if density_min_raw is None or density_min_raw == "" else int_or(density_min_raw, 0)
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
         scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 20.0), 20.0))
         try:
@@ -547,6 +563,10 @@ def register_fluorescence_3d_routes(app, fl):
                     "threshold_percentile": threshold_percentile,
                     "channel_ranges": channel_ranges,
                     "denoise": denoise_mode,
+                    "interlayer_level": interlayer_level,
+                    "density_mode": density_mode,
+                    "density_radius_um": density_radius_um,
+                    "density_min_neighbors": density_min_neighbors,
                     "show_scale_bar": show_scale_bar,
                     "scale_bar_um": scale_bar_um,
                 },

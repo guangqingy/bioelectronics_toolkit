@@ -371,6 +371,30 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertIn("x", preview_payload["axis"])
             self.assertIn("y", preview_payload["axis"])
 
+            volume = self.client.post(
+                "/api/fluorescence/3d/volume",
+                json={
+                    "path": str(source),
+                    "channel_mode": "current",
+                    "max_points": 4000,
+                    "max_xy": 64,
+                    "max_z": 4,
+                    "threshold_percentile": 80,
+                    "interlayer_level": "high",
+                    "density_mode": "low",
+                    "density_radius_um": 3,
+                    "density_min_neighbors": 2,
+                },
+            )
+            volume_payload = volume.get_json()
+            self.assertEqual(volume.status_code, 200)
+            self.assertTrue(volume_payload["ok"])
+            render = volume_payload["volume"]["render"]
+            self.assertGreater(render["n_points"], 0)
+            self.assertEqual(render["interlayer_level"], "high")
+            self.assertEqual(render["interlayer_steps"], 3)
+            self.assertEqual(render["density_filter"]["mode"], "low")
+
             distribution = self.client.post(
                 "/api/fluorescence/3d/intensity_distribution",
                 json={

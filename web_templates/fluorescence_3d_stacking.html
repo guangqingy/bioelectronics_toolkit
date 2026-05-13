@@ -360,8 +360,16 @@
   <div class="param-row">
     <div class="param-label">Detail</div>
     <select id="volumeQuality" style="flex:1">
-      <option value="balanced" selected>Balanced</option>
-      <option value="fast">Fast</option>
+      <option value="middle" selected>Middle</option>
+      <option value="low">Low</option>
+      <option value="high">High</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Layer fill</div>
+    <select id="interlayerLevel" style="flex:1">
+      <option value="middle" selected>Middle</option>
+      <option value="low">Low</option>
       <option value="high">High</option>
     </select>
   </div>
@@ -370,13 +378,22 @@
     <input type="number" id="volumeThreshold" class="input-sm" value="98.8" min="80" max="99.95" step="0.1" style="flex:1;width:auto!important">
   </div>
   <div class="param-row">
-    <div class="param-label">Denoise</div>
-    <select id="volumeDenoise" style="flex:1">
-      <option value="Off" selected>Off</option>
-      <option value="Light">Light</option>
-      <option value="Medium">Medium</option>
-      <option value="Strong">Strong</option>
+    <div class="param-label">Density</div>
+    <select id="volumeDensityMode" style="flex:1">
+      <option value="low" selected>Low</option>
+      <option value="off">Off</option>
+      <option value="middle">Middle</option>
+      <option value="high">High</option>
+      <option value="custom">Custom</option>
     </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Radius µm</div>
+    <input type="number" id="volumeDensityRadius" class="input-sm" value="" min="0" step="0.1" placeholder="auto" style="flex:1;width:auto!important">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Min pts</div>
+    <input type="number" id="volumeDensityMin" class="input-sm" value="" min="1" max="100" step="1" placeholder="auto" style="flex:1;width:auto!important">
   </div>
   <div id="channelRangeControls" class="stack-channel-ranges"></div>
   <label class="checkbox-row" style="margin-top:8px">
@@ -874,21 +891,23 @@ async function loadSlicePreview() {
 }
 
 function volumeQualitySettings(forExport) {
-  const quality = document.getElementById('volumeQuality')?.value || 'balanced';
+  const quality = document.getElementById('volumeQuality')?.value || 'middle';
   const thresholdRaw = parseFloat(document.getElementById('volumeThreshold')?.value || (forExport ? '98.6' : '98.8'));
   const threshold = Math.max(80, Math.min(99.95, Number.isFinite(thresholdRaw) ? thresholdRaw : 98.8));
   const table = {
-    fast: forExport
+    low: forExport
       ? {max_points: 65000, max_xy: 170, max_z: 80}
       : {max_points: 45000, max_xy: 140, max_z: 55},
-    balanced: forExport
+    middle: forExport
       ? {max_points: 110000, max_xy: 220, max_z: 120}
       : {max_points: 70000, max_xy: 180, max_z: 80},
     high: forExport
       ? {max_points: 210000, max_xy: 340, max_z: 180}
       : {max_points: 135000, max_xy: 260, max_z: 140},
   };
-  return {...(table[quality] || table.balanced), threshold_percentile: threshold};
+  const aliases = {fast: 'low', balanced: 'middle'};
+  const key = aliases[quality] || quality;
+  return {...(table[key] || table.middle), threshold_percentile: threshold};
 }
 
 function channelRangesPayload() {
@@ -920,11 +939,19 @@ function hasEnabledChannel() {
 
 function currentVolumePayload(forExport) {
   const scaleBarRaw = parseFloat(document.getElementById('scaleBarUm')?.value || '20');
+  const densityRadiusRaw = document.getElementById('volumeDensityRadius')?.value ?? '';
+  const densityMinRaw = document.getElementById('volumeDensityMin')?.value ?? '';
+  const densityRadius = densityRadiusRaw === '' ? null : parseFloat(densityRadiusRaw);
+  const densityMin = densityMinRaw === '' ? null : parseInt(densityMinRaw, 10);
   return {
     ...currentPreviewPayload(),
     ...volumeQualitySettings(!!forExport),
     channel_mode: document.getElementById('volumeChannelMode')?.value || 'composite',
-    denoise: document.getElementById('volumeDenoise')?.value || 'Off',
+    denoise: 'Off',
+    interlayer_level: document.getElementById('interlayerLevel')?.value || 'middle',
+    density_mode: document.getElementById('volumeDensityMode')?.value || 'off',
+    density_radius_um: Number.isFinite(densityRadius) ? Math.max(0, densityRadius) : null,
+    density_min_neighbors: Number.isFinite(densityMin) ? Math.max(1, Math.min(100, densityMin)) : null,
     channel_ranges: channelRangesPayload(),
     show_scale_bar: document.getElementById('showScaleBar')?.checked !== false,
     scale_bar_um: Number.isFinite(scaleBarRaw) ? Math.max(0, scaleBarRaw) : 0,
@@ -939,7 +966,18 @@ window.dpApplyRunManifest = async manifest => {
     document.getElementById('tiffPath').value = inputPath;
     document.getElementById('folderPath').value = manifest.project_root || dpPathDir(inputPath);
   }
-  if (params.volume_quality) document.getElementById('volumeQuality').value = params.volume_quality;
+  if (params.volume_quality) {
+    const qualityMap = {fast: 'low', balanced: 'middle'};
+    document.getElementById('volumeQuality').value = qualityMap[params.volume_quality] || params.volume_quality;
+  }
+  if (params.interlayer_level) document.getElementById('interlayerLevel').value = params.interlayer_level;
+  if (params.density_mode) document.getElementById('volumeDensityMode').value = params.density_mode;
+  if (params.density_radius_um !== undefined && params.density_radius_um !== null) {
+    document.getElementById('volumeDensityRadius').value = params.density_radius_um;
+  }
+  if (params.density_min_neighbors !== undefined && params.density_min_neighbors !== null) {
+    document.getElementById('volumeDensityMin').value = params.density_min_neighbors;
+  }
   if (params.output_name) document.getElementById('outputName').value = params.output_name;
   if (inputPath && HAS_TIFF) {
     await loadTiffStack();
@@ -1080,9 +1118,12 @@ async function renderVolume3D(volume) {
 
   const dims = volume.dimensions || {};
   const cal = volume.calibration || {};
+  const density = volume.render.density_filter || {};
+  const densityText = density.mode && density.mode !== 'off' ? ` · Density ${density.mode}` : '';
+  const removedText = volume.render.density_removed ? `-${volume.render.density_removed}` : '';
   document.getElementById('volumeTitle').textContent = volume.title || '3D TIFF Stack';
   document.getElementById('volumeMeta').textContent =
-    `${volume.render.n_points || 0} points · Z ${dims.z_sampled || dims.z || 0}/${dims.z || 0} · C ${(dims.channels_rendered || []).length || 1}/${dims.c || 1} · ${formatNumber(cal.pixel_width_um, 4)} um/px · Z ${formatNumber(cal.z_spacing_um, 4)} um`;
+    `${volume.render.n_points || 0} points${removedText} · Z ${dims.z_sampled || dims.z || 0}/${dims.z || 0} · C ${(dims.channels_rendered || []).length || 1}/${dims.c || 1} · Fill ${volume.render.interlayer_level || 'middle'}${densityText} · ${formatNumber(cal.pixel_width_um, 4)} um/px · Z ${formatNumber(cal.z_spacing_um, 4)} um`;
   setVolumeMessage('');
 
   const resize = () => {
@@ -1123,7 +1164,8 @@ async function generateVolume3D() {
     const d = await api('/api/fluorescence/3d/volume', currentVolumePayload(false));
     if (d.error) throw new Error(d.error);
     await renderVolume3D(d.volume);
-    setStatus('status', `3D preview ready: ${d.volume.render.n_points || 0} points`, 'ok');
+    const removed = d.volume.render.density_removed || 0;
+    setStatus('status', `3D preview ready: ${d.volume.render.n_points || 0} points${removed ? `, ${removed} density-filtered` : ''}`, 'ok');
   } catch (e) {
     setVolumeMessage('3D preview error: ' + (e.message || String(e)));
     setStatus('status', '3D preview error: ' + (e.message || String(e)), 'error');
