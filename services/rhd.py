@@ -333,9 +333,38 @@ def load_merged_if_pair(path: Path, rhd_module):
     )
 
 
+def load_merged_recording(path: Path, rhd_module):
+    files = recording_files_for_path(Path(path), True)
+    if len(files) <= 1:
+        t, fs, ch, amp, _ = load_rhd_arrays(Path(path), rhd_module)
+        return t, fs, ch, amp, Path(path).stem, False
+
+    parts = []
+    fs0 = None
+    ch0 = None
+    for p in files:
+        _t, fs, ch, amp, _ = load_rhd_arrays(p, rhd_module)
+        if fs0 is None:
+            fs0 = fs
+            ch0 = ch
+        elif abs(float(fs0) - float(fs)) > 1e-9 or ch0 != ch:
+            raise RuntimeError(
+                "Folder merge found a different channel layout or sample rate. "
+                "Turn off auto merge to process files individually."
+            )
+        parts.append(np.asarray(amp, dtype=float))
+
+    if not parts or fs0 is None or ch0 is None:
+        raise RuntimeError("No RHD files found.")
+
+    amp_all = np.concatenate(parts, axis=1)
+    t_all = np.arange(amp_all.shape[1], dtype=float) / (fs0 if fs0 > 0 else 1.0)
+    return t_all, float(fs0), list(ch0), amp_all, files[0].stem, True
+
+
 def load_with_merge_option(path: Path, rhd_module, do_merge: bool):
     if do_merge:
-        return load_merged_if_pair(path, rhd_module)
+        return load_merged_recording(path, rhd_module)
     t, fs, ch, amp, _ = load_rhd_arrays(path, rhd_module)
     return t, fs, ch, amp, path.stem, False
 

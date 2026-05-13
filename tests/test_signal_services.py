@@ -178,6 +178,8 @@ class _FakeRhdModule:
         data = np.asarray([[1.0, 2.0], [3.0, 4.0]])
         if suffix == "0100":
             data = np.asarray([[5.0, 6.0], [7.0, 8.0]])
+        elif suffix == "0200":
+            data = np.asarray([[9.0, 10.0], [11.0, 12.0]])
         return (
             {
                 "frequency_parameters": {"amplifier_sample_rate": 1000.0},
@@ -212,6 +214,25 @@ class RhdServiceTests(unittest.TestCase):
             np.testing.assert_allclose(t, [0.0, 0.001, 0.002, 0.003])
             self.assertEqual(wide.columns.tolist(), ["time", "A", "B"])
             self.assertEqual(wide["A"].tolist(), [1.0, 2.0, 5.0, 6.0])
+
+    def test_load_with_merge_option_merges_whole_folder_recording(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_folder_service_") as tmp:
+            root = Path(tmp)
+            for suffix in ("0000", "0100", "0200"):
+                (root / f"sample_{suffix}.rhd").write_text("", encoding="utf-8")
+
+            t, fs, names, amp, base_stem, used_merge = rhd.load_with_merge_option(
+                root / "sample_0100.rhd",
+                _FakeRhdModule,
+                True,
+            )
+
+            self.assertTrue(used_merge)
+            self.assertEqual(base_stem, "sample_0000")
+            self.assertAlmostEqual(fs, 1000.0)
+            self.assertEqual(names, ["A", "B"])
+            np.testing.assert_allclose(t, [0.0, 0.001, 0.002, 0.003, 0.004, 0.005])
+            np.testing.assert_allclose(amp[0], [1.0, 2.0, 5.0, 6.0, 9.0, 10.0])
 
     def test_resolve_channel_by_display_and_native_name(self) -> None:
         result, _ = _FakeRhdModule.load_file("sample_0000.rhd")

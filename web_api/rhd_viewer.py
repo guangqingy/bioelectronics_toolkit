@@ -52,6 +52,11 @@ def register_rhd_viewer_routes(app, ctx):
             "role": role,
         }
 
+    def _rhd_recording_key(path: Path, do_merge: bool) -> tuple[str, ...]:
+        if not do_merge:
+            return (str(path),)
+        return tuple(str(p) for p in rhd_service.recording_files_for_path(path, True))
+
     def _rhd_downsample_factor(value, n_points: int) -> int:
         raw = str(value if value is not None else "auto").strip().lower()
         if raw in {"", "auto", "adaptive"}:
@@ -154,16 +159,17 @@ def register_rhd_viewer_routes(app, ctx):
         ok = 0
         warnings = []
         saved_paths = []
-        processed_bases = set()
+        processed_recordings = set()
 
         for raw in paths:
             total += 1
             p = Path(str(raw))
             try:
-                t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(p, do_merge)
-
-                if do_merge and base_stem in processed_bases:
+                recording_key = _rhd_recording_key(p, do_merge)
+                if do_merge and recording_key in processed_recordings:
                     continue
+
+                t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(p, do_merge)
 
                 base_dir = p.parent
                 if wide_csv:
@@ -182,7 +188,7 @@ def register_rhd_viewer_routes(app, ctx):
                     saved_paths.append(str(target_dir))
 
                 if do_merge:
-                    processed_bases.add(base_stem)
+                    processed_recordings.add(recording_key)
                 ok += 1
             except Exception as e:
                 warnings.append(f"{p}: {e}")

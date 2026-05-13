@@ -61,7 +61,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Export Options</div>
   <div class="param-row">
-    <label><input type="checkbox" id="mergePair" checked> Merge split pair (±100 suffix)</label>
+    <label><input type="checkbox" id="mergePair" checked> Merge folder recording</label>
   </div>
   <div class="param-row">
     <label><input type="checkbox" id="wideCsv"> All channels in one file (wide TSV)</label>
@@ -197,7 +197,7 @@ window.dpApplyRunManifest = manifest => {
 };
 
 function baseName(path) {
-  return (path || '').split('/').pop() || path;
+  return (path || '').split(/[\\/]/).pop() || path;
 }
 
 function previewMergeEnabled() {

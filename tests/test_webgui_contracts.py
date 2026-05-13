@@ -187,6 +187,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function reloadCurrentRhdFile()", template)
         self.assertIn("function renderRhdFileList(options)", template)
         self.assertIn("Auto merge folder recording", template)
+        self.assertIn("Merge folder recording", template)
+        self.assertIn("split(/[\\\\/]/)", template)
         self.assertIn("let _fileLoadSeq", template)
         self.assertIn("let _plotSeq", template)
         self.assertIn("merge_pair: previewMergeEnabled()", template)
