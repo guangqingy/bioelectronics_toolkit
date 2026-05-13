@@ -178,6 +178,62 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("v0.3.0", html)
         self.assertNotIn("unknown", html.lower())
 
+    def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "rhd_viewer.html").read_text(encoding="utf-8")
+
+        self.assertIn('id="previewDownsample"', template)
+        self.assertIn('id="previewMergePair"', template)
+        self.assertIn("function reloadCurrentRhdFile()", template)
+        self.assertIn("let _fileLoadSeq", template)
+        self.assertIn("let _plotSeq", template)
+        self.assertIn("merge_pair: previewMergeEnabled()", template)
+        self.assertLess(template.index("View Window"), template.index("Export Options"))
+        self.assertLess(template.index("Export Current"), template.index("Batch Export Queue"))
+
+    def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
+        import numpy as np
+        import web_app
+
+        if not web_app.HAS_RHD:
+            self.skipTest("Intan RHD parser is not available")
+
+        def fake_load_with_merge_option(path, _rhd_module, do_merge):
+            n = 120_000 if do_merge else 60_000
+            t = np.arange(n, dtype=float) / 1000.0
+            amp = np.vstack((np.sin(t), np.cos(t)))
+            return t, 1000.0, ["A-000", "A-001"], amp, "record_0001", bool(do_merge)
+
+        with mock.patch(
+            "web_api.rhd_viewer.rhd_service.load_with_merge_option",
+            side_effect=fake_load_with_merge_option,
+        ):
+            loaded = self.client.post(
+                "/api/rhd/load",
+                json={"path": "/tmp/record_0100.rhd", "merge_pair": True},
+            )
+            loaded_payload = loaded.get_json()
+            loaded_data = loaded_payload.get("data", loaded_payload)
+            self.assertEqual(loaded.status_code, 200)
+            self.assertTrue(loaded_data["merged_pair"])
+            self.assertEqual(loaded_data["n_samples"], 120_000)
+
+            plot = self.client.post(
+                "/api/rhd/plot",
+                json={
+                    "path": "/tmp/record_0100.rhd",
+                    "channel": "A-001",
+                    "merge_pair": True,
+                    "downsample": 10,
+                },
+            )
+            plot_payload = plot.get_json()
+            plot_data = plot_payload.get("data", plot_payload)
+            self.assertEqual(plot.status_code, 200)
+            self.assertTrue(plot_data["img"])
+            self.assertEqual(plot_data["downsample"], 10)
+            self.assertEqual(plot_data["plotted_points"], 12_000)
+
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")
         payload = response.get_json()
