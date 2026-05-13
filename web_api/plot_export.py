@@ -1,19 +1,11 @@
 from __future__ import annotations
 
 from html import escape
-from pathlib import Path
 
 import numpy as np
 
-
-def next_numbered_path(base_path: Path, *, limit: int = 10000) -> Path:
-    """Return base_path with a _N suffix, starting at _1."""
-    base_path = Path(base_path)
-    for idx in range(1, limit):
-        candidate = base_path.with_name(f"{base_path.stem}_{idx}{base_path.suffix}")
-        if not candidate.exists():
-            return candidate
-    raise RuntimeError(f"Could not find available export name for {base_path.name}")
+from services.output_manifest import svg_with_metadata
+from services.output_naming import next_numbered_path as next_numbered_path
 
 
 def svg_num(value: float) -> str:
@@ -41,6 +33,7 @@ def clean_trace_svg(
     line_color: str = "#3E6AE1",
     line_width: float = 1.2,
     max_points: int = 50000,
+    metadata: dict | None = None,
 ) -> bytes:
     """Build an ungrouped trace SVG with only axes, ticks, numbers, and data."""
     x = np.asarray(x, dtype=float)
@@ -137,4 +130,5 @@ def clean_trace_svg(
     if points:
         parts.append(f'<polyline points="{points}" {line_style}/>')
     parts.append("</svg>")
-    return "\n".join(parts).encode("utf-8")
+    payload = "\n".join(parts).encode("utf-8")
+    return svg_with_metadata(payload, metadata) if metadata else payload

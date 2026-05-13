@@ -9,8 +9,9 @@ import time
 import traceback
 from pathlib import Path
 
-from flask import request
+from pydantic import ValidationError
 
+from .request_validation import RequestModel, parse_json_payload, validation_error_response
 from .response import api_ok
 
 _PICKER_LOCK = threading.Lock()
@@ -18,6 +19,10 @@ _PICKER_LOCK = threading.Lock()
 
 class PickerUnavailableError(RuntimeError):
     """Raised when a native file picker cannot be opened."""
+
+
+class PickerRequest(RequestModel):
+    start: str = ""
 
 
 def _applescript_string(value) -> str:
@@ -228,10 +233,12 @@ def register_system_routes(app, ctx) -> None:
     @app.route("/api/system/select_folder", methods=["POST"])
     def api_system_select_folder():
         try:
-            d = request.json or {}
-            default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
+            payload = parse_json_payload(PickerRequest)
+            default_dir = _default_picker_dir(base_dir, payload.start.strip())
             path = _choose_folder(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except PickerUnavailableError as exc:
             return err(str(exc))
         except Exception:
@@ -240,10 +247,12 @@ def register_system_routes(app, ctx) -> None:
     @app.route("/api/system/select_file", methods=["POST"])
     def api_system_select_file():
         try:
-            d = request.json or {}
-            default_dir = _default_picker_dir(base_dir, str(d.get("start", "") or "").strip())
+            payload = parse_json_payload(PickerRequest)
+            default_dir = _default_picker_dir(base_dir, payload.start.strip())
             path = _choose_file(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except PickerUnavailableError as exc:
             return err(str(exc))
         except Exception:

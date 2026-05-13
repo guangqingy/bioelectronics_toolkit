@@ -16,6 +16,7 @@
 - [ ] `python -m py_compile` passes for all touched files
 - [ ] `python -m unittest discover -s tests` passes locally
 - [ ] `ruff check .` passes
+- [ ] Service coverage did not drop, or the drop is explained below
 - [ ] CHANGELOG.md updated under `[Unreleased]`
 - [ ] README / pipeline docs updated if behavior changed
 

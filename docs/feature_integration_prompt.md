@@ -97,6 +97,8 @@ rules:
    - python -m ruff check web_api --select F --ignore E402
    - python -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
    - python -m unittest discover -s tests -v
+   - coverage run --source=services -m unittest discover -s tests && coverage report
+   - python dev_scripts/check_services_ratio.py --warn-only
    - python dev_scripts/check_analysis_scripts.py when pipeline/script safety is touched
 
 10. Final response should say exactly what changed, what was validated, and any
@@ -119,3 +121,60 @@ meant to protect the current architecture from drifting back toward:
 When a future change is small, apply the spirit of the prompt without creating
 extra abstractions. When a future change touches a shared route, service,
 launcher, cache contract, or pipeline registry entry, apply the full checklist.
+
+## Page Density Budget
+
+Any single WebGUI page must not exceed **20 visible controls** in the default
+state. Count parameters and buttons; do not count controls hidden inside closed
+`<details>` sections or mode-specific groups that are currently hidden.
+
+When a page approaches the limit, use this order:
+
+1. Mode-specific groups: show only the controls relevant to the selected mode.
+2. Collapsible advanced sections.
+3. Split the workflow into a separate page when the budget is still exceeded by
+   more than 50%.
+
+Adding analysis to a page already at 18 or more visible controls requires a UX
+review note in the PR description explaining which option was chosen and why.
+
+## Save vs Export Naming
+
+- **Save** means persisting program state, settings, profiles, or context.
+- **Export** means writing a user artifact to disk, such as CSV, PNG, SVG, GIF,
+  TIFF, JSON, or ZIP.
+
+Never mix the two verbs for the same operation type.
+
+## Button Hierarchy
+
+- One primary button per page: the main Run, Detect, Generate, Analyze, or
+  Preview action. Use `.btn-primary`.
+- Secondary actions such as Browse, Add to Queue, and Reset use
+  `.btn-secondary`.
+- Destructive actions such as Clear, Remove, and Delete Profile use
+  `.btn-danger` plus a confirmation dialog.
+- Icon-only quick actions use `.btn-icon` with an accessible label or tooltip.
+
+If a page has multiple run-type buttons, make them mode-specific so only the
+relevant primary action is visible.
+
+## Empty States
+
+Every page that requires file selection, parameter entry, or a loaded dataset
+must render a useful empty state before data is loaded:
+
+1. A short prompt explaining what to do next.
+2. A link or pointer to a relevant `examples/` path when examples exist.
+3. Optionally, a static screenshot of the loaded state.
+
+Do not render a blank main content area.
+
+## Long-Running Operations
+
+Any operation expected to run longer than three seconds must:
+
+1. Show progress through `.status-progress`.
+2. Disable the trigger button while running with `btnBusy(...)`.
+3. Provide a Cancel button through the jobs API.
+4. Display estimated time remaining when the operation can estimate it.

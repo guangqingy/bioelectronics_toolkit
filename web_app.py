@@ -29,6 +29,7 @@ from flask import Flask, request, send_from_directory
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
 
+from web_api.api_docs import register_api_docs_routes
 from web_api.abf_batch import register_abf_batch_routes
 from web_api.abf_viewer import register_abf_viewer_routes
 from web_api.context import WebApiContext
@@ -50,6 +51,7 @@ from web_api.rhd_viewer import register_rhd_viewer_routes
 from web_api.run_history import register_run_history_routes
 from web_api.scripts_panel import register_scripts_panel_routes
 from web_api.system import register_system_routes
+from web_api.telemetry import register_telemetry_routes
 
 app = Flask(
     __name__,
@@ -99,6 +101,7 @@ def _git_commit() -> str:
 APP_VERSION = _project_version()
 APP_COMMIT = _git_commit()
 APP_VERSION_LABEL = f"v{APP_VERSION}" + (f" · {APP_COMMIT}" if APP_COMMIT else "")
+app.config["APP_VERSION"] = APP_VERSION
 
 
 @app.context_processor
@@ -282,7 +285,7 @@ def apply_axes_limits(ax, xmin, xmax, ymin, ymax):
         )
 
 
-_job_manager = JobManager()
+_job_manager = JobManager(persistence_path=BASE_DIR / ".dataprocess_cache" / "jobs.sqlite")
 _web_api_ctx = WebApiContext(
     err=err,
     browse_files=browse_files,
@@ -337,6 +340,8 @@ register_file_profile_routes(app, _web_api_ctx)
 register_run_history_routes(app, _web_api_ctx)
 register_system_routes(app, _web_api_ctx)
 register_job_routes(app, _web_api_ctx)
+register_api_docs_routes(app, _web_api_ctx)
+register_telemetry_routes(app, _web_api_ctx)
 
 
 PORT = 7433

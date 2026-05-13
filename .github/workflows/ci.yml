@@ -45,6 +45,22 @@ jobs:
       - name: unittest discover
         run: python -m unittest discover -s tests -v
 
+      - name: service coverage report
+        run: |
+          coverage run --source=services -m unittest discover -s tests
+          coverage report --show-missing
+          coverage xml -o coverage-services.xml
+
+      - name: upload service coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: service-coverage-py${{ matrix.python-version }}
+          path: coverage-services.xml
+          if-no-files-found: error
+
+      - name: web_api/services ratio report
+        run: python dev_scripts/check_services_ratio.py --warn-only
+
   lint:
     name: ruff lint
     runs-on: ubuntu-latest

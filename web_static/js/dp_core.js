@@ -81,6 +81,20 @@ function dismissErrorBanner() {
   if (banner) banner.hidden = true;
 }
 
+function dpRecordTelemetry(event, detail) {
+  const payload = {
+    event,
+    view: CURRENT_VIEW || 'unknown',
+    ...(detail || {}),
+  };
+  fetch('/api/telemetry/event', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 function openShortcutModal() {
   const modal = document.getElementById('shortcutModal');
   if (!modal) return;
@@ -713,6 +727,37 @@ function dpInstallGlobalKeyboardShortcuts() {
     }
   });
 }
+
+window.DP = window.DP || {};
+window.DP.api = window.DP.api || {};
+window.DP.dom = window.DP.dom || {};
+window.DP.palette = window.DP.palette || {};
+window.DP.keyboard = window.DP.keyboard || {};
+window.DP.params = window.DP.params || {};
+window.DP.telemetry = window.DP.telemetry || {};
+
+Object.assign(window.DP.api, {request: api});
+Object.assign(window.DP.dom, {
+  escHtml,
+  setStatus,
+  toast,
+  showErrorBanner,
+  dismissErrorBanner,
+  btnBusy,
+});
+Object.assign(window.DP.palette, {
+  open: openCommandPalette,
+  close: closeCommandPalette,
+  render: renderCommandPalette,
+});
+Object.assign(window.DP.keyboard, {installGlobalShortcuts: dpInstallGlobalKeyboardShortcuts});
+Object.assign(window.DP.params, {
+  applyGroups: dpApplyParamGroups,
+  bindGroups: dpBindParamGroups,
+  applyToggleGroups: dpApplyToggleGroups,
+  bindToggleGroups: dpBindToggleGroups,
+});
+Object.assign(window.DP.telemetry, {record: dpRecordTelemetry});
 
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();

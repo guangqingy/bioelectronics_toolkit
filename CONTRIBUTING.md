@@ -41,6 +41,8 @@ ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --
 ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
+coverage run --source=services -m unittest discover -s tests && coverage report
+python3 dev_scripts/check_services_ratio.py --warn-only
 ```
 
 CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`
@@ -108,6 +110,12 @@ Follow the contract documented in [`WEB_README.md`](./WEB_README.md):
   response.
 - Prefer small route modules over growing `web_app.py` or a single monolithic
   domain file.
+- Single-file LOC budgets after refactor:
+  - `services/<domain>.py` or `services/<domain>/<area>.py`: target <= 600 LOC
+  - `web_api/<domain>_routes.py`: target <= 200 LOC
+  - JavaScript module: target <= 400 LOC
+- Files exceeding these budgets need a top-of-file comment explaining why
+  splitting would be worse than keeping the behavior together.
 
 ## Reporting bugs
 

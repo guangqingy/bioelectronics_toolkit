@@ -15,6 +15,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   STFT, fitting, and figure output styling.
 - Dense analysis controls now use mode-specific parameter groups so unrelated
   settings stay hidden until the matching function is selected.
+- Architecture guardrails now cover page density, button naming, long-operation
+  UX, route/service LOC budgets, design tokens, and service-ratio CI reporting.
+- Request validation has started moving to Pydantic schemas, `/docs` exposes a
+  lightweight OpenAPI view, and traceback responses are redacted outside debug
+  mode with correlation IDs.
+- Background job state is persisted to `.dataprocess_cache/jobs.sqlite`, and
+  trace export naming now goes through a shared service helper.
+
+### Added
+- Opt-in anonymous local telemetry counters, disabled by default, for page opens
+  and export clicks without paths, filenames, parameters, or data contents.
+- Service coverage reporting in CI and monthly metrics-log documentation.
 
 ## [0.4.0] - 2026-05-13
 

@@ -14,6 +14,25 @@ Open `http://127.0.0.1:7433` in a browser after the server starts.
 Set `DATAPROCESS_WEB_NO_BROWSER=1` when another launcher should control which
 tool page is opened.
 
+## Threat Model
+
+This WebGUI is designed for **single-user local use** only.
+
+### Assumptions
+
+- The server binds to 127.0.0.1 by default, and the host browser is trusted.
+- The server process can read and write any file available to the running user.
+- One person uses one server instance at a time.
+
+### Non-assumptions
+
+- Do not bind to 0.0.0.0; there is no authentication layer.
+- Do not expose this app through a reverse proxy without adding authentication.
+- Do not run as root or use this as a multi-tenant service.
+
+Hosted demos require additional hardening: authentication, sandboxed file
+access, request rate limiting, CORS review, and export-path restrictions.
+
 ## Layout
 
 ```text
@@ -107,7 +126,29 @@ The in-memory job manager exposes:
 
 Job records include `status`, `progress`, `message`, `data`, `outputs`,
 `warnings`, and `error`. The Settings modal uses `dp_jobs.js` to show recent
-jobs and cancellation controls.
+jobs and cancellation controls. Job state is also persisted to
+`.dataprocess_cache/jobs.sqlite`; jobs that were running during a server
+restart are restored as `interrupted` so users can see what happened.
+
+## API Docs
+
+The app exposes a lightweight OpenAPI document at `/api/openapi.json` and a
+Swagger UI page at `/docs`. New request schemas should use Pydantic models so
+the API surface can keep moving toward explicit validation instead of ad hoc
+`request.json` parsing.
+
+## Telemetry
+
+Usage telemetry is opt-in and disabled by default. When enabled in GUI Settings,
+the app records anonymous aggregate counters under
+`.dataprocess_cache/telemetry.json`:
+
+- WebGUI version and local event category.
+- Page-open counts by view.
+- Export-click counts by view and button label.
+
+Telemetry must never include paths, filenames, raw parameter values, traces, or
+data contents.
 
 ## Local State
 
@@ -119,6 +160,9 @@ be reused from any browser on the same machine.
 - `.dataprocess_cache/file_profiles.json`: per-project, per-file UI settings.
 - `.dataprocess_cache/runs/*.json`: durable run records for generated
   outputs and later packaging/reporting.
+- `.dataprocess_cache/exports/<view>/`: canonical output area for new
+  service-backed exports.
+- `.dataprocess_cache/jobs.sqlite`: local background job state.
 
 Do not commit real data, local cache files, or machine-specific paths.
 
@@ -148,6 +192,8 @@ def register_example_routes(app, ctx):
 Guidelines:
 
 - Keep route registration in `web_app.py`.
+- Keep `web_api/pages.py` limited to Jinja-rendered HTML page routes. JSON API
+  routes belong in their domain modules.
 - Keep page routes in `web_api/pages.py` and local system routes in
   `web_api/system.py`; `web_app.py` should remain the composition root.
 - Use shared helpers from `ctx`, such as `err`, `fig_to_b64`, `float_or`,
@@ -176,6 +222,8 @@ python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/l
 python3 -m ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
+coverage run --source=services -m unittest discover -s tests && coverage report
+python3 dev_scripts/check_services_ratio.py --warn-only
 ```
 
 The test suite uses Flask's test client, so it does not require launching a

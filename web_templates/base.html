@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* Auto-fill path inputs with the default data dir */
   await applyInitialPathDefaults();
   await dpConsumePendingRunManifest();
+  if (typeof dpRecordTelemetry === 'function') dpRecordTelemetry('page_open');
 
   /* Hide ctrl-panel if it has no content (full-width pages) */
   const ctrl = document.getElementById('ctrlPanel');
@@ -114,6 +115,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (ctrl && main && (!ctrl.innerHTML || !ctrl.innerHTML.trim())) {
     ctrl.style.cssText = 'width:0;padding:0;border:none;overflow:hidden';
   }
+});
+
+document.addEventListener('click', (event) => {
+  const target = event.target && event.target.closest ? event.target.closest('button, a') : null;
+  if (!target || typeof dpRecordTelemetry !== 'function') return;
+  const label = (target.textContent || target.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+  if (/^Export\b/i.test(label)) dpRecordTelemetry('export_click', {label});
 });
 
 </script>

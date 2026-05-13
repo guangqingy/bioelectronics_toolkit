@@ -1,3 +1,12 @@
+"""Page-render routes only.
+
+Every endpoint here returns a Jinja-rendered HTML response. JSON API endpoints
+live in their domain-specific modules, such as ``abf_viewer.py`` for
+``/api/abf/*``.
+
+If a route in this file starts returning JSON, move it to the domain module.
+"""
+
 from __future__ import annotations
 
 from flask import render_template, request

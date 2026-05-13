@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import logging
+import uuid
 from pathlib import Path
 from typing import Any
 
-from flask import jsonify, request
+from flask import current_app, has_app_context, jsonify, request
 
 
 ENVELOPE_KEYS = {"ok", "data", "outputs", "warnings", "error"}
@@ -77,6 +79,8 @@ OUTPUT_TYPE_BY_SUFFIX = {
     ".npz": "numpy_archive",
     ".pt": "model",
 }
+
+LOG = logging.getLogger(__name__)
 
 
 def _as_list(value: Any) -> list[Any]:
@@ -249,9 +253,33 @@ def api_ok(data: dict[str, Any] | None = None, *, outputs: list[Any] | None = No
     return jsonify(make_envelope(payload, ok=True))
 
 
+def _debug_errors_enabled() -> bool:
+    if not has_app_context():
+        return False
+    return bool(current_app.config.get("DEBUG"))
+
+
+def _looks_like_traceback(message: Any) -> bool:
+    text = str(message or "")
+    return "Traceback (most recent call last)" in text or "\n  File " in text
+
+
+def _public_error(message: Any, code: int) -> tuple[Any, int, str | None]:
+    if not _looks_like_traceback(message):
+        return message, code, None
+    correlation_id = uuid.uuid4().hex[:8]
+    LOG.error("[%s] %s", correlation_id, message)
+    if _debug_errors_enabled():
+        return message, max(500, code), correlation_id
+    return "Internal error", max(500, code), correlation_id
+
+
 def api_error(message: Any, code: int = 400, *, data: dict[str, Any] | None = None, warnings: list[str] | None = None):
+    message, code, correlation_id = _public_error(message, code)
     payload = dict(data or {})
     payload["error"] = str(message)
+    if correlation_id:
+        payload["id"] = correlation_id
     if warnings is not None:
         payload["warnings"] = warnings
     return jsonify(make_envelope(payload, ok=False, error=message)), code

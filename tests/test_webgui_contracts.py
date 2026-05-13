@@ -6,9 +6,11 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from flask import Flask
+
 from web_api import system as system_api
 from web_api.jobs import JobManager
-from web_api.response import make_envelope
+from web_api.response import api_error, make_envelope
 
 
 class ApiEnvelopeTests(unittest.TestCase):
@@ -67,6 +69,18 @@ class ApiEnvelopeTests(unittest.TestCase):
             [{"path": "/tmp/result.csv", "type": "csv", "role": "full_csv"}],
         )
 
+    def test_traceback_errors_are_redacted_outside_debug(self) -> None:
+        app = Flask(__name__)
+        app.config["DEBUG"] = False
+
+        with app.app_context():
+            response, code = api_error("Traceback (most recent call last):\n  File x.py", 400)
+
+        payload = response.get_json()
+        self.assertEqual(code, 500)
+        self.assertEqual(payload["error"], "Internal error")
+        self.assertRegex(payload["id"], r"^[0-9a-f]{8}$")
+
 
 class JobManagerContractTests(unittest.TestCase):
     def test_job_record_gets_inferred_outputs(self) -> None:
@@ -93,6 +107,24 @@ class JobManagerContractTests(unittest.TestCase):
             {item["path"] for item in job["outputs"]},
             {"/tmp/source_selected_stacks.tif", "/tmp/source_stack1_blue.tif"},
         )
+
+    def test_job_records_persist_to_sqlite(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dp_jobs_") as tmp:
+            db_path = Path(tmp) / "jobs.sqlite"
+            manager = JobManager(persistence_path=db_path)
+
+            submitted = manager.submit(
+                "test",
+                "Persisted job",
+                lambda _ctx: {"ok": True, "message": "done"},
+            )
+            job = self._wait_for_job(manager, submitted["job_id"])
+            self.assertEqual(job["status"], "succeeded")
+
+            restored = JobManager(persistence_path=db_path)
+            restored_job = restored.get(submitted["job_id"])
+            self.assertIsNotNone(restored_job)
+            self.assertEqual(restored_job["status"], "succeeded")
 
     @staticmethod
     def _wait_for_job(manager: JobManager, job_id: str) -> dict:
@@ -740,6 +772,34 @@ class WebAppSmokeTests(unittest.TestCase):
             job = self._wait_for_api_job(started_payload["job_id"])
             self.assertEqual(job["status"], "succeeded")
             self.assertTrue(Path(job["data"]["package_path"]).exists())
+
+    def test_openapi_json_is_available(self) -> None:
+        response = self.client.get("/api/openapi.json")
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["openapi"], "3.1.0")
+        self.assertIn("PickerRequest", payload["components"]["schemas"])
+
+    def test_schema_validation_returns_422(self) -> None:
+        response = self.client.post("/api/jobs/list", json={"limit": 9999})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"], "Invalid request payload")
+
+    def test_telemetry_is_disabled_by_default(self) -> None:
+        with mock.patch("web_api.telemetry._telemetry_enabled", return_value=False):
+            response = self.client.post(
+                "/api/telemetry/event",
+                json={"event": "page_open", "view": "index"},
+            )
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(payload["data"]["enabled"])
+        self.assertFalse(payload["data"]["recorded"])
 
     def _wait_for_api_job(self, job_id: str) -> dict:
         for _ in range(80):

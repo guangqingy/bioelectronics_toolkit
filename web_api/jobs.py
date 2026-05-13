@@ -1,14 +1,21 @@
 from __future__ import annotations
 
+import json
+import logging
+import sqlite3
 import threading
 import traceback
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Callable
 
-from flask import request
+from pydantic import Field, ValidationError
 
+from .request_validation import RequestModel, parse_json_payload, validation_error_response
 from .response import api_error, api_ok, infer_outputs
+
+LOG = logging.getLogger(__name__)
 
 
 def _now_iso() -> str:
@@ -35,11 +42,99 @@ class JobContext:
             raise JobCancelled("Job cancelled")
 
 
+class JobListRequest(RequestModel):
+    limit: int = Field(default=50, ge=1, le=200)
+    include_finished: bool = True
+
+
+class JobIdRequest(RequestModel):
+    job_id: str = Field(min_length=1)
+
+
 class JobManager:
-    def __init__(self, max_jobs: int = 200):
+    def __init__(self, max_jobs: int = 200, persistence_path: Path | str | None = None):
         self.max_jobs = max(20, int(max_jobs))
+        self.persistence_path = Path(persistence_path) if persistence_path else None
         self._lock = threading.Lock()
         self._jobs: dict[str, dict[str, Any]] = {}
+        if self.persistence_path:
+            self._init_storage()
+            self._load_persisted_jobs()
+
+    def _connect(self) -> sqlite3.Connection:
+        if not self.persistence_path:
+            raise RuntimeError("Job persistence is not configured")
+        self.persistence_path.parent.mkdir(parents=True, exist_ok=True)
+        return sqlite3.connect(str(self.persistence_path), timeout=10)
+
+    def _init_storage(self) -> None:
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS jobs (
+                        job_id TEXT PRIMARY KEY,
+                        updated_at TEXT NOT NULL,
+                        payload TEXT NOT NULL
+                    )
+                    """
+                )
+        except Exception:
+            LOG.warning("Could not initialize job persistence at %s", self.persistence_path, exc_info=True)
+
+    def _load_persisted_jobs(self) -> None:
+        try:
+            with self._connect() as conn:
+                rows = conn.execute("SELECT payload FROM jobs ORDER BY updated_at DESC").fetchall()
+        except Exception:
+            LOG.warning("Could not load persisted jobs from %s", self.persistence_path, exc_info=True)
+            return
+
+        restored: dict[str, dict[str, Any]] = {}
+        for (payload,) in rows:
+            try:
+                job = json.loads(payload)
+            except Exception:
+                continue
+            if not isinstance(job, dict) or not job.get("job_id"):
+                continue
+            if job.get("status") in {"pending", "running"}:
+                job = dict(job)
+                job["status"] = "interrupted"
+                job["finished_at"] = job.get("finished_at") or _now_iso()
+                job["message"] = "Server restarted before this job completed"
+                job["error"] = job.get("error") or "Server restarted before job completed"
+            restored[str(job["job_id"])] = job
+            if len(restored) >= self.max_jobs:
+                break
+        with self._lock:
+            self._jobs.update(restored)
+            self._trim_locked()
+
+    def _persist_job_locked(self, job: dict[str, Any]) -> None:
+        if not self.persistence_path:
+            return
+        try:
+            with self._connect() as conn:
+                conn.execute(
+                    "REPLACE INTO jobs (job_id, updated_at, payload) VALUES (?, ?, ?)",
+                    (
+                        job["job_id"],
+                        _now_iso(),
+                        json.dumps(job, ensure_ascii=False, sort_keys=True),
+                    ),
+                )
+        except Exception:
+            LOG.warning("Could not persist job %s", job.get("job_id"), exc_info=True)
+
+    def _delete_job_locked(self, job_id: str) -> None:
+        if not self.persistence_path:
+            return
+        try:
+            with self._connect() as conn:
+                conn.execute("DELETE FROM jobs WHERE job_id = ?", (job_id,))
+        except Exception:
+            LOG.warning("Could not delete persisted job %s", job_id, exc_info=True)
 
     def submit(
         self,
@@ -70,6 +165,7 @@ class JobManager:
         }
         with self._lock:
             self._jobs[job_id] = record
+            self._persist_job_locked(record)
             self._trim_locked()
         thread = threading.Thread(target=self._run, args=(job_id, target, args, kwargs), daemon=True)
         thread.start()
@@ -119,6 +215,7 @@ class JobManager:
         ordered = sorted(self._jobs.values(), key=lambda j: j.get("created_at", ""))
         for job in ordered[: max(0, len(self._jobs) - self.max_jobs)]:
             self._jobs.pop(job["job_id"], None)
+            self._delete_job_locked(job["job_id"])
 
     def update(self, job_id: str, **fields) -> None:
         with self._lock:
@@ -126,6 +223,7 @@ class JobManager:
             if not job:
                 return
             job.update(fields)
+            self._persist_job_locked(job)
 
     def add_warning(self, job_id: str, warning: Any) -> None:
         with self._lock:
@@ -133,6 +231,7 @@ class JobManager:
             if not job:
                 return
             job.setdefault("warnings", []).append(str(warning))
+            self._persist_job_locked(job)
 
     def request_cancel(self, job_id: str) -> bool:
         with self._lock:
@@ -143,6 +242,7 @@ class JobManager:
             if job.get("status") == "pending":
                 job["status"] = "cancelled"
                 job["finished_at"] = _now_iso()
+            self._persist_job_locked(job)
             return True
 
     def cancel_requested(self, job_id: str) -> bool:
@@ -169,6 +269,7 @@ class JobManager:
                 if keep_running and job.get("status") in {"pending", "running"}:
                     continue
                 self._jobs.pop(job_id, None)
+                self._delete_job_locked(job_id)
                 removed += 1
         return removed
 
@@ -250,15 +351,19 @@ def register_job_routes(app, ctx) -> None:
 
     @app.route("/api/jobs/list", methods=["POST"])
     def api_jobs_list():
-        body = request.json or {}
-        limit = int(body.get("limit") or 50) if isinstance(body, dict) else 50
-        include_finished = bool(body.get("include_finished", True)) if isinstance(body, dict) else True
-        return api_ok({"jobs": jobs.list(limit=limit, include_finished=include_finished)})
+        try:
+            payload = parse_json_payload(JobListRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        return api_ok({"jobs": jobs.list(limit=payload.limit, include_finished=payload.include_finished)})
 
     @app.route("/api/jobs/get", methods=["POST"])
     def api_jobs_get():
-        body = request.json or {}
-        job_id = str((body or {}).get("job_id") or "").strip()
+        try:
+            payload = parse_json_payload(JobIdRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        job_id = payload.job_id.strip()
         job = jobs.get(job_id)
         if not job:
             return api_error(f"Unknown job: {job_id}", 404)
@@ -266,8 +371,11 @@ def register_job_routes(app, ctx) -> None:
 
     @app.route("/api/jobs/cancel", methods=["POST"])
     def api_jobs_cancel():
-        body = request.json or {}
-        job_id = str((body or {}).get("job_id") or "").strip()
+        try:
+            payload = parse_json_payload(JobIdRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        job_id = payload.job_id.strip()
         if not jobs.request_cancel(job_id):
             return api_error(f"Unknown job: {job_id}", 404)
         return api_ok({"job": jobs.get(job_id)})

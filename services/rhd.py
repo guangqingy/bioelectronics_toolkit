@@ -1,3 +1,10 @@
+"""Project-specific channel grouping, merge, and signal helpers for Intan RHD data.
+
+All RHD parsing in this codebase should go through this module, never directly
+through ``vendor.intan.importrhdutilities``. The vendor module is kept as the
+Intan reference implementation and must not be modified for project behavior.
+"""
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -171,14 +171,17 @@ function renderPrefsGlobalFields() {
   const global = _prefsCache.global || {};
   const folder = document.getElementById('prefsGlobalDefaultFolder');
   const useEmpty = document.getElementById('prefsUseDefaultOnEmpty');
+  const telemetry = document.getElementById('prefsTelemetryEnabled');
   if (folder) folder.value = global.default_folder || '';
   if (useEmpty) useEmpty.checked = global.use_default_folder_for_empty_paths !== false;
+  if (telemetry) telemetry.checked = global.telemetry_enabled === true;
 }
 
 function collectPrefsGlobalFields() {
   _prefsCache.global = _prefsCache.global && typeof _prefsCache.global === 'object' ? _prefsCache.global : {};
   _prefsCache.global.default_folder = (document.getElementById('prefsGlobalDefaultFolder')?.value || '').trim();
   _prefsCache.global.use_default_folder_for_empty_paths = !!document.getElementById('prefsUseDefaultOnEmpty')?.checked;
+  _prefsCache.global.telemetry_enabled = document.getElementById('prefsTelemetryEnabled')?.checked === true;
   _prefsCache.global.updated_at = new Date().toISOString();
 }
 
