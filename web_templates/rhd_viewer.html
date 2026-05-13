@@ -53,8 +53,8 @@
     </select>
   </div>
   <label class="checkbox-row">
-    <input type="checkbox" id="previewMergePair" checked onchange="reloadCurrentRhdFile()">
-    <span>Merge split pair preview (±100 suffix)</span>
+    <input type="checkbox" id="previewMergePair" checked onchange="onPreviewMergeChanged()">
+    <span>Auto merge folder recording</span>
   </label>
 </div>
 
@@ -235,32 +235,56 @@ function scanFolder() {
   api('/api/rhd/browse', { folder })
     .then(data => {
       if (data.error) throw new Error(data.error);
-      const list = document.getElementById('rhdList');
       const filePaths = (data.files || []).map((f) => typeof f === 'string' ? f : (f.path || ''));
       _rhdFiles = filePaths.slice();
-      list.innerHTML = '';
-
-      filePaths.forEach(path => {
-        const item = document.createElement('div');
-        item.className = 'file-item';
-        item.textContent = baseName(path);
-        item.onclick = () => selectFile(item, path);
-        list.appendChild(item);
-      });
-
-      if (filePaths.length > 0) {
-        selectFile(list.children[0], filePaths[0]);
-      } else {
-        _currentFile = null;
-        _currentChannel = null;
-        document.getElementById('channelList').innerHTML = '';
-        setPlot('plotArea', null);
-        _metadata = {};
-        updateInfoCard();
-        setStatus('status', 'Ready', 'ok');
-      }
+      renderRhdFileList({preserveChannel: false, loadProfile: true});
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
+function renderRhdFileList(options) {
+  const opts = options || {};
+  const list = document.getElementById('rhdList');
+  list.innerHTML = '';
+
+  if (!_rhdFiles.length) {
+    _currentFile = null;
+    _currentChannel = null;
+    document.getElementById('channelList').innerHTML = '';
+    setPlot('plotArea', null);
+    _metadata = {};
+    updateInfoCard();
+    setStatus('status', 'Ready', 'ok');
+    return;
+  }
+
+  if (previewMergeEnabled()) {
+    const item = document.createElement('div');
+    const folder = document.getElementById('folderPath').value.trim();
+    item.className = 'file-item';
+    item.textContent = (baseName(folder) || 'Folder') + ' recording (' + _rhdFiles.length + ' files)';
+    item.title = _rhdFiles.join('\n');
+    item.onclick = () => selectFile(item, _rhdFiles[0], {
+      preserveChannel: true,
+      loadProfile: false,
+    });
+    list.appendChild(item);
+    selectFile(item, _rhdFiles[0], opts);
+    return;
+  }
+
+  _rhdFiles.forEach(path => {
+    const item = document.createElement('div');
+    item.className = 'file-item';
+    item.textContent = baseName(path);
+    item.title = path;
+    item.onclick = () => selectFile(item, path);
+    list.appendChild(item);
+  });
+
+  const selectedPath = (_currentFile && _rhdFiles.includes(_currentFile)) ? _currentFile : _rhdFiles[0];
+  const selectedItem = [...list.children].find(item => item.title === selectedPath) || list.children[0];
+  selectFile(selectedItem, selectedPath, opts);
 }
 
 function queueRender() {
@@ -420,8 +444,16 @@ function exportQueue() {
 
 function reloadCurrentRhdFile() {
   if (!_currentFile) return;
+  if (_rhdFiles.length) {
+    renderRhdFileList({preserveChannel: true, loadProfile: false});
+    return;
+  }
   const active = document.querySelector('#rhdList .file-item.active');
   selectFile(active, _currentFile, {preserveChannel: true, loadProfile: false});
+}
+
+function onPreviewMergeChanged() {
+  reloadCurrentRhdFile();
 }
 
 async function selectFile(el, path, options) {
@@ -450,7 +482,7 @@ async function selectFile(el, path, options) {
       if (_activeProfileLoadSeq === requestSeq) _activeProfileLoadSeq = 0;
       if (requestSeq !== _fileLoadSeq || path !== _currentFile) return;
       if (previewMergeEnabled() !== mergeAtLoad) {
-        selectFile(el || document.querySelector('#rhdList .file-item.active'), path, {
+        renderRhdFileList({
           preserveChannel: true,
           loadProfile: false,
         });
@@ -503,6 +535,7 @@ function updateInfoCard() {
   const nCh = _metadata.channels ? _metadata.channels.length : 0;
   const nAmp = _metadata.num_amplifiers || nCh;
   const merged = _metadata.merged_pair ? 'Yes' : 'No';
+  const segments = _metadata.segment_count || (_metadata.source_paths ? _metadata.source_paths.length : 1);
 
   card.innerHTML = '<div style="padding:8px; display:grid; gap:6px;">' +
     '<div><strong>Sampling Rate:</strong> ' + (sr || 'N/A') + ' Hz</div>' +
@@ -510,6 +543,7 @@ function updateInfoCard() {
     '<div><strong>Channels:</strong> ' + nCh + '</div>' +
     '<div><strong>Amplifier Channels:</strong> ' + nAmp + '</div>' +
     '<div><strong>Merged Preview:</strong> ' + merged + '</div>' +
+    '<div><strong>Segments:</strong> ' + segments + '</div>' +
     '</div>';
 }
 

@@ -35,6 +35,12 @@ def register_rhd_viewer_routes(app, ctx):
     def _load_rhd_with_merge_option(path, do_merge):
         return rhd_service.load_with_merge_option(path, rhd, do_merge)
 
+    def _load_rhd_metadata_with_merge_option(path, do_merge):
+        return rhd_service.recording_metadata_with_merge_option(path, rhd, do_merge)
+
+    def _load_rhd_channel_with_merge_option(path, channel, do_merge):
+        return rhd_service.load_channel_with_merge_option(path, rhd, channel, do_merge)
+
     def _df_all_channels_wide(time_s, ch_names, amp):
         return rhd_service.all_channels_wide_frame(time_s, ch_names, amp)
 
@@ -60,13 +66,6 @@ def register_rhd_viewer_routes(app, ctx):
             mask = t <= x_max
             t, y = t[mask], y[mask]
         return t, y
-
-    def _rhd_channel_index_from_names(ch_names: list[str], ch_in, default: int = 0) -> int:
-        if isinstance(ch_in, str) and not ch_in.isdigit():
-            if ch_in in ch_names:
-                return ch_names.index(ch_in)
-            return default
-        return max(0, int_or(ch_in, default))
 
     def _rhd_export_all_payload(d: dict) -> dict:
         if not has_rhd:
@@ -222,37 +221,7 @@ def register_rhd_viewer_routes(app, ctx):
         path = d.get("path", "")
         do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
         try:
-            t, fs, ch_names, amp, base_stem, used_pair = _load_rhd_with_merge_option(Path(path), do_merge)
-            ch_list = []
-            for i, name in enumerate(ch_names):
-                ch_list.append(
-                    {
-                        "idx": i,
-                        "name": name,
-                        "native_name": f"ch{i}",
-                        "label": name,
-                        "type": "amplifier",
-                    }
-                )
-
-            n_samples = amp.shape[1]
-            duration = round(n_samples / fs, 2) if fs > 0 else 0
-
-            return jsonify(
-                {
-                    "channels": ch_names,
-                    "channels_meta": ch_list,
-                    "sample_rate": fs,
-                    "sampling_rate": fs,
-                    "n_samples": n_samples,
-                    "duration_s": duration,
-                    "duration": duration,
-                    "num_amplifiers": len(ch_list),
-                    "merged_pair": bool(used_pair),
-                    "base_stem": base_stem,
-                    "source_path": str(path),
-                }
-            )
+            return jsonify(_load_rhd_metadata_with_merge_option(Path(path), do_merge))
         except Exception:
             return err(traceback.format_exc())
 
@@ -272,11 +241,9 @@ def register_rhd_viewer_routes(app, ctx):
         do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
 
         try:
-            t, _fs, ch_names, amp_data, base_stem, used_pair = _load_rhd_with_merge_option(Path(path), do_merge)
-            ch = _rhd_channel_index_from_names(ch_names, ch_in)
-            ch = max(0, min(ch, amp_data.shape[0] - 1))
-
-            y = amp_data[ch]
+            t, _fs, _ch_names, y, ch, ch_label, base_stem, used_pair, _segment_count = (
+                _load_rhd_channel_with_merge_option(Path(path), ch_in, do_merge)
+            )
             t, y = _rhd_apply_time_window(t, y, x_min, x_max)
 
             dsf = _rhd_downsample_factor(downsample, len(t))
@@ -285,7 +252,6 @@ def register_rhd_viewer_routes(app, ctx):
 
             fig, ax = plt.subplots(figsize=(10, 3.5))
             ax.plot(t_d, y_d, color=line_color, lw=0.6)
-            ch_label = ch_names[ch] if ch < len(ch_names) else f"ch{ch}"
             ax.set_xlabel("Time (s)")
             ax.set_ylabel("Amplitude (uV)")
             title_name = f"{base_stem} (merged)" if used_pair else Path(path).name
@@ -320,12 +286,9 @@ def register_rhd_viewer_routes(app, ctx):
 
         try:
             src = Path(path)
-            t, _fs, ch_names, amp_data, base_stem, used_pair = _load_rhd_with_merge_option(src, do_merge)
-            ch = _rhd_channel_index_from_names(ch_names, ch_in)
-            ch = max(0, min(ch, amp_data.shape[0] - 1))
-
-            y = amp_data[ch]
-            ch_name = ch_names[ch] if ch < len(ch_names) else f"ch{ch}"
+            t, _fs, _ch_names, y, _ch, ch_name, base_stem, used_pair, _segment_count = (
+                _load_rhd_channel_with_merge_option(src, ch_in, do_merge)
+            )
             out_stem = base_stem if used_pair else src.stem
 
             if fmt == "csv":

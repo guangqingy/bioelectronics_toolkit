@@ -185,6 +185,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="previewDownsample"', template)
         self.assertIn('id="previewMergePair"', template)
         self.assertIn("function reloadCurrentRhdFile()", template)
+        self.assertIn("function renderRhdFileList(options)", template)
+        self.assertIn("Auto merge folder recording", template)
         self.assertIn("let _fileLoadSeq", template)
         self.assertIn("let _plotSeq", template)
         self.assertIn("merge_pair: previewMergeEnabled()", template)
@@ -198,15 +200,45 @@ class WebAppSmokeTests(unittest.TestCase):
         if not web_app.HAS_RHD:
             self.skipTest("Intan RHD parser is not available")
 
-        def fake_load_with_merge_option(path, _rhd_module, do_merge):
+        def fake_recording_metadata(path, _rhd_module, do_merge):
+            n = 120_000 if do_merge else 60_000
+            return {
+                "channels": ["A-000", "A-001"],
+                "channels_meta": [
+                    {"idx": 0, "name": "A-000", "native_name": "native-000", "label": "A-000", "type": "amplifier"},
+                    {"idx": 1, "name": "A-001", "native_name": "native-001", "label": "A-001", "type": "amplifier"},
+                ],
+                "sample_rate": 1000.0,
+                "sampling_rate": 1000.0,
+                "n_samples": n,
+                "duration_s": n / 1000.0,
+                "duration": n / 1000.0,
+                "num_amplifiers": 2,
+                "merged_pair": bool(do_merge),
+                "merged_folder": bool(do_merge),
+                "base_stem": "record_0001",
+                "source_path": str(path),
+                "source_paths": [str(path)],
+                "segment_count": 2 if do_merge else 1,
+            }
+
+        def fake_load_channel_with_merge_option(path, _rhd_module, ch_in, do_merge):
             n = 120_000 if do_merge else 60_000
             t = np.arange(n, dtype=float) / 1000.0
-            amp = np.vstack((np.sin(t), np.cos(t)))
-            return t, 1000.0, ["A-000", "A-001"], amp, "record_0001", bool(do_merge)
+            y = np.cos(t) if ch_in == "A-001" else np.sin(t)
+            ch = 1 if ch_in == "A-001" else 0
+            ch_name = "A-001" if ch == 1 else "A-000"
+            return t, 1000.0, ["A-000", "A-001"], y, ch, ch_name, "record_0001", bool(do_merge), 2
 
-        with mock.patch(
-            "web_api.rhd_viewer.rhd_service.load_with_merge_option",
-            side_effect=fake_load_with_merge_option,
+        with (
+            mock.patch(
+                "web_api.rhd_viewer.rhd_service.recording_metadata_with_merge_option",
+                side_effect=fake_recording_metadata,
+            ),
+            mock.patch(
+                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                side_effect=fake_load_channel_with_merge_option,
+            ),
         ):
             loaded = self.client.post(
                 "/api/rhd/load",
