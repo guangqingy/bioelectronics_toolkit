@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   incrementing suffixes.
 - RHD Viewer now exposes more analysis controls for envelope, smoothing, FFT,
   STFT, fitting, and figure output styling.
+- Dense analysis controls now use mode-specific parameter groups so unrelated
+  settings stay hidden until the matching function is selected.
 
 ## [0.4.0] - 2026-05-13
 

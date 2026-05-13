@@ -61,16 +61,16 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Clamp Mode</div>
   <label class="checkbox-row">
-    <input type="checkbox" id="rNorm"/>
+    <input type="checkbox" id="rNorm" onchange="updateAbfParameterGroups(); plot()"/>
     <span>R normalization</span>
   </label>
-  <div class="param-row" id="iChRow" style="display:none;">
+  <div class="param-row" id="iChRow" data-rnorm-state="checked" hidden>
     <div class="param-label abf-narrow">I Ch</div>
     <select id="iCh" class="abf-select" onchange="plot()">
       <option value="">None</option>
     </select>
   </div>
-  <div class="param-row" id="vChRow" style="display:none;">
+  <div class="param-row" id="vChRow" data-rnorm-state="checked" hidden>
     <div class="param-label abf-narrow">V Ch</div>
     <select id="vCh" class="abf-select" onchange="plot()">
       <option value="">None</option>
@@ -175,9 +175,7 @@ window.dpApplyFileProfilePayload = payload => {
   }
 };
 window.dpAfterFileProfileApplied = () => {
-  const show = document.getElementById("rNorm").checked;
-  document.getElementById("iChRow").style.display = show ? "flex" : "none";
-  document.getElementById("vChRow").style.display = show ? "flex" : "none";
+  updateAbfParameterGroups();
   renderQueue();
   plot();
 };
@@ -197,9 +195,7 @@ window.dpApplyRunManifest = async manifest => {
     queueActiveIndex = exportQueue.length ? 0 : -1;
   }
   renderQueue();
-  const show = document.getElementById("rNorm").checked;
-  document.getElementById("iChRow").style.display = show ? "flex" : "none";
-  document.getElementById("vChRow").style.display = show ? "flex" : "none";
+  updateAbfParameterGroups();
   if (currentFilePath) plot();
 };
 
@@ -209,6 +205,10 @@ function baseName(path) {
 
 function setStatusBar(message, kind) {
   setStatus("status", message, kind || "");
+}
+
+function updateAbfParameterGroups() {
+  dpApplyToggleGroups("rNorm", "data-rnorm-state");
 }
 
 function updateBreadcrumb(path) {
@@ -587,14 +587,8 @@ function exportCSV() {
   exportFig("csv");
 }
 
-document.getElementById("rNorm").addEventListener("change", function() {
-  const show = this.checked;
-  document.getElementById("iChRow").style.display = show ? "flex" : "none";
-  document.getElementById("vChRow").style.display = show ? "flex" : "none";
-  plot();
-});
-
 window.addEventListener("load", function() {
+  dpBindToggleGroups("rNorm", "data-rnorm-state");
   const ctrl = document.getElementById("ctrlPanel");
   const main = document.getElementById("mainContent");
   const folderInput = document.getElementById("folderPath");

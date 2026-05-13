@@ -167,6 +167,9 @@ class WebAppSmokeTests(unittest.TestCase):
         template = (root / "web_templates" / "abf_viewer.html").read_text(encoding="utf-8")
         self.assertIn('if (folderInput.value.trim())', template)
         self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', template)
+        self.assertIn('data-rnorm-state="checked"', template)
+        self.assertIn("function updateAbfParameterGroups()", template)
+        self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', template)
         self.assertNotIn('DEFAULT_DATA_DIR + "/examples"', template)
 
     def test_nav_exposes_domain_groups_and_version(self) -> None:
@@ -195,6 +198,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("split(/[\\\\/]/)", template)
         self.assertIn('id="filterType"', template)
         self.assertIn('id="processType"', template)
+        self.assertIn('data-filter-mode="notch"', template)
+        self.assertIn('data-process-mode="smooth"', template)
+        self.assertIn("function updateRhdParameterGroups()", template)
+        self.assertIn("dpBindParamGroups('processType', 'data-process-mode')", template)
         self.assertIn('id="envelopeSmoothMs"', template)
         self.assertIn('id="smoothMethod"', template)
         self.assertIn('id="fftWindow"', template)
@@ -525,6 +532,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("ev.key.toLowerCase() === 'k'", core_js)
         self.assertIn("function filterFileList(listId)", core_js)
         self.assertIn("function installFileListFilters()", core_js)
+        self.assertIn("function dpApplyParamGroups(selectId, attr)", core_js)
+        self.assertIn("function dpApplyToggleGroups(controlId, attr)", core_js)
         self.assertNotIn("btn.click();\n        btn.click();", core_js)
 
     def test_settings_modal_uses_tabs_instead_of_one_long_panel(self) -> None:

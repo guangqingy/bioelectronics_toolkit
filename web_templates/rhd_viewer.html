@@ -60,7 +60,7 @@
     <summary class="ctrl-label" title="Optional filtering applied to the preview and current-channel figure export">Filter</summary>
   <div class="param-row">
     <div class="param-label">Filter</div>
-    <select id="filterType" style="flex:1" onchange="plot()">
+    <select id="filterType" style="flex:1" onchange="updateRhdParameterGroups(); plot()">
       <option value="none" selected>None</option>
       <option value="notch">Notch</option>
       <option value="lowpass">Low pass</option>
@@ -68,23 +68,23 @@
       <option value="bandpass">IIR band</option>
     </select>
   </div>
-  <div class="param-row">
+  <div class="param-row" data-filter-mode="highpass bandpass">
     <div class="param-label">Low Hz</div>
     <input type="number" id="filterLowHz" class="input-sm" step="any" value="20" onchange="plot()">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-filter-mode="lowpass bandpass">
     <div class="param-label">High Hz</div>
     <input type="number" id="filterHighHz" class="input-sm" step="any" value="500" onchange="plot()">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-filter-mode="notch">
     <div class="param-label">Notch Hz</div>
     <input type="number" id="filterNotchHz" class="input-sm" step="any" value="60" onchange="plot()">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-filter-mode="lowpass highpass bandpass">
     <div class="param-label">IIR Order</div>
     <input type="number" id="filterOrder" class="input-sm" step="1" value="4" min="1" max="12" onchange="plot()">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-filter-mode="notch">
     <div class="param-label" title="Notch filter quality factor; higher values make a narrower notch">Notch Q</div>
     <input type="number" id="filterNotchQ" class="input-sm" step="any" value="30" onchange="plot()">
   </div>
@@ -95,7 +95,7 @@
   <summary class="ctrl-label">Post-processing</summary>
   <div class="param-row">
     <div class="param-label">Process</div>
-    <select id="processType" style="flex:1">
+    <select id="processType" style="flex:1" onchange="updateRhdParameterGroups()">
       <option value="envelope" selected>Envelope</option>
       <option value="smooth">Smooth</option>
       <option value="fitting">Fitting</option>
@@ -103,34 +103,34 @@
       <option value="stft">STFT</option>
     </select>
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="smooth">
     <div class="param-label">Smooth ms</div>
     <input type="number" id="smoothMs" class="input-sm" step="any" value="5">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="envelope">
     <div class="param-label">Envelope ms</div>
     <input type="number" id="envelopeSmoothMs" class="input-sm" step="any" value="0">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="smooth">
     <div class="param-label">Smooth</div>
     <select id="smoothMethod" style="flex:1">
       <option value="moving" selected>Moving avg</option>
       <option value="savgol">Savitzky-Golay</option>
     </select>
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="smooth">
     <div class="param-label">SG poly</div>
     <input type="number" id="sgPoly" class="input-sm" step="1" value="2" min="1" max="5">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="fitting">
     <div class="param-label" title="Polynomial degree for trend fit">Fit Deg</div>
     <input type="number" id="fitDegree" class="input-sm" step="1" value="1" min="1" max="5">
   </div>
-  <label class="checkbox-row">
+  <label class="checkbox-row" data-process-mode="fitting">
     <input type="checkbox" id="fitShowRaw" checked>
     <span>Show raw fit trace</span>
   </label>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="fft">
     <div class="param-label">FFT Window</div>
     <select id="fftWindow" style="flex:1">
       <option value="hann" selected>Hann</option>
@@ -139,27 +139,27 @@
       <option value="boxcar">Boxcar</option>
     </select>
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="fft">
     <div class="param-label">FFT Max Hz</div>
     <input type="number" id="fftMaxHz" class="input-sm" step="any">
   </div>
-  <label class="checkbox-row">
+  <label class="checkbox-row" data-process-mode="fft">
     <input type="checkbox" id="fftLog">
     <span>Log FFT amplitude</span>
   </label>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="stft">
     <div class="param-label" title="Short-time Fourier transform window size">STFT ms</div>
     <input type="number" id="stftMs" class="input-sm" step="any" value="100">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="stft">
     <div class="param-label">STFT Overlap %</div>
     <input type="number" id="stftOverlapPct" class="input-sm" step="any" value="50" min="0" max="95">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="stft">
     <div class="param-label">STFT Max Hz</div>
     <input type="number" id="stftMaxHz" class="input-sm" step="any">
   </div>
-  <div class="param-row">
+  <div class="param-row" data-process-mode="stft">
     <div class="param-label">STFT Cmap</div>
     <select id="stftCmap" style="flex:1">
       <option value="viridis" selected>Viridis</option>
@@ -169,7 +169,7 @@
       <option value="cividis">Cividis</option>
     </select>
   </div>
-  <label class="checkbox-row">
+  <label class="checkbox-row" data-process-mode="stft">
     <input type="checkbox" id="stftLog">
     <span>Log STFT magnitude</span>
   </label>
@@ -386,6 +386,7 @@ window.dpApplyFileProfilePayload = payload => {
       if (el) el.checked = payload[key];
     }
   });
+  updateRhdParameterGroups();
   if (payload.currentChannel) {
     const item = [...document.querySelectorAll('#channelList .file-item')].find(el => el.textContent === payload.currentChannel);
     if (item) selectChannel(item, payload.currentChannel);
@@ -414,6 +415,7 @@ window.dpApplyRunManifest = manifest => {
   if (params.channel) _currentChannel = params.channel;
   if (typeof params.preview_merge_pair === 'boolean') document.getElementById('previewMergePair').checked = params.preview_merge_pair;
   if (params.downsample) document.getElementById('previewDownsample').value = params.downsample;
+  updateRhdParameterGroups();
   queueRender();
   updateInfoCard();
   if (_currentFile && _currentChannel) plot();
@@ -429,6 +431,11 @@ function previewMergeEnabled() {
 
 function currentDownsampleValue() {
   return document.getElementById('previewDownsample')?.value || 'auto';
+}
+
+function updateRhdParameterGroups() {
+  dpApplyParamGroups('processType', 'data-process-mode');
+  dpApplyParamGroups('filterType', 'data-filter-mode');
 }
 
 function viewNumber(id) {
@@ -958,6 +965,8 @@ function exportCSV() {
 }
 
 window.addEventListener('load', () => {
+  dpBindParamGroups('processType', 'data-process-mode');
+  dpBindParamGroups('filterType', 'data-filter-mode');
   queueRender();
   setStatus('status', 'Ready', 'ok');
 });
