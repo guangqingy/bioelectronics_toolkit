@@ -2,7 +2,7 @@
 {% set echem_active = active in ['echem_pc', 'echem_pv', 'echem_lineshape'] %}
 {% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
 {% set data_active = active in ['csv_viewer'] %}
-{% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif'] %}
+{% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
 {% set workflow_active = active in ['scripts', 'run_history'] %}
 <nav class="top-nav">
   <div class="nav-inner">
@@ -54,6 +54,8 @@
           <div class="nav-dropdown-label">Analyze / Export</div>
           <a class="nav-dropdown-item {% if active=='fluorescence_roi' %}active{% endif %}" href="/fluorescence/roi" title="ROI Sequence Analysis">ROI Analysis</a>
           <a class="nav-dropdown-item {% if active=='fluorescence_gif' %}active{% endif %}" href="/fluorescence/gif" title="Annotated GIF Export">GIF Export</a>
+          <a class="nav-dropdown-item {% if active=='fluorescence_timecourse' %}active{% endif %}" href="/fluorescence/timecourse" title="ROI Time Analysis">Timecourse</a>
+          <a class="nav-dropdown-item {% if active=='fluorescence_kymograph' %}active{% endif %}" href="/fluorescence/kymograph" title="ROI Kymography">Kymograph</a>
           <a class="nav-dropdown-item {% if active=='fluorescence_3d_stacking' %}active{% endif %}" href="/fluorescence/3d-stacking" title="3D Stack Builder">3D Stack Builder</a>
         </div>
       </div>

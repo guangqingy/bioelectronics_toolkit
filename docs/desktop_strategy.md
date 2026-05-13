@@ -58,3 +58,21 @@ below it.
 - Once the service layer is stable, remaining desktop entry points can stay as
   thin wrappers around the WebGUI or shared services. The compatibility
   launcher structure is already in place.
+
+## Legacy Retirement Tracker
+
+| Legacy file | Replacement | Status | Target retirement |
+| --- | --- | --- | --- |
+| `fluorescence_lut_gui.py` | `services/fluorescence/lut.py` plus a WebGUI LUT route | Blocked, service not implemented | TBD |
+| `fluorescence_roi_gui.py` | `/fluorescence/roi` plus `services/fluorescence/roi.py` | Replacement in place | 2026 Q3 |
+| `abf_batch_processor_gui.py` | `/abf/batch` plus `services/abf.py` | Replacement in place | 2026 Q3 |
+| `abf_peak_detection_gui.py` | `/abf/peaks` plus `services/abf.py` | Replacement in place | 2026 Q3 |
+| `abf_photocurrent_viewer_gui.py` | `/abf/viewer` plus ABF route/service helpers | Replacement in place | 2026 Q3 |
+| `abf_photocurrent_figure_gui.py` | `/abf/figure` | Replacement in place | 2026 Q4 |
+| `abf_sweep_viewer_gui.py` | `/abf/viewer` | Replacement in place | 2026 Q3 |
+| `emg_rhd_viewer_gui.py` | `/emg/rhd` plus `services/rhd.py` | Replacement in place | 2026 Q3 |
+| `emg_peak_selector_gui.py` | `/emg/peaks` plus `services/emg.py` | Replacement in place | 2026 Q4 |
+| `echem_photocurrent_gui.py` | `/echem/photocurrent` plus `services/echem.py` | Replacement in place | 2026 Q3 |
+| `echem_photovoltage_gui.py` | `/echem/photovoltage` plus `services/echem.py` | Replacement in place | 2026 Q3 |
+| `csv_folder_viewer_gui.py` | `/csv` plus `services/csv_tools.py` | Replacement in place | 2026 Q3 |
+| `histology_naming_gui.py` | `/histology` | Replacement in place | 2026 Q4 |

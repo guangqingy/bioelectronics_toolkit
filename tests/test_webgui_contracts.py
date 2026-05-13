@@ -121,6 +121,8 @@ class WebAppSmokeTests(unittest.TestCase):
         "/fluorescence/3d-stacking",
         "/fluorescence/roi",
         "/fluorescence/gif",
+        "/fluorescence/timecourse",
+        "/fluorescence/kymograph",
         "/fluorescence/lif",
         "/histology",
         "/runs",
@@ -171,11 +173,13 @@ class WebAppSmokeTests(unittest.TestCase):
         response = self.client.get("/")
         html = response.data.decode("utf-8")
         self.assertIn("Fluorescence", html)
+        self.assertIn("Timecourse", html)
+        self.assertIn("Kymograph", html)
         self.assertIn("Photocurrent", html)
         self.assertIn("Intan RHD Viewer", html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
-        self.assertIn("v0.3.0", html)
+        self.assertIn("v0.4.0", html)
         self.assertNotIn("unknown", html.lower())
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
@@ -201,6 +205,7 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np
+
         import web_app
 
         if not web_app.HAS_RHD:
@@ -211,8 +216,20 @@ class WebAppSmokeTests(unittest.TestCase):
             return {
                 "channels": ["A-000", "A-001"],
                 "channels_meta": [
-                    {"idx": 0, "name": "A-000", "native_name": "native-000", "label": "A-000", "type": "amplifier"},
-                    {"idx": 1, "name": "A-001", "native_name": "native-001", "label": "A-001", "type": "amplifier"},
+                    {
+                        "idx": 0,
+                        "name": "A-000",
+                        "native_name": "native-000",
+                        "label": "A-000",
+                        "type": "amplifier",
+                    },
+                    {
+                        "idx": 1,
+                        "name": "A-001",
+                        "native_name": "native-001",
+                        "label": "A-001",
+                        "type": "amplifier",
+                    },
                 ],
                 "sample_rate": 1000.0,
                 "sampling_rate": 1000.0,
@@ -293,6 +310,7 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_rhd_svg_export_is_clean_and_numbered(self) -> None:
         import numpy as np
+
         import web_app
 
         if not web_app.HAS_RHD:
@@ -356,8 +374,8 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.3.0")
-        self.assertTrue(payload["label"].startswith("v0.3.0"))
+        self.assertEqual(payload["version"], "0.4.0")
+        self.assertTrue(payload["label"].startswith("v0.4.0"))
         self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
@@ -415,7 +433,7 @@ class WebAppSmokeTests(unittest.TestCase):
             mock.patch.object(
                 system_api,
                 "_choose_windows_folder",
-                side_effect=system_api.PickerUnavailableError("picker unavailable"),
+                side_effect=system_api._windows_picker_error("folder", "picker unavailable"),
             ),
             mock.patch.object(system_api, "_choose_tk_folder") as tk_fallback,
         ):
@@ -424,7 +442,7 @@ class WebAppSmokeTests(unittest.TestCase):
         payload = response.get_json()
         self.assertEqual(response.status_code, 400)
         self.assertFalse(payload["ok"])
-        self.assertIn("picker unavailable", payload["error"])
+        self.assertIn("Folder picker unavailable; please paste path manually.", payload["error"])
         tk_fallback.assert_not_called()
 
     def test_extracted_page_assets_are_served(self) -> None:

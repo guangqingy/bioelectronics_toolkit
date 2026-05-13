@@ -27,7 +27,8 @@
   <div id="channelList" class="file-list"></div>
 </div>
 
-<div class="ctrl-section">
+<details class="ctrl-section ctrl-details" open>
+  <summary class="ctrl-label">Detect</summary>
   <div class="ctrl-label">Peak Detection</div>
   <div class="param-row">
     <div class="param-label">Polarity</div>
@@ -42,11 +43,11 @@
     <input type="number" id="pkHeight" class="input-sm" value="0.5" step="0.1">
   </div>
   <div class="param-row">
-    <div class="param-label">Prom</div>
+    <div class="param-label" title="Prominence: minimum peak height relative to surrounding signal">Prom</div>
     <input type="number" id="pkProm" class="input-sm" value="0.3" step="0.1">
   </div>
   <div class="param-row">
-    <div class="param-label">Dist ms</div>
+    <div class="param-label" title="Minimum spacing between consecutive peaks">Dist ms</div>
     <input type="number" id="pkDist" class="input-sm" value="50" step="1" min="1">
   </div>
   <div class="param-row">
@@ -58,16 +59,16 @@
     <input type="number" id="pkMinW" class="input-sm" value="0.1" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">wlen ms</div>
+    <div class="param-label" title="Window length for peak width estimation">wlen ms</div>
     <input type="number" id="pkWlen" class="input-sm" step="1" min="0" placeholder="blank=auto">
   </div>
   <label class="checkbox-row"><input type="checkbox" id="pkAdaptive"><span>Adaptive sigma</span></label>
   <div class="param-row">
-    <div class="param-label">k_prom</div>
+    <div class="param-label" title="Multiplier applied to baseline prominence threshold">k_prom</div>
     <input type="number" id="pkSigmaProm" class="input-sm" value="1" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">k_height</div>
+    <div class="param-label" title="Multiplier applied to baseline height threshold">k_height</div>
     <input type="number" id="pkSigmaHeight" class="input-sm" value="1" step="0.1" min="0">
   </div>
   <div class="param-row">
@@ -77,7 +78,6 @@
       <option value="append">Append</option>
     </select>
   </div>
-</div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">View Window (s)</div>
@@ -92,8 +92,10 @@
 </div>
 
 <button id="btnDetect" class="btn-primary" onclick="detectPeaks()">Detect Peaks</button>
+</details>
 
-<div class="ctrl-section">
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Group</summary>
   <div class="ctrl-label">Auto Grouping</div>
   <div class="param-row">
     <div class="param-label">Period Hz</div>
@@ -108,7 +110,6 @@
     <input type="number" id="grpStart" class="input-sm" value="0" step="1">
   </div>
   <button class="btn-secondary" onclick="autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
-</div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Manual Group Assignment</div>
@@ -117,24 +118,26 @@
   </div>
   <button class="btn-secondary" onclick="setGroupForSelected()" style="width:100%; margin-top:8px;">Set Group for Selected</button>
 </div>
+</details>
 
-<div class="ctrl-section">
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Edit</summary>
   <div class="ctrl-label">Peak Operations</div>
   <div class="input-row" style="gap:6px;">
     <button class="btn-secondary" onclick="selectAllPeaks()" style="flex:1;">Select All</button>
-    <button class="btn-secondary" onclick="clearPeakSelection()" style="flex:1;">Clear Sel</button>
+    <button class="btn-secondary" onclick="clearPeakSelection()" style="flex:1;">Clear Selection</button>
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="removeSelectedPeaks()" style="flex:1;">Remove Sel</button>
-    <button class="btn-secondary" onclick="restoreSelectedPeaks()" style="flex:1;">Restore Sel</button>
+    <button class="btn-secondary" onclick="removeSelectedPeaks()" style="flex:1;">Remove Selected</button>
+    <button class="btn-secondary" onclick="restoreSelectedPeaks()" style="flex:1;">Undo Removal</button>
   </div>
-  <button class="btn-secondary" onclick="resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removals</button>
-</div>
+  <button class="btn-secondary" onclick="resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
+</details>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Export</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Export</summary>
   <button id="btnExport" class="btn-secondary" onclick="exportGrouped()" style="width:100%;">Export Grouped Peaks</button>
-</div>
+</details>
 
 <div id="status" class="status-bar"></div>
 {% endblock %}

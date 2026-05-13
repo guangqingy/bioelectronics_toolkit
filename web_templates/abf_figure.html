@@ -58,7 +58,7 @@
   <input type="text" id="xLog" class="input-path" placeholder="0.01-1; 0.01-100" value="0.01-1; 0.01-100">
 </div>
 
-<button id="btnPreview" class="btn-secondary" onclick="previewPlots()" style="width:100%; margin-bottom:8px;">Preview</button>
+<button id="btnPreview" class="btn-secondary" onclick="previewPlots()" style="width:100%; margin-bottom:8px;">Preview Plot</button>
 <button id="btnAnalyze" class="btn-primary" onclick="runExportAction('analyze')" style="margin-bottom:8px;">Analyze Queue</button>
 <button id="btnNormalize" class="btn-secondary" onclick="runExportAction('normalize')" style="width:100%; margin-bottom:8px;">Normalize</button>
 <button id="btnSvg" class="btn-secondary" onclick="runExportAction('svg')" style="width:100%;">Export SVG</button>
@@ -291,7 +291,7 @@ function previewPlots() {
       setStatus('status', 'Preview failed', 'error');
       toast('Preview failed: ' + e.message, true);
     })
-    .finally(() => btnBusy('btnPreview', false, 'Preview'));
+    .finally(() => btnBusy('btnPreview', false, 'Preview Plot'));
 }
 
 async function runFigureBackgroundJob(endpoint, payload, label) {

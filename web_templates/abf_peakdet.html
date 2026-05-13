@@ -72,11 +72,11 @@
     <input type="number" id="pkHeight" class="input-xs" step="any" placeholder="optional">
   </div>
   <div class="param-row">
-    <div class="param-label">Prom</div>
+    <div class="param-label" title="Prominence: minimum peak height relative to surrounding signal">Prom</div>
     <input type="number" id="pkProm" class="input-xs" step="any" placeholder="optional">
   </div>
   <div class="param-row">
-    <div class="param-label">Dist ms</div>
+    <div class="param-label" title="Minimum spacing between consecutive peaks">Dist ms</div>
     <input type="number" id="pkDist" class="input-xs" value="2" min="1">
   </div>
 </div>
@@ -90,7 +90,7 @@
     <input type="number" id="exportWinMs" class="input-xs" value="50" min="1" step="1">
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="restoreAllPeaks()" style="flex:1;">Restore All</button>
+    <button class="btn-secondary" onclick="restoreAllPeaks()" style="flex:1;">Undo All Removals</button>
     <button class="btn-secondary" onclick="exportPNG()" style="flex:1;">PNG</button>
   </div>
   <div class="btn-row" style="margin-top:6px;">

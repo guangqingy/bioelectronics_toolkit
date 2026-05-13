@@ -1,4 +1,4 @@
-{% set generic_prefs_enabled = (active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif'] %}
+{% set generic_prefs_enabled = (active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
 {% set generic_file_profile_enabled = (active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks'] %}
 {% if generic_file_profile_enabled %}
 <div class="ctrl-section generic-file-profile-section" id="genericFileProfileSection">

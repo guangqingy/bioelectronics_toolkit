@@ -30,7 +30,8 @@ If applicable, paste relevant terminal output, tracebacks, or screenshots.
 
 ## Environment
 
-- Tool / script: <!-- e.g. bte-abf-batch, web_app.py -->
+- Console command: <!-- e.g. bte-abf-batch -->
+- Web route: <!-- e.g. /abf/batch -->
 - Python version: <!-- python --version -->
 - OS: <!-- macOS 14.4 / Ubuntu 22.04 / Windows 11 -->
 - Toolkit version / commit: <!-- git rev-parse --short HEAD -->

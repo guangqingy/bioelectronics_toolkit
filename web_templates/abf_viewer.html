@@ -27,19 +27,9 @@
 </div>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">Batch Export Queue</div>
-  <div id="queueList" class="file-list abf-list-sm"></div>
-  <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="queueAddCurrent()">Add</button>
-    <button class="btn-secondary" type="button" onclick="queueAddAll()">Add All</button>
-    <button class="btn-secondary" type="button" onclick="queueRemoveActive()">Remove</button>
-    <button class="btn-secondary" type="button" onclick="queueClear()">Clear</button>
-  </div>
-  <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="queueMove(-1)">Move Up</button>
-    <button class="btn-secondary" type="button" onclick="queueMove(1)">Move Down</button>
-  </div>
-  <button class="btn-secondary" type="button" onclick="queueExportAllCsv()" style="width:100%;margin-top:6px">Export Queue -> CSV</button>
+  <div class="ctrl-label">Batch Export</div>
+  <div class="status-bar">Batch exports now live on the ABF Batch page.</div>
+  <a class="btn-secondary btn-block" href="/abf/batch" style="text-align:center;text-decoration:none">Open ABF Batch</a>
 </div>
 
 <div class="ctrl-section" id="infoSection" style="display:none;">
@@ -270,6 +260,7 @@ function renderFiles(files) {
 
 function renderQueue() {
   const list = document.getElementById("queueList");
+  if (!list) return;
   if (!exportQueue.length) {
     list.innerHTML = '<div class="file-list-empty">Queue is empty</div>';
     return;

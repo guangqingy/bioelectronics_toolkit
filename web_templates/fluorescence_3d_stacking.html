@@ -310,7 +310,7 @@
     <div class="stack-file-path-row">
       <span class="stack-mini-label">File</span>
       <input type="text" id="tiffPath" placeholder="/path/to/stack.tiff" onchange="clearLoadedInfo()">
-      <button class="btn-icon" title="Choose TIFF" onclick="pickFile('tiffPath','loadTiffStack')">…</button>
+      <button class="btn-secondary" title="Choose TIFF" onclick="pickFile('tiffPath','loadTiffStack')" style="min-height:30px;padding:4px 9px">Choose TIFF</button>
       <button class="btn-secondary" id="btnLoadTiff" data-label="Load" style="min-height:30px;padding:4px 9px" onclick="loadTiffStack()">Load</button>
     </div>
   </div>
@@ -351,7 +351,7 @@
 <div class="ctrl-section" id="renderSection" style="display:none">
   <div class="ctrl-label">3D Render</div>
   <div class="param-row">
-    <div class="param-label">Channel</div>
+    <div class="param-label">Render Channel</div>
     <select id="volumeChannelMode" style="flex:1">
       <option value="composite" selected>Composite channels</option>
       <option value="current">Current C only</option>
@@ -408,13 +408,13 @@
     <div class="param-label">Output</div>
     <input type="text" id="outputName" placeholder="(auto based on TIFF)" style="font-size:11.5px">
   </div>
-  <button class="btn-primary" id="btnPreview3D" data-label="Preview 3D" onclick="generateVolume3D()" style="width:100%;margin-top:8px">Preview 3D</button>
+  <button class="btn-primary" id="btnPreview3D" data-label="Preview 3D Render" onclick="generateVolume3D()" style="width:100%;margin-top:8px">Preview 3D Render</button>
   <button class="btn-secondary" id="btnExport3D" data-label="Export 3D HTML" onclick="exportVolume3D()" style="width:100%;margin-top:8px">Export 3D HTML</button>
   <div class="stack-subsection">
     <div class="ctrl-label">Rotation GIF</div>
     <div class="stack-rotation-grid">
       <div class="param-row">
-        <div class="param-label">Axis</div>
+        <div class="param-label">Rotation Axis</div>
         <input type="text" id="rotationAxis" list="rotationAxisOptions" value="z" placeholder="z or 0.2x+0.8y" style="flex:1">
         <datalist id="rotationAxisOptions">
           <option value="z"></option>
@@ -447,11 +447,11 @@
   <div class="stack-subsection">
     <div class="ctrl-label">Intensity Distribution</div>
     <div class="param-row">
-      <div class="param-label">Channel</div>
+      <div class="param-label">Histogram Channel</div>
       <select id="distributionChannel" style="flex:1"></select>
     </div>
     <div class="param-row">
-      <div class="param-label">Axis</div>
+      <div class="param-label">Histogram Axis</div>
       <select id="distributionAxis" style="flex:1">
         <option value="z" selected>Z</option>
         <option value="x">X</option>
@@ -466,7 +466,7 @@
         <option value="max">Max</option>
       </select>
     </div>
-    <button class="btn-secondary" id="btnAnalyzeDistribution" data-label="Analyze" onclick="analyzeIntensityDistribution()" style="width:100%;margin-top:8px">Analyze</button>
+    <button class="btn-secondary" id="btnAnalyzeDistribution" data-label="Analyze Distribution" onclick="analyzeIntensityDistribution()" style="width:100%;margin-top:8px">Analyze Distribution</button>
   </div>
 </div>
 
@@ -1171,7 +1171,7 @@ async function generateVolume3D() {
     setStatus('status', '3D preview error: ' + (e.message || String(e)), 'error');
     showLog('3D Preview Error', e.message || String(e));
   } finally {
-    btnBusy('btnPreview3D', false, 'Preview 3D');
+    btnBusy('btnPreview3D', false, 'Preview 3D Render');
   }
 }
 
@@ -1368,7 +1368,7 @@ async function analyzeIntensityDistribution() {
     setStatus('status', 'Distribution error: ' + (e.message || String(e)), 'error');
     showLog('Distribution Error', e.message || String(e));
   } finally {
-    btnBusy('btnAnalyzeDistribution', false, 'Analyze');
+    btnBusy('btnAnalyzeDistribution', false, 'Analyze Distribution');
   }
 }
 

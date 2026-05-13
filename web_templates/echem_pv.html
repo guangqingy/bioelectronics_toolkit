@@ -47,11 +47,11 @@
     <input type="number" id="baselineWinMs" class="input-sm" value="50" step="1" min="1">
   </div>
   <div class="param-row">
-    <div class="param-label">SG win (ms)</div>
+    <div class="param-label" title="Savitzky-Golay smoothing window size">SG win (ms)</div>
     <input type="number" id="sgWinMs" class="input-sm" value="51" step="1" min="3">
   </div>
   <div class="param-row">
-    <div class="param-label">SG poly</div>
+    <div class="param-label" title="Savitzky-Golay polynomial order">SG poly</div>
     <input type="number" id="sgPoly" class="input-sm" value="3" step="1" min="1">
   </div>
 </div>
@@ -91,7 +91,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="restoreAllPulses()">Restore All</button>
+    <button class="btn-secondary" onclick="restoreAllPulses()">Undo All Removals</button>
     <button class="btn-secondary" onclick="exportCSV()">Pulses CSV</button>
     <button class="btn-secondary" onclick="exportSegments()">Summary + Pulse Files</button>
   </div>

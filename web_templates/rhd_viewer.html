@@ -56,6 +56,8 @@
     <input type="checkbox" id="previewMergePair" checked onchange="onPreviewMergeChanged()">
     <span>Auto merge folder recording</span>
   </label>
+  <details class="ctrl-details">
+    <summary class="ctrl-label" title="Optional filtering applied to the preview and current-channel figure export">Filter</summary>
   <div class="param-row">
     <div class="param-label">Filter</div>
     <select id="filterType" style="flex:1" onchange="plot()">
@@ -83,13 +85,14 @@
     <input type="number" id="filterOrder" class="input-sm" step="1" value="4" min="1" max="12" onchange="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Notch Q</div>
+    <div class="param-label" title="Notch filter quality factor; higher values make a narrower notch">Notch Q</div>
     <input type="number" id="filterNotchQ" class="input-sm" step="any" value="30" onchange="plot()">
   </div>
+  </details>
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Data Processing</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Post-processing</summary>
   <div class="param-row">
     <div class="param-label">Process</div>
     <select id="processType" style="flex:1">
@@ -105,15 +108,15 @@
     <input type="number" id="smoothMs" class="input-sm" step="any" value="5">
   </div>
   <div class="param-row">
-    <div class="param-label">Fit Deg</div>
+    <div class="param-label" title="Polynomial degree for trend fit">Fit Deg</div>
     <input type="number" id="fitDegree" class="input-sm" step="1" value="1" min="1" max="5">
   </div>
   <div class="param-row">
-    <div class="param-label">STFT ms</div>
+    <div class="param-label" title="Short-time Fourier transform window size">STFT ms</div>
     <input type="number" id="stftMs" class="input-sm" step="any" value="100">
   </div>
-  <button id="btnProcess" class="btn-primary" onclick="runProcessing()">Generate</button>
-</div>
+  <button id="btnProcess" class="btn-primary" onclick="runProcessing()">Generate Processing Plot</button>
+</details>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Export Options</div>
@@ -125,7 +128,7 @@
   </div>
 </div>
 
-<button id="btnSaveAll" class="btn-primary" onclick="saveAllChannels()">Save All Channels</button>
+<button id="btnSaveAll" class="btn-primary" onclick="saveAllChannels()">Export All Channels</button>
 
 <div class="sep"></div>
 
@@ -702,7 +705,7 @@ function runProcessing() {
       setStatus('status', 'Processing plot ready', 'ok');
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
-    .finally(() => btnBusy('btnProcess', false, 'Generate'));
+    .finally(() => btnBusy('btnProcess', false, 'Generate Processing Plot'));
 }
 
 function saveAllChannels() {
@@ -728,7 +731,7 @@ function saveAllChannels() {
     },
   })
     .then(d => {
-      setStatus('status', 'Saved: ' + (d.saved_path || 'ok'), 'ok');
+      setStatus('status', 'Exported: ' + (d.saved_path || 'ok'), 'ok');
       recordRunHistory({
         view: 'rhd_viewer',
         title: 'RHD All Channels Export',
@@ -743,7 +746,7 @@ function saveAllChannels() {
       });
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
-    .finally(() => btnBusy('btnSaveAll', false, 'Save All Channels'));
+    .finally(() => btnBusy('btnSaveAll', false, 'Export All Channels'));
 }
 
 function exportFig(fmt) {
@@ -765,12 +768,12 @@ function exportFig(fmt) {
   });
   params.set('filter_type', viewParams.filter_type || 'none');
   const url = '/api/rhd/export_channel?' + params.toString();
-  setStatus('status', 'Saving export...', 'loading');
+  setStatus('status', 'Exporting current channel...', 'loading');
   fetch(url)
     .then(async r => {
       const d = await r.json();
       if (!r.ok || d.error) throw new Error(d.error || 'Export failed');
-      setStatus('status', 'Saved: ' + (d.saved_path || 'ok'), 'ok');
+      setStatus('status', 'Exported: ' + (d.saved_path || 'ok'), 'ok');
       recordRunHistory({
         view: 'rhd_viewer',
         title: 'RHD Current Channel ' + fmt.toUpperCase() + ' Export',

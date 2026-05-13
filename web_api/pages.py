@@ -107,6 +107,24 @@ def register_page_routes(app, ctx) -> None:
             has_pil=has_pil,
         )
 
+    @app.route("/fluorescence/timecourse")
+    def fluorescence_timecourse():
+        return render_template(
+            "fluorescence_timecourse.html",
+            active="fluorescence_timecourse",
+            has_tiff=has_tiff,
+            has_pil=has_pil,
+        )
+
+    @app.route("/fluorescence/kymograph")
+    def fluorescence_kymograph():
+        return render_template(
+            "fluorescence_kymograph.html",
+            active="fluorescence_kymograph",
+            has_tiff=has_tiff,
+            has_pil=has_pil,
+        )
+
     @app.route("/scripts")
     @app.route("/scripts/<cat>")
     def scripts(cat=None):

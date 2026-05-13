@@ -61,3 +61,29 @@ jobs:
         run: ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
       - name: Strict unused-name lint for Web API modules
         run: ruff check web_api --select F --ignore E402
+
+  windows-smoke:
+    name: windows smoke
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install package
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+      - name: Import web app
+        run: python -c "import web_app; print(web_app.APP_VERSION_LABEL)"
+      - name: py_compile smoke check
+        shell: python
+        run: |
+          import pathlib
+          import py_compile
+
+          for path in pathlib.Path(".").rglob("*.py"):
+              if ".dataprocess_cache" in path.parts:
+                  continue
+              py_compile.compile(str(path), doraise=True)

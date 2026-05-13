@@ -6,6 +6,8 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://docs.astral.sh/ruff/)
 [![Conventional Commits](https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg)](https://www.conventionalcommits.org)
 
+![30 second WebGUI demo](web_static/img/demo_webgui.gif)
+
 ![DataProcess WebGUI screenshot](web_static/img/screenshot_home.png)
 
 A collection of desktop GUIs and a lightweight Flask web app for processing
@@ -78,8 +80,8 @@ behind a unified browser UI. See [`WEB_README.md`](./WEB_README.md) for the
 internal architecture (route modules, templates, shared helpers, API response
 contracts, background jobs, and local cache behavior).
 
-The WebGUI is designed for desktop browsers (Chrome, Safari, Firefox, or Edge).
-Mobile browsers are not a primary target for this local lab workflow.
+The WebGUI is designed for desktop browsers (Chrome, Edge, Firefox, or Safari).
+Mobile and tablet layouts are not currently supported.
 
 ```bash
 python3 web_app.py
@@ -201,6 +203,8 @@ Additional screenshots:
 ## Pipeline Runner
 
 The Pipeline Runner is catalog-driven by [`pipelines/registry.json`](./pipelines/registry.json).
+Pipeline registry catalogs project-specific data workflows; external users see
+the catalog but most pipelines require local data not included in this repo.
 For external users, it primarily documents available workflow categories and
 parameter shapes. The current registered model scripts point at local
 project-specific analysis trees such as `2025_Subcutaneous/`; a fresh public

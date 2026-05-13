@@ -268,6 +268,7 @@ function renderTiffList() {
     const filled = _tiffEntries.filter(e => e.path && e.path.trim()).length;
     count.textContent = `${filled}/${_tiffEntries.length} files`;
   }
+  if (!wrap) return;
   if (!_tiffEntries.length) {
     wrap.innerHTML = '<div class="gif-empty-state">No TIFF stacks added yet</div>';
     return;
@@ -348,7 +349,7 @@ async function pickTiffFile(id) {
 }
 
 function toggleScaleMode() {
-  const auto = document.getElementById('gifAutoScale').checked;
+  const auto = document.getElementById('gifAutoScale')?.checked ?? true;
   const row = document.getElementById('manualScaleRow');
   const input = document.getElementById('gifPxPerUm');
   if (row) row.style.opacity = auto ? '0.55' : '1';
@@ -399,7 +400,7 @@ function getPreviewEntry() {
 }
 
 function gifProjectRoot() {
-  return document.getElementById('folderPath').value.trim();
+  return document.getElementById('folderPath')?.value.trim() || '';
 }
 
 function gifPrimaryFile() {
@@ -1257,8 +1258,8 @@ async function exportGifRoiPreview() {
     return;
   }
 
-  btnBusy('btnExportGifRoiPreview', true, 'Saving...');
-  setStatus('status', 'Saving ROI preview PNG...', 'loading');
+  btnBusy('btnExportGifRoiPreview', true, 'Exporting...');
+  setStatus('status', 'Exporting ROI preview PNG...', 'loading');
   try {
     const d = await runGifBackgroundJob('/api/fluorescence/gif_roi/export_preview_job', {
       input_path: entry.path.trim(),
@@ -1272,8 +1273,8 @@ async function exportGifRoiPreview() {
       show_scale_bar: true,
       ...gifCropPayload(),
       prefix: buildGifRoiReferencePrefix(entry),
-    }, 'Saving ROI preview PNG');
-    btnBusy('btnExportGifRoiPreview', false, 'Save ROI Preview');
+    }, 'Exporting ROI preview PNG');
+    btnBusy('btnExportGifRoiPreview', false, 'Export ROI Preview');
     if (d.error) throw new Error(d.error);
     _gifRoiDefaultOutputDir = d.output_dir || _gifRoiDefaultOutputDir;
 
@@ -1285,12 +1286,12 @@ async function exportGifRoiPreview() {
       `${d.roi_polygons || rois.length} ROI | slice ${d.frame} | ${escHtml(formatScaleInfo(d))}</span>`;
     const body = `
       <img src="data:image/png;base64,${d.img}" style="max-width:100%;border-radius:4px"/>
-      <div style="font-size:11px;color:var(--silver);margin-top:6px;word-break:break-all">Saved: <code>${escHtml(d.output_path || '')}</code></div>
+      <div style="font-size:11px;color:var(--silver);margin-top:6px;word-break:break-all">Exported: <code>${escHtml(d.output_path || '')}</code></div>
       <div style="font-size:11px;color:var(--silver);margin-top:2px">Scale bar: ${Number(d.scale_bar_um || 0).toPrecision(4)} um · ${escHtml(formatScaleInfo(d))}</div>
       <div style="margin-top:8px">${openButton}</div>`;
     upsertGifResultCard('gifRoiPreviewResultCard', header, body);
-    setStatus('status', 'ROI preview saved: ' + (d.output_path || ''), 'ok');
-    toast('ROI preview saved');
+    setStatus('status', 'ROI preview exported: ' + (d.output_path || ''), 'ok');
+    toast('ROI preview exported');
     recordRunHistory({
       view: 'fluorescence_gif',
       title: 'GIF ROI Preview',
@@ -1309,9 +1310,9 @@ async function exportGifRoiPreview() {
       },
     });
   } catch(ex) {
-    btnBusy('btnExportGifRoiPreview', false, 'Save ROI Preview');
-    setStatus('status', 'Save failed: ' + ex.message, 'error');
-    toast('Save failed: ' + ex.message, true);
+    btnBusy('btnExportGifRoiPreview', false, 'Export ROI Preview');
+    setStatus('status', 'Export failed: ' + ex.message, 'error');
+    toast('Export failed: ' + ex.message, true);
   }
 }
 
@@ -1410,13 +1411,13 @@ async function saveGifRoiOutputs(opts) {
     (options.saveCsv && !!_gifRoiCsvContent) ||
     (options.savePlot && !!_gifRoiPlotB64);
   if (!hasRequestedOutput) {
-    setStatus('status', 'No ROI time-analysis output to save', 'error');
+    setStatus('status', 'No ROI time-analysis output to export', 'error');
     return;
   }
 
   const entries = gifAnalysisEntries();
   const prefix = buildGifRoiPrefix();
-  setStatus('status', 'Saving ROI time-analysis output...', 'loading');
+  setStatus('status', 'Exporting ROI time-analysis output...', 'loading');
 
   try {
     const d = await runGifBackgroundJob('/api/fluorescence/gif_roi/export_job', {
@@ -1427,11 +1428,11 @@ async function saveGifRoiOutputs(opts) {
       save_plot: !!options.savePlot,
       csv: _gifRoiCsvContent || '',
       plot_png_b64: _gifRoiPlotB64 || '',
-    }, 'Saving ROI time-analysis output');
+    }, 'Exporting ROI time-analysis output');
     if (d.error) throw new Error(d.error);
     _gifRoiDefaultOutputDir = d.output_dir || _gifRoiDefaultOutputDir;
-    setStatus('status', 'Saved: ' + (d.saved_paths || []).join(' | '), 'ok');
-    toast('ROI time-analysis output saved');
+    setStatus('status', 'Exported: ' + (d.saved_paths || []).join(' | '), 'ok');
+    toast('ROI time-analysis output exported');
     recordRunHistory({
       view: 'fluorescence_gif',
       title: 'GIF ROI Time Export',
@@ -1449,8 +1450,8 @@ async function saveGifRoiOutputs(opts) {
       },
     });
   } catch(ex) {
-    setStatus('status', 'Save failed: ' + ex.message, 'error');
-    toast('Save failed: ' + ex.message, true);
+    setStatus('status', 'Export failed: ' + ex.message, 'error');
+    toast('Export failed: ' + ex.message, true);
   }
 }
 
@@ -1630,13 +1631,13 @@ async function saveGifKymoOutputs(opts) {
     (options.saveSummaryCsv && !!_gifKymoSummaryCsv) ||
     (options.savePlot && !!_gifKymoPlotB64);
   if (!hasRequestedOutput) {
-    setStatus('status', 'No kymograph output to save', 'error');
+    setStatus('status', 'No kymograph output to export', 'error');
     return;
   }
 
   const entries = gifAnalysisEntries();
   const prefix = buildGifKymoPrefix();
-  setStatus('status', 'Saving kymograph output...', 'loading');
+  setStatus('status', 'Exporting kymograph output...', 'loading');
   try {
     const d = await runGifBackgroundJob('/api/fluorescence/gif_roi/kymograph_export_job', {
       tiff_paths: entries.map(e => e.path),
@@ -1648,11 +1649,11 @@ async function saveGifKymoOutputs(opts) {
       heatmap_csv: _gifKymoHeatmapCsv || '',
       summary_csv: _gifKymoSummaryCsv || '',
       plot_png_b64: _gifKymoPlotB64 || '',
-    }, 'Saving kymograph output');
+    }, 'Exporting kymograph output');
     if (d.error) throw new Error(d.error);
     _gifKymoDefaultOutputDir = d.output_dir || _gifKymoDefaultOutputDir;
-    setStatus('status', 'Saved: ' + (d.saved_paths || []).join(' | '), 'ok');
-    toast('Kymograph output saved');
+    setStatus('status', 'Exported: ' + (d.saved_paths || []).join(' | '), 'ok');
+    toast('Kymograph output exported');
     recordRunHistory({
       view: 'fluorescence_gif',
       title: 'GIF Kymograph Export',
@@ -1670,8 +1671,8 @@ async function saveGifKymoOutputs(opts) {
       },
     });
   } catch(ex) {
-    setStatus('status', 'Save failed: ' + ex.message, 'error');
-    toast('Save failed: ' + ex.message, true);
+    setStatus('status', 'Export failed: ' + ex.message, 'error');
+    toast('Export failed: ' + ex.message, true);
   }
 }
 

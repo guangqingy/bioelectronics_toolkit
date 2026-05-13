@@ -1,5 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Fluorescence GIF Merge{% endblock %}
+{% set gif_page_mode = gif_mode|default('gif') %}
+{% set gif_page_title = {
+  'gif': 'Fluorescence GIF Export',
+  'timecourse': 'Fluorescence Timecourse',
+  'kymograph': 'Fluorescence Kymograph'
+}.get(gif_page_mode, 'Fluorescence GIF Export') %}
+{% block title %}{{ gif_page_title }}{% endblock %}
 {% block head %}
 <link rel="stylesheet" href="/static/css/fluorescence_gif.css"/>
 {% endblock %}
@@ -34,7 +40,7 @@
 
 <div class="ctrl-section">
   <div class="gif-stack-head">
-    <div class="gif-stack-title">GIF Queue</div>
+    <div class="gif-stack-title">{{ 'GIF Queue' if gif_page_mode == 'gif' else 'TIFF Queue' }}</div>
     <div class="gif-stack-count" id="tiffCount">0 files</div>
   </div>
   <div id="tiffList" class="gif-file-list"></div>
@@ -45,7 +51,7 @@
 </div>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">GIF Parameters</div>
+  <div class="ctrl-label">{{ 'GIF Parameters' if gif_page_mode == 'gif' else 'Preview Parameters' }}</div>
   <div class="param-row">
     <div class="param-label">FPS</div>
     <input type="number" id="gifFps" class="input-sm" value="5" step="0.5" min="0.1" onchange="scheduleGifPreview()">
@@ -81,6 +87,7 @@
       <option value="none">None</option>
     </select>
   </div>
+  {% if gif_page_mode == 'gif' %}
   <div class="param-row">
     <div class="param-label">Crop</div>
     <select id="gifCropMode" class="input-sm" onchange="updateGifCropControls(); scheduleGifPreview()">
@@ -105,6 +112,7 @@
     <input type="text" id="gifOutput" placeholder="(auto — based on first TIFF)" style="font-size:11.5px">
   </div>
   <button class="btn-primary" id="btnGenerate" onclick="generateGif()" style="width:100%;margin-top:8px">Generate GIF</button>
+  {% endif %}
 </div>
 
 <div class="ctrl-section">
@@ -136,6 +144,7 @@
   <div class="status-bar" id="gifFileProfileStatus"></div>
 </div>
 
+{% if gif_page_mode in ['timecourse', 'kymograph'] %}
 <div class="ctrl-section">
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI Polygon</span>
@@ -147,12 +156,14 @@
   </div>
   <div class="btn-row" style="margin-top:6px">
     <button class="btn-secondary" onclick="clearPolygons()">Clear ROI</button>
-    <button class="btn-secondary" id="btnExportGifRoiPreview" onclick="exportGifRoiPreview()">Save ROI Preview</button>
+    <button class="btn-secondary" id="btnExportGifRoiPreview" onclick="exportGifRoiPreview()">Export ROI Preview</button>
   </div>
   <div id="polygonHint" class="status-bar" style="padding-top:6px">Click + Polygon, then click the preview image to add points.</div>
   <div id="polygonList" class="gif-roi-list"></div>
 </div>
+{% endif %}
 
+{% if gif_page_mode == 'gif' %}
 <div class="ctrl-section">
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI2 Crop Rectangle</span>
@@ -164,7 +175,9 @@
   <div id="cropRectHint" class="status-bar" style="padding-top:6px">Click + Rectangle, then drag on the preview image.</div>
   <div id="cropRectList" class="gif-roi-list"></div>
 </div>
+{% endif %}
 
+{% if gif_page_mode == 'timecourse' %}
 <div class="ctrl-section">
   <div class="ctrl-label">ROI Time Analysis</div>
   <div class="param-row">
@@ -200,7 +213,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Ref frame</div>
+    <div class="param-label" title="Reference frame for normalization">Ref frame</div>
     <input type="number" id="gifRoiRefFrame" value="1" min="1" step="1" style="font-size:11.5px">
   </div>
   <div class="param-row">
@@ -210,10 +223,29 @@
   <button class="btn-secondary" id="btnAnalyzeGifRoi" onclick="runGifRoiAnalysis()" style="width:100%;margin-top:4px">Analyze ROI Time</button>
   <div id="gifRoiExportSection" style="display:none;margin-top:8px">
     <div class="btn-row">
-      <button class="btn-secondary" onclick="exportGifRoiCSV()">Save CSV</button>
-      <button class="btn-secondary" onclick="exportGifRoiPlotPNG()">Save Plot PNG</button>
+      <button class="btn-secondary" onclick="exportGifRoiCSV()">Export CSV</button>
+      <button class="btn-secondary" onclick="exportGifRoiPlotPNG()">Export PNG</button>
     </div>
-    <button class="btn-secondary" onclick="exportGifRoiAll()" style="width:100%;margin-top:6px">Save Both</button>
+    <button class="btn-secondary" onclick="exportGifRoiAll()" style="width:100%;margin-top:6px">Export Both</button>
+  </div>
+</div>
+{% endif %}
+
+{% if gif_page_mode == 'kymograph' %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Background</div>
+  <div class="param-row">
+    <div class="param-label">BG mode</div>
+    <select id="gifBgMode" onchange="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
+      <option value="none">None</option>
+      <option value="corner_br">Corner (bottom-right)</option>
+      <option value="corner_tl">Corner (top-left)</option>
+      <option value="roi">ROI</option>
+    </select>
+  </div>
+  <div id="gifBgRoiRow" class="param-row" style="display:none">
+    <div class="param-label">BG ROI</div>
+    <select id="gifBgRoiSelect" onchange="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
   </div>
 </div>
 
@@ -237,8 +269,8 @@
   </div>
   <div class="param-row">
     <div class="param-label">Range %</div>
-    <input type="number" id="gifKymoLowPct" value="1" min="0" max="49" step="0.5" style="font-size:11.5px">
-    <input type="number" id="gifKymoHighPct" value="99.5" min="51" max="100" step="0.5" style="font-size:11.5px">
+    <input type="number" id="gifKymoLowPct" value="1" min="0" max="49" step="0.5" title="Lower percentile for contrast stretching" style="font-size:11.5px">
+    <input type="number" id="gifKymoHighPct" value="99.5" min="51" max="100" step="0.5" title="Upper percentile for contrast stretching" style="font-size:11.5px">
   </div>
   <div class="param-row">
     <div class="param-label">Thresholds</div>
@@ -273,7 +305,7 @@
     <span>Smooth overlay lines</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Ref frame</div>
+    <div class="param-label" title="Reference frame for normalization">Ref frame</div>
     <input type="number" id="gifKymoRefFrame" value="1" min="1" step="1" style="font-size:11.5px">
   </div>
   <div class="param-row">
@@ -292,16 +324,17 @@
   <button class="btn-secondary" id="btnRunGifKymo" onclick="runGifKymograph()" style="width:100%;margin-top:4px">Run Kymograph</button>
   <div id="gifKymoExportSection" style="display:none;margin-top:8px">
     <div class="btn-row">
-      <button class="btn-secondary" onclick="exportGifKymoPlotPNG()">Save Plot</button>
-      <button class="btn-secondary" onclick="exportGifKymoHeatmapCSV()">Save Heatmap CSV</button>
+      <button class="btn-secondary" onclick="exportGifKymoPlotPNG()">Export Plot</button>
+      <button class="btn-secondary" onclick="exportGifKymoHeatmapCSV()">Export Heatmap CSV</button>
     </div>
     <div class="btn-row" style="margin-top:6px">
-      <button class="btn-secondary" onclick="exportGifKymoSummaryCSV()">Save Summary CSV</button>
-      <button class="btn-secondary" onclick="exportGifKymoAll()">Save All</button>
+      <button class="btn-secondary" onclick="exportGifKymoSummaryCSV()">Export Summary CSV</button>
+      <button class="btn-secondary" onclick="exportGifKymoAll()">Export All</button>
     </div>
   </div>
-  <div class="status-bar" style="padding-top:6px">Uses the background setting from ROI Time Analysis above.</div>
+  <div class="status-bar" style="padding-top:6px">Uses the background setting above.</div>
 </div>
+{% endif %}
 
 <div id="status" class="status-bar"></div>
 {% endif %}
@@ -310,8 +343,16 @@
 {% block main %}
 <div class="view-main">
   <div class="view-header">
-    <div class="view-title">Fluorescence GIF Merge</div>
-    <div class="view-sub" id="viewSub">Add one or more TIFF stacks and merge them into a single animated GIF.</div>
+    <div class="view-title">{{ gif_page_title }}</div>
+    <div class="view-sub" id="viewSub">
+      {% if gif_page_mode == 'timecourse' %}
+      Draw polygon ROIs and analyze fluorescence over time.
+      {% elif gif_page_mode == 'kymograph' %}
+      Build ROI intensity-distribution kymographs from TIFF time series.
+      {% else %}
+      Add one or more TIFF stacks and merge them into a single animated GIF.
+      {% endif %}
+    </div>
   </div>
 
   <div class="result-card">
@@ -331,6 +372,7 @@
     </div>
   </div>
 
+  {% if gif_page_mode == 'gif' %}
   <div class="result-card" id="generatedGifCard">
     <div class="result-card-header">
       Generated GIF Preview
@@ -343,6 +385,7 @@
       <div id="generatedGifMeta" style="font-size:12px;color:var(--pewter);margin-top:8px;word-break:break-word"></div>
     </div>
   </div>
+  {% endif %}
 
   <!-- Result info -->
   <div id="resultArea" style="display:flex;flex-direction:column;gap:10px"></div>

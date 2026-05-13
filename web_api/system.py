@@ -47,20 +47,14 @@ def _allow_windows_foreground() -> None:
     try:
         import ctypes
 
-        user32 = ctypes.windll.user32
-        user32.AllowSetForegroundWindow.argtypes = [ctypes.c_uint]
-        user32.AllowSetForegroundWindow.restype = ctypes.c_bool
-        user32.AllowSetForegroundWindow(0xFFFFFFFF)
+        ctypes.windll.user32.AllowSetForegroundWindow(-1)
     except Exception:
         pass
 
 
 def _windows_picker_error(kind: str, detail: str = "") -> PickerUnavailableError:
-    message = (
-        f"Windows {kind} picker could not open. "
-        "Please paste the path manually, or check that PowerShell and Windows Forms "
-        "are allowed on this computer."
-    )
+    noun = "Folder" if kind == "folder" else "File"
+    message = f"{noun} picker unavailable; please paste path manually."
     detail = detail.strip()
     if detail:
         message = f"{message} Detail: {detail}"

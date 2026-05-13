@@ -305,6 +305,20 @@ body {
   padding: 10px 12px;
 }
 
+.ctrl-details > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.ctrl-details > summary::-webkit-details-marker { display: none; }
+.ctrl-details > summary::after {
+  content: "▸";
+  float: right;
+  color: var(--silver);
+  font-size: 11px;
+}
+.ctrl-details[open] > summary::after { content: "▾"; }
+.ctrl-details[open] > summary { margin-bottom: 8px; }
+
 /* ─── Section labels ─── */
 .ctrl-label {
   font-size: 10px;

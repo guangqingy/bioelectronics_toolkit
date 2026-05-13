@@ -7,10 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-05-13
+
 ### Added
 - Maintenance prompt documenting repository standards for future feature
   integration, WebGUI/service layering, pipeline registration, testing, and
   release updates.
+- Windows CI smoke coverage for importing the WebGUI and compiling Python
+  modules.
+- Separate Fluorescence Timecourse and Kymograph pages, plus a top-level README
+  demo GIF, Dependabot config, security policy, maintainer onboarding guide,
+  architecture decision records, and a legacy desktop retirement tracker.
+
+### Changed
+- Fluorescence GIF, ROI, RHD, and EMG-heavy pages now use clearer split routes,
+  collapsible sections, and more consistent Save/Export/Undo wording.
+- ABF batch export workflow is centralized on the ABF Batch page instead of the
+  ABF Viewer queue.
+
+### Fixed
+- Windows Browse picker failures no longer fall back to Tkinter in Flask worker
+  threads and now tell users to paste a path manually.
+- Windows Browse can request foreground permission before opening native picker
+  dialogs.
 
 ## [0.3.0] - 2026-05-09
 

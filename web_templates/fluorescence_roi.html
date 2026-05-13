@@ -2,6 +2,8 @@
 {% block title %}Fluorescence ROI Analysis{% endblock %}
 
 {% block controls %}
+<details class="ctrl-section ctrl-details" open>
+  <summary class="ctrl-label">Basic</summary>
 <div class="ctrl-section">
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
@@ -28,7 +30,10 @@
   </div>
   <div id="analysisCount" class="status-bar" style="padding-top:6px">0 selected</div>
 </div>
+</details>
 
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Display</summary>
 <div class="ctrl-section" id="stackSection" style="display:none" data-resettable="true">
   <div class="ctrl-label">Preview</div>
   <div class="param-row">
@@ -62,7 +67,10 @@
     <span class="frame-badge" id="frameLabel">0 / 0</span>
   </div>
 </div>
+</details>
 
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced</summary>
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI Manager</span>
@@ -79,15 +87,15 @@
 	      <option value="rect">Rectangle</option>
 	      <option value="concentric">Concentric circles</option>
 	    </select>
-	  </div>
+  </div>
   <div id="ringWidthRow" class="param-row" style="display:none">
-    <div class="param-label">Ring px</div>
+    <div class="param-label" title="Outer ring radius for concentric ROI in pixels">Ring px</div>
     <input type="number" id="ringWidthPx" value="10" min="1" step="1" onchange="onRingWidthChange()" style="font-size:11.5px">
     <div class="param-label" style="min-width:42px">Layers</div>
     <input type="number" id="ringCount" placeholder="auto" min="1" step="1" onchange="onRingWidthChange()" style="font-size:11.5px">
   </div>
   <div id="ringWidthUmRow" class="param-row" style="display:none">
-    <div class="param-label">Ring um</div>
+    <div class="param-label" title="Outer ring radius for concentric ROI in micrometers">Ring um</div>
     <input type="number" id="ringWidthUm" placeholder="use px if blank" min="0" step="any" onchange="onRingWidthChange()" style="font-size:11.5px">
   </div>
 </div>
@@ -130,7 +138,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Ref seq</div>
+    <div class="param-label" title="Reference frame for normalization">Ref seq</div>
     <input type="text" id="refSequence" value="0" placeholder="e.g. 0 or 10" style="font-size:11.5px">
   </div>
   <div class="param-row">
@@ -166,7 +174,12 @@
     <span>Show scale bar on ROI reference</span>
   </label>
 </div>
+</details>
 
+<button class="btn-primary" id="btnAnalyze" data-label="Run Analysis" onclick="runAnalysis()">Run Analysis</button>
+
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Export</summary>
 <div class="ctrl-section">
   <div class="ctrl-label">Saved Settings</div>
   <div class="input-group">
@@ -202,26 +215,25 @@
   <div class="status-bar" id="roiFileProfileStatus"></div>
 </div>
 
-<button class="btn-primary" id="btnAnalyze" data-label="Run Analysis" onclick="runAnalysis()">Run Analysis</button>
-
 <div class="ctrl-section" id="exportSection" style="display:none">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="exportCSV()">Save CSV</button>
-    <button class="btn-secondary" onclick="exportPlotPNG()">Save Plot PNG</button>
+    <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
+    <button class="btn-secondary" onclick="exportPlotPNG()">Export PNG</button>
   </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportPreviewPNG()">Save ROI Preview PNG</button>
-	    <button class="btn-secondary" onclick="exportGif()">Save GIF</button>
+	    <button class="btn-secondary" onclick="exportPreviewPNG()">Export ROI Preview</button>
+	    <button class="btn-secondary" onclick="exportGif()">Export GIF</button>
 	  </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportRadialCSV()">Save Radial CSV</button>
-	    <button class="btn-secondary" onclick="exportRadialPlotPNG()">Save Radial PNG</button>
+	    <button class="btn-secondary" onclick="exportRadialCSV()">Export Radial CSV</button>
+	    <button class="btn-secondary" onclick="exportRadialPlotPNG()">Export Radial PNG</button>
 	  </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportAllOutputs()">Save All</button>
+	    <button class="btn-secondary" onclick="exportAllOutputs()">Export All Artifacts</button>
 	  </div>
 	</div>
+</details>
 
 <div id="status" class="status-bar"></div>
 {% endblock %}

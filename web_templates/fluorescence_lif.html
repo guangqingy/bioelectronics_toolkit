@@ -6,7 +6,7 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/lif/data">
-    <button class="btn-icon" onclick="pickFolder('folderPath','scanLifFolder')">Browse</button>
+    <button class="btn-icon" onclick="pickFolder('folderPath','scanLifFolder')">Browse Folder</button>
   </div>
   <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="scanLifFolder()">Scan .lif Files</button>
 </div>
@@ -20,7 +20,7 @@
   <div class="ctrl-label">Selected Project</div>
   <div class="input-row">
     <input type="text" id="lifPath" class="input-path" placeholder="/path/to/project.lif">
-    <button class="btn-icon" onclick="pickFile('lifPath','loadLifProject')">Browse</button>
+    <button class="btn-icon" onclick="pickFile('lifPath','loadLifProject')">Browse File</button>
   </div>
   <button class="btn-primary" id="btnLoadLif" data-label="Load Project" onclick="loadLifProject()" style="margin-top:8px">Load Project</button>
 </div>
@@ -36,7 +36,7 @@
     </select>
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" id="btnManifest" onclick="exportLifManifest()" disabled>Save CSV</button>
+    <button class="btn-secondary" id="btnManifest" onclick="exportLifManifest()" disabled>Export CSV</button>
     <button class="btn-secondary" id="btnExportAllTiff" onclick="exportAllTiff()" disabled>Export All TIFF</button>
   </div>
 </div>
@@ -64,11 +64,11 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Lo %</div>
+    <div class="param-label" title="Lower percentile for contrast stretching">Lo %</div>
     <input type="number" id="pLow" class="input-sm" value="1" step="0.5" min="0" max="49" onchange="refreshLifPreview()">
   </div>
   <div class="param-row">
-    <div class="param-label">Hi %</div>
+    <div class="param-label" title="Upper percentile for contrast stretching">Hi %</div>
     <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" onchange="refreshLifPreview()">
   </div>
   <div class="lif-slider-row">
@@ -575,14 +575,14 @@ function exportLifManifest() {
     return;
   }
   syncRenameFromInput();
-  btnBusy('btnManifest', true, 'Saving...');
+  btnBusy('btnManifest', true, 'Exporting...');
   const order_indices = _lifDisplayRecords.map(r => r.index);
   api('/api/fluorescence/lif/export_manifest', {
     path: _lifPath,
     order_indices,
     rename_map: _lifRenameMap,
   }).then(d => {
-    btnBusy('btnManifest', false, 'Save CSV');
+    btnBusy('btnManifest', false, 'Export CSV');
     if (d.error) throw new Error(d.error);
     setStatus('status', `Saved order CSV: ${d.output_path}`, 'ok');
     showLog('LIF Order CSV', `${d.rows || 0} rows saved\n${d.output_path}`);
@@ -597,7 +597,7 @@ function exportLifManifest() {
     });
     toast('LIF order CSV saved');
   }).catch(e => {
-    btnBusy('btnManifest', false, 'Save CSV');
+    btnBusy('btnManifest', false, 'Export CSV');
     setStatus('status', 'Export error: ' + e.message, 'error');
     showLog('LIF Export Error', e.message || String(e));
   });

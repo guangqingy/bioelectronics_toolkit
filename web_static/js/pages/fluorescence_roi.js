@@ -1052,7 +1052,7 @@ function saveSequenceOutputs(opts) {
 
   const prefix = buildExportPrefix();
   _lastExportPrefix = prefix;
-  setStatus('status', 'Saving outputs to disk...', 'loading');
+  setStatus('status', 'Exporting outputs to disk...', 'loading');
 
   dpRunJobEndpoint('/api/fluorescence/roi/export_sequence_job', {
     records,
@@ -1073,14 +1073,14 @@ function saveSequenceOutputs(opts) {
 	    on_update: job => {
 	      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
 	      const msg = job.message ? ` · ${job.message}` : '';
-	      setStatus('status', `Saving outputs to disk${pct}${msg}`, 'loading');
+	      setStatus('status', `Exporting outputs to disk${pct}${msg}`, 'loading');
 	    },
 	  }).then(d => {
     if (d.error) throw new Error(d.error);
     _defaultOutputDir = d.output_dir || _defaultOutputDir;
     const saved = (d.saved_paths || []).join(' | ');
-    setStatus('status', 'Saved: ' + (saved || 'ok'), 'ok');
-    toast('Saved to disk');
+    setStatus('status', 'Exported: ' + (saved || 'ok'), 'ok');
+    toast('Exported to disk');
     recordRunHistory({
       view: 'fluorescence_roi',
       title: 'ROI Sequence Export',
@@ -1101,7 +1101,7 @@ function saveSequenceOutputs(opts) {
     });
   }).catch(e => {
     setStatus('status', 'Error: ' + e.message, 'error');
-    toast('Save failed: ' + e.message, true);
+    toast('Export failed: ' + e.message, true);
   });
 }
 
@@ -1312,7 +1312,7 @@ function exportGif() {
 
   const prefix = buildExportPrefix();
   _lastExportPrefix = prefix;
-  setStatus('status', 'Saving GIF to disk...', 'loading');
+  setStatus('status', 'Exporting GIF to disk...', 'loading');
   dpRunJobEndpoint('/api/fluorescence/roi/export_sequence_gif_job', {
     records,
     rois,
@@ -1331,7 +1331,7 @@ function exportGif() {
     on_update: job => {
       const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
       const msg = job.message ? ` · ${job.message}` : '';
-      setStatus('status', `Saving GIF to disk${pct}${msg}`, 'loading');
+      setStatus('status', `Exporting GIF to disk${pct}${msg}`, 'loading');
     },
   }).then(d => {
     if (d.error) throw new Error(d.error);
@@ -1339,8 +1339,8 @@ function exportGif() {
       const pos = d.gif_path.lastIndexOf('/');
       if (pos > 0) _defaultOutputDir = d.gif_path.slice(0, pos);
     }
-    setStatus('status', 'Saved GIF: ' + (d.gif_path || 'ok'), 'ok');
-    toast('GIF saved to disk');
+    setStatus('status', 'Exported GIF: ' + (d.gif_path || 'ok'), 'ok');
+    toast('GIF exported to disk');
     recordRunHistory({
       view: 'fluorescence_roi',
       title: 'ROI Sequence GIF',
@@ -1362,7 +1362,7 @@ function exportGif() {
     });
   }).catch(e => {
     setStatus('status', 'Error: ' + e.message, 'error');
-    toast('GIF save failed: ' + e.message, true);
+    toast('GIF export failed: ' + e.message, true);
   });
 }
 
@@ -1371,7 +1371,7 @@ function exportAllOutputs() {
     setStatus('status', 'No analysis outputs to export', 'error');
     return;
   }
-  saveSequenceOutputs({ saveCsv: true, savePlot: true, savePreview: true });
+  saveSequenceOutputs({ saveCsv: true, savePlot: true, savePreview: true, saveRadialCsv: true, saveRadialPlot: true });
 }
 
 window.addEventListener('load', async () => {
