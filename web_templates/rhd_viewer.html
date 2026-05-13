@@ -174,6 +174,11 @@
     <span>Log STFT magnitude</span>
   </label>
   <button id="btnProcess" class="btn-primary" onclick="runProcessing()">Generate Processing Plot</button>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn-secondary" type="button" onclick="exportProcessing('csv')">Export CSV</button>
+    <button class="btn-secondary" type="button" onclick="exportProcessing('png')">Export PNG</button>
+    <button class="btn-secondary" type="button" onclick="exportProcessing('svg')">Export SVG</button>
+  </div>
 </details>
 
 <details class="ctrl-section ctrl-details">
@@ -490,6 +495,14 @@ function currentProcessingParams() {
     stft_cmap: document.getElementById('stftCmap')?.value || 'viridis',
     stft_log: document.getElementById('stftLog')?.checked || false,
   };
+}
+
+function currentProcessingPayload(extra) {
+  return Object.assign({
+    path: _currentFile,
+    channel: _currentChannel,
+    merge_pair: previewMergeEnabled(),
+  }, currentViewParams(), currentProcessingParams(), currentFigureParams(), extra || {});
 }
 
 function scanFolder() {
@@ -854,14 +867,7 @@ function runProcessing() {
     setStatus('status', 'No channel selected', 'error');
     return;
   }
-  const payload = {
-    path: _currentFile,
-    channel: _currentChannel,
-    merge_pair: previewMergeEnabled(),
-    ...currentViewParams(),
-    ...currentProcessingParams(),
-    ...currentFigureParams(),
-  };
+  const payload = currentProcessingPayload();
   btnBusy('btnProcess', true, 'Generating...');
   setStatus('status', 'Generating processing plot...', 'loading');
   api('/api/rhd/process', payload)
@@ -872,6 +878,46 @@ function runProcessing() {
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
     .finally(() => btnBusy('btnProcess', false, 'Generate Processing Plot'));
+}
+
+function exportProcessing(fmt) {
+  if (!_currentFile || !_currentChannel) {
+    setStatus('status', 'No channel selected', 'error');
+    return;
+  }
+  const payload = currentProcessingPayload({fmt, mode: 'save'});
+  setStatus('status', 'Exporting processing ' + fmt.toUpperCase() + '...', 'loading');
+  dpRunJobEndpoint('/api/rhd/export_processing_job', payload, {
+    interval_ms: 800,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Exporting processing ${fmt.toUpperCase()}${pct}${msg}`, 'loading');
+    },
+  })
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      const savedPath = data.saved_path || ((data.outputs || [])[0] || {}).path || 'ok';
+      setStatus('status', 'Exported processing ' + fmt.toUpperCase() + ': ' + savedPath, 'ok');
+      recordRunHistory({
+        view: 'rhd_viewer',
+        title: 'RHD Processing ' + fmt.toUpperCase() + ' Export',
+        status: 'ok',
+        project_root: document.getElementById('folderPath').value.trim(),
+        input_files: [{path: _currentFile, role: 'source_rhd'}],
+        outputs: data.outputs || (data.saved_path ? [{path: data.saved_path, type: 'processing_' + fmt}] : []),
+        parameters: rhdExportParams({
+          mode: 'processing',
+          channel: _currentChannel,
+          fmt,
+          ...currentProcessingParams(),
+        }),
+        metadata: {
+          process_type: data.process_type || payload.process_type,
+        },
+      });
+    })
+    .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
 }
 
 function saveAllChannels() {

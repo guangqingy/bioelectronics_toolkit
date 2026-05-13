@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ABF and CSV trace SVG exports now use the same clean, ungrouped axis/tick/data
   output style as the RHD viewer, and saved trace image exports use short
   incrementing suffixes.
+- RHD processing plots can now be exported as CSV, PNG, or SVG through a shared
+  processing service, and file/page profile controls are collapsed under
+  advanced sections by default.
 - RHD Viewer now exposes more analysis controls for envelope, smoothing, FFT,
   STFT, fitting, and figure output styling.
 - Dense analysis controls now use mode-specific parameter groups so unrelated

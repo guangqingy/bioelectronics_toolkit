@@ -41,8 +41,8 @@
   <div id="status" class="status-bar"></div>
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Saved Settings</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: Saved Settings</summary>
   <div class="input-group">
     <select id="contextSelect" onchange="restoreSelectedContext()">
       <option value="">No saved context</option>
@@ -53,7 +53,7 @@
     </div>
     <button class="btn-secondary btn-block" type="button" onclick="resetCurrentDefaults()">Reset Defaults</button>
   </div>
-</div>
+</details>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Output</div>

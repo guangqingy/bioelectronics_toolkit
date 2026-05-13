@@ -244,6 +244,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function currentFigureParams()", template)
         self.assertIn('id="processArea"', template)
         self.assertIn("/api/rhd/process", template)
+        self.assertIn("/api/rhd/export_processing_job", template)
+        self.assertIn("function currentProcessingPayload(extra)", template)
+        self.assertIn("function exportProcessing(fmt)", template)
+        self.assertIn("Export SVG", template)
         self.assertIn("let _fileLoadSeq", template)
         self.assertIn("let _plotSeq", template)
         self.assertIn("merge_pair: previewMergeEnabled()", template)
@@ -363,6 +367,56 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(processed_data["process_type"], "fft")
             self.assertEqual(processed_data["fft_window"], "hamming")
             self.assertLessEqual(processed_data["frequency_max"], 100)
+
+    def test_rhd_processing_exports_analysis_csv_png_and_svg(self) -> None:
+        import numpy as np
+
+        import web_app
+
+        if not web_app.HAS_RHD:
+            self.skipTest("Intan RHD parser is not available")
+
+        def fake_load_channel_with_merge_option(path, _rhd_module, ch_in, do_merge):
+            n = 1000
+            t = np.arange(n, dtype=float) / 1000.0
+            y = np.sin(2 * np.pi * 20 * t)
+            return t, 1000.0, ["A-000"], y, 0, "A-000", Path(path).stem, bool(do_merge), 1
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_processing_") as tmp:
+            src = Path(tmp) / "record_0000.rhd"
+            src.write_bytes(b"placeholder")
+            saved = {}
+            with mock.patch(
+                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                side_effect=fake_load_channel_with_merge_option,
+            ):
+                for fmt in ("csv", "png", "svg"):
+                    response = self.client.post(
+                        "/api/rhd/export_processing",
+                        json={
+                            "path": str(src),
+                            "channel": "A-000",
+                            "fmt": fmt,
+                            "mode": "save",
+                            "process_type": "fft",
+                            "fft_window": "hann",
+                            "fft_max_hz": 100,
+                            "x_min": 0,
+                            "x_max": 0.5,
+                        },
+                    )
+                    payload = response.get_json()
+                    data = payload.get("data", payload)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(payload["ok"])
+                    out_path = Path(data["saved_path"])
+                    self.assertTrue(out_path.exists())
+                    self.assertTrue(out_path.name.endswith(f"_fft_1.{fmt}"))
+                    saved[fmt] = out_path
+
+            self.assertIn("frequency_hz,amplitude_uV", saved["csv"].read_text(encoding="utf-8"))
+            self.assertTrue(saved["png"].read_bytes().startswith(b"\x89PNG"))
+            self.assertIn("<svg", saved["svg"].read_text(encoding="utf-8"))
 
     def test_rhd_svg_export_is_clean_and_numbered(self) -> None:
         import numpy as np
@@ -520,8 +574,31 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/gif_roi/kymograph_export_job",
             "/api/fluorescence/roi/analyze_sequence",
             "/api/fluorescence/roi/export_sequence_gif_job",
+            "/api/rhd/export_processing",
+            "/api/rhd/export_processing_job",
         }
         self.assertTrue(expected.issubset(routes), sorted(expected - routes))
+
+    def test_profile_and_page_settings_are_collapsed_as_advanced_controls(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        generic = (root / "web_templates" / "partials" / "control_panel_extras.html").read_text(
+            encoding="utf-8"
+        )
+        fluorescence = (root / "web_templates" / "fluorescence.html").read_text(encoding="utf-8")
+        gif = (root / "web_templates" / "fluorescence_gif.html").read_text(encoding="utf-8")
+        roi = (root / "web_templates" / "fluorescence_roi.html").read_text(encoding="utf-8")
+        scripts = (root / "web_templates" / "scripts.html").read_text(encoding="utf-8")
+
+        self.assertIn('<details class="ctrl-section ctrl-details generic-file-profile-section"', generic)
+        self.assertIn("Advanced: File Profile", generic)
+        self.assertIn("Advanced: Page Settings", generic)
+        self.assertIn("Advanced: File Profile", fluorescence)
+        self.assertIn("Advanced: Saved Settings", fluorescence)
+        self.assertIn("Advanced: File Profile", gif)
+        self.assertIn("Advanced: Saved Settings", gif)
+        self.assertIn("Advanced: File Profile", roi)
+        self.assertIn("Advanced: Saved Settings", roi)
+        self.assertIn("Advanced: Saved Settings", scripts)
 
     def test_windows_picker_failure_returns_error_without_tk_fallback(self) -> None:
         with (

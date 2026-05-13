@@ -180,8 +180,8 @@
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
-<div class="ctrl-section">
-  <div class="ctrl-label">Saved Settings</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: Saved Settings</summary>
   <div class="input-group">
     <select id="roiContextSelect" onchange="restoreRoiContext()">
       <option value="">Saved contexts</option>
@@ -193,10 +193,10 @@
     <button class="btn-secondary btn-block" type="button" onclick="resetRoiDefaults()">Reset Defaults</button>
   </div>
   <div class="status-bar" id="roiPrefsStatus"></div>
-</div>
+</details>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">File Profile</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
     <select id="roiFileProfileSelect" onchange="loadSelectedRoiFileProfile(false)">
       <option value="">No file selected</option>
@@ -213,7 +213,7 @@
     </label>
   </div>
   <div class="status-bar" id="roiFileProfileStatus"></div>
-</div>
+</details>
 
 <div class="ctrl-section" id="exportSection" style="display:none">
   <div class="ctrl-label">Export</div>

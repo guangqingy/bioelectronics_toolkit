@@ -115,17 +115,17 @@
   {% endif %}
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Saved Settings</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: Saved Settings</summary>
   <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="saveGifDefaults()">Save Defaults</button>
     <button class="btn-secondary" type="button" onclick="resetGifDefaults()">Reset</button>
   </div>
   <div class="status-bar" id="gifPrefsStatus"></div>
-</div>
+</details>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">File Profile</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
     <select id="gifFileProfileSelect" onchange="loadSelectedGifFileProfile(false)">
       <option value="">No file selected</option>
@@ -142,7 +142,7 @@
     </label>
   </div>
   <div class="status-bar" id="gifFileProfileStatus"></div>
-</div>
+</details>
 
 {% if gif_page_mode in ['timecourse', 'kymograph'] %}
 <div class="ctrl-section">

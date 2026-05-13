@@ -1,8 +1,8 @@
 {% set generic_prefs_enabled = (active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
 {% set generic_file_profile_enabled = (active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks'] %}
 {% if generic_file_profile_enabled %}
-<div class="ctrl-section generic-file-profile-section" id="genericFileProfileSection">
-  <div class="ctrl-label">File Profile</div>
+<details class="ctrl-section ctrl-details generic-file-profile-section" id="genericFileProfileSection">
+  <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
     <select id="genericFileProfileSelect" onchange="loadSelectedGenericFileProfile(false)">
       <option value="">No file selected</option>
@@ -19,16 +19,16 @@
     </label>
   </div>
   <div class="status-bar" id="genericFileProfileStatus"></div>
-</div>
+</details>
 {% endif %}
 {% if generic_prefs_enabled %}
-<div class="ctrl-section generic-settings-section" id="genericSettingsSection">
-  <div class="ctrl-label">Page Settings</div>
+<details class="ctrl-section ctrl-details generic-settings-section" id="genericSettingsSection">
+  <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="saveGenericPageDefaults()">Save Defaults</button>
     <button class="btn-secondary" type="button" onclick="restoreGenericPageDefaults()">Restore</button>
   </div>
   <button class="btn-secondary btn-block" type="button" onclick="resetGenericPageDefaults()" style="margin-top:6px">Reset Page Defaults</button>
   <div class="status-bar" id="genericPrefsStatus"></div>
-</div>
+</details>
 {% endif %}

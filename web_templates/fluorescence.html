@@ -15,8 +15,8 @@
   <div id="fileList" class="file-list"></div>
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">File Profile</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
     <select id="tiffProfileSelect" onchange="loadSelectedTiffProfile(false)">
       <option value="">No file selected</option>
@@ -35,7 +35,7 @@
     </label>
   </div>
   <div class="status-bar" id="tiffProfileStatus"></div>
-</div>
+</details>
 
 <div class="ctrl-section" id="previewSection">
   <div class="ctrl-label">Display</div>
@@ -109,14 +109,14 @@
   <button class="btn-secondary" id="btnStackBatch" onclick="runStackExportBatch()" style="width:100%;margin-top:8px">Export All Listed Files</button>
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Saved Settings</div>
+<details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Advanced: Saved Settings</summary>
   <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="saveTiffDefaults()">Save Defaults</button>
     <button class="btn-secondary" type="button" onclick="resetTiffDefaults()">Reset</button>
   </div>
   <div class="status-bar" id="tiffPrefsStatus"></div>
-</div>
+</details>
 
 <div id="status" class="status-bar"></div>
 {% endblock %}
