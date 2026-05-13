@@ -525,6 +525,7 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_core_js_exposes_command_palette_and_file_list_filter_contracts(self) -> None:
         root = Path(__file__).resolve().parents[1]
         core_js = (root / "web_static" / "js" / "dp_core.js").read_text(encoding="utf-8")
+        style_css = (root / "web_static" / "style.css").read_text(encoding="utf-8")
 
         self.assertIn("function openCommandPalette()", core_js)
         self.assertIn("function closeCommandPalette()", core_js)
@@ -534,6 +535,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function installFileListFilters()", core_js)
         self.assertIn("function dpApplyParamGroups(selectId, attr)", core_js)
         self.assertIn("function dpApplyToggleGroups(controlId, attr)", core_js)
+        self.assertIn("[hidden] { display: none !important; }", style_css)
         self.assertNotIn("btn.click();\n        btn.click();", core_js)
 
     def test_settings_modal_uses_tabs_instead_of_one_long_panel(self) -> None:
