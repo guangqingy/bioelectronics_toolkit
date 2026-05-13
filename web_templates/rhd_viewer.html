@@ -56,6 +56,63 @@
     <input type="checkbox" id="previewMergePair" checked onchange="onPreviewMergeChanged()">
     <span>Auto merge folder recording</span>
   </label>
+  <div class="param-row">
+    <div class="param-label">Filter</div>
+    <select id="filterType" style="flex:1" onchange="plot()">
+      <option value="none" selected>None</option>
+      <option value="notch">Notch</option>
+      <option value="lowpass">Low pass</option>
+      <option value="highpass">High pass</option>
+      <option value="bandpass">IIR band</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Low Hz</div>
+    <input type="number" id="filterLowHz" class="input-sm" step="any" value="20" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">High Hz</div>
+    <input type="number" id="filterHighHz" class="input-sm" step="any" value="500" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Notch Hz</div>
+    <input type="number" id="filterNotchHz" class="input-sm" step="any" value="60" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">IIR Order</div>
+    <input type="number" id="filterOrder" class="input-sm" step="1" value="4" min="1" max="12" onchange="plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Notch Q</div>
+    <input type="number" id="filterNotchQ" class="input-sm" step="any" value="30" onchange="plot()">
+  </div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Data Processing</div>
+  <div class="param-row">
+    <div class="param-label">Process</div>
+    <select id="processType" style="flex:1">
+      <option value="envelope" selected>Envelope</option>
+      <option value="smooth">Smooth</option>
+      <option value="fitting">Fitting</option>
+      <option value="fft">FFT</option>
+      <option value="stft">STFT</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Smooth ms</div>
+    <input type="number" id="smoothMs" class="input-sm" step="any" value="5">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Fit Deg</div>
+    <input type="number" id="fitDegree" class="input-sm" step="1" value="1" min="1" max="5">
+  </div>
+  <div class="param-row">
+    <div class="param-label">STFT ms</div>
+    <input type="number" id="stftMs" class="input-sm" step="any" value="100">
+  </div>
+  <button id="btnProcess" class="btn-primary" onclick="runProcessing()">Generate</button>
 </div>
 
 <div class="ctrl-section">
@@ -114,6 +171,9 @@
   <div class="view-preview">
     <div id="plotArea" class="plot-area"><div class="plot-placeholder">Select a file and channel</div></div>
   </div>
+  <div class="view-preview" style="margin-top:12px;">
+    <div id="processArea" class="plot-area"><div class="plot-placeholder">Generate data processing plot</div></div>
+  </div>
   <div class="view-results">
     <div class="result-card">
       <div class="result-card-header">Recording Info</div>
@@ -145,6 +205,16 @@ window.dpCollectFileProfilePayload = () => ({
   queueSel: _queueSel,
   previewMergePair: document.getElementById('previewMergePair')?.checked || false,
   previewDownsample: document.getElementById('previewDownsample')?.value || 'auto',
+  filterType: document.getElementById('filterType')?.value || 'none',
+  filterLowHz: document.getElementById('filterLowHz')?.value || '',
+  filterHighHz: document.getElementById('filterHighHz')?.value || '',
+  filterNotchHz: document.getElementById('filterNotchHz')?.value || '',
+  filterOrder: document.getElementById('filterOrder')?.value || '',
+  filterNotchQ: document.getElementById('filterNotchQ')?.value || '',
+  processType: document.getElementById('processType')?.value || 'envelope',
+  smoothMs: document.getElementById('smoothMs')?.value || '',
+  fitDegree: document.getElementById('fitDegree')?.value || '',
+  stftMs: document.getElementById('stftMs')?.value || '',
 });
 window.dpApplyFileProfilePayload = payload => {
   if (!payload || typeof payload !== 'object') return;
@@ -163,6 +233,23 @@ window.dpApplyFileProfilePayload = payload => {
     const el = document.getElementById('previewDownsample');
     if (el) el.value = payload.previewDownsample;
   }
+  [
+    ['filterType', 'filterType'],
+    ['filterLowHz', 'filterLowHz'],
+    ['filterHighHz', 'filterHighHz'],
+    ['filterNotchHz', 'filterNotchHz'],
+    ['filterOrder', 'filterOrder'],
+    ['filterNotchQ', 'filterNotchQ'],
+    ['processType', 'processType'],
+    ['smoothMs', 'smoothMs'],
+    ['fitDegree', 'fitDegree'],
+    ['stftMs', 'stftMs'],
+  ].forEach(([key, id]) => {
+    if (payload[key] !== undefined) {
+      const el = document.getElementById(id);
+      if (el) el.value = payload[key];
+    }
+  });
   if (payload.currentChannel) {
     const item = [...document.querySelectorAll('#channelList .file-item')].find(el => el.textContent === payload.currentChannel);
     if (item) selectChannel(item, payload.currentChannel);
@@ -221,6 +308,21 @@ function currentViewParams() {
     y_max: viewNumber('yMax'),
     downsample: currentDownsampleValue(),
     preview_merge_pair: previewMergeEnabled(),
+    filter_type: document.getElementById('filterType')?.value || 'none',
+    filter_low_hz: viewNumber('filterLowHz'),
+    filter_high_hz: viewNumber('filterHighHz'),
+    filter_notch_hz: viewNumber('filterNotchHz'),
+    filter_order: viewNumber('filterOrder'),
+    filter_notch_q: viewNumber('filterNotchQ'),
+  };
+}
+
+function currentProcessingParams() {
+  return {
+    process_type: document.getElementById('processType')?.value || 'envelope',
+    smooth_ms: viewNumber('smoothMs'),
+    fit_degree: viewNumber('fitDegree'),
+    stft_ms: viewNumber('stftMs'),
   };
 }
 
@@ -252,6 +354,7 @@ function renderRhdFileList(options) {
     _currentChannel = null;
     document.getElementById('channelList').innerHTML = '';
     setPlot('plotArea', null);
+    setPlot('processArea', null);
     _metadata = {};
     updateInfoCard();
     setStatus('status', 'Ready', 'ok');
@@ -566,6 +669,7 @@ function plot() {
       if (plotSeq !== _plotSeq || fileAtStart !== _currentFile || channelAtStart !== _currentChannel) return;
       if (data.error) throw new Error(data.error);
       setPlot('plotArea', data.img);
+      setPlot('processArea', null);
       const ds = data.downsample && data.downsample > 1 ? ` · ${data.downsample}x downsample` : '';
       const pts = data.plotted_points ? ` · ${data.plotted_points} pts` : '';
       const merged = previewMergeEnabled() ? ' · merged preview' : '';
@@ -575,6 +679,30 @@ function plot() {
       if (plotSeq !== _plotSeq) return;
       setStatus('status', 'Error: ' + e.message, 'error');
     });
+}
+
+function runProcessing() {
+  if (!_currentFile || !_currentChannel) {
+    setStatus('status', 'No channel selected', 'error');
+    return;
+  }
+  const payload = {
+    path: _currentFile,
+    channel: _currentChannel,
+    merge_pair: previewMergeEnabled(),
+    ...currentViewParams(),
+    ...currentProcessingParams(),
+  };
+  btnBusy('btnProcess', true, 'Generating...');
+  setStatus('status', 'Generating processing plot...', 'loading');
+  api('/api/rhd/process', payload)
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      setPlot('processArea', data.img);
+      setStatus('status', 'Processing plot ready', 'ok');
+    })
+    .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
+    .finally(() => btnBusy('btnProcess', false, 'Generate'));
 }
 
 function saveAllChannels() {
@@ -632,9 +760,10 @@ function exportFig(fmt) {
     downsample: currentDownsampleValue(),
   });
   const viewParams = currentViewParams();
-  ['x_min', 'x_max', 'y_min', 'y_max'].forEach(key => {
+  ['x_min', 'x_max', 'y_min', 'y_max', 'filter_low_hz', 'filter_high_hz', 'filter_notch_hz', 'filter_order', 'filter_notch_q'].forEach(key => {
     if (viewParams[key] !== null && Number.isFinite(viewParams[key])) params.set(key, String(viewParams[key]));
   });
+  params.set('filter_type', viewParams.filter_type || 'none');
   const url = '/api/rhd/export_channel?' + params.toString();
   setStatus('status', 'Saving export...', 'loading');
   fetch(url)

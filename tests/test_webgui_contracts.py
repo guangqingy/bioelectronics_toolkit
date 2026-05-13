@@ -189,6 +189,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Auto merge folder recording", template)
         self.assertIn("Merge folder recording", template)
         self.assertIn("split(/[\\\\/]/)", template)
+        self.assertIn('id="filterType"', template)
+        self.assertIn('id="processType"', template)
+        self.assertIn('id="processArea"', template)
+        self.assertIn("/api/rhd/process", template)
         self.assertIn("let _fileLoadSeq", template)
         self.assertIn("let _plotSeq", template)
         self.assertIn("merge_pair: previewMergeEnabled()", template)
@@ -267,6 +271,84 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(plot_data["img"])
             self.assertEqual(plot_data["downsample"], 10)
             self.assertEqual(plot_data["plotted_points"], 12_000)
+
+            processed = self.client.post(
+                "/api/rhd/process",
+                json={
+                    "path": "/tmp/record_0100.rhd",
+                    "channel": "A-001",
+                    "merge_pair": True,
+                    "x_min": 0,
+                    "x_max": 1,
+                    "filter_type": "highpass",
+                    "filter_low_hz": 1,
+                    "process_type": "fft",
+                },
+            )
+            processed_payload = processed.get_json()
+            processed_data = processed_payload.get("data", processed_payload)
+            self.assertEqual(processed.status_code, 200)
+            self.assertTrue(processed_data["img"])
+            self.assertEqual(processed_data["process_type"], "fft")
+
+    def test_rhd_svg_export_is_clean_and_numbered(self) -> None:
+        import numpy as np
+        import web_app
+
+        if not web_app.HAS_RHD:
+            self.skipTest("Intan RHD parser is not available")
+
+        def fake_load_channel_with_merge_option(path, _rhd_module, ch_in, do_merge):
+            n = 1000
+            t = np.arange(n, dtype=float) / 1000.0
+            y = np.sin(2 * np.pi * 20 * t)
+            return t, 1000.0, ["A-000"], y, 0, "A-000", Path(path).stem, bool(do_merge), 1
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_svg_") as tmp:
+            src = Path(tmp) / "record_0000.rhd"
+            src.write_bytes(b"placeholder")
+            with mock.patch(
+                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                side_effect=fake_load_channel_with_merge_option,
+            ):
+                first = self.client.get(
+                    "/api/rhd/export_channel",
+                    query_string={
+                        "path": str(src),
+                        "channel": "A-000",
+                        "fmt": "svg",
+                        "mode": "save",
+                        "x_min": 0,
+                        "x_max": 0.25,
+                        "filter_type": "notch",
+                        "filter_notch_hz": 60,
+                    },
+                )
+                second = self.client.get(
+                    "/api/rhd/export_channel",
+                    query_string={
+                        "path": str(src),
+                        "channel": "A-000",
+                        "fmt": "svg",
+                        "mode": "save",
+                        "x_min": 0,
+                        "x_max": 0.25,
+                    },
+                )
+
+            first_payload = first.get_json()
+            second_payload = second.get_json()
+            first_data = first_payload.get("data", first_payload)
+            second_data = second_payload.get("data", second_payload)
+            first_path = Path(first_data["saved_path"])
+            second_path = Path(second_data["saved_path"])
+            self.assertTrue(first_path.name.endswith("_1.svg"))
+            self.assertTrue(second_path.name.endswith("_2.svg"))
+            svg = first_path.read_text(encoding="utf-8")
+            self.assertIn("<polyline", svg)
+            self.assertNotIn("<g", svg)
+            self.assertNotIn("<rect", svg)
+            self.assertNotIn("grid", svg.lower())
 
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")

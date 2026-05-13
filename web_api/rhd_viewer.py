@@ -1,10 +1,13 @@
 import io
+from html import escape
 import traceback
 import zipfile
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
+from scipy import signal
 from flask import Response, jsonify, request
 
 from services import rhd as rhd_service
@@ -71,6 +74,238 @@ def register_rhd_viewer_routes(app, ctx):
             mask = t <= x_max
             t, y = t[mask], y[mask]
         return t, y
+
+    def _rhd_filter_params(d: dict) -> dict:
+        return {
+            "type": str(d.get("filter_type", d.get("filter", "none")) or "none").strip().lower(),
+            "low_hz": float_or(d.get("filter_low_hz"), None),
+            "high_hz": float_or(d.get("filter_high_hz"), None),
+            "notch_hz": float_or(d.get("filter_notch_hz"), 60.0),
+            "notch_q": max(1.0, float_or(d.get("filter_notch_q"), 30.0) or 30.0),
+            "order": max(1, min(12, int_or(d.get("filter_order"), 4))),
+        }
+
+    def _rhd_apply_filter(y, fs: float, params: dict):
+        kind = str(params.get("type") or "none").lower()
+        y = np.asarray(y, dtype=float)
+        if kind in {"", "none", "off"} or y.size < 8 or fs <= 0:
+            return y
+
+        nyq = fs / 2.0
+        try:
+            if kind == "notch":
+                f0 = float(params.get("notch_hz") or 0.0)
+                if not (0 < f0 < nyq):
+                    return y
+                b, a = signal.iirnotch(f0, float(params.get("notch_q") or 30.0), fs=fs)
+                return signal.filtfilt(b, a, y)
+
+            order = int(params.get("order") or 4)
+            low = params.get("low_hz")
+            high = params.get("high_hz")
+            if kind == "highpass":
+                if low is None or not (0 < low < nyq):
+                    return y
+                sos = signal.butter(order, low, btype="highpass", fs=fs, output="sos")
+            elif kind == "lowpass":
+                if high is None or not (0 < high < nyq):
+                    return y
+                sos = signal.butter(order, high, btype="lowpass", fs=fs, output="sos")
+            elif kind in {"bandpass", "iir", "iir_bandpass"}:
+                if low is None or high is None or not (0 < low < high < nyq):
+                    return y
+                sos = signal.butter(order, [low, high], btype="bandpass", fs=fs, output="sos")
+            else:
+                return y
+            return signal.sosfiltfilt(sos, y)
+        except ValueError:
+            return y
+
+    def _rhd_finish_axis(ax, t, y_min, y_max, grid: bool = True):
+        if len(t):
+            x0 = float(t[0])
+            x1 = float(t[-1])
+            if x1 == x0:
+                x1 = x0 + 1e-9
+            ax.set_xlim(x0, x1)
+        ax.margins(x=0)
+        apply_axes_limits(ax, None, None, y_min, y_max)
+        if grid:
+            ax.grid(True, alpha=0.4)
+        else:
+            ax.grid(False)
+
+    def _rhd_next_numbered_path(base_path: Path) -> Path:
+        for idx in range(1, 10000):
+            candidate = base_path.with_name(f"{base_path.stem}_{idx}{base_path.suffix}")
+            if not candidate.exists():
+                return candidate
+        raise RuntimeError(f"Could not find available export name for {base_path.name}")
+
+    def _svg_num(value: float) -> str:
+        return f"{float(value):.6g}"
+
+    def _svg_ticks(vmin: float, vmax: float, n: int = 5) -> np.ndarray:
+        if not np.isfinite(vmin) or not np.isfinite(vmax):
+            return np.asarray([], dtype=float)
+        if vmax == vmin:
+            pad = 1.0 if vmin == 0 else abs(vmin) * 0.05
+            vmin -= pad
+            vmax += pad
+        return np.linspace(vmin, vmax, max(2, int(n)))
+
+    def _rhd_clean_trace_svg(t, y, y_min=None, y_max=None) -> bytes:
+        t = np.asarray(t, dtype=float)
+        y = np.asarray(y, dtype=float)
+        finite = np.isfinite(t) & np.isfinite(y)
+        t = t[finite]
+        y = y[finite]
+        width, height = 720.0, 300.0
+        left, right, top, bottom = 58.0, 14.0, 12.0, 38.0
+        plot_w = width - left - right
+        plot_h = height - top - bottom
+
+        if t.size:
+            xmin, xmax = float(t[0]), float(t[-1])
+            if xmax == xmin:
+                xmax = xmin + 1.0
+        else:
+            xmin, xmax = 0.0, 1.0
+
+        if y.size:
+            ymin = float(np.nanmin(y)) if y_min is None else float(y_min)
+            ymax = float(np.nanmax(y)) if y_max is None else float(y_max)
+        else:
+            ymin, ymax = 0.0, 1.0
+        if y_min is not None:
+            ymin = float(y_min)
+        if y_max is not None:
+            ymax = float(y_max)
+        if not np.isfinite(ymin) or not np.isfinite(ymax):
+            ymin, ymax = 0.0, 1.0
+        if ymax == ymin:
+            pad = 1.0 if ymin == 0 else abs(ymin) * 0.05
+            ymin -= pad
+            ymax += pad
+
+        def sx(x):
+            return left + (float(x) - xmin) / (xmax - xmin) * plot_w
+
+        def sy(v):
+            yy = top + (ymax - float(v)) / (ymax - ymin) * plot_h
+            return max(top, min(top + plot_h, yy))
+
+        points = " ".join(f"{_svg_num(sx(x))},{_svg_num(sy(v))}" for x, v in zip(t, y))
+        axis_style = 'stroke="#222" stroke-width="1" vector-effect="non-scaling-stroke"'
+        tick_style = 'stroke="#222" stroke-width="0.8" vector-effect="non-scaling-stroke"'
+        text_style = 'font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#222"'
+        line_style = 'fill="none" stroke="#3E6AE1" stroke-width="1.2" vector-effect="non-scaling-stroke"'
+
+        parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{int(width)}" height="{int(height)}" viewBox="0 0 {int(width)} {int(height)}">',
+            f'<line x1="{_svg_num(left)}" y1="{_svg_num(top + plot_h)}" x2="{_svg_num(left + plot_w)}" y2="{_svg_num(top + plot_h)}" {axis_style}/>',
+            f'<line x1="{_svg_num(left)}" y1="{_svg_num(top)}" x2="{_svg_num(left)}" y2="{_svg_num(top + plot_h)}" {axis_style}/>',
+        ]
+        for tick in _svg_ticks(xmin, xmax):
+            x = sx(tick)
+            parts.append(
+                f'<line x1="{_svg_num(x)}" y1="{_svg_num(top + plot_h)}" x2="{_svg_num(x)}" y2="{_svg_num(top + plot_h + 5)}" {tick_style}/>'
+            )
+            parts.append(
+                f'<text x="{_svg_num(x)}" y="{_svg_num(top + plot_h + 20)}" text-anchor="middle" {text_style}>{escape(f"{tick:g}")}</text>'
+            )
+        for tick in _svg_ticks(ymin, ymax):
+            y_pos = sy(tick)
+            parts.append(
+                f'<line x1="{_svg_num(left - 5)}" y1="{_svg_num(y_pos)}" x2="{_svg_num(left)}" y2="{_svg_num(y_pos)}" {tick_style}/>'
+            )
+            parts.append(
+                f'<text x="{_svg_num(left - 8)}" y="{_svg_num(y_pos + 4)}" text-anchor="end" {text_style}>{escape(f"{tick:g}")}</text>'
+            )
+        if points:
+            parts.append(f'<polyline points="{points}" {line_style}/>')
+        parts.append("</svg>")
+        return "\n".join(parts).encode("utf-8")
+
+    def _rhd_process_trace(t, y, fs: float, d: dict) -> tuple[plt.Figure, dict]:
+        mode = str(d.get("process_type") or "envelope").strip().lower()
+        t = np.asarray(t, dtype=float)
+        y = np.asarray(y, dtype=float)
+        fig, ax = plt.subplots(figsize=(10, 3.5))
+        meta = {"process_type": mode}
+        if t.size == 0 or y.size == 0:
+            ax.text(0.5, 0.5, "No data in current window", ha="center", va="center")
+            ax.axis("off")
+            fig.tight_layout()
+            return fig, meta
+
+        if mode == "envelope":
+            processed = np.abs(signal.hilbert(y - np.nanmean(y)))
+            dsf = _rhd_downsample_factor(d.get("downsample", "auto"), len(t))
+            ax.plot(t[::dsf], processed[::dsf], color=line_color, lw=0.8)
+            ax.set_ylabel("Envelope (uV)")
+            _rhd_finish_axis(ax, t, None, None)
+            meta["points"] = int(len(processed[::dsf]))
+        elif mode == "smooth":
+            win_ms = max(0.01, float_or(d.get("smooth_ms"), 5.0) or 5.0)
+            win = max(1, int(round(fs * win_ms / 1000.0))) if fs > 0 else 1
+            kernel = np.ones(win, dtype=float) / win
+            processed = np.convolve(y, kernel, mode="same")
+            dsf = _rhd_downsample_factor(d.get("downsample", "auto"), len(t))
+            ax.plot(t[::dsf], processed[::dsf], color=line_color, lw=0.8)
+            ax.set_ylabel("Smoothed (uV)")
+            _rhd_finish_axis(ax, t, None, None)
+            meta.update({"smooth_ms": win_ms, "points": int(len(processed[::dsf]))})
+        elif mode == "fitting":
+            degree = max(1, min(5, int_or(d.get("fit_degree"), 1)))
+            t0 = t - float(t[0])
+            coeff = np.polyfit(t0, y, degree)
+            fitted = np.polyval(coeff, t0)
+            dsf = _rhd_downsample_factor(d.get("downsample", "auto"), len(t))
+            ax.plot(t[::dsf], y[::dsf], color="#A5AFBF", lw=0.5)
+            ax.plot(t[::dsf], fitted[::dsf], color=line_color, lw=1.1)
+            ax.set_ylabel("Fit (uV)")
+            _rhd_finish_axis(ax, t, None, None)
+            meta.update({"fit_degree": degree, "coefficients": [float(c) for c in coeff]})
+        elif mode == "fft":
+            dt = 1.0 / fs if fs > 0 else float(np.median(np.diff(t))) if t.size > 1 else 1.0
+            centered = y - np.nanmean(y)
+            window = np.hanning(centered.size) if centered.size > 1 else np.ones_like(centered)
+            freq = np.fft.rfftfreq(centered.size, d=dt)
+            amp = np.abs(np.fft.rfft(centered * window))
+            scale = np.sum(window) if np.sum(window) else centered.size
+            amp = 2.0 * amp / scale
+            ax.plot(freq, amp, color=line_color, lw=0.8)
+            ax.set_xlabel("Frequency (Hz)")
+            ax.set_ylabel("Amplitude (uV)")
+            ax.margins(x=0)
+            ax.grid(True, alpha=0.4)
+            meta.update({"points": int(freq.size), "frequency_max": float(freq[-1]) if freq.size else 0.0})
+        elif mode == "stft":
+            win_ms = max(1.0, float_or(d.get("stft_ms"), 100.0) or 100.0)
+            nperseg = max(16, int(round(fs * win_ms / 1000.0))) if fs > 0 else 256
+            nperseg = min(nperseg, y.size)
+            noverlap = max(0, min(nperseg - 1, nperseg // 2))
+            freq, tt, zxx = signal.stft(y - np.nanmean(y), fs=fs if fs > 0 else 1.0, nperseg=nperseg, noverlap=noverlap)
+            mag = np.abs(zxx)
+            im = ax.pcolormesh((tt + t[0]), freq, mag, shading="auto", cmap="viridis")
+            fig.colorbar(im, ax=ax, label="Magnitude")
+            ax.set_xlabel("Time (s)")
+            ax.set_ylabel("Frequency (Hz)")
+            if tt.size:
+                ax.set_xlim(float(t[0]), float(t[0] + tt[-1]))
+            meta.update({"stft_ms": win_ms, "frequency_bins": int(freq.size), "time_bins": int(tt.size)})
+        else:
+            dsf = _rhd_downsample_factor(d.get("downsample", "auto"), len(t))
+            ax.plot(t[::dsf], y[::dsf], color=line_color, lw=0.8)
+            ax.set_ylabel("Amplitude (uV)")
+            _rhd_finish_axis(ax, t, None, None)
+            meta["process_type"] = "trace"
+
+        if mode not in {"fft", "stft"}:
+            ax.set_xlabel("Time (s)")
+        fig.tight_layout()
+        return fig, meta
 
     def _rhd_export_all_payload(d: dict) -> dict:
         if not has_rhd:
@@ -245,12 +480,14 @@ def register_rhd_viewer_routes(app, ctx):
         y_max = float_or(d.get("y_max"), None)
         downsample = d.get("downsample", d.get("dsf", "auto"))
         do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
+        filter_params = _rhd_filter_params(d)
 
         try:
-            t, _fs, _ch_names, y, ch, ch_label, base_stem, used_pair, _segment_count = (
+            t, fs, _ch_names, y, ch, ch_label, base_stem, used_pair, _segment_count = (
                 _load_rhd_channel_with_merge_option(Path(path), ch_in, do_merge)
             )
             t, y = _rhd_apply_time_window(t, y, x_min, x_max)
+            y = _rhd_apply_filter(y, fs, filter_params)
 
             dsf = _rhd_downsample_factor(downsample, len(t))
             t_d = t[::dsf]
@@ -266,10 +503,33 @@ def register_rhd_viewer_routes(app, ctx):
                 fontsize=10,
                 color="#5C5E62",
             )
-            ax.grid(True, alpha=0.4)
-            apply_axes_limits(ax, None, None, y_min, y_max)
+            _rhd_finish_axis(ax, t_d, y_min, y_max)
             fig.tight_layout()
             return jsonify({"img": fig_to_b64(fig), "downsample": dsf, "plotted_points": int(len(t_d))})
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/rhd/process", methods=["POST"])
+    def api_rhd_process():
+        if not has_rhd:
+            return err("Intan RHD parser is not available")
+
+        d = request.json or {}
+        path = d.get("path", "")
+        ch_in = d.get("channel", 0)
+        x_min = float_or(d.get("x_min"), None)
+        x_max = float_or(d.get("x_max"), None)
+        do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
+        filter_params = _rhd_filter_params(d)
+
+        try:
+            t, fs, _ch_names, y, _ch, _ch_label, _base_stem, _used_pair, _segment_count = (
+                _load_rhd_channel_with_merge_option(Path(path), ch_in, do_merge)
+            )
+            t, y = _rhd_apply_time_window(t, y, x_min, x_max)
+            y = _rhd_apply_filter(y, fs, filter_params)
+            fig, meta = _rhd_process_trace(t, y, fs, d)
+            return jsonify({"img": fig_to_b64(fig), **meta})
         except Exception:
             return err(traceback.format_exc())
 
@@ -289,10 +549,11 @@ def register_rhd_viewer_routes(app, ctx):
         y_max = float_or(d.get("y_max"), None)
         downsample = d.get("downsample", d.get("dsf", "auto"))
         do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
+        filter_params = _rhd_filter_params(d)
 
         try:
             src = Path(path)
-            t, _fs, _ch_names, y, _ch, ch_name, base_stem, used_pair, _segment_count = (
+            t, fs, _ch_names, y, _ch, ch_name, base_stem, used_pair, _segment_count = (
                 _load_rhd_channel_with_merge_option(src, ch_in, do_merge)
             )
             out_stem = base_stem if used_pair else src.stem
@@ -313,16 +574,29 @@ def register_rhd_viewer_routes(app, ctx):
                 )
 
             t_view, y_view = _rhd_apply_time_window(t, y, x_min, x_max)
+            y_view = _rhd_apply_filter(y_view, fs, filter_params)
             dsf = _rhd_downsample_factor(downsample, len(t_view))
             t_view = t_view[::dsf]
             y_view = y_view[::dsf]
+
+            if str(fmt).lower() == "svg":
+                payload = _rhd_clean_trace_svg(t_view, y_view, y_min, y_max)
+                if _mode_is_save(mode):
+                    base_path = src.with_name(f"{out_stem}_{ch_name}.svg")
+                    out_path = _rhd_next_numbered_path(base_path)
+                    out_path.write_bytes(payload)
+                    return jsonify({"ok": True, "saved_path": str(out_path)})
+                return Response(
+                    payload,
+                    mimetype="image/svg+xml",
+                    headers={"Content-Disposition": f"attachment; filename={out_stem}_{ch_name}.svg"},
+                )
 
             fig, ax = plt.subplots(figsize=(10, 3.5))
             ax.plot(t_view, y_view, color=line_color, lw=0.6)
             ax.set_xlabel("Time (s)")
             ax.set_ylabel("Amplitude (uV)")
-            ax.grid(True, alpha=0.4)
-            apply_axes_limits(ax, None, None, y_min, y_max)
+            _rhd_finish_axis(ax, t_view, y_min, y_max)
             fig.tight_layout()
             buf = io.BytesIO()
             fig.savefig(buf, format=fmt, dpi=300 if fmt == "png" else None, bbox_inches="tight")
