@@ -52,7 +52,7 @@ class EchemPvDetectRequest(RequestModel):
 
 
 class EchemPvExportRequest(RequestModel):
-    path: str = ""
+    path: str = Field(min_length=1)
     pulses: list[Any] = Field(default_factory=list)
     mode: str = "download"
     window: list[Any] = Field(default_factory=list)

@@ -46,6 +46,10 @@ class LifVolume3dRequest(LifPreviewRequest):
 
 
 class LifExportVolume3dRequest(LifVolume3dRequest):
+    max_points: Any = 110000
+    max_xy: Any = 220
+    max_z: Any = 120
+    threshold_percentile: Any = 98.6
     output_name: str = ""
     output_dir: str = ""
     overwrite: Any = True

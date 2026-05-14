@@ -40,7 +40,7 @@ class EchemPcDetectRequest(RequestModel):
 
 
 class EchemPcExportRequest(RequestModel):
-    path: str = ""
+    path: str = Field(min_length=1)
     pairs: list[Any] = Field(default_factory=list)
     mode: str = "download"
     window: list[Any] = Field(default_factory=list)

@@ -29,6 +29,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   export endpoints to Pydantic request schemas.
 - Migrate Leica LIF viewer browse, metadata, preview, manifest export, TIFF
   export, and 3D viewer export endpoints to Pydantic request schemas.
+- Align recently migrated request schemas so file-based echem exports require a
+  non-empty path and LIF 3D export keeps its export-quality defaults.
 
 ## [0.5.0] - 2026-05-14
 
