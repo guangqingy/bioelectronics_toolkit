@@ -7,9 +7,16 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import (
+    FluorescenceRoiAnalyzeRequest,
+    FluorescenceRoiBrowseRequest,
+    FluorescenceRoiLoadStackRequest,
+)
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
 def register_fluorescence_roi_basic_routes(app, fl):
@@ -55,11 +62,14 @@ def register_fluorescence_roi_basic_routes(app, fl):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/roi/browse", methods=["POST"])
+    @request_schema(FluorescenceRoiBrowseRequest)
     def api_fl_roi_browse():
         if not has_tiff:
             return err("tifffile not installed")
-        d = request.json or {}
-        folder = d.get("folder", "")
+        try:
+            folder = parse_json_payload(FluorescenceRoiBrowseRequest).folder
+        except ValidationError as exc:
+            return validation_error_response(exc)
         p = Path(folder)
         if not p.is_dir():
             return err(f"Not a directory: {folder}")
@@ -67,14 +77,15 @@ def register_fluorescence_roi_basic_routes(app, fl):
         return jsonify({"pairs": pairs})
 
     @app.route("/api/fluorescence/roi/load_stack", methods=["POST"])
+    @request_schema(FluorescenceRoiLoadStackRequest)
     def api_fl_roi_load_stack():
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = request.json or {}
-        stack_path = d.get("stack_path", "")
-        frame_idx = int_or(d.get("frame", 0), 0)
-        lut = d.get("lut", "Gray")
         try:
+            payload = parse_json_payload(FluorescenceRoiLoadStackRequest)
+            stack_path = payload.stack_path
+            frame_idx = int_or(payload.frame, 0)
+            lut = payload.lut
             stack = tifflib.imread(stack_path)
             if stack.ndim == 2:
                 stack = stack[np.newaxis, ...]
@@ -91,14 +102,20 @@ def register_fluorescence_roi_basic_routes(app, fl):
                     "frame": frame_idx,
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/roi/analyze", methods=["POST"])
+    @request_schema(FluorescenceRoiAnalyzeRequest)
     def api_fl_roi_analyze():
         if not has_tiff:
             return err("tifffile not installed")
-        d = request.json or {}
+        try:
+            d = parse_json_payload(FluorescenceRoiAnalyzeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         stack1_path = d.get("stack1_path", "")
         stack2_path = d.get("stack2_path", "")
         rois = d.get("rois", [])

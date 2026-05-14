@@ -8,9 +8,15 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import (
+    FluorescenceGifRoiAnalyzeRequest,
+    FluorescenceGifRoiExportRequest,
+)
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
 def register_fluorescence_gif_roi_analysis_routes(app, fl):
@@ -54,12 +60,19 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/gif_roi/analyze", methods=["POST"])
+    @request_schema(FluorescenceGifRoiAnalyzeRequest)
     def api_fl_gif_roi_analyze(payload=None):
         """Analyze polygon ROI fluorescence across the GIF queue timeline."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceGifRoiAnalyzeRequest).model_dump()
+            else:
+                d = FluorescenceGifRoiAnalyzeRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         tiff_paths = d.get("tiff_paths") or []
         slice_specs = d.get("slice_specs") or []
         roi_specs = _fl_gif_roi_make_specs(d.get("rois", d.get("roi_polygons", [])))
@@ -239,7 +252,12 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/gif_roi/analyze_job", methods=["POST"])
+    @request_schema(FluorescenceGifRoiAnalyzeRequest)
     def api_fl_gif_roi_analyze_job():
+        try:
+            body = parse_json_payload(FluorescenceGifRoiAnalyzeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.gif_roi_analysis",
@@ -247,14 +265,21 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_gif_roi_analyze, "Analyzing GIF ROI time series"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/gif_roi/analyze"},
         )
 
     @app.route("/api/fluorescence/gif_roi/export", methods=["POST"])
+    @request_schema(FluorescenceGifRoiExportRequest)
     def api_fl_gif_roi_export(payload=None):
         """Save GIF ROI time-analysis CSV and/or plot PNG to disk."""
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceGifRoiExportRequest).model_dump()
+            else:
+                d = FluorescenceGifRoiExportRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         tiff_paths = d.get("tiff_paths") or []
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_time_analysis")
@@ -310,7 +335,12 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/gif_roi/export_job", methods=["POST"])
+    @request_schema(FluorescenceGifRoiExportRequest)
     def api_fl_gif_roi_export_job():
+        try:
+            body = parse_json_payload(FluorescenceGifRoiExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.gif_roi_export",
@@ -318,6 +348,6 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_gif_roi_export, "Exporting GIF ROI time outputs"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/gif_roi/export"},
         )

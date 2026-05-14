@@ -5,9 +5,15 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import (
+    FluorescenceRoiExportSequenceGifRequest,
+    FluorescenceRoiExportSequenceRequest,
+)
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
 def register_fluorescence_roi_export_routes(app, fl):
@@ -53,9 +59,16 @@ def register_fluorescence_roi_export_routes(app, fl):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/roi/export_sequence", methods=["POST"])
+    @request_schema(FluorescenceRoiExportSequenceRequest)
     def api_fl_roi_export_sequence(payload=None):
         """Save ROI sequence analysis outputs to disk (CSV/plot/ROI preview)."""
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceRoiExportSequenceRequest).model_dump()
+            else:
+                d = FluorescenceRoiExportSequenceRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         records = d.get("records", [])
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_sequence_analysis")
@@ -128,7 +141,12 @@ def register_fluorescence_roi_export_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/roi/export_sequence_job", methods=["POST"])
+    @request_schema(FluorescenceRoiExportSequenceRequest)
     def api_fl_roi_export_sequence_job():
+        try:
+            body = parse_json_payload(FluorescenceRoiExportSequenceRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.roi_export_sequence",
@@ -136,17 +154,24 @@ def register_fluorescence_roi_export_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_roi_export_sequence, "Exporting ROI sequence outputs"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/roi/export_sequence"},
         )
 
     @app.route("/api/fluorescence/roi/export_sequence_gif", methods=["POST"])
+    @request_schema(FluorescenceRoiExportSequenceGifRequest)
     def api_fl_roi_export_sequence_gif(payload=None):
         """Save a sequence GIF from selected ROI records with ROI overlays and scale bar."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceRoiExportSequenceGifRequest).model_dump()
+            else:
+                d = FluorescenceRoiExportSequenceGifRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         records = d.get("records", [])
         rois = d.get("rois", [])
         preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
@@ -235,7 +260,12 @@ def register_fluorescence_roi_export_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/roi/export_sequence_gif_job", methods=["POST"])
+    @request_schema(FluorescenceRoiExportSequenceGifRequest)
     def api_fl_roi_export_sequence_gif_job():
+        try:
+            body = parse_json_payload(FluorescenceRoiExportSequenceGifRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.roi_export_sequence_gif",
@@ -243,6 +273,6 @@ def register_fluorescence_roi_export_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_roi_export_sequence_gif, "Exporting ROI sequence GIF"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/roi/export_sequence_gif"},
         )

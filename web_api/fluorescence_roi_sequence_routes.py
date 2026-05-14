@@ -8,9 +8,12 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import FluorescenceRoiAnalyzeSequenceRequest
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
 def register_fluorescence_roi_sequence_routes(app, fl):
@@ -56,12 +59,16 @@ def register_fluorescence_roi_sequence_routes(app, fl):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/roi/analyze_sequence", methods=["POST"])
+    @request_schema(FluorescenceRoiAnalyzeSequenceRequest)
     def api_fl_roi_analyze_sequence():
         """Sequence-style ROI analysis across selected stack pairs."""
         if not has_tiff:
             return err("tifffile not installed")
 
-        d = request.json or {}
+        try:
+            d = parse_json_payload(FluorescenceRoiAnalyzeSequenceRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         records = d.get("records", [])
         rois = d.get("rois", [])
         metric = d.get("metric", "mean")

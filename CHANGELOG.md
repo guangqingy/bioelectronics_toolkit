@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   keeping direct routes and background job routes on the same validation path.
 - Migrate EMG peaks request handling to Pydantic schemas across the current
   grouped-peak workflow and legacy peak-export compatibility endpoints.
+- Migrate fluorescence ROI browse, stack loading, sequence analysis, and ROI
+  sequence export endpoints to shared Pydantic request schemas.
+- Migrate fluorescence GIF generation, ROI time analysis, ROI preview export,
+  and kymograph endpoints to shared Pydantic request schemas.
 
 ## [0.5.0] - 2026-05-14
 

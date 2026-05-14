@@ -7,9 +7,17 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import (
+    FluorescenceGifExportPreviewRequest,
+    FluorescenceGifMergeRequest,
+    FluorescenceGifPreviewRequest,
+    FluorescenceGifRenderRequest,
+)
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
 def register_fluorescence_gif_basic_routes(app, fl):
@@ -53,10 +61,14 @@ def register_fluorescence_gif_basic_routes(app, fl):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/fluorescence/gif_preview", methods=["POST"])
+    @request_schema(FluorescenceGifPreviewRequest)
     def api_fl_gif_preview():
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = request.json or {}
+        try:
+            d = parse_json_payload(FluorescenceGifPreviewRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         input_path_str = str(d.get("input_path", "") or "").strip()
         if not input_path_str:
             return err("input_path is required")
@@ -132,12 +144,19 @@ def register_fluorescence_gif_basic_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/gif_roi/export_preview", methods=["POST"])
+    @request_schema(FluorescenceGifExportPreviewRequest)
     def api_fl_gif_roi_export_preview(payload=None):
         """Save one GIF preview frame with polygon ROI overlays and a labeled scale bar."""
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
 
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceGifExportPreviewRequest).model_dump()
+            else:
+                d = FluorescenceGifExportPreviewRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         input_path_str = str(d.get("input_path", "") or "").strip()
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
         prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_reference")
@@ -228,7 +247,12 @@ def register_fluorescence_gif_basic_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/gif_roi/export_preview_job", methods=["POST"])
+    @request_schema(FluorescenceGifExportPreviewRequest)
     def api_fl_gif_roi_export_preview_job():
+        try:
+            body = parse_json_payload(FluorescenceGifExportPreviewRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.gif_roi_export_preview",
@@ -236,15 +260,22 @@ def register_fluorescence_gif_basic_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_gif_roi_export_preview, "Exporting GIF ROI preview"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/gif_roi/export_preview"},
         )
 
     @app.route("/api/fluorescence/make_gif", methods=["POST"])
+    @request_schema(FluorescenceGifRenderRequest)
     def api_fl_make_gif(payload=None):
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceGifRenderRequest).model_dump()
+            else:
+                d = FluorescenceGifRenderRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         input_path_str = d.get("input_path", "")
         output_path_str = d.get("output_path", "")
         fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
@@ -351,7 +382,12 @@ def register_fluorescence_gif_basic_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/make_gif_job", methods=["POST"])
+    @request_schema(FluorescenceGifRenderRequest)
     def api_fl_make_gif_job():
+        try:
+            body = parse_json_payload(FluorescenceGifRenderRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.make_gif",
@@ -359,11 +395,12 @@ def register_fluorescence_gif_basic_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_make_gif, "Generating fluorescence GIF"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/make_gif"},
         )
 
     @app.route("/api/fluorescence/merge_gif", methods=["POST"])
+    @request_schema(FluorescenceGifMergeRequest)
     def api_fl_merge_gif(payload=None):
         """Merge one or more TIFF stacks into a single animated GIF.
 
@@ -381,7 +418,13 @@ def register_fluorescence_gif_basic_routes(app, fl):
         """
         if not has_tiff or not has_pil:
             return err("tifffile and Pillow are required")
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FluorescenceGifMergeRequest).model_dump()
+            else:
+                d = FluorescenceGifMergeRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         tiff_paths = d.get("tiff_paths") or []
         if not tiff_paths:
             return err("tiff_paths must be a non-empty list")
@@ -516,7 +559,12 @@ def register_fluorescence_gif_basic_routes(app, fl):
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/merge_gif_job", methods=["POST"])
+    @request_schema(FluorescenceGifMergeRequest)
     def api_fl_merge_gif_job():
+        try:
+            body = parse_json_payload(FluorescenceGifMergeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.merge_gif",
@@ -524,6 +572,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_fl_merge_gif, "Generating fluorescence GIF"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/merge_gif"},
         )
