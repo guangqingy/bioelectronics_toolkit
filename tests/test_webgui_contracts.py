@@ -220,20 +220,30 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
         template = (root / "web_templates" / "rhd_viewer.html").read_text(encoding="utf-8")
+        modules = (
+            "rhd_viewer_state_profiles.js",
+            "rhd_viewer_files_queue.js",
+            "rhd_viewer_plot.js",
+            "rhd_viewer_exports.js",
+        )
+        js_source = "\n".join((root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8") for module in modules)
+        source = template + "\n" + js_source
 
         self.assertIn('id="previewDownsample"', template)
         self.assertIn('id="previewMergePair"', template)
-        self.assertIn("function reloadCurrentRhdFile()", template)
-        self.assertIn("function renderRhdFileList(options)", template)
+        for module in modules:
+            self.assertIn(f"/static/js/pages/{module}", template)
+        self.assertIn("function reloadCurrentRhdFile()", source)
+        self.assertIn("function renderRhdFileList(options)", source)
         self.assertIn("Auto merge folder recording", template)
         self.assertIn("Merge folder recording", template)
-        self.assertIn("split(/[\\\\/]/)", template)
+        self.assertIn("split(/[\\\\/]/)", source)
         self.assertIn('id="filterType"', template)
         self.assertIn('id="processType"', template)
         self.assertIn('data-filter-mode="notch"', template)
         self.assertIn('data-process-mode="smooth"', template)
-        self.assertIn("function updateRhdParameterGroups()", template)
-        self.assertIn("dpBindParamGroups('processType', 'data-process-mode')", template)
+        self.assertIn("function updateRhdParameterGroups()", source)
+        self.assertIn("dpBindParamGroups('processType', 'data-process-mode')", source)
         self.assertIn('id="envelopeSmoothMs"', template)
         self.assertIn('id="smoothMethod"', template)
         self.assertIn('id="fftWindow"', template)
@@ -241,16 +251,16 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="stftOverlapPct"', template)
         self.assertIn('id="figWidthIn"', template)
         self.assertIn('id="traceLineWidth"', template)
-        self.assertIn("function currentFigureParams()", template)
+        self.assertIn("function currentFigureParams()", source)
         self.assertIn('id="processArea"', template)
-        self.assertIn("/api/rhd/process", template)
-        self.assertIn("/api/rhd/export_processing_job", template)
-        self.assertIn("function currentProcessingPayload(extra)", template)
-        self.assertIn("function exportProcessing(fmt)", template)
+        self.assertIn("/api/rhd/process", source)
+        self.assertIn("/api/rhd/export_processing_job", source)
+        self.assertIn("function currentProcessingPayload(extra)", source)
+        self.assertIn("function exportProcessing(fmt)", source)
         self.assertIn("Export SVG", template)
-        self.assertIn("let _fileLoadSeq", template)
-        self.assertIn("let _plotSeq", template)
-        self.assertIn("merge_pair: previewMergeEnabled()", template)
+        self.assertIn("let _fileLoadSeq", source)
+        self.assertIn("let _plotSeq", source)
+        self.assertIn("merge_pair: previewMergeEnabled()", source)
         self.assertLess(template.index("View Window"), template.index("Export Options"))
         self.assertLess(template.index("Export Current"), template.index("Batch Export Queue"))
 
@@ -269,6 +279,23 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
         self.assertIn("window.LIF_VIEWER_FLAGS", template)
         self.assertNotIn("function loadLifPreview()", template)
+
+    def test_fluorescence_3d_uses_page_specific_js_modules(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "fluorescence_3d_stacking.html").read_text(encoding="utf-8")
+        modules = (
+            "fluorescence_3d_state.js",
+            "fluorescence_3d_files_preview.js",
+            "fluorescence_3d_volume_payload.js",
+            "fluorescence_3d_three_viewer.js",
+            "fluorescence_3d_exports.js",
+        )
+
+        for module in modules:
+            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
+        self.assertIn("window.FL3D_FLAGS", template)
+        self.assertNotIn("function renderVolume3D(volume)", template)
 
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np
