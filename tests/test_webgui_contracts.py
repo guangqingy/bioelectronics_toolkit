@@ -254,6 +254,22 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertLess(template.index("View Window"), template.index("Export Options"))
         self.assertLess(template.index("Export Current"), template.index("Batch Export Queue"))
 
+    def test_lif_viewer_uses_page_specific_js_modules(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "fluorescence_lif.html").read_text(encoding="utf-8")
+        modules = (
+            "fluorescence_lif_state.js",
+            "fluorescence_lif_files.js",
+            "fluorescence_lif_preview.js",
+            "fluorescence_lif_exports.js",
+        )
+
+        for module in modules:
+            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
+        self.assertIn("window.LIF_VIEWER_FLAGS", template)
+        self.assertNotIn("function loadLifPreview()", template)
+
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np
 
