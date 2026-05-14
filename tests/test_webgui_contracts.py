@@ -214,7 +214,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Intan RHD Viewer", html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
-        self.assertIn("v0.4.0", html)
+        self.assertIn("v0.5.0", html)
         self.assertNotIn("unknown", html.lower())
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
@@ -587,8 +587,8 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.4.0")
-        self.assertTrue(payload["label"].startswith("v0.4.0"))
+        self.assertEqual(payload["version"], "0.5.0")
+        self.assertTrue(payload["label"].startswith("v0.5.0"))
         self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:

@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-14
+
 ### Changed
+- Major architecture refactor inverted the project layering: `web_api/` shrank
+  from roughly 16k LOC to 7.7k LOC, `services/` grew from roughly 2.6k LOC to
+  12.5k LOC, and `web_api/fluorescence.py` was reduced from 2,212 lines to a
+  17-line composition entry point.
 - ABF and CSV trace SVG exports now use the same clean, ungrouped axis/tick/data
   output style as the RHD viewer, and saved trace image exports use short
   incrementing suffixes.
@@ -184,7 +190,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow (lint + unittest + compileall).
 - `sync_to_github.sh` helper script for quick chore-style syncs.
 
-[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.4.0...v0.5.0
+[0.4.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/guangqingy/bioelectronics_toolkit/releases/tag/v0.1.0
