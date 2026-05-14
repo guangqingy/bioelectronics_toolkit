@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate telemetry, preferences, file profiles, run history, and scripts-panel
   request handling to Pydantic schemas, with OpenAPI request bodies generated
   from registered schemas.
+- Migrate CSV viewer, ABF batch, and electrochemistry request handling to
+  Pydantic schemas, including job endpoints and CSV export query validation.
 
 ## [0.5.0] - 2026-05-14
 

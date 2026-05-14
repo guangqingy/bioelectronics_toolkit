@@ -1,16 +1,54 @@
 import traceback
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import Response, jsonify, request
+from flask import Response, jsonify
+from pydantic import Field, ValidationError
 
 from services import echem as echem_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
+
+
+class EchemPcBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class EchemPcLoadRequest(RequestModel):
+    path: str = Field(min_length=1)
+
+
+class EchemPcDetectRequest(RequestModel):
+    path: str = Field(min_length=1)
+    t0: Any = None
+    t1: Any = None
+    pos_min_mA: Any = None
+    neg_min_abs_mA: Any = None
+    min_delay_ms: Any = 1.0
+    max_delay_ms: Any = 15.0
+    min_pos_distance_ms: Any = 200.0
+    use_all: Any = True
+    pos_thresh: Any = None
+    neg_thresh: Any = None
+    min_dist: Any = None
+
+
+class EchemPcExportRequest(RequestModel):
+    path: str = ""
+    pairs: list[Any] = Field(default_factory=list)
+    mode: str = "download"
+    window: list[Any] = Field(default_factory=list)
+    t0: Any = None
+    t1: Any = None
+    pos_min_mA: Any = None
+    neg_min_abs_mA: Any = None
+    pair_window_ms: Any = 50.0
 
 
 def register_echem_pc_routes(app, ctx):
@@ -175,15 +213,20 @@ def register_echem_pc_routes(app, ctx):
         return _echem_pc_export_payload(save_body)["data"]
 
     @app.route("/api/echem/browse", methods=["POST"])
+    @request_schema(EchemPcBrowseRequest)
     def api_echem_browse():
-        d = request.json or {}
-        files = browse_files(d.get("folder", ""), {".txt", ".csv"})
+        try:
+            payload = parse_json_payload(EchemPcBrowseRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        files = browse_files(payload.folder, {".txt", ".csv"})
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem/load", methods=["POST"])
+    @request_schema(EchemPcLoadRequest)
     def api_echem_load():
-        path = (request.json or {}).get("path", "")
         try:
+            path = parse_json_payload(EchemPcLoadRequest).path
             t, i, t_col, i_col = _load_echem(path)
             if len(t) == 0:
                 return err("No data points found in file")
@@ -203,15 +246,21 @@ def register_echem_pc_routes(app, ctx):
                     "n_points": len(t),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/echem/detect", methods=["POST"])
+    @request_schema(EchemPcDetectRequest)
     def api_echem_detect():
         if not has_scipy or find_peaks is None:
             return err("scipy not installed")
 
-        d = request.json or {}
+        try:
+            d = parse_json_payload(EchemPcDetectRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         path = d.get("path", "")
         t0 = float_or(d.get("t0"), None)
         t1 = float_or(d.get("t1"), None)
@@ -334,9 +383,10 @@ def register_echem_pc_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/echem/export", methods=["POST"])
+    @request_schema(EchemPcExportRequest)
     def api_echem_export():
-        d = request.json or {}
         try:
+            d = parse_json_payload(EchemPcExportRequest).model_dump()
             result = _echem_pc_export_payload(d)
             if result["kind"] == "save":
                 data = result["data"]
@@ -346,18 +396,25 @@ def register_echem_pc_routes(app, ctx):
                 mimetype=result["mimetype"],
                 headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/echem/export_job", methods=["POST"])
+    @request_schema(EchemPcExportRequest)
     def api_echem_export_job():
+        try:
+            body = parse_json_payload(EchemPcExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "echem_pc.export",
             "Export echem photocurrent pairs",
             _echem_pc_export_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/echem/export"},
         )

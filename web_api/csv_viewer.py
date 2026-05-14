@@ -1,7 +1,9 @@
 import traceback
 from pathlib import Path
+from typing import Any
 
-from flask import Response, jsonify, request
+from flask import Response, jsonify
+from pydantic import Field, ValidationError
 
 from services import csv_tools, csv_viewer
 from web_api.common import mode_is_save
@@ -9,7 +11,53 @@ from web_api.common import mode_is_save
 from .jobs import submit_json_task
 from .path_policy import ensure_output_parent
 from .plot_export import clean_trace_svg, next_numbered_path
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    parse_query_params,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
+
+
+class CsvBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class CsvColumnsRequest(RequestModel):
+    path: str = Field(min_length=1)
+
+
+class CsvPlotRequest(RequestModel):
+    path: str = Field(min_length=1)
+    x_col: str = ""
+    y_col: str = ""
+    x_min: Any = None
+    x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
+    dsf: Any = 1
+
+
+class CsvMergeRequest(RequestModel):
+    paths: list[Any] = Field(default_factory=list)
+    x_col: str = ""
+    y_col: str = ""
+    x_min: Any = None
+    x_max: Any = None
+    drop_first_subsequent: bool = True
+    mode: str = "download"
+
+
+class CsvExportRequest(CsvPlotRequest):
+    fmt: str = "png"
+    mode: str = "download"
+
+
+class CsvFullExportRequest(RequestModel):
+    path: str = Field(min_length=1)
+    mode: str = "download"
 
 
 def register_csv_viewer_routes(app, ctx):
@@ -66,54 +114,72 @@ def register_csv_viewer_routes(app, ctx):
         return _write_payload_result(viewer_service.full_csv_export_payload(body), "full_csv")
 
     @app.route("/api/csv/browse", methods=["POST"])
+    @request_schema(CsvBrowseRequest)
     def api_csv_browse():
-        d = request.json or {}
+        try:
+            d = parse_json_payload(CsvBrowseRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         files = browse_files(d.get("folder", ""), {".csv", ".txt", ".tsv"})
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/csv/columns", methods=["POST"])
+    @request_schema(CsvColumnsRequest)
     def api_csv_columns():
-        path = (request.json or {}).get("path", "")
         try:
+            path = parse_json_payload(CsvColumnsRequest).path
             return jsonify({"columns": csv_tools.read_columns(path)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as e:
             return err(e)
 
     @app.route("/api/csv/plot", methods=["POST"])
+    @request_schema(CsvPlotRequest)
     def api_csv_plot():
-        d = request.json or {}
         try:
+            d = parse_json_payload(CsvPlotRequest).model_dump()
             return jsonify(viewer_service.plot_preview_payload(d))
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/csv/merge", methods=["POST"])
+    @request_schema(CsvMergeRequest)
     def api_csv_merge():
-        d = request.json or {}
         try:
+            d = parse_json_payload(CsvMergeRequest).model_dump()
             return api_ok(viewer_service.merge_preview_payload(d))
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/csv/merge_job", methods=["POST"])
+    @request_schema(CsvMergeRequest)
     def api_csv_merge_job():
+        try:
+            body = parse_json_payload(CsvMergeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "csv.merge_preview",
             "Merge CSV preview",
             _csv_merge_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/csv/merge"},
         )
 
     @app.route("/api/csv/export_merge", methods=["POST"])
+    @request_schema(CsvMergeRequest)
     def api_csv_export_merge():
-        d = request.json or {}
-        mode = d.get("mode", "download")
-
         try:
+            d = parse_json_payload(CsvMergeRequest).model_dump()
+            mode = d.get("mode", "download")
             export = viewer_service.merge_export_payload(d)
             if _mode_is_save(mode):
                 result = _write_payload_result(export, "merged_csv")
@@ -124,27 +190,34 @@ def register_csv_viewer_routes(app, ctx):
                 mimetype="text/csv",
                 headers={"Content-Disposition": f"attachment; filename={export['out_name']}"},
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/csv/export_merge_job", methods=["POST"])
+    @request_schema(CsvMergeRequest)
     def api_csv_export_merge_job():
+        try:
+            body = parse_json_payload(CsvMergeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "csv.export_merge",
             "Export merged CSV",
             _csv_export_merge_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/csv/export_merge"},
         )
 
     @app.route("/api/csv/export")
     def api_csv_export():
-        d = dict(request.args)
-        mode = request.args.get("mode", "download")
         try:
+            d = parse_query_params(CsvExportRequest).model_dump()
+            mode = d.get("mode", "download")
             export = viewer_service.plot_export_payload(d)
             if _mode_is_save(mode):
                 result = _write_payload_result(export, export["role"])
@@ -155,12 +228,18 @@ def register_csv_viewer_routes(app, ctx):
                 mimetype=export["mimetype"],
                 headers={"Content-Disposition": f"attachment; filename={export['download_name']}"},
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as e:
             return err(e)
 
     @app.route("/api/csv/export_job", methods=["POST"])
+    @request_schema(CsvExportRequest)
     def api_csv_export_job():
-        body = request.json or {}
+        try:
+            body = parse_json_payload(CsvExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "csv.export_plot",
@@ -172,9 +251,9 @@ def register_csv_viewer_routes(app, ctx):
 
     @app.route("/api/csv/export_csv")
     def api_csv_export_csv_compat():
-        d = dict(request.args)
-        mode = request.args.get("mode", "download")
         try:
+            d = parse_query_params(CsvFullExportRequest).model_dump()
+            mode = d.get("mode", "download")
             export = viewer_service.full_csv_export_payload(d)
             if _mode_is_save(mode):
                 result = _write_payload_result(export, "full_csv")
@@ -184,12 +263,18 @@ def register_csv_viewer_routes(app, ctx):
                 mimetype="text/csv",
                 headers={"Content-Disposition": f"attachment; filename={export['download_name']}"},
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as e:
             return err(e)
 
     @app.route("/api/csv/export_csv_job", methods=["POST"])
+    @request_schema(CsvFullExportRequest)
     def api_csv_export_csv_job():
-        body = request.json or {}
+        try:
+            body = parse_json_payload(CsvFullExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "csv.export_full",

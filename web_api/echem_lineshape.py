@@ -1,18 +1,51 @@
 import re as _re
 import traceback
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import Response, jsonify, request
+from flask import Response, jsonify
+from pydantic import Field, ValidationError
 
 
 from web_api.common import mode_is_save
 
 from .jobs import submit_json_task
 from .path_policy import ensure_output_parent
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
+
+
+class LineshapeBrowseRequest(RequestModel):
+    base_dir: str = ""
+
+
+class LineshapeLoadRequest(RequestModel):
+    base_dir: str = ""
+    material: str = ""
+    index_k: Any = 1
+    kind: str = "photocurrent"
+    crop_t0: Any = -0.005
+    crop_t1: Any = 0.020
+
+
+class LineshapePlotRequest(RequestModel):
+    samples: list[Any] = Field(default_factory=list)
+    selected: list[Any] = Field(default_factory=list)
+    crop_t0: Any = -0.005
+    crop_t1: Any = 0.020
+    x_offset: Any = 0.0
+    y_min: Any = None
+    y_max: Any = None
+    kind: str = "photocurrent"
+
+
+class LineshapeExportAvgRequest(RequestModel):
+    source_path: str = ""
+    avg_data: dict[str, Any] = Field(default_factory=dict)
+    mode: str = "download"
 
 
 def register_echem_lineshape_routes(app, ctx):
@@ -104,9 +137,13 @@ def register_echem_lineshape_routes(app, ctx):
         return np.interp(grid, t_rel, y, left=np.nan, right=np.nan)
 
     @app.route("/api/echem/lineshape/browse", methods=["POST"])
+    @request_schema(LineshapeBrowseRequest)
     def api_ls_browse():
-        d = request.json or {}
-        base_dir = d.get("base_dir", "")
+        try:
+            payload = parse_json_payload(LineshapeBrowseRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        base_dir = payload.base_dir
         p = Path(base_dir)
         if not p.is_dir():
             return err(f"Not a directory: {base_dir}")
@@ -114,8 +151,12 @@ def register_echem_lineshape_routes(app, ctx):
         return jsonify({"materials": materials})
 
     @app.route("/api/echem/lineshape/load", methods=["POST"])
+    @request_schema(LineshapeLoadRequest)
     def api_ls_load():
-        d = request.json or {}
+        try:
+            d = parse_json_payload(LineshapeLoadRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         base_dir = d.get("base_dir", "")
         material = d.get("material", "")
         index_k = int_or(d.get("index_k", 1), 1)
@@ -171,8 +212,12 @@ def register_echem_lineshape_routes(app, ctx):
         return jsonify({"samples": samples, "n": len(samples)})
 
     @app.route("/api/echem/lineshape/plot", methods=["POST"])
+    @request_schema(LineshapePlotRequest)
     def api_ls_plot():
-        d = request.json or {}
+        try:
+            d = parse_json_payload(LineshapePlotRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         samples = d.get("samples", [])
         selected = d.get("selected", [])
         crop_t0 = float_or(d.get("crop_t0", -0.005), -0.005)
@@ -287,12 +332,15 @@ def register_echem_lineshape_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/echem/lineshape/export_avg", methods=["POST"])
+    @request_schema(LineshapeExportAvgRequest)
     def api_ls_export_avg():
         """Export averaged trace as CSV download."""
-        d = request.json or {}
-        mode = d.get("mode", "download")
         try:
+            d = parse_json_payload(LineshapeExportAvgRequest).model_dump()
+            mode = d.get("mode", "download")
             export = _lineshape_avg_export(d)
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         if _mode_is_save(mode):
@@ -305,12 +353,17 @@ def register_echem_lineshape_routes(app, ctx):
         )
 
     @app.route("/api/echem/lineshape/export_avg_job", methods=["POST"])
+    @request_schema(LineshapeExportAvgRequest)
     def api_ls_export_avg_job():
+        try:
+            body = parse_json_payload(LineshapeExportAvgRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "echem_lineshape.export_avg",
             "Export echem lineshape average",
             _lineshape_avg_export_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/echem/lineshape/export_avg"},
         )

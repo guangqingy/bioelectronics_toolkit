@@ -926,6 +926,12 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertEqual(payload["openapi"], "3.1.0")
         self.assertIn("PickerRequest", payload["components"]["schemas"])
         for schema_name in [
+            "AbfBatchProcessRequest",
+            "CsvExportRequest",
+            "CsvMergeRequest",
+            "EchemPcDetectRequest",
+            "EchemPvDetectRequest",
+            "LineshapePlotRequest",
             "TelemetryEventRequest",
             "PreferencesSaveRequest",
             "FileProfileSaveRequest",
@@ -936,6 +942,11 @@ class WebAppSmokeTests(unittest.TestCase):
 
         request_refs = {
             "/api/telemetry/event": "#/components/schemas/TelemetryEventRequest",
+            "/api/csv/export_job": "#/components/schemas/CsvExportRequest",
+            "/api/abf_batch/process_job": "#/components/schemas/AbfBatchProcessRequest",
+            "/api/echem/detect": "#/components/schemas/EchemPcDetectRequest",
+            "/api/echem_pv/detect": "#/components/schemas/EchemPvDetectRequest",
+            "/api/echem/lineshape/plot": "#/components/schemas/LineshapePlotRequest",
             "/api/preferences/view_save": "#/components/schemas/ViewPreferencesSaveRequest",
             "/api/file_profiles/save": "#/components/schemas/FileProfileSaveRequest",
             "/api/run_history/package_job": "#/components/schemas/RunPackageRequest",
@@ -956,6 +967,14 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_migrated_preference_schema_validation_returns_422(self) -> None:
         response = self.client.post("/api/preferences/view_get", json={})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"], "Invalid request payload")
+
+    def test_migrated_csv_schema_validation_returns_422(self) -> None:
+        response = self.client.post("/api/csv/columns", json={})
         payload = response.get_json()
 
         self.assertEqual(response.status_code, 422)

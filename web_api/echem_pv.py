@@ -1,16 +1,73 @@
 import traceback
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import Response, jsonify, request
+from flask import Response, jsonify
+from pydantic import Field, ValidationError
 
 from services import echem as echem_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
+
+
+class EchemPvBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class EchemPvLoadRequest(RequestModel):
+    path: str = Field(min_length=1)
+
+
+class EchemPvDetectRequest(RequestModel):
+    path: str = Field(min_length=1)
+    t0: Any = None
+    t1: Any = None
+    baseline_method: str = "median"
+    detrend_method: str = ""
+    baseline_win_ms: Any = 50.0
+    bl_win_ms: Any = None
+    detrend_win_ms: Any = None
+    detrend_win: Any = None
+    sg_window_ms: Any = 51.0
+    sg_win_ms: Any = None
+    sg_poly: Any = 3
+    peak_min_v: Any = None
+    peak_min_V: Any = None
+    pv_height: Any = None
+    min_width_ms: Any = 5.0
+    min_spacing_ms: Any = 10.0
+    pv_dist: Any = None
+    min_dist: Any = None
+    polarity: str = ""
+    det_pos: Any = True
+    det_neg: Any = False
+    use_all: Any = False
+    show_detrended: Any = False
+
+
+class EchemPvExportRequest(RequestModel):
+    path: str = ""
+    pulses: list[Any] = Field(default_factory=list)
+    mode: str = "download"
+    window: list[Any] = Field(default_factory=list)
+    params: dict[str, Any] = Field(default_factory=dict)
+    baseline_method: str = ""
+    detrend_method: str = ""
+    baseline_win_ms: Any = None
+    bl_win_ms: Any = None
+    sg_window_ms: Any = None
+    sg_poly: Any = None
+    peak_min_v: Any = None
+    peak_min_V: Any = None
+    min_width_ms: Any = None
+    min_spacing_ms: Any = None
+    pulse_window_ms: Any = 50.0
 
 
 def register_echem_pv_routes(app, ctx):
@@ -232,15 +289,20 @@ def register_echem_pv_routes(app, ctx):
         return _echem_pv_export_payload(save_body)["data"]
 
     @app.route("/api/echem_pv/browse", methods=["POST"])
+    @request_schema(EchemPvBrowseRequest)
     def api_echem_pv_browse():
-        d = request.json or {}
-        files = browse_files(d.get("folder", ""), {".txt", ".csv"})
+        try:
+            payload = parse_json_payload(EchemPvBrowseRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        files = browse_files(payload.folder, {".txt", ".csv"})
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem_pv/load", methods=["POST"])
+    @request_schema(EchemPvLoadRequest)
     def api_echem_pv_load():
-        path = (request.json or {}).get("path", "")
         try:
+            path = parse_json_payload(EchemPvLoadRequest).path
             t, v, t_col, v_col = _load_echem(path)
             if len(t) == 0:
                 return err("No data points found in file")
@@ -260,15 +322,21 @@ def register_echem_pv_routes(app, ctx):
                     "n_points": len(t),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/echem_pv/detect", methods=["POST"])
+    @request_schema(EchemPvDetectRequest)
     def api_echem_pv_detect():
         if not has_scipy or find_peaks is None or peak_widths is None:
             return err("scipy not installed")
 
-        d = request.json or {}
+        try:
+            d = parse_json_payload(EchemPvDetectRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         path = d.get("path", "")
         baseline_method = _normalize_method(d.get("baseline_method", d.get("detrend_method", "median")))
         baseline_win_ms = float_or(
@@ -420,9 +488,10 @@ def register_echem_pv_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/echem_pv/export", methods=["POST"])
+    @request_schema(EchemPvExportRequest)
     def api_echem_pv_export():
-        d = request.json or {}
         try:
+            d = parse_json_payload(EchemPvExportRequest).model_dump()
             result = _echem_pv_export_payload(d)
             if result["kind"] == "save":
                 data = result["data"]
@@ -432,18 +501,25 @@ def register_echem_pv_routes(app, ctx):
                 mimetype=result["mimetype"],
                 headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/echem_pv/export_job", methods=["POST"])
+    @request_schema(EchemPvExportRequest)
     def api_echem_pv_export_job():
+        try:
+            body = parse_json_payload(EchemPvExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "echem_pv.export",
             "Export echem photovoltage pulses",
             _echem_pv_export_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/echem_pv/export"},
         )

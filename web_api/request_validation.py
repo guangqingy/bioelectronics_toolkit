@@ -32,6 +32,10 @@ def parse_json_payload(model: type[ModelT]) -> ModelT:
     return model.model_validate(body)
 
 
+def parse_query_params(model: type[ModelT]) -> ModelT:
+    return model.model_validate(dict(request.args))
+
+
 def validation_error_response(exc: ValidationError):
     return api_error("Invalid request payload", 422, data={"details": exc.errors()})
 
