@@ -27,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to Pydantic request schemas.
 - Migrate RHD viewer browse, preview, processing, channel export, and batch
   export endpoints to Pydantic request schemas.
+- Migrate Leica LIF viewer browse, metadata, preview, manifest export, TIFF
+  export, and 3D viewer export endpoints to Pydantic request schemas.
 
 ## [0.5.0] - 2026-05-14
 

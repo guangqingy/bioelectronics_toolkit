@@ -3,13 +3,74 @@ import csv
 import io
 import traceback
 from pathlib import Path
+from typing import Any
 
 import numpy as np
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import Field, ValidationError
 
 from services.fluorescence import lif_dimensions, lif_export, lif_metadata, lif_records, lif_volume
 
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+
+
+class LifBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class LifInfoRequest(RequestModel):
+    path: str = Field(min_length=1)
+    sort: str = "time"
+
+
+class LifPreviewRequest(RequestModel):
+    path: str = Field(min_length=1)
+    image_index: Any = 0
+    z: Any = 0
+    t: Any = 0
+    c: Any = 0
+    m: Any = 0
+    requested_dims: Any = Field(default_factory=dict)
+    lut: str = "Gray"
+    p_low: Any = 1.0
+    p_high: Any = 99.0
+
+
+class LifVolume3dRequest(LifPreviewRequest):
+    channel_mode: str = "composite"
+    max_points: Any = 70000
+    max_xy: Any = 180
+    max_z: Any = 80
+    threshold_percentile: Any = 98.8
+
+
+class LifExportVolume3dRequest(LifVolume3dRequest):
+    output_name: str = ""
+    output_dir: str = ""
+    overwrite: Any = True
+
+
+class LifExportManifestRequest(RequestModel):
+    path: str = Field(min_length=1)
+    order_indices: list[Any] = Field(default_factory=list)
+    rename_map: Any = Field(default_factory=dict)
+
+
+class LifExportTiffRequest(RequestModel):
+    path: str = Field(min_length=1)
+    image_index: Any = 0
+    output_name: str = ""
+    output_dir: str = ""
+    overwrite: Any = True
+
+
+class LifExportTiffBatchRequest(RequestModel):
+    path: str = Field(min_length=1)
+    order_indices: list[Any] = Field(default_factory=list)
+    rename_map: Any = Field(default_factory=dict)
+    output_dir: str = ""
+    overwrite: Any = True
 
 
 def register_lif_viewer_routes(app, ctx):
@@ -148,21 +209,24 @@ def register_lif_viewer_routes(app, ctx):
         return _lif_apply_orientation(_lif_normalize_2d_array(frame), record.get("scan_orientation", {}) or {})
 
     @app.route("/api/fluorescence/lif/browse", methods=["POST"])
+    @request_schema(LifBrowseRequest)
     def api_lif_browse():
-        d = request.json or {}
-        folder = d.get("folder", "")
+        try:
+            folder = parse_json_payload(LifBrowseRequest).folder
+        except ValidationError as exc:
+            return validation_error_response(exc)
         files = browse_files(folder, {".lif"})
         return jsonify({"files": files})
 
     @app.route("/api/fluorescence/lif/info", methods=["POST"])
+    @request_schema(LifInfoRequest)
     def api_lif_info():
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        sort_mode = str(d.get("sort", "time") or "time").strip().lower()
-        if sort_mode not in {"time", "original", "name"}:
-            sort_mode = "time"
-
         try:
+            d = parse_json_payload(LifInfoRequest)
+            path = d.path.strip()
+            sort_mode = str(d.sort or "time").strip().lower()
+            if sort_mode not in {"time", "original", "name"}:
+                sort_mode = "time"
             _, records = _lif_load_records(path)
             sorted_records = sorted(records, key=lambda r: lif_metadata.record_sort_tuple(r, sort_mode))
             for i, r in enumerate(sorted_records, start=1):
@@ -181,30 +245,31 @@ def register_lif_viewer_routes(app, ctx):
                     "readlif": has_readlif,
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/preview", methods=["POST"])
+    @request_schema(LifPreviewRequest)
     def api_lif_preview():
         if not has_pil or image_mod is None:
             return err("Pillow is required for LIF previews. Run: python -m pip install Pillow")
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        image_index = int_or(d.get("image_index", 0), 0)
-        z = int_or(d.get("z", 0), 0)
-        t = int_or(d.get("t", 0), 0)
-        c = int_or(d.get("c", 0), 0)
-        m = int_or(d.get("m", 0), 0)
-        requested_dims = d.get("requested_dims") if isinstance(d.get("requested_dims"), dict) else {}
-        lut = str(d.get("lut", "Gray") or "Gray")
-        p_low = float_or(d.get("p_low", 1.0), 1.0)
-        p_high = float_or(d.get("p_high", 99.0), 99.0)
-        p_low = max(0.0, min(49.0, p_low))
-        p_high = max(51.0, min(100.0, p_high))
 
         try:
+            d = parse_json_payload(LifPreviewRequest)
+            path = d.path.strip()
+            image_index = int_or(d.image_index, 0)
+            z = int_or(d.z, 0)
+            t = int_or(d.t, 0)
+            c = int_or(d.c, 0)
+            m = int_or(d.m, 0)
+            requested_dims = d.requested_dims if isinstance(d.requested_dims, dict) else {}
+            lut = str(d.lut or "Gray")
+            p_low = max(0.0, min(49.0, float_or(d.p_low, 1.0)))
+            p_high = max(51.0, min(100.0, float_or(d.p_high, 99.0)))
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -223,29 +288,31 @@ def register_lif_viewer_routes(app, ctx):
                     "requested_dims": requested_dims,
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/volume3d", methods=["POST"])
+    @request_schema(LifVolume3dRequest)
     def api_lif_volume3d():
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        image_index = int_or(d.get("image_index", 0), 0)
-        t = int_or(d.get("t", 0), 0)
-        c = int_or(d.get("c", 0), 0)
-        m = int_or(d.get("m", 0), 0)
-        requested_dims = d.get("requested_dims") if isinstance(d.get("requested_dims"), dict) else {}
-        channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
-        if channel_mode not in {"composite", "current"}:
-            channel_mode = "composite"
-        max_points = int_or(d.get("max_points", 70000), 70000)
-        max_xy = int_or(d.get("max_xy", 180), 180)
-        max_z = int_or(d.get("max_z", 80), 80)
-        threshold_percentile = float_or(d.get("threshold_percentile", 98.8), 98.8)
-
         try:
+            d = parse_json_payload(LifVolume3dRequest)
+            path = d.path.strip()
+            image_index = int_or(d.image_index, 0)
+            t = int_or(d.t, 0)
+            c = int_or(d.c, 0)
+            m = int_or(d.m, 0)
+            requested_dims = d.requested_dims if isinstance(d.requested_dims, dict) else {}
+            channel_mode = str(d.channel_mode or "composite").strip().lower()
+            if channel_mode not in {"composite", "current"}:
+                channel_mode = "composite"
+            max_points = int_or(d.max_points, 70000)
+            max_xy = int_or(d.max_xy, 180)
+            max_z = int_or(d.max_z, 80)
+            threshold_percentile = float_or(d.threshold_percentile, 98.8)
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -263,32 +330,34 @@ def register_lif_viewer_routes(app, ctx):
                 threshold_percentile=threshold_percentile,
             )
             return jsonify({"ok": True, "volume": payload})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_volume3d", methods=["POST"])
+    @request_schema(LifExportVolume3dRequest)
     def api_lif_export_volume3d(payload=None):
-        d = (request.json or {}) if payload is None else payload
-        path = str(d.get("path", "") or "").strip()
-        image_index = int_or(d.get("image_index", 0), 0)
-        output_name = str(d.get("output_name", "") or "").strip()
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        overwrite = bool(d.get("overwrite", True))
-        t = int_or(d.get("t", 0), 0)
-        c = int_or(d.get("c", 0), 0)
-        m = int_or(d.get("m", 0), 0)
-        requested_dims = d.get("requested_dims") if isinstance(d.get("requested_dims"), dict) else {}
-        channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
-        if channel_mode not in {"composite", "current"}:
-            channel_mode = "composite"
-        max_points = int_or(d.get("max_points", 110000), 110000)
-        max_xy = int_or(d.get("max_xy", 220), 220)
-        max_z = int_or(d.get("max_z", 120), 120)
-        threshold_percentile = float_or(d.get("threshold_percentile", 98.6), 98.6)
-
         try:
+            d = parse_json_payload(LifExportVolume3dRequest).model_dump() if payload is None else payload
+            path = str(d.get("path", "") or "").strip()
+            image_index = int_or(d.get("image_index", 0), 0)
+            output_name = str(d.get("output_name", "") or "").strip()
+            output_dir_raw = str(d.get("output_dir", "") or "").strip()
+            overwrite = bool(d.get("overwrite", True))
+            t = int_or(d.get("t", 0), 0)
+            c = int_or(d.get("c", 0), 0)
+            m = int_or(d.get("m", 0), 0)
+            requested_dims = d.get("requested_dims") if isinstance(d.get("requested_dims"), dict) else {}
+            channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
+            if channel_mode not in {"composite", "current"}:
+                channel_mode = "composite"
+            max_points = int_or(d.get("max_points", 110000), 110000)
+            max_xy = int_or(d.get("max_xy", 220), 220)
+            max_z = int_or(d.get("max_z", 120), 120)
+            threshold_percentile = float_or(d.get("threshold_percentile", 98.6), 98.6)
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -329,13 +398,20 @@ def register_lif_viewer_routes(app, ctx):
                     "calibration": payload.get("calibration", {}),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_volume3d_job", methods=["POST"])
+    @request_schema(LifExportVolume3dRequest)
     def api_lif_export_volume3d_job():
+        try:
+            body = parse_json_payload(LifExportVolume3dRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.lif_export_volume3d",
@@ -343,25 +419,24 @@ def register_lif_viewer_routes(app, ctx):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_lif_export_volume3d, "Exporting LIF 3D viewer"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/lif/export_volume3d"},
         )
 
     @app.route("/api/fluorescence/lif/export_manifest", methods=["POST"])
+    @request_schema(LifExportManifestRequest)
     def api_lif_export_manifest():
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        order_indices_raw = d.get("order_indices") or []
-        rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
-        order_indices = []
-        if isinstance(order_indices_raw, list):
+        try:
+            d = parse_json_payload(LifExportManifestRequest)
+            path = d.path.strip()
+            order_indices_raw = d.order_indices or []
+            rename_map = d.rename_map if isinstance(d.rename_map, dict) else {}
+            order_indices = []
             for raw in order_indices_raw:
                 try:
                     order_indices.append(int(raw))
                 except Exception:
                     pass
-
-        try:
             _, records = _lif_load_records(path)
             rows = _lif_manifest_rows(records, order_indices, rename_map)
             p = Path(path).expanduser()
@@ -389,19 +464,21 @@ def register_lif_viewer_routes(app, ctx):
                 writer.writeheader()
                 writer.writerows(rows)
             return jsonify({"ok": True, "output_path": str(out_path), "rows": len(rows)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_tiff", methods=["POST"])
+    @request_schema(LifExportTiffRequest)
     def api_lif_export_tiff(payload=None):
-        d = (request.json or {}) if payload is None else payload
-        path = str(d.get("path", "") or "").strip()
-        image_index = int_or(d.get("image_index", 0), 0)
-        output_name = str(d.get("output_name", "") or "").strip()
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        overwrite = bool(d.get("overwrite", True))
-
         try:
+            d = parse_json_payload(LifExportTiffRequest).model_dump() if payload is None else payload
+            path = str(d.get("path", "") or "").strip()
+            image_index = int_or(d.get("image_index", 0), 0)
+            output_name = str(d.get("output_name", "") or "").strip()
+            output_dir_raw = str(d.get("output_dir", "") or "").strip()
+            overwrite = bool(d.get("overwrite", True))
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -413,13 +490,20 @@ def register_lif_viewer_routes(app, ctx):
             output_name = output_name or _lif_output_name_for_record(record)
             result = _lif_export_image_as_tiff(lif, record, output_dir, output_name, overwrite=overwrite)
             return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_tiff_job", methods=["POST"])
+    @request_schema(LifExportTiffRequest)
     def api_lif_export_tiff_job():
+        try:
+            body = parse_json_payload(LifExportTiffRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.lif_export_tiff",
@@ -427,28 +511,28 @@ def register_lif_viewer_routes(app, ctx):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_lif_export_tiff, "Exporting selected LIF TIFF"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/lif/export_tiff"},
         )
 
     @app.route("/api/fluorescence/lif/export_tiff_batch", methods=["POST"])
+    @request_schema(LifExportTiffBatchRequest)
     def api_lif_export_tiff_batch(payload=None):
-        d = (request.json or {}) if payload is None else payload
-        path = str(d.get("path", "") or "").strip()
-        order_indices_raw = d.get("order_indices") or []
-        rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        overwrite = bool(d.get("overwrite", True))
-
-        order_indices = []
-        if isinstance(order_indices_raw, list):
-            for raw in order_indices_raw:
-                try:
-                    order_indices.append(int(raw))
-                except Exception:
-                    pass
-
         try:
+            d = parse_json_payload(LifExportTiffBatchRequest).model_dump() if payload is None else payload
+            path = str(d.get("path", "") or "").strip()
+            order_indices_raw = d.get("order_indices") or []
+            rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
+            output_dir_raw = str(d.get("output_dir", "") or "").strip()
+            overwrite = bool(d.get("overwrite", True))
+
+            order_indices = []
+            if isinstance(order_indices_raw, list):
+                for raw in order_indices_raw:
+                    try:
+                        order_indices.append(int(raw))
+                    except Exception:
+                        pass
             lif, records = _lif_load_records(path)
             by_index = {int(r["index"]): r for r in records}
             ordered = [by_index[i] for i in order_indices if i in by_index] if order_indices else sorted(records, key=lambda r: lif_metadata.record_sort_tuple(r, "time"))
@@ -476,13 +560,20 @@ def register_lif_viewer_routes(app, ctx):
                     "failed_files": failed,
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except (FileNotFoundError, RuntimeError, ValueError) as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/lif/export_tiff_batch_job", methods=["POST"])
+    @request_schema(LifExportTiffBatchRequest)
     def api_lif_export_tiff_batch_job():
+        try:
+            body = parse_json_payload(LifExportTiffBatchRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.lif_export_tiff_batch",
@@ -490,6 +581,6 @@ def register_lif_viewer_routes(app, ctx):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_lif_export_tiff_batch, "Exporting LIF TIFF batch"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/lif/export_tiff_batch"},
         )
