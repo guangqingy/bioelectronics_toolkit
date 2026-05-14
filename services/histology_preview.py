@@ -150,7 +150,9 @@ def _tiff_tag_str(page: Any, tag_name: str) -> str:
         return ""
 
 
-def _load_tifffile_preview_pair(path: Path) -> tuple[Image.Image | None, dict[str, Any], Image.Image | None, dict[str, Any]]:
+def _load_tifffile_preview_pair(
+    path: Path,
+) -> tuple[Image.Image | None, dict[str, Any], Image.Image | None, dict[str, Any]]:
     if tifffile is None:
         err = {"backend": "tifffile", "error": "tifffile unavailable"}
         return None, err, None, dict(err)
@@ -199,7 +201,11 @@ def _load_tifffile_preview_pair(path: Path) -> tuple[Image.Image | None, dict[st
             cand = preferred or candidates
 
             portraits = [p for p in cand if p["height"] > p["width"]]
-            label_page = max(portraits, key=lambda p: p["area"]) if portraits else min(cand, key=lambda p: p["area"])
+            label_page = (
+                max(portraits, key=lambda p: p["area"])
+                if portraits
+                else min(cand, key=lambda p: p["area"])
+            )
 
             others = [p for p in cand if p is not label_page]
             landscapes = [p for p in others if p["width"] >= p["height"]]
@@ -294,12 +300,20 @@ def _load_openslide_associated(path: Path) -> tuple[Image.Image | None, dict[str
                     preferred.append(key)
             for key in preferred:
                 try:
-                    return assoc[key].convert("RGB"), {"backend": "openslide", "associated_name": str(key), "main_source": str(path)}
+                    return assoc[key].convert("RGB"), {
+                        "backend": "openslide",
+                        "associated_name": str(key),
+                        "main_source": str(path),
+                    }
                 except Exception:
                     continue
             for key in assoc.keys():
                 try:
-                    return assoc[key].convert("RGB"), {"backend": "openslide", "associated_name": str(key), "main_source": str(path)}
+                    return assoc[key].convert("RGB"), {
+                        "backend": "openslide",
+                        "associated_name": str(key),
+                        "main_source": str(path),
+                    }
                 except Exception:
                     continue
         return None, {"backend": "openslide", "error": "no associated image"}
@@ -320,7 +334,11 @@ def _load_bioformats_series(path: Path, series: int) -> tuple[Image.Image | None
     except Exception as exc:
         return None, {"backend": "bioformats", "error": str(exc)}
     try:
-        return _fit_pil(_to_pil(arr), 1600), {"backend": "bioformats", "series": series, "source": str(path)}
+        return _fit_pil(_to_pil(arr), 1600), {
+            "backend": "bioformats",
+            "series": series,
+            "source": str(path),
+        }
     except Exception as exc:
         return None, {"backend": "bioformats", "error": str(exc)}
 
@@ -450,7 +468,9 @@ def load_histology_preview_pair(
             shape = main_meta.get("shape")
             result["main_source"] = f"{path.name} [page {page}, {shape}]"
         else:
-            result["main_source"] = str(main_meta.get("main_source") or main_meta.get("source") or path)
+            result["main_source"] = str(
+                main_meta.get("main_source") or main_meta.get("source") or path
+            )
     else:
         msg = "Main image preview could not be loaded."
         if main_errors:
@@ -469,7 +489,9 @@ def load_histology_preview_pair(
             shape = label_meta.get("shape")
             result["label_source"] = f"{path.name} [page {page}, {shape}]"
         else:
-            result["label_source"] = str(label_meta.get("associated_name") or label_meta.get("source") or "")
+            result["label_source"] = str(
+                label_meta.get("associated_name") or label_meta.get("source") or ""
+            )
     else:
         msg = "Label/associated image preview could not be loaded."
         if label_errors:

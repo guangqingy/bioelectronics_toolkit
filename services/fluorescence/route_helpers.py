@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import re
+from typing import Iterable
 
 import numpy as np
 
@@ -51,11 +52,26 @@ def select_display_frame(
 
     slab = arr[z0 : z1 + 1]
     if mode == "max":
-        return np.nanmax(slab, axis=0), {"mode": "max", "frame": frame_idx, "z_start": z0, "z_end": z1}
+        return np.nanmax(slab, axis=0), {
+            "mode": "max",
+            "frame": frame_idx,
+            "z_start": z0,
+            "z_end": z1,
+        }
     if mode == "mean":
-        return np.nanmean(slab, axis=0), {"mode": "mean", "frame": frame_idx, "z_start": z0, "z_end": z1}
+        return np.nanmean(slab, axis=0), {
+            "mode": "mean",
+            "frame": frame_idx,
+            "z_start": z0,
+            "z_end": z1,
+        }
 
-    return arr[frame_idx], {"mode": "single", "frame": frame_idx, "z_start": frame_idx, "z_end": frame_idx}
+    return arr[frame_idx], {
+        "mode": "single",
+        "frame": frame_idx,
+        "z_start": frame_idx,
+        "z_end": frame_idx,
+    }
 
 
 def parse_bool(value, default: bool = False) -> bool:
@@ -175,3 +191,21 @@ def decode_base64_payload(payload: str) -> bytes:
     if "," in text and "base64" in text[:64].lower():
         text = text.split(",", 1)[1]
     return base64.b64decode(text)
+
+
+def iter_with_job_progress(
+    items: Iterable,
+    job_ctx=None,
+    *,
+    start: float = 0.2,
+    span: float = 0.7,
+    label: str = "Processing item",
+):
+    """Yield indexed items while honoring background-job cancellation."""
+    seq = items if hasattr(items, "__len__") else list(items)
+    total = max(1, len(seq))
+    for idx, item in enumerate(seq, start=1):
+        if job_ctx is not None:
+            job_ctx.check_cancelled()
+            job_ctx.set_progress(start + span * ((idx - 1) / total), f"{label} {idx}/{total}")
+        yield idx, item

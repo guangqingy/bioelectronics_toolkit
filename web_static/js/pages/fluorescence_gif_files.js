@@ -322,3 +322,31 @@ function escHtml(s) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'addAvailableByIndex',
+  'addCheckedTiffs',
+  'addTiffEntry',
+  'applyGifPrefs',
+  'clearTiffChecks',
+  'collectGifPrefs',
+  'entryKey',
+  'escHtml',
+  'moveTiffEntry',
+  'removeTiffEntry',
+  'renderAvailableTiffList',
+  'renderTiffList',
+  'resetGifDefaults',
+  'saveGifDefaults',
+  'scanAvailableInfo',
+  'scanGifFolder',
+  'selectAvailableTiff',
+  'toggleTiffCheck',
+  'updateSliceSpec',
+  'updateTiffPath',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

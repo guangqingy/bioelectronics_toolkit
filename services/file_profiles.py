@@ -51,7 +51,9 @@ def _write_cache(path: Path, data: dict[str, Any]) -> None:
     data["updated_at"] = _now_iso()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
+    )
     os.replace(tmp, path)
 
 
@@ -116,7 +118,12 @@ def _fingerprint(path: Path) -> dict[str, Any]:
 def _same_fingerprint(a: dict[str, Any], b: dict[str, Any]) -> bool:
     if not a or not b:
         return False
-    return a.get("exists") and b.get("exists") and a.get("size") == b.get("size") and a.get("mtime_ns") == b.get("mtime_ns")
+    return (
+        a.get("exists")
+        and b.get("exists")
+        and a.get("size") == b.get("size")
+        and a.get("mtime_ns") == b.get("mtime_ns")
+    )
 
 
 def _profile_response(
@@ -135,7 +142,9 @@ def _profile_response(
     last_profile = str(view_entry.get("last_profile") or "")
     selected = profile_name or last_profile or ("default" if "default" in profiles else "")
     profile = profiles.get(selected) if selected else None
-    saved_fp = file_entry.get("fingerprint") if isinstance(file_entry.get("fingerprint"), dict) else {}
+    saved_fp = (
+        file_entry.get("fingerprint") if isinstance(file_entry.get("fingerprint"), dict) else {}
+    )
     return {
         "ok": True,
         "cache_path": str(cache_path),
@@ -143,7 +152,9 @@ def _profile_response(
         "file_key": file_key,
         "fingerprint": current_fp,
         "saved_fingerprint": saved_fp,
-        "stale": bool(saved_fp and current_fp.get("exists") and not _same_fingerprint(saved_fp, current_fp)),
+        "stale": bool(
+            saved_fp and current_fp.get("exists") and not _same_fingerprint(saved_fp, current_fp)
+        ),
         "view": view,
         "profiles": profiles,
         "last_profile": last_profile,
@@ -168,7 +179,9 @@ def get_file_profile(body: dict[str, Any]) -> dict[str, Any]:
         file_entry = cache.get("files", {}).get(key, {})
         if not isinstance(file_entry, dict):
             file_entry = {}
-    return _profile_response(cache_path, project_root, key, file_entry, view, profile_name, current_fp)
+    return _profile_response(
+        cache_path, project_root, key, file_entry, view, profile_name, current_fp
+    )
 
 
 def save_file_profile(body: dict[str, Any]) -> dict[str, Any]:
@@ -209,7 +222,9 @@ def save_file_profile(body: dict[str, Any]) -> dict[str, Any]:
         view_entry["updated_at"] = _now_iso()
         _write_cache(cache_path, cache)
         file_entry = files.get(key, {})
-    return _profile_response(cache_path, project_root, key, file_entry, view, profile_name, current_fp)
+    return _profile_response(
+        cache_path, project_root, key, file_entry, view, profile_name, current_fp
+    )
 
 
 def delete_file_profile(body: dict[str, Any]) -> dict[str, Any]:
@@ -228,7 +243,9 @@ def delete_file_profile(body: dict[str, Any]) -> dict[str, Any]:
     with _profile_lock:
         cache = _read_cache(cache_path, project_root)
         file_entry = cache.get("files", {}).get(key, {})
-        view_entry = (file_entry.get("views") or {}).get(view, {}) if isinstance(file_entry, dict) else {}
+        view_entry = (
+            (file_entry.get("views") or {}).get(view, {}) if isinstance(file_entry, dict) else {}
+        )
         profiles = view_entry.get("profiles") if isinstance(view_entry, dict) else {}
         if isinstance(profiles, dict):
             profiles.pop(profile_name, None)
@@ -237,4 +254,6 @@ def delete_file_profile(body: dict[str, Any]) -> dict[str, Any]:
             view_entry["updated_at"] = _now_iso()
             file_entry["updated_at"] = _now_iso()
             _write_cache(cache_path, cache)
-    return _profile_response(cache_path, project_root, key, file_entry or {}, view, None, current_fp)
+    return _profile_response(
+        cache_path, project_root, key, file_entry or {}, view, None, current_fp
+    )

@@ -45,7 +45,13 @@ def make_envelope(payload: Any = None, *, ok: bool = True, error: Any = None) ->
     return envelope
 
 
-def api_ok(data: dict[str, Any] | None = None, *, outputs: list[Any] | None = None, warnings: list[str] | None = None, **extra):
+def api_ok(
+    data: dict[str, Any] | None = None,
+    *,
+    outputs: list[Any] | None = None,
+    warnings: list[str] | None = None,
+    **extra,
+):
     payload = dict(data or {})
     payload.update(extra)
     if outputs is not None:
@@ -76,7 +82,13 @@ def _public_error(message: Any, code: int) -> tuple[Any, int, str | None]:
     return "Internal error", max(500, code), correlation_id
 
 
-def api_error(message: Any, code: int = 400, *, data: dict[str, Any] | None = None, warnings: list[str] | None = None):
+def api_error(
+    message: Any,
+    code: int = 400,
+    *,
+    data: dict[str, Any] | None = None,
+    warnings: list[str] | None = None,
+):
     message, code, correlation_id = _public_error(message, code)
     payload = dict(data or {})
     payload["error"] = str(message)

@@ -305,3 +305,29 @@ async function restoreRoiContext() {
   setStatus('roiPrefsStatus', 'Context restored.', 'ok');
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'applyRoiSettings',
+  'collectRoiFilePayload',
+  'collectRoiSettings',
+  'deleteSelectedRoiFileProfile',
+  'escapeHtml',
+  'loadRoiProfileForCurrent',
+  'loadSelectedRoiFileProfile',
+  'pairKey',
+  'renderRoiContextOptions',
+  'renderRoiFileProfileOptions',
+  'resetRoiDefaults',
+  'restoreRoiContext',
+  'restoreRoiPayload',
+  'roiContextKey',
+  'roiPrimaryFile',
+  'roiProjectRoot',
+  'saveRoiContext',
+  'saveRoiDefaults',
+  'saveRoiFileProfile',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

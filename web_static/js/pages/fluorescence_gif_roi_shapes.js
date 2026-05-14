@@ -346,3 +346,34 @@ function renderCropRectList() {
   updateGifCropControls();
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'clearCropRects',
+  'clearPolygons',
+  'closePolygon',
+  'finishCropRect',
+  'finishPolygonDrawing',
+  'getClosedRoiPolygons',
+  'getCropRects',
+  'gifBgLabel',
+  'gifCropPayload',
+  'gifLabelMode',
+  'gifShowRoiOverlay',
+  'normalizeRectObject',
+  'removeCropRect',
+  'removePolygon',
+  'renderCropRectList',
+  'renderPolygonList',
+  'renumberCropRects',
+  'renumberGifPolygons',
+  'startCropRect',
+  'startPolygon',
+  'undoPolygonPoint',
+  'updateGifBgControls',
+  'updateGifCropControls',
+  'updateGifKymoControls',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

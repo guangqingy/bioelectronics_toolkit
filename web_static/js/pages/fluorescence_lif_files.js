@@ -281,3 +281,31 @@ function renderExtraDimControls(rec) {
       </div>`;
   }).join('');
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'applySelectedRename',
+  'dimText',
+  'extraPreviewDims',
+  'findRecord',
+  'fmtMetaNumber',
+  'loadLifProject',
+  'onSortChange',
+  'pixelSizeText',
+  'renderExtraDimControls',
+  'renderLifBrowser',
+  'renderLifFileList',
+  'renderLifSubfileList',
+  'renderSelectedDetail',
+  'resetSelectedRename',
+  'scanLifFolder',
+  'selectLifFile',
+  'selectLifRecord',
+  'setSliderDim',
+  'sortLifRecords',
+  'syncRenameFromInput',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

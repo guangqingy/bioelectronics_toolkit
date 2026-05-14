@@ -42,7 +42,9 @@ def _write_server_json(json_path: Path, old_path: Path, new_path: Path, new_name
     return True
 
 
-def _update_qupath_project(qpproj_path: Path, old_path: Path, new_path: Path, new_name: str) -> dict[str, Any]:
+def _update_qupath_project(
+    qpproj_path: Path, old_path: Path, new_path: Path, new_name: str
+) -> dict[str, Any]:
     try:
         data = json.loads(qpproj_path.read_text(encoding="utf-8"))
     except Exception:
@@ -113,7 +115,9 @@ def _update_qupath_project(qpproj_path: Path, old_path: Path, new_path: Path, ne
                 data["modifyTimestamp"] = int(time.time() * 1000)
             except Exception:
                 pass
-        qpproj_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        qpproj_path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
 
         proj_dir = qpproj_path.parent
         for eid in sorted(set(updated_entry_ids)):
@@ -353,7 +357,9 @@ def _sync_qupath_project_names_from_cases(
                 data["modifyTimestamp"] = int(time.time() * 1000)
             except Exception:
                 pass
-        qpproj_path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        qpproj_path.write_text(
+            json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+        )
 
         if update_server_json and entry_name_map:
             proj_dir = qpproj_path.parent
@@ -399,7 +405,9 @@ def sync_qupath_names_from_histology_cases(
     updated_projects: list[str] = []
 
     for qpproj in qpprojs:
-        info = _sync_qupath_project_names_from_cases(qpproj, cases, update_server_json=update_server_json)
+        info = _sync_qupath_project_names_from_cases(
+            qpproj, cases, update_server_json=update_server_json
+        )
         if info.get("error"):
             raise ValueError(f"{qpproj}: {info.get('error')}")
         results.append(info)

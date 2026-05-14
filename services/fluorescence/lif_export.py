@@ -9,8 +9,7 @@ from typing import Any
 
 import numpy as np
 
-from services.fluorescence import lif_dimensions
-from services.fluorescence import lif_metadata
+from services.fluorescence import lif_dimensions, lif_metadata
 
 
 def imagej_lut(lut_name: str) -> np.ndarray:
@@ -78,8 +77,12 @@ def export_plan(record: dict) -> dict:
     x_count = max(1, int(dims.get("x", 1) or 1))
     total_planes = frame_count * z_count * c_count
 
-    t_count = next((int(d.get("count", 1) or 1) for d in plane_dimensions if int(d.get("id", 0)) == 4), 1)
-    m_count = next((int(d.get("count", 1) or 1) for d in plane_dimensions if int(d.get("id", 0)) == 10), 1)
+    t_count = next(
+        (int(d.get("count", 1) or 1) for d in plane_dimensions if int(d.get("id", 0)) == 4), 1
+    )
+    m_count = next(
+        (int(d.get("count", 1) or 1) for d in plane_dimensions if int(d.get("id", 0)) == 10), 1
+    )
     return {
         "plane_dimensions": plane_dimensions,
         "frame_dimensions": frame_dimensions,
@@ -126,7 +129,9 @@ def plane_sequence(plan: dict, limit: int = 10000) -> list[dict]:
     z_dim_id = int(z_dim.get("id", 3) or 3) if z_dim else None
     sequence = []
     page_index = 0
-    for frame_index, frame_values in frame_dimension_combinations(plan.get("frame_dimensions", []) or []):
+    for frame_index, frame_values in frame_dimension_combinations(
+        plan.get("frame_dimensions", []) or []
+    ):
         for z in range(z_count):
             dim_values = dict(frame_values)
             if z_dim_id is not None:
@@ -147,7 +152,9 @@ def plane_sequence(plan: dict, limit: int = 10000) -> list[dict]:
 
 def build_export_metadata(lif, image, record: dict, output_name: str, plan: dict) -> dict:
     orientation = dict(record.get("scan_orientation", {}) or {})
-    calibration = lif_dimensions.oriented_calibration(record.get("calibration", {}) or {}, orientation)
+    calibration = lif_dimensions.oriented_calibration(
+        record.get("calibration", {}) or {}, orientation
+    )
     raw_counts = plan.get("counts", {}) or {}
     counts = lif_dimensions.oriented_counts(raw_counts, orientation)
     sequence = plane_sequence(plan)
@@ -183,7 +190,8 @@ def build_export_metadata(lif, image, record: dict, output_name: str, plan: dict
             "note": "Non-Z Leica dimensions are flattened into ImageJ frames in Leica dimension order; exact DimID coordinates are in plane_sequence.",
         },
         "plane_sequence": sequence,
-        "plane_sequence_truncated": not bool(sequence) and int(counts.get("planes", 0) or 0) > 10000,
+        "plane_sequence_truncated": not bool(sequence)
+        and int(counts.get("planes", 0) or 0) > 10000,
         "bit_depth": record.get("bit_depth", []),
         "channel_lut_names": record.get("channel_lut_names", []),
         "calibration": calibration,
@@ -192,7 +200,9 @@ def build_export_metadata(lif, image, record: dict, output_name: str, plan: dict
         "readlif_dims_n": record.get("dims_n", {}),
         "display_dims": record.get("display_dims", []),
         "mosaic_position": record.get("mosaic_position", []),
-        "leica_settings": lif_dimensions.json_safe(getattr(image, "settings", {}) or record.get("settings", {}) or {}),
+        "leica_settings": lif_dimensions.json_safe(
+            getattr(image, "settings", {}) or record.get("settings", {}) or {}
+        ),
         "leica_xml_metadata": record.get("xml_metadata", {}),
     }
 
@@ -206,7 +216,8 @@ def build_image_description(tifflib_module: Any, metadata_payload: dict) -> tupl
         z_spacing = calibration.get("z_spacing_um")
         frame_interval = calibration.get("frame_interval_s")
         active_frame_dims = [
-            d for d in (metadata_payload.get("flattened_frame_dimensions", []) or [])
+            d
+            for d in (metadata_payload.get("flattened_frame_dimensions", []) or [])
             if int(d.get("count", 1) or 1) > 1
         ]
         if z_spacing is not None:
@@ -257,7 +268,8 @@ def imagej_metadata(metadata_payload: dict, record: dict, c_count: int) -> dict:
         meta["spacing"] = z_spacing
     frame_interval = calibration.get("frame_interval_s")
     active_frame_dims = [
-        d for d in (metadata_payload.get("flattened_frame_dimensions", []) or [])
+        d
+        for d in (metadata_payload.get("flattened_frame_dimensions", []) or [])
         if int(d.get("count", 1) or 1) > 1
     ]
     if frame_interval is not None and len(active_frame_dims) <= 1:
@@ -282,7 +294,9 @@ def sanitize_filename(name: str, fallback: str) -> str:
 def output_name_for_record(record: dict, rename_map: dict | None = None) -> str:
     rename_map = rename_map if isinstance(rename_map, dict) else {}
     idx = str(record.get("index", ""))
-    custom = str(rename_map.get(idx, "") or rename_map.get(int(record.get("index", -1)), "") or "").strip()
+    custom = str(
+        rename_map.get(idx, "") or rename_map.get(int(record.get("index", -1)), "") or ""
+    ).strip()
     return custom or str(record.get("name", "") or f"image_{int(record.get('index', 0)) + 1}")
 
 
@@ -300,7 +314,9 @@ def unique_output_path(out_path: Path, overwrite: bool) -> Path:
         n += 1
 
 
-def manifest_rows(records: list[dict], order_indices: list[int] | None = None, rename_map: dict | None = None) -> list[dict]:
+def manifest_rows(
+    records: list[dict], order_indices: list[int] | None = None, rename_map: dict | None = None
+) -> list[dict]:
     by_index = {int(r["index"]): r for r in records}
     if order_indices:
         ordered = [by_index[i] for i in order_indices if i in by_index]
@@ -347,12 +363,16 @@ def export_image_as_tiff(
     overwrite: bool = True,
 ) -> dict:
     if tifflib_module is None:
-        raise RuntimeError("tifffile is required for TIFF export. Run: python -m pip install tifffile")
+        raise RuntimeError(
+            "tifffile is required for TIFF export. Run: python -m pip install tifffile"
+        )
 
     image_index = int(record.get("index", 0))
     image = lif.get_image(image_index)
     plan = export_plan(record)
-    counts = lif_dimensions.oriented_counts(plan.get("counts", {}) or {}, record.get("scan_orientation", {}) or {})
+    counts = lif_dimensions.oriented_counts(
+        plan.get("counts", {}) or {}, record.get("scan_orientation", {}) or {}
+    )
     z_count = max(1, int(counts.get("z", 1) or 1))
     c_count = max(1, int(counts.get("c", 1) or 1))
     y_count = max(1, int(counts.get("y", 1) or 1))
@@ -380,13 +400,17 @@ def export_image_as_tiff(
     stack = None
     z_dim = plan.get("z_dimension") or {}
     z_dim_id = int(z_dim.get("id", 3) or 3) if z_dim else None
-    for frame_index, frame_values in frame_dimension_combinations(plan.get("frame_dimensions", []) or []):
+    for frame_index, frame_values in frame_dimension_combinations(
+        plan.get("frame_dimensions", []) or []
+    ):
         for z in range(z_count):
             dim_values = dict(frame_values)
             if z_dim_id is not None:
                 dim_values[z_dim_id] = z
             for c in range(c_count):
-                arr = display_array(get_plane_by_dimensions(image, c=c, dimension_values=dim_values), record)
+                arr = display_array(
+                    get_plane_by_dimensions(image, c=c, dimension_values=dim_values), record
+                )
                 if stack is None:
                     stack = np.empty(
                         (

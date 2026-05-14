@@ -178,7 +178,9 @@ def register_abf_viewer_routes(app, ctx):
     @request_schema(AbfDetectRequest)
     def api_abf_detect_compat():
         try:
-            return jsonify(service.detect_payload(parse_json_payload(AbfDetectRequest).model_dump()))
+            return jsonify(
+                service.detect_payload(parse_json_payload(AbfDetectRequest).model_dump())
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -197,7 +199,9 @@ def register_abf_viewer_routes(app, ctx):
                     query.mode,
                 )
             else:
-                result = service.export_peaks_payload(parse_json_payload(AbfExportPeaksRequest).model_dump())
+                result = service.export_peaks_payload(
+                    parse_json_payload(AbfExportPeaksRequest).model_dump()
+                )
             return _download_or_save(result)
         except ValidationError as exc:
             return validation_error_response(exc)

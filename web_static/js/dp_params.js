@@ -3,7 +3,7 @@ function dpControlValue(control) {
   return control.value;
 }
 
-function dpSetControlValue(control, value) {
+function dpSetParamControlValue(control, value) {
   if (control.type === 'checkbox' || control.type === 'radio') control.checked = !!value;
   else control.value = value ?? '';
   control.dispatchEvent(new Event('input', {bubbles: true}));
@@ -86,11 +86,10 @@ function dpEnhanceResettableSections() {
     btn.title = 'Reset this section to its initial defaults';
     btn.textContent = 'Reset';
     btn.addEventListener('click', () => {
-      defaults.forEach(([el, value]) => dpSetControlValue(el, value));
+      defaults.forEach(([el, value]) => dpSetParamControlValue(el, value));
       setStatus('status', 'Section defaults restored', 'ok');
     });
     label.appendChild(btn);
     section.dataset.resetReady = '1';
   });
 }
-

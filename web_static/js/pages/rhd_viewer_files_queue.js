@@ -296,3 +296,32 @@ function exportQueue() {
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
     .finally(() => btnBusy('btnQueueExport', false, 'Export Queue'));
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'baseName',
+  'currentDownsampleValue',
+  'currentFigureParams',
+  'currentProcessingParams',
+  'currentProcessingPayload',
+  'currentViewParams',
+  'exportQueue',
+  'previewMergeEnabled',
+  'queueAddAll',
+  'queueAddAllRecursive',
+  'queueAddCurrent',
+  'queueAddPaths',
+  'queueClear',
+  'queueMove',
+  'queueRemoveSelected',
+  'queueRender',
+  'renderRhdFileList',
+  'rhdExportParams',
+  'scanFolder',
+  'updateRhdParameterGroups',
+  'viewNumber',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

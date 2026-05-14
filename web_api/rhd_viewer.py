@@ -8,7 +8,12 @@ from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
 from .plot_export import clean_trace_svg, next_numbered_path
-from .request_validation import parse_json_payload, parse_query_params, request_schema, validation_error_response
+from .request_validation import (
+    parse_json_payload,
+    parse_query_params,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 from .rhd_request_schemas import (
     RhdBrowseRequest,
@@ -59,6 +64,7 @@ def register_rhd_viewer_routes(app, ctx):
     def _job_payload(job_ctx, body: dict, message: str, handler):
         job_ctx.set_progress(0.2, message)
         return handler(body or {})
+
     def _json_response(schema, handler):
         try:
             return jsonify(handler(_json(schema)))
@@ -68,6 +74,7 @@ def register_rhd_viewer_routes(app, ctx):
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
+
     def _export_response(schema, handler):
         try:
             return _download_or_api(handler(_request_body(schema)))
@@ -77,6 +84,7 @@ def register_rhd_viewer_routes(app, ctx):
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
+
     def _submit(schema, kind: str, label: str, message: str, handler, endpoint: str):
         try:
             body = _json(schema)
@@ -90,6 +98,7 @@ def register_rhd_viewer_routes(app, ctx):
             body,
             metadata={"endpoint": endpoint},
         )
+
     @app.route("/api/rhd/browse", methods=["POST"])
     @request_schema(RhdBrowseRequest)
     def api_rhd_browse():

@@ -15,7 +15,7 @@
   padding: 7px 8px;
 }
 .run-history-row:hover {
-  border-color: #cbd5e3;
+  border-color: var(--border-muted);
 }
 .run-history-title {
   color: var(--carbon);
@@ -34,8 +34,8 @@
   margin: 8px 0 0;
   border: 1px solid var(--cloud);
   border-radius: var(--radius-sm);
-  background: #101828;
-  color: #f8fafc;
+  background: var(--code-bg);
+  color: var(--code-fg);
   font-family: "SF Mono", "Menlo", monospace;
   font-size: 10.5px;
   line-height: 1.45;
@@ -60,7 +60,7 @@
 .run-page-row:hover,
 .run-page-row.active {
   border-color: var(--blue);
-  background: #F7FAFF;
+  background: var(--surface-blue);
 }
 .run-page-title {
   color: var(--carbon);
@@ -127,16 +127,16 @@
   font-size: 14px;
 }
 .run-check-pill.ok {
-  background: #ECFDF3;
-  border-color: #ABEFC6;
+  background: var(--success-bg);
+  border-color: var(--success-border);
 }
 .run-check-pill.warn {
-  background: #FFF9E8;
-  border-color: #FEDF89;
+  background: var(--warning-bg);
+  border-color: var(--warning-border);
 }
 .run-check-pill.bad {
-  background: #FFF1F0;
-  border-color: #FECDCA;
+  background: var(--error-bg);
+  border-color: var(--error-border);
 }
 .run-check-status {
   border-radius: 999px;
@@ -147,16 +147,16 @@
   white-space: nowrap;
 }
 .run-check-status.ok {
-  background: #ECFDF3;
-  color: #027A48;
+  background: var(--success-bg);
+  color: var(--success);
 }
 .run-check-status.warn {
-  background: #FFF9E8;
-  color: #8a5b00;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 .run-check-status.bad {
-  background: #FFF1F0;
-  color: #b42318;
+  background: var(--error-bg);
+  color: var(--error);
 }
 .run-empty {
   color: var(--silver);
@@ -171,12 +171,12 @@
   padding: 8px 10px;
 }
 .run-warning {
-  background: #FFF9E8;
-  color: #8a5b00;
+  background: var(--warning-bg);
+  color: var(--warning);
 }
 .run-error {
-  background: #FFF1F0;
-  color: #b42318;
+  background: var(--error-bg);
+  color: var(--error);
 }
 .run-json-card summary {
   cursor: pointer;
@@ -186,8 +186,8 @@
   margin: 0;
   border: 1px solid var(--cloud);
   border-radius: var(--radius-sm);
-  background: #101828;
-  color: #f8fafc;
+  background: var(--code-bg);
+  color: var(--code-fg);
   font-family: "SF Mono", "Menlo", monospace;
   font-size: 11px;
   line-height: 1.5;

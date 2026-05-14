@@ -390,3 +390,29 @@ function buildGifKymoPrefix() {
   return sanitizeGifKymoPrefix(document.getElementById('gifKymoPrefix')?.value) + '_' + gifRoiNowStamp();
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'buildGifKymoPrefix',
+  'buildGifRoiAnalysisPayload',
+  'buildGifRoiPrefix',
+  'buildGifRoiReferencePrefix',
+  'exportGifRoiAll',
+  'exportGifRoiCSV',
+  'exportGifRoiPlotPNG',
+  'exportGifRoiPreview',
+  'generateGif',
+  'gifAnalysisEntries',
+  'gifInputFileRecords',
+  'gifRoiNowStamp',
+  'runGifBackgroundJob',
+  'runGifRoiAnalysis',
+  'sanitizeGifKymoPrefix',
+  'sanitizeGifRoiPrefix',
+  'saveGifRoiOutputs',
+  'scanFrameCounts',
+  'upsertGifResultCard',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

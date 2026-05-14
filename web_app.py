@@ -358,7 +358,9 @@ def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Start the local DataProcess WebGUI server.")
     parser.add_argument("--host", default="127.0.0.1", help="Host interface to bind.")
     parser.add_argument("--port", type=int, default=PORT, help="Port to serve on.")
-    parser.add_argument("--no-browser", action="store_true", help="Do not open a browser automatically.")
+    parser.add_argument(
+        "--no-browser", action="store_true", help="Do not open a browser automatically."
+    )
     args = parser.parse_args(argv)
 
     PORT = int(args.port)

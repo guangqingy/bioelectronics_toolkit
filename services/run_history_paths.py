@@ -102,7 +102,9 @@ def read_json(path: Path, fallback: dict[str, Any]) -> dict[str, Any]:
 def write_json(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
+    )
     os.replace(tmp, path)
 
 
@@ -141,7 +143,9 @@ def fingerprint(path: Path) -> dict[str, Any]:
             "size": st.st_size,
             "mtime": st.st_mtime,
             "mtime_ns": st.st_mtime_ns,
-            "mtime_iso": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(timespec="seconds"),
+            "mtime_iso": datetime.fromtimestamp(st.st_mtime, timezone.utc).isoformat(
+                timespec="seconds"
+            ),
         }
     )
     return out
@@ -192,7 +196,9 @@ def summary_from_manifest(manifest: dict[str, Any], manifest_path: Path) -> dict
     }
 
 
-def load_manifest_from_request(body: dict[str, Any], base_dir: Path) -> tuple[dict[str, Any], Path | None]:
+def load_manifest_from_request(
+    body: dict[str, Any], base_dir: Path
+) -> tuple[dict[str, Any], Path | None]:
     manifest = body.get("manifest")
     if isinstance(manifest, dict):
         return manifest, None

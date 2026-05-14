@@ -47,9 +47,7 @@ GUI_IMPORT_RE = re.compile(
     re.IGNORECASE,
 )
 
-TOP_LEVEL_OUTDIR_RE = re.compile(
-    r"(?m)^[A-Z_]*OUT[A-Z_]*\.mkdir\(parents=True,\s*exist_ok=True\)"
-)
+TOP_LEVEL_OUTDIR_RE = re.compile(r"(?m)^[A-Z_]*OUT[A-Z_]*\.mkdir\(parents=True,\s*exist_ok=True\)")
 
 MAIN_RE = re.compile(r"(?m)^def\s+main\s*\(")
 
@@ -145,8 +143,12 @@ def print_report(audits: list[ScriptAudit]) -> int:
         print(f"  {shape}: {counts[shape]}")
 
     blocking = [
-        audit for audit in audits
-        if audit.syntax_error or not audit.has_guard or audit.has_top_level_output_mkdir or audit.has_gui_import
+        audit
+        for audit in audits
+        if audit.syntax_error
+        or not audit.has_guard
+        or audit.has_top_level_output_mkdir
+        or audit.has_gui_import
     ]
     temp_named = [audit for audit in audits if audit.is_temp_or_test]
 

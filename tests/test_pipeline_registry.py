@@ -32,9 +32,7 @@ class PipelineRegistryTests(unittest.TestCase):
             catalog = pipeline_catalog(tmp, include_availability=True)
 
         scripts = [
-            script
-            for category in catalog["categories"]
-            for script in category.get("scripts", [])
+            script for category in catalog["categories"] for script in category.get("scripts", [])
         ]
         self.assertTrue(scripts)
         self.assertTrue(all("available" in script for script in scripts))
@@ -53,12 +51,7 @@ class PipelineRegistryTests(unittest.TestCase):
 
     def test_backend_lookup_keeps_resolved_path_internal(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_pipeline_lookup_") as tmp:
-            fake_script = (
-                Path(tmp)
-                / "2025_Subcutaneous"
-                / "Photocurrent"
-                / "model_line_chart.py"
-            )
+            fake_script = Path(tmp) / "2025_Subcutaneous" / "Photocurrent" / "model_line_chart.py"
             fake_script.parent.mkdir(parents=True)
             fake_script.write_text("print('ok')\n", encoding="utf-8")
             script = find_pipeline_script("pc_line_chart", tmp)

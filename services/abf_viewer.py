@@ -250,7 +250,14 @@ class AbfViewerService:
 
         if peaks:
             peak_indices = np.array([int(peak["idx"]) for peak in peaks], dtype=int)
-            ax.scatter(t_full[peak_indices], y_full[peak_indices], color="#d62728", marker="^", s=22, zorder=5)
+            ax.scatter(
+                t_full[peak_indices],
+                y_full[peak_indices],
+                color="#d62728",
+                marker="^",
+                s=22,
+                zorder=5,
+            )
 
         ax.set_xlabel("Time (s)")
         ax.set_ylabel(y_unit)
@@ -311,8 +318,16 @@ class AbfViewerService:
 
         polarity = str(data.get("polarity", "POS")).upper()
         window = data.get("window", [])
-        win_t0 = self.float_or(window[0], np.nan) if isinstance(window, list) and len(window) > 0 else np.nan
-        win_t1 = self.float_or(window[1], np.nan) if isinstance(window, list) and len(window) > 1 else np.nan
+        win_t0 = (
+            self.float_or(window[0], np.nan)
+            if isinstance(window, list) and len(window) > 0
+            else np.nan
+        )
+        win_t1 = (
+            self.float_or(window[1], np.nan)
+            if isinstance(window, list) and len(window) > 1
+            else np.nan
+        )
 
         src = Path(path)
         abf = self.pyabf_mod.ABF(path)
@@ -395,7 +410,9 @@ class AbfViewerService:
             if not np.any(mask):
                 continue
             seg_path = out_folder / f"{src.stem}_peak_{export_index:03d}.csv"
-            pd.DataFrame({"time_s": t_full[mask], "I_norm": y_full[mask]}).to_csv(seg_path, index=False)
+            pd.DataFrame({"time_s": t_full[mask], "I_norm": y_full[mask]}).to_csv(
+                seg_path, index=False
+            )
             saved += 1
             segment_paths.append(str(seg_path))
 
@@ -490,8 +507,14 @@ class AbfViewerService:
             }
 
         if fmt == "svg":
-            payload = self.clean_trace_svg(t, y, y_min=y_min, y_max=y_max, line_color=self.line_color)
-            base_name = f"{src.stem}_preview_signal.svg" if signal_only else f"{src.stem}_s{sweep}_ch{channel}.svg"
+            payload = self.clean_trace_svg(
+                t, y, y_min=y_min, y_max=y_max, line_color=self.line_color
+            )
+            base_name = (
+                f"{src.stem}_preview_signal.svg"
+                if signal_only
+                else f"{src.stem}_s{sweep}_ch{channel}.svg"
+            )
             if self.mode_is_save(mode):
                 out_path = self.next_numbered_path(src.with_name(base_name))
                 out_path.write_bytes(payload)
@@ -527,7 +550,9 @@ class AbfViewerService:
         buf.seek(0)
         payload = buf.getvalue()
         if self.mode_is_save(mode):
-            out_path = self.next_numbered_path(src.with_name(f"{src.stem}_s{sweep}_ch{channel}.{fmt}"))
+            out_path = self.next_numbered_path(
+                src.with_name(f"{src.stem}_s{sweep}_ch{channel}.{fmt}")
+            )
             out_path.write_bytes(payload)
             return {
                 "kind": "save",

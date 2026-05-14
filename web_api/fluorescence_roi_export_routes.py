@@ -123,7 +123,11 @@ def register_fluorescence_roi_export_routes(app, fl):
             if not any([csv_path, plot_path, preview_path, radial_csv_path, radial_plot_path]):
                 return err("No output content provided for saving")
 
-            saved_paths = [p for p in [csv_path, plot_path, preview_path, radial_csv_path, radial_plot_path] if p]
+            saved_paths = [
+                p
+                for p in [csv_path, plot_path, preview_path, radial_csv_path, radial_plot_path]
+                if p
+            ]
             return jsonify(
                 {
                     "ok": True,
@@ -182,7 +186,9 @@ def register_fluorescence_roi_export_routes(app, fl):
         frame_ms = max(20, frame_ms)
         scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 0.0), 0.0))
         pixel_size_um_override = float_or(d.get("pixel_size_um"), None)
-        if pixel_size_um_override is not None and (not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0):
+        if pixel_size_um_override is not None and (
+            not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0
+        ):
             pixel_size_um_override = None
         show_preview_name = _fl_bool(d.get("show_preview_name", True), True)
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
@@ -203,9 +209,13 @@ def register_fluorescence_roi_export_routes(app, fl):
                 s1 = str(rec.get("stack1", "") or "").strip()
                 s2 = str(rec.get("stack2", "") or "").strip()
                 if preview_stack == "stack2":
-                    path = s2 if s2 and Path(s2).exists() else (s1 if s1 and Path(s1).exists() else "")
+                    path = (
+                        s2 if s2 and Path(s2).exists() else (s1 if s1 and Path(s1).exists() else "")
+                    )
                 else:
-                    path = s1 if s1 and Path(s1).exists() else (s2 if s2 and Path(s2).exists() else "")
+                    path = (
+                        s1 if s1 and Path(s1).exists() else (s2 if s2 and Path(s2).exists() else "")
+                    )
                 if path:
                     frame_paths.append(path)
                     frame_names.append(base)
@@ -253,7 +263,9 @@ def register_fluorescence_roi_export_routes(app, fl):
                     "gif_path": str(out_path),
                     "n_frames": len(frames),
                     "frame_ms": frame_ms,
-                    "pixel_size_um": float(pixel_size_um) if pixel_size_um is not None and np.isfinite(pixel_size_um) else None,
+                    "pixel_size_um": float(pixel_size_um)
+                    if pixel_size_um is not None and np.isfinite(pixel_size_um)
+                    else None,
                 }
             )
         except Exception:

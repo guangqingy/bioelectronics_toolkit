@@ -104,3 +104,18 @@ window.addEventListener('load', () => {
   setStatus('status', 'Ready', 'ok');
   updatePeaksTable();
 });
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'collectEmgPeakSettings',
+  'currentPath',
+  'normalizePeak',
+  'peakDuration',
+  'peakHeight',
+  'peakKey',
+  'peakTime',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

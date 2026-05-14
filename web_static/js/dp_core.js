@@ -5,6 +5,10 @@ window.DP.palette = window.DP.palette || {};
 window.DP.keyboard = window.DP.keyboard || {};
 window.DP.params = window.DP.params || {};
 window.DP.telemetry = window.DP.telemetry || {};
+window.DP.folder = window.DP.folder || {};
+window.DP.settings = window.DP.settings || {};
+window.DP.jobs = window.DP.jobs || {};
+window.DP.page = window.DP.page || {};
 
 Object.assign(window.DP.api, {request: api});
 Object.assign(window.DP.dom, {
@@ -14,6 +18,7 @@ Object.assign(window.DP.dom, {
   showErrorBanner,
   dismissErrorBanner,
   btnBusy,
+  enhanceEmptyStates: dpEnhanceEmptyStates,
 });
 Object.assign(window.DP.palette, {
   open: openCommandPalette,
@@ -26,11 +31,29 @@ Object.assign(window.DP.params, {
   bindGroups: dpBindParamGroups,
   applyToggleGroups: dpApplyToggleGroups,
   bindToggleGroups: dpBindToggleGroups,
+  setControlValue: dpSetParamControlValue,
 });
 Object.assign(window.DP.telemetry, {record: dpRecordTelemetry});
+Object.assign(window.DP.folder, {
+  pick: pickFolder,
+  pickFile,
+  pickForSettings: pickFolderForSettings,
+});
+Object.assign(window.DP.settings, {
+  open: openPrefsModal,
+  close: closePrefsModal,
+  openTab: openPrefsTab,
+  renderView: renderPrefsView,
+});
+Object.assign(window.DP.jobs, {
+  load: loadBackgroundJobs,
+  cancel: cancelBackgroundJob,
+  cancelActive: () => dpJobCancel(_dpActiveJobId),
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();
+  dpEnhanceEmptyStates();
   dpEnhanceResettableSections();
   dpInstallGlobalKeyboardShortcuts();
   const commandSearch = document.getElementById('commandSearch');

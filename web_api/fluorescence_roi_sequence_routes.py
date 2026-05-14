@@ -80,7 +80,9 @@ def register_fluorescence_roi_sequence_routes(app, fl):
         preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
         scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 0.0), 0.0))
         pixel_size_um_override = float_or(d.get("pixel_size_um"), None)
-        if pixel_size_um_override is not None and (not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0):
+        if pixel_size_um_override is not None and (
+            not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0
+        ):
             pixel_size_um_override = None
         show_preview_name = _fl_bool(d.get("show_preview_name", True), True)
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
@@ -136,7 +138,9 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                             "radius": radius,
                             "ring_width_px": ring_width,
                             "ring_width_um": ring_width_um
-                            if ring_width_um is not None and np.isfinite(ring_width_um) and ring_width_um > 0
+                            if ring_width_um is not None
+                            and np.isfinite(ring_width_um)
+                            and ring_width_um > 0
                             else None,
                             "ring_count": ring_count,
                             "x1": x1,
@@ -185,13 +189,25 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                 }
 
                 for roi in roi_specs:
-                    m1 = _fl_roi_metrics_2d(img1, roi) if img1 is not None else _fl_roi_empty_metrics()
-                    m2 = _fl_roi_metrics_2d(img2, roi) if img2 is not None else _fl_roi_empty_metrics()
+                    m1 = (
+                        _fl_roi_metrics_2d(img1, roi)
+                        if img1 is not None
+                        else _fl_roi_empty_metrics()
+                    )
+                    m2 = (
+                        _fl_roi_metrics_2d(img2, roi)
+                        if img2 is not None
+                        else _fl_roi_empty_metrics()
+                    )
 
                     raw1 = float(m1.get(metric, np.nan))
                     raw2 = float(m2.get(metric, np.nan))
-                    val1 = _fl_roi_apply_metric_mode(raw1, m1.get("area_px", 0), metric, bg1, plot_metric)
-                    val2 = _fl_roi_apply_metric_mode(raw2, m2.get("area_px", 0), metric, bg2, plot_metric)
+                    val1 = _fl_roi_apply_metric_mode(
+                        raw1, m1.get("area_px", 0), metric, bg1, plot_metric
+                    )
+                    val2 = _fl_roi_apply_metric_mode(
+                        raw2, m2.get("area_px", 0), metric, bg2, plot_metric
+                    )
                     ratio = _fl_roi_safe_ratio(val1, val2)
 
                     key = roi["key"]
@@ -204,10 +220,16 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                     if roi.get("type") == "concentric":
                         radial_pixel_size_um = pixel_size_um_override
                         if radial_pixel_size_um is None:
-                            scale_path = stack1_path if stack1_path and Path(stack1_path).exists() else stack2_path
+                            scale_path = (
+                                stack1_path
+                                if stack1_path and Path(stack1_path).exists()
+                                else stack2_path
+                            )
                             if scale_path:
                                 if scale_path not in pixel_size_cache:
-                                    pixel_size_cache[scale_path] = _fl_infer_pixel_size_um_from_tiff(scale_path)
+                                    pixel_size_cache[scale_path] = (
+                                        _fl_infer_pixel_size_um_from_tiff(scale_path)
+                                    )
                                 radial_pixel_size_um = pixel_size_cache.get(scale_path)
                         radial_rows.extend(
                             _fl_roi_radial_pair_rows(
@@ -264,27 +286,47 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                             arr = pd.to_numeric(df_out[col], errors="coerce").to_numpy(dtype=float)
                             df_out[col] = _fl_roi_normalize_to_reference(arr, ref_idx)
 
-                seq_vals_for_ref = pd.to_numeric(df_out["sequence_number"], errors="coerce").to_numpy(dtype=float)
+                seq_vals_for_ref = pd.to_numeric(
+                    df_out["sequence_number"], errors="coerce"
+                ).to_numpy(dtype=float)
                 if 0 <= ref_idx < len(seq_vals_for_ref) and np.isfinite(seq_vals_for_ref[ref_idx]):
                     sv = float(seq_vals_for_ref[ref_idx])
-                    ref_sequence_applied = str(int(round(sv))) if abs(sv - round(sv)) < 1e-9 else f"{sv:g}"
+                    ref_sequence_applied = (
+                        str(int(round(sv))) if abs(sv - round(sv)) < 1e-9 else f"{sv:g}"
+                    )
                 else:
                     ref_sequence_applied = str(ref_idx)
 
             if ref_idx is not None and not ref_sequence_applied:
-                seq_vals_for_ref = pd.to_numeric(df_out["sequence_number"], errors="coerce").to_numpy(dtype=float)
+                seq_vals_for_ref = pd.to_numeric(
+                    df_out["sequence_number"], errors="coerce"
+                ).to_numpy(dtype=float)
                 if 0 <= ref_idx < len(seq_vals_for_ref) and np.isfinite(seq_vals_for_ref[ref_idx]):
                     sv = float(seq_vals_for_ref[ref_idx])
-                    ref_sequence_applied = str(int(round(sv))) if abs(sv - round(sv)) < 1e-9 else f"{sv:g}"
+                    ref_sequence_applied = (
+                        str(int(round(sv))) if abs(sv - round(sv)) < 1e-9 else f"{sv:g}"
+                    )
                 else:
                     ref_sequence_applied = str(ref_idx)
 
             radial_df = pd.DataFrame(radial_rows) if radial_rows else pd.DataFrame()
             if not radial_df.empty:
-                order_map = {str(base): i for i, base in enumerate(df_out["base_name"].astype(str).tolist())}
-                radial_df["_sort_idx"] = radial_df["base_name"].astype(str).map(order_map).fillna(len(order_map)).astype(int)
-                radial_inner_um = pd.to_numeric(radial_df.get("inner_radius_um", np.nan), errors="coerce")
-                radial_outer_um = pd.to_numeric(radial_df.get("outer_radius_um", np.nan), errors="coerce")
+                order_map = {
+                    str(base): i for i, base in enumerate(df_out["base_name"].astype(str).tolist())
+                }
+                radial_df["_sort_idx"] = (
+                    radial_df["base_name"]
+                    .astype(str)
+                    .map(order_map)
+                    .fillna(len(order_map))
+                    .astype(int)
+                )
+                radial_inner_um = pd.to_numeric(
+                    radial_df.get("inner_radius_um", np.nan), errors="coerce"
+                )
+                radial_outer_um = pd.to_numeric(
+                    radial_df.get("outer_radius_um", np.nan), errors="coerce"
+                )
                 radial_df["_ring_inner_key"] = np.where(
                     radial_inner_um.notna(),
                     radial_inner_um,
@@ -322,17 +364,27 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                             arr = pd.to_numeric(grp[col], errors="coerce").to_numpy(dtype=float)
                             radial_df.loc[idxs, col] = _fl_roi_normalize_to_reference(arr, ref_pos)
 
-                    y1r = pd.to_numeric(radial_df.loc[idxs, "stack1_value"], errors="coerce").to_numpy(dtype=float)
-                    y2r = pd.to_numeric(radial_df.loc[idxs, "stack2_value"], errors="coerce").to_numpy(dtype=float)
-                    radial_df.loc[idxs, "ratio"] = [_fl_roi_safe_ratio(a, b) for a, b in zip(y1r, y2r)]
+                    y1r = pd.to_numeric(
+                        radial_df.loc[idxs, "stack1_value"], errors="coerce"
+                    ).to_numpy(dtype=float)
+                    y2r = pd.to_numeric(
+                        radial_df.loc[idxs, "stack2_value"], errors="coerce"
+                    ).to_numpy(dtype=float)
+                    radial_df.loc[idxs, "ratio"] = [
+                        _fl_roi_safe_ratio(a, b) for a, b in zip(y1r, y2r)
+                    ]
                     radial_df.loc[idxs, "difference"] = [
                         a - b if np.isfinite(a) and np.isfinite(b) else np.nan
                         for a, b in zip(y1r, y2r)
                     ]
-                radial_df = radial_df.drop(columns=["_sort_idx", "_ring_inner_key", "_ring_outer_key"])
+                radial_df = radial_df.drop(
+                    columns=["_sort_idx", "_ring_inner_key", "_ring_outer_key"]
+                )
 
             x = np.arange(len(df_out))
-            seq_vals = pd.to_numeric(df_out["sequence_number"], errors="coerce").to_numpy(dtype=float)
+            seq_vals = pd.to_numeric(df_out["sequence_number"], errors="coerce").to_numpy(
+                dtype=float
+            )
             x_labels = []
             for i, sv in enumerate(seq_vals):
                 if np.isfinite(sv):
@@ -434,9 +486,15 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                     if not isinstance(rec, dict):
                         continue
                     if preview_stack == "stack2":
-                        cands = [str(rec.get("stack2", "") or "").strip(), str(rec.get("stack1", "") or "").strip()]
+                        cands = [
+                            str(rec.get("stack2", "") or "").strip(),
+                            str(rec.get("stack1", "") or "").strip(),
+                        ]
                     else:
-                        cands = [str(rec.get("stack1", "") or "").strip(), str(rec.get("stack2", "") or "").strip()]
+                        cands = [
+                            str(rec.get("stack1", "") or "").strip(),
+                            str(rec.get("stack2", "") or "").strip(),
+                        ]
                     chosen = next((p for p in cands if p and Path(p).exists()), "")
                     if chosen:
                         preview_path = chosen

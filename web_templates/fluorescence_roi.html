@@ -8,7 +8,7 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/tiff/folder">
-    <button class="btn-icon" onclick="pickFolder('folderPath','scanFolder')">Browse</button>
+    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanFolder')">Browse</button>
   </div>
 </div>
 
@@ -16,8 +16,8 @@
   <div class="ctrl-label">Available Stack Pairs</div>
   <div id="pairList" class="file-list" style="max-height:170px"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary" onclick="addCheckedPairs()">Add Checked</button>
-    <button class="btn-secondary" onclick="clearPairChecks()">Clear Checks</button>
+    <button class="btn-secondary" onclick="DP.page.addCheckedPairs()">Add Checked</button>
+    <button class="btn-secondary" onclick="DP.page.clearPairChecks()">Clear Checks</button>
   </div>
 </div>
 
@@ -25,8 +25,8 @@
   <div class="ctrl-label">Files To Analyze</div>
   <div id="analysisList" class="file-list" style="max-height:170px"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary btn-danger" onclick="removeActiveAnalysisPair()">Remove</button>
-    <button class="btn-secondary btn-danger" onclick="clearAnalysisList()">Clear</button>
+    <button class="btn-secondary btn-danger" onclick="DP.page.removeActiveAnalysisPair()">Remove</button>
+    <button class="btn-secondary btn-danger" onclick="DP.page.clearAnalysisList()">Clear</button>
   </div>
   <div id="analysisCount" class="status-bar" style="padding-top:6px">0 selected</div>
 </div>
@@ -74,7 +74,7 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI Manager</span>
-    <button class="btn-icon" style="font-size:11px;padding:2px 8px" onclick="addRoi()">+ Add ROI</button>
+    <button class="btn-icon" style="font-size:11px;padding:2px 8px" onclick="DP.page.addRoi()">+ Add ROI</button>
   </div>
   <div id="roiList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
 	  <div class="param-row" style="margin-top:8px">
@@ -176,7 +176,7 @@
 </div>
 </details>
 
-<button class="btn-primary" id="btnAnalyze" data-label="Run Analysis" onclick="runAnalysis()">Run Analysis</button>
+<button class="btn-primary" id="btnAnalyze" data-label="Run Analysis" onclick="DP.page.runAnalysis()">Run Analysis</button>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
@@ -187,10 +187,10 @@
       <option value="">Saved contexts</option>
     </select>
     <div class="btn-row">
-      <button class="btn-secondary" type="button" onclick="saveRoiDefaults()">Save Defaults</button>
-      <button class="btn-secondary" type="button" onclick="saveRoiContext()">Save Context</button>
+      <button class="btn-secondary" type="button" onclick="DP.page.saveRoiDefaults()">Save Defaults</button>
+      <button class="btn-secondary" type="button" onclick="DP.page.saveRoiContext()">Save Context</button>
     </div>
-    <button class="btn-secondary btn-block" type="button" onclick="resetRoiDefaults()">Reset Defaults</button>
+    <button class="btn-secondary btn-block" type="button" onclick="DP.page.resetRoiDefaults()">Reset Defaults</button>
   </div>
   <div class="status-bar" id="roiPrefsStatus"></div>
 </details>
@@ -202,11 +202,11 @@
       <option value="">No file selected</option>
     </select>
     <div class="btn-row">
-      <button class="btn-secondary" type="button" onclick="loadSelectedRoiFileProfile(false)">Load</button>
-      <button class="btn-secondary" type="button" onclick="saveRoiFileProfile(false)">Save</button>
-      <button class="btn-secondary" type="button" onclick="saveRoiFileProfile(true)">Save As</button>
+      <button class="btn-secondary" type="button" onclick="DP.page.loadSelectedRoiFileProfile(false)">Load</button>
+      <button class="btn-secondary" type="button" onclick="DP.page.saveRoiFileProfile(false)">Save</button>
+      <button class="btn-secondary" type="button" onclick="DP.page.saveRoiFileProfile(true)">Save As</button>
     </div>
-    <button class="btn-secondary btn-danger btn-block" type="button" onclick="deleteSelectedRoiFileProfile()">Delete Profile</button>
+    <button class="btn-secondary btn-danger btn-block" type="button" onclick="DP.page.deleteSelectedRoiFileProfile()">Delete Profile</button>
     <label class="checkbox-row">
       <input type="checkbox" id="roiAutoLoadProfile" checked>
       <span>Auto-load profile when selecting a stack pair</span>
@@ -218,19 +218,19 @@
 <div class="ctrl-section" id="exportSection" style="display:none">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="exportCSV()">Export CSV</button>
-    <button class="btn-secondary" onclick="exportPlotPNG()">Export PNG</button>
+    <button class="btn-secondary" onclick="DP.page.exportCSV()">Export CSV</button>
+    <button class="btn-secondary" onclick="DP.page.exportPlotPNG()">Export PNG</button>
   </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportPreviewPNG()">Export ROI Preview</button>
-	    <button class="btn-secondary" onclick="exportGif()">Export GIF</button>
+	    <button class="btn-secondary" onclick="DP.page.exportPreviewPNG()">Export ROI Preview</button>
+	    <button class="btn-secondary" onclick="DP.page.exportGif()">Export GIF</button>
 	  </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportRadialCSV()">Export Radial CSV</button>
-	    <button class="btn-secondary" onclick="exportRadialPlotPNG()">Export Radial PNG</button>
+	    <button class="btn-secondary" onclick="DP.page.exportRadialCSV()">Export Radial CSV</button>
+	    <button class="btn-secondary" onclick="DP.page.exportRadialPlotPNG()">Export Radial PNG</button>
 	  </div>
 	  <div class="btn-row" style="margin-top:6px">
-	    <button class="btn-secondary" onclick="exportAllOutputs()">Export All Artifacts</button>
+	    <button class="btn-secondary" onclick="DP.page.exportAllOutputs()">Export All Artifacts</button>
 	  </div>
 	</div>
 </details>

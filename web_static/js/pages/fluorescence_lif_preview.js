@@ -83,3 +83,17 @@ function loadLifPreview() {
     setStatus('status', 'Preview error', 'error');
   });
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'currentPreviewPayload',
+  'lifRunParameters',
+  'loadLifPreview',
+  'onLifDimSlide',
+  'refreshLifPreview',
+  'updatePreviewControls',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

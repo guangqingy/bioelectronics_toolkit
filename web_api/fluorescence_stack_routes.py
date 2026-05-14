@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from flask import jsonify
 from pydantic import ValidationError
+from services.fluorescence.route_helpers import iter_with_job_progress
 
 from .fluorescence_request_schemas import (
     FluorescenceBrowseRequest,
@@ -68,13 +69,15 @@ def register_fluorescence_stack_routes(app, fl):
         job_ctx.set_progress(0.2, "Exporting TIFF stack")
         return _stack_export_payload(body)
 
-    def _stack_export_batch_payload(d: dict) -> dict:
+    def _stack_export_batch_payload(d: dict, job_ctx=None) -> dict:
         if not has_tiff:
             raise ValueError("tifffile not installed")
         paths_raw = d.get("paths") or []
         use_template = _fl_bool(d.get("use_template", True), True)
         lock_ranges = _fl_bool(d.get("lock_ranges", False), False)
-        template_settings = d.get("template_settings") if isinstance(d.get("template_settings"), list) else []
+        template_settings = (
+            d.get("template_settings") if isinstance(d.get("template_settings"), list) else []
+        )
 
         if not isinstance(paths_raw, list) or not paths_raw:
             raise ValueError("paths must be a non-empty list")
@@ -83,14 +86,16 @@ def register_fluorescence_stack_routes(app, fl):
         failed_files: list[dict] = []
         outputs: list[dict] = []
 
-        for raw in paths_raw:
+        for _idx, raw in iter_with_job_progress(paths_raw, job_ctx, label="Exporting stack"):
             p = Path(str(raw or "").strip())
             try:
                 if not p.exists():
                     raise FileNotFoundError(f"Input file not found: {p}")
                 pages = _fl_read_tiff_as_pages(p)
                 if use_template and template_settings:
-                    settings = _fl_build_settings_from_template(pages, template_settings, lock_ranges)
+                    settings = _fl_build_settings_from_template(
+                        pages, template_settings, lock_ranges
+                    )
                 else:
                     settings = _fl_build_default_settings_for_pages(pages)
                 result = _fl_export_with_settings(p, pages, settings)
@@ -110,7 +115,7 @@ def register_fluorescence_stack_routes(app, fl):
 
     def _stack_export_batch_task(job_ctx, body: dict) -> dict:
         job_ctx.set_progress(0.2, "Batch exporting TIFF stacks")
-        return _stack_export_batch_payload(body)
+        return _stack_export_batch_payload(body, job_ctx=job_ctx)
 
     def _normalize_payload(d: dict) -> dict:
         if not has_tiff:
@@ -263,14 +268,16 @@ def register_fluorescence_stack_routes(app, fl):
                 return err(f"Input file not found: {path}")
             pages = _fl_read_tiff_as_pages(p)
             settings = _fl_build_default_settings_for_pages(pages)
-            return jsonify({
-                "ok": True,
-                "n_pages": len(pages),
-                "settings": settings,
-                "lut_options": _FL_LUT_OPTIONS,
-                "background_options": _FL_BACKGROUND_OPTIONS,
-                "denoise_options": _FL_DENOISE_OPTIONS,
-            })
+            return jsonify(
+                {
+                    "ok": True,
+                    "n_pages": len(pages),
+                    "settings": settings,
+                    "lut_options": _FL_LUT_OPTIONS,
+                    "background_options": _FL_BACKGROUND_OPTIONS,
+                    "denoise_options": _FL_DENOISE_OPTIONS,
+                }
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
         except Exception:
@@ -293,7 +300,9 @@ def register_fluorescence_stack_routes(app, fl):
             pages = _fl_read_tiff_as_pages(p)
             if page_index < 0 or page_index >= len(pages):
                 return err(f"Invalid page index: {page_index}")
-            vmin, vmax = _fl_compute_auto_range_with_processing(pages[page_index], background, denoise)
+            vmin, vmax = _fl_compute_auto_range_with_processing(
+                pages[page_index], background, denoise
+            )
             return jsonify({"ok": True, "min": float(vmin), "max": float(vmax)})
         except ValidationError as exc:
             return validation_error_response(exc)

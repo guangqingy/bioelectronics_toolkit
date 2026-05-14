@@ -78,8 +78,14 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             return validation_error_response(exc)
         tiff_paths = d.get("tiff_paths") or []
         slice_specs = d.get("slice_specs") or []
-        roi_specs = _fl_gif_roi_make_specs([d.get("roi")], "ROI") if isinstance(d.get("roi"), dict) else []
-        bg_specs = _fl_gif_roi_make_specs([d.get("bg_roi")], "BG") if isinstance(d.get("bg_roi"), dict) else []
+        roi_specs = (
+            _fl_gif_roi_make_specs([d.get("roi")], "ROI") if isinstance(d.get("roi"), dict) else []
+        )
+        bg_specs = (
+            _fl_gif_roi_make_specs([d.get("bg_roi")], "BG")
+            if isinstance(d.get("bg_roi"), dict)
+            else []
+        )
         roi = roi_specs[0] if roi_specs else None
         bg_roi = bg_specs[0] if bg_specs else None
 
@@ -98,11 +104,20 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             high_pct = min(100.0, low_pct + 1.0)
         range_min = float_or(d.get("range_min"), None)
         range_max = float_or(d.get("range_max"), None)
-        smooth_intensity_bins = max(0.0, min(8.0, float_or(d.get("smooth_intensity_bins", 1.2), 1.2)))
+        smooth_intensity_bins = max(
+            0.0, min(8.0, float_or(d.get("smooth_intensity_bins", 1.2), 1.2))
+        )
         smooth_time_frames = max(0.0, min(8.0, float_or(d.get("smooth_time_frames", 0.8), 0.8)))
         smooth_lines = _fl_bool(d.get("smooth_lines", True), True)
-        overlay_percentiles = _fl_parse_percent_list(d.get("overlay_percentiles", []), max_items=8, lower_exclusive=0.0, upper_inclusive=100.0)
-        overlay_top_means = _fl_parse_percent_list(d.get("overlay_top_means", []), max_items=6, lower_exclusive=0.0, upper_inclusive=100.0)
+        overlay_percentiles = _fl_parse_percent_list(
+            d.get("overlay_percentiles", []),
+            max_items=8,
+            lower_exclusive=0.0,
+            upper_inclusive=100.0,
+        )
+        overlay_top_means = _fl_parse_percent_list(
+            d.get("overlay_top_means", []), max_items=6, lower_exclusive=0.0, upper_inclusive=100.0
+        )
         overlay_peak = _fl_bool(d.get("overlay_peak", False), False)
         overlay_mean = _fl_bool(d.get("overlay_mean", False), False)
         threshold_lines_raw = d.get("threshold_lines", [])
@@ -180,9 +195,15 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                         )
 
                     mask = _fl_gif_roi_mask_for(mask_cache, roi, shape)
-                    vals_raw = np.asarray(img2d[mask], dtype=np.float64).ravel() if mask.shape == img2d.shape else np.asarray([], dtype=np.float64)
+                    vals_raw = (
+                        np.asarray(img2d[mask], dtype=np.float64).ravel()
+                        if mask.shape == img2d.shape
+                        else np.asarray([], dtype=np.float64)
+                    )
                     bg_mean = _fl_gif_roi_background_mean(img2d, bg_mode, bg_roi, mask_cache)
-                    vals_corrected = vals_raw - float(bg_mean) if np.isfinite(bg_mean) else vals_raw.copy()
+                    vals_corrected = (
+                        vals_raw - float(bg_mean) if np.isfinite(bg_mean) else vals_raw.copy()
+                    )
 
                     raw_by_frame.append(vals_raw)
                     corrected_by_frame.append(vals_corrected)
@@ -220,10 +241,16 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                 if not baseline_chunks:
                     return err("Selected ROI has no finite pixels")
                 finite_sample = np.concatenate(baseline_chunks)
-                data_span = float(np.nanmax(finite_sample) - np.nanmin(finite_sample)) if finite_sample.size else 0.0
+                data_span = (
+                    float(np.nanmax(finite_sample) - np.nanmin(finite_sample))
+                    if finite_sample.size
+                    else 0.0
+                )
                 eps = max(1e-12, abs(data_span) * 1e-9)
                 if not np.isfinite(f0_value) or abs(f0_value) <= eps:
-                    return err("Reference F0 is too close to zero for DeltaF/F0; use another ref frame/stat or BG-subtracted mode")
+                    return err(
+                        "Reference F0 is too close to zero for DeltaF/F0; use another ref frame/stat or BG-subtracted mode"
+                    )
                 values_by_frame = [(v - f0_value) / f0_value for v in corrected_by_frame]
 
             sample_chunks = []
@@ -259,14 +286,39 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             hist_pct = []
             summary_rows = []
             overlay_specs = []
-            overlay_palette = ["#f8fafc", "#38bdf8", "#a3e635", "#fbbf24", "#fb7185", "#c084fc", "#2dd4bf", "#f472b6"]
+            overlay_palette = [
+                "#f8fafc",
+                "#38bdf8",
+                "#a3e635",
+                "#fbbf24",
+                "#fb7185",
+                "#c084fc",
+                "#2dd4bf",
+                "#f472b6",
+            ]
             if overlay_peak:
-                overlay_specs.append({"col": "display_peak_bin_intensity", "label": "peak bin", "color": "#ffffff", "lw": 1.5})
+                overlay_specs.append(
+                    {
+                        "col": "display_peak_bin_intensity",
+                        "label": "peak bin",
+                        "color": "#ffffff",
+                        "lw": 1.5,
+                    }
+                )
             if overlay_mean:
-                overlay_specs.append({"col": "mean", "label": "mean", "color": "#22d3ee", "lw": 1.35})
+                overlay_specs.append(
+                    {"col": "mean", "label": "mean", "color": "#22d3ee", "lw": 1.35}
+                )
             for pct in overlay_percentiles:
                 label = _fl_percent_label(pct)
-                overlay_specs.append({"col": f"p{label}", "label": f"p{pct:g}", "color": overlay_palette[(len(overlay_specs)) % len(overlay_palette)], "lw": 1.3})
+                overlay_specs.append(
+                    {
+                        "col": f"p{label}",
+                        "label": f"p{pct:g}",
+                        "color": overlay_palette[(len(overlay_specs)) % len(overlay_palette)],
+                        "lw": 1.3,
+                    }
+                )
             for pct in overlay_top_means:
                 label = _fl_percent_label(pct)
                 overlay_specs.append(
@@ -311,9 +363,13 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                         "peak_bin_count": peak_count,
                     }
                     for pct in overlay_percentiles:
-                        summary[f"p{_fl_percent_label(pct)}"] = float(np.percentile(finite, float(pct)))
+                        summary[f"p{_fl_percent_label(pct)}"] = float(
+                            np.percentile(finite, float(pct))
+                        )
                     for pct in overlay_top_means:
-                        summary[f"top{_fl_percent_label(pct)}_mean"] = _fl_gif_kymo_top_mean(finite, float(pct) / 100.0)
+                        summary[f"top{_fl_percent_label(pct)}_mean"] = _fl_gif_kymo_top_mean(
+                            finite, float(pct) / 100.0
+                        )
                 else:
                     summary = {
                         **meta,
@@ -344,18 +400,31 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             hist_counts_arr = np.asarray(hist_counts, dtype=np.int64)
             hist_pct_arr = np.asarray(hist_pct, dtype=np.float64)
             summary_df = pd.DataFrame(summary_rows)
-            hist_display_arr = _fl_smooth_heatmap_2d(hist_pct_arr, smooth_intensity_bins, smooth_time_frames)
+            hist_display_arr = _fl_smooth_heatmap_2d(
+                hist_pct_arr, smooth_intensity_bins, smooth_time_frames
+            )
             if hist_display_arr.size and centers.size:
                 display_peak_idx = np.argmax(hist_display_arr, axis=1)
-                summary_df["display_peak_bin_intensity"] = [float(centers[int(i)]) for i in display_peak_idx]
+                summary_df["display_peak_bin_intensity"] = [
+                    float(centers[int(i)]) for i in display_peak_idx
+                ]
                 summary_df["display_peak_bin_fraction_pct"] = [
-                    float(hist_display_arr[row_i, int(bin_i)]) for row_i, bin_i in enumerate(display_peak_idx)
+                    float(hist_display_arr[row_i, int(bin_i)])
+                    for row_i, bin_i in enumerate(display_peak_idx)
                 ]
             else:
                 summary_df["display_peak_bin_intensity"] = np.nan
                 summary_df["display_peak_bin_fraction_pct"] = np.nan
             if smooth_lines and smooth_time_frames > 0:
-                smooth_cols = ["mean", "median", "p90", "p99", "top5_mean", "top1_mean", "display_peak_bin_intensity"]
+                smooth_cols = [
+                    "mean",
+                    "median",
+                    "p90",
+                    "p99",
+                    "top5_mean",
+                    "top1_mean",
+                    "display_peak_bin_intensity",
+                ]
                 smooth_cols.extend([spec["col"] for spec in overlay_specs])
                 for col in dict.fromkeys(smooth_cols):
                     if col in summary_df.columns:
@@ -383,7 +452,9 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                     )
             heatmap_df = pd.DataFrame(heat_rows)
 
-            frame_axis = pd.to_numeric(summary_df["global_frame"], errors="coerce").to_numpy(dtype=float)
+            frame_axis = pd.to_numeric(summary_df["global_frame"], errors="coerce").to_numpy(
+                dtype=float
+            )
             if len(frame_axis) == 1:
                 y0, y1 = 0.5, 1.5
             else:
@@ -406,12 +477,18 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                 cmap="magma",
                 vmin=0.0,
                 vmax=max(vmax_color, 1e-9),
-                interpolation="bilinear" if (smooth_intensity_bins > 0 or smooth_time_frames > 0) else "nearest",
+                interpolation="bilinear"
+                if (smooth_intensity_bins > 0 or smooth_time_frames > 0)
+                else "nearest",
             )
             for spec in overlay_specs:
                 col = spec["col"]
                 if col in summary_df.columns:
-                    plot_col = f"{col}_display" if smooth_lines and f"{col}_display" in summary_df.columns else col
+                    plot_col = (
+                        f"{col}_display"
+                        if smooth_lines and f"{col}_display" in summary_df.columns
+                        else col
+                    )
                     ax.plot(
                         pd.to_numeric(summary_df[plot_col], errors="coerce").to_numpy(dtype=float),
                         frame_axis,
@@ -607,7 +684,10 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             "fluorescence.gif_roi_kymograph_export",
             "Export GIF ROI kymograph outputs",
             lambda job_ctx, body: _response_task(
-                job_ctx, body, api_fl_gif_roi_kymograph_export, "Exporting GIF ROI kymograph outputs"
+                job_ctx,
+                body,
+                api_fl_gif_roi_kymograph_export,
+                "Exporting GIF ROI kymograph outputs",
             ),
             body,
             metadata={"endpoint": "/api/fluorescence/gif_roi/kymograph_export"},

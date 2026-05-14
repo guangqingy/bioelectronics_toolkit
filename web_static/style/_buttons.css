@@ -2,7 +2,7 @@
 .btn-primary {
   align-items: center;
   background: var(--blue);
-  color: #fff;
+  color: var(--white);
   border: none;
   border-radius: var(--radius-sm);
   font-size: 13.5px;
@@ -40,14 +40,14 @@
 .btn-block { width: 100%; }
 
 .btn-danger {
-  background: #fff;
-  border-color: #f0b8b8;
+  background: var(--white);
+  border-color: var(--error-border);
   color: var(--error);
 }
 .btn-danger:hover {
   background: var(--error-bg);
-  border-color: #e38b8b;
-  color: #8f1d14;
+  border-color: var(--error-border-hover);
+  color: var(--error-text-strong);
 }
 
 .btn-icon {

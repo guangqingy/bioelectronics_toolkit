@@ -9,7 +9,12 @@ from pydantic import Field, ValidationError
 from services import run_history as run_history_service
 
 from .jobs import submit_json_task
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 
 
 class RunHistoryRecordRequest(RequestModel):
@@ -101,7 +106,9 @@ def register_run_history_routes(app, ctx):
             payload = parse_json_payload(RunManifestRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        return _json_or_error(run_history_service.check_run_manifest, payload.model_dump(), base_dir)
+        return _json_or_error(
+            run_history_service.check_run_manifest, payload.model_dump(), base_dir
+        )
 
     @app.route("/api/run_history/report", methods=["POST"])
     @request_schema(RunReportRequest)
@@ -138,4 +145,6 @@ def register_run_history_routes(app, ctx):
             payload = parse_json_payload(RunPackageRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        return _json_or_error(run_history_service.package_run_manifest, payload.model_dump(), base_dir)
+        return _json_or_error(
+            run_history_service.package_run_manifest, payload.model_dump(), base_dir
+        )

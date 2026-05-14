@@ -154,7 +154,9 @@ class CsvViewerService:
 
         if fmt == "svg":
             return {
-                "payload": self.clean_trace_svg(x, y, y_min=y_min, y_max=y_max, line_color=self.line_color),
+                "payload": self.clean_trace_svg(
+                    x, y, y_min=y_min, y_max=y_max, line_color=self.line_color
+                ),
                 "out_path": src.with_name(f"{src.stem}_plot.svg"),
                 "mimetype": "image/svg+xml",
                 "download_name": f"{src.stem}_plot.svg",

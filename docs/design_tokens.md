@@ -14,8 +14,26 @@ introducing new colors, spacing values, or radii.
 - `--warning-bg`: `#FFF9E8` — warning status background.
 - `--error`: `#B42318` — destructive actions and errors.
 - `--error-bg`: `#FFF1F0` — error banner and status background.
+- `--toast-error`: `#c0392b` — transient error toast background.
+- `--error-border-hover`: `#e38b8b` — hover border for destructive controls.
+- `--error-text-strong`: `#8f1d14` — high-contrast destructive text.
 - `--white`: `#FFFFFF` — panels and content surfaces.
 - `--ash`: `#F4F4F4` — subtle hover backgrounds.
+- `--app-bg`: `#F7F8FA` — application canvas background.
+- `--nav-bg`: `rgba(255,255,255,0.96)` — translucent top navigation surface.
+- `--surface-soft`: `#FAFAFA` — path inputs and very quiet input surfaces.
+- `--surface-panel`: `#FAFBFD` — secondary cards, empty states, and preview panels.
+- `--surface-blue`: `#F2F5FF` — active command/menu backgrounds.
+- `--surface-blue-strong`: `#EEF2FF` — selected list rows.
+- `--border-muted`: `#d9dde6` — non-primary panel borders.
+- `--border-strong`: `#c2c8d4` — emphasized neutral borders and table hover outlines.
+- `--border-blue-muted`: `#d7e0f5` — selected command borders.
+- `--border-dashed`: `#d7dbe3` — dashed empty-state borders.
+- `--code-bg`: `#101828` — JSON/code preview background.
+- `--code-fg`: `#f8fafc` — JSON/code preview foreground.
+- `--success-border`: `#ABEFC6` — success pill border.
+- `--warning-border`: `#FEDF89` — warning pill border.
+- `--error-border`: `#FECDCA` — error pill border.
 - `--carbon`: `#171A20` — high-emphasis text.
 - `--graphite`: `#393C41` — body text.
 - `--pewter`: `#5C5E62` — secondary labels.

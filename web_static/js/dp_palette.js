@@ -49,9 +49,9 @@ function renderCommandPalette() {
   if (!input || !list) return;
   const query = input.value || '';
   const rows = dpCommandPaletteItems()
-    .map(command => ({command, score: dpCommandScore(command, query)}))
+    .map((command, index) => ({command, index, score: dpCommandScore(command, query)}))
     .filter(row => row.score > 0)
-    .sort((a, b) => b.score - a.score || a.command.label.localeCompare(b.command.label))
+    .sort((a, b) => b.score - a.score || a.index - b.index)
     .slice(0, 12)
     .map(row => row.command);
   _commandPaletteIndex = Math.min(_commandPaletteIndex, Math.max(0, rows.length - 1));

@@ -5,8 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from services import histology
-from services import histology_discovery, histology_qupath
+from services import histology, histology_discovery, histology_qupath
 
 
 class HistologyServiceSplitTests(unittest.TestCase):

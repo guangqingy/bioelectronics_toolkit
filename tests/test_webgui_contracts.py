@@ -197,11 +197,14 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_abf_viewer_does_not_auto_scan_empty_path(self) -> None:
         root = Path(__file__).resolve().parents[1]
         template = (root / "web_templates" / "abf_viewer.html").read_text(encoding="utf-8")
-        self.assertIn('if (folderInput.value.trim())', template)
-        self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', template)
+        page_js = (root / "web_static" / "js" / "pages" / "abf_viewer.js").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("if (folderInput.value.trim())", page_js)
+        self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', page_js)
         self.assertIn('data-rnorm-state="checked"', template)
-        self.assertIn("function updateAbfParameterGroups()", template)
-        self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', template)
+        self.assertIn("function updateAbfParameterGroups()", page_js)
+        self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', page_js)
         self.assertNotIn('DEFAULT_DATA_DIR + "/examples"', template)
 
     def test_nav_exposes_domain_groups_and_version(self) -> None:
@@ -214,7 +217,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Intan RHD Viewer", html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
-        self.assertIn("v0.5.0", html)
+        self.assertIn("v0.6.0", html)
         self.assertNotIn("unknown", html.lower())
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
@@ -226,7 +229,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "rhd_viewer_plot.js",
             "rhd_viewer_exports.js",
         )
-        js_source = "\n".join((root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8") for module in modules)
+        js_source = "\n".join(
+            (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
+            for module in modules
+        )
         source = template + "\n" + js_source
 
         self.assertIn('id="previewDownsample"', template)
@@ -282,7 +288,9 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_fluorescence_3d_uses_page_specific_js_modules(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        template = (root / "web_templates" / "fluorescence_3d_stacking.html").read_text(encoding="utf-8")
+        template = (root / "web_templates" / "fluorescence_3d_stacking.html").read_text(
+            encoding="utf-8"
+        )
         modules = (
             "fluorescence_3d_state.js",
             "fluorescence_3d_files_preview.js",
@@ -307,7 +315,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "emg_peaks_table_edit.js",
             "emg_peaks_export.js",
         )
-        js_source = "\n".join((root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8") for module in modules)
+        js_source = "\n".join(
+            (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
+            for module in modules
+        )
 
         for module in modules:
             self.assertIn(f"/static/js/pages/{module}", template)
@@ -587,8 +598,8 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.5.0")
-        self.assertTrue(payload["label"].startswith("v0.5.0"))
+        self.assertEqual(payload["version"], "0.6.0")
+        self.assertTrue(payload["label"].startswith("v0.6.0"))
         self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
@@ -652,7 +663,9 @@ class WebAppSmokeTests(unittest.TestCase):
         roi = (root / "web_templates" / "fluorescence_roi.html").read_text(encoding="utf-8")
         scripts = (root / "web_templates" / "scripts.html").read_text(encoding="utf-8")
 
-        self.assertIn('<details class="ctrl-section ctrl-details generic-file-profile-section"', generic)
+        self.assertIn(
+            '<details class="ctrl-section ctrl-details generic-file-profile-section"', generic
+        )
         self.assertIn("Advanced: File Profile", generic)
         self.assertIn("Advanced: Page Settings", generic)
         self.assertIn("Advanced: File Profile", fluorescence)
@@ -717,9 +730,9 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_settings_modal_uses_tabs_instead_of_one_long_panel(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        modal = (
-            root / "web_templates" / "partials" / "preferences_modal.html"
-        ).read_text(encoding="utf-8")
+        modal = (root / "web_templates" / "partials" / "preferences_modal.html").read_text(
+            encoding="utf-8"
+        )
         settings_js = (root / "web_static" / "js" / "dp_settings_modal.js").read_text(
             encoding="utf-8"
         )

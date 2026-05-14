@@ -6,9 +6,9 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/lif/data">
-    <button class="btn-icon" onclick="pickFolder('folderPath','scanLifFolder')">Browse Folder</button>
+    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanLifFolder')">Browse Folder</button>
   </div>
-  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="scanLifFolder()">Scan .lif Files</button>
+  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="DP.page.scanLifFolder()">Scan .lif Files</button>
 </div>
 
 <div class="ctrl-section">
@@ -20,9 +20,9 @@
   <div class="ctrl-label">Selected Project</div>
   <div class="input-row">
     <input type="text" id="lifPath" class="input-path" placeholder="/path/to/project.lif">
-    <button class="btn-icon" onclick="pickFile('lifPath','loadLifProject')">Browse File</button>
+    <button class="btn-icon" onclick="DP.folder.pickFile('lifPath','loadLifProject')">Browse File</button>
   </div>
-  <button class="btn-primary" id="btnLoadLif" data-label="Load Project" onclick="loadLifProject()" style="margin-top:8px">Load Project</button>
+  <button class="btn-primary" id="btnLoadLif" data-label="Load Project" onclick="DP.page.loadLifProject()" style="margin-top:8px">Load Project</button>
 </div>
 
 <div class="ctrl-section">
@@ -36,8 +36,8 @@
     </select>
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" id="btnManifest" onclick="exportLifManifest()" disabled>Export CSV</button>
-    <button class="btn-secondary" id="btnExportAllTiff" onclick="exportAllTiff()" disabled>Export All TIFF</button>
+    <button class="btn-secondary" id="btnManifest" onclick="DP.page.exportLifManifest()" disabled>Export CSV</button>
+    <button class="btn-secondary" id="btnExportAllTiff" onclick="DP.page.exportAllTiff()" disabled>Export All TIFF</button>
   </div>
 </div>
 

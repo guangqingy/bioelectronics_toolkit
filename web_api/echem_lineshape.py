@@ -17,7 +17,12 @@ from web_api.common import mode_is_save
 
 from .jobs import submit_json_task
 from .path_policy import ensure_output_parent
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 
 
@@ -98,12 +103,15 @@ def register_echem_lineshape_routes(app, ctx):
     def _ls_read_csv(path):
         """Read two-column segment CSV -> (t, y) arrays."""
         df = pd.read_csv(path)
-        col_t = next((c for c in df.columns if c.strip().lower() in ("time_s", "time", "t", "t_s")), None)
+        col_t = next(
+            (c for c in df.columns if c.strip().lower() in ("time_s", "time", "t", "t_s")), None
+        )
         col_y = next(
             (
                 c
                 for c in df.columns
-                if c.strip().lower() in ("current_ma", "current", "i_ma", "i", "voltage_v", "voltage", "v")
+                if c.strip().lower()
+                in ("current_ma", "current", "i_ma", "i", "voltage_v", "voltage", "v")
             ),
             None,
         )
@@ -268,8 +276,12 @@ def register_echem_lineshape_routes(app, ctx):
                 "#7f7f7f",
             ]
             for i, row in enumerate(resampled):
-                ax_avg.plot(grid * 1000, row, color=colors[selected[i] % len(colors)], alpha=0.3, lw=0.7)
-            ax_avg.plot(grid * 1000, avg, color="#171A20", lw=1.8, zorder=5, label=f"avg n={len(resampled)}")
+                ax_avg.plot(
+                    grid * 1000, row, color=colors[selected[i] % len(colors)], alpha=0.3, lw=0.7
+                )
+            ax_avg.plot(
+                grid * 1000, avg, color="#171A20", lw=1.8, zorder=5, label=f"avg n={len(resampled)}"
+            )
             ax_avg.fill_between(grid * 1000, avg - sem, avg + sem, color="#171A20", alpha=0.12)
             ax_avg.axvline(0, color="#D0D1D2", lw=0.7, ls="--")
             ax_avg.set_xlabel("Time (ms)")
@@ -278,7 +290,9 @@ def register_echem_lineshape_routes(app, ctx):
             ax_avg.grid(True, alpha=0.3)
             if y_min is not None or y_max is not None:
                 cur = ax_avg.get_ylim()
-                ax_avg.set_ylim(y_min if y_min is not None else cur[0], y_max if y_max is not None else cur[1])
+                ax_avg.set_ylim(
+                    y_min if y_min is not None else cur[0], y_max if y_max is not None else cur[1]
+                )
             fig_avg.tight_layout()
             avg_b64 = fig_to_b64(fig_avg)
 

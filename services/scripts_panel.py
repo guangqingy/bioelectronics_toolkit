@@ -32,6 +32,7 @@ def _env_value(value):
         return "true" if value else "false"
     return str(value)
 
+
 def _artifact_record(path, root, started_at):
     try:
         stat = path.stat()
@@ -51,6 +52,7 @@ def _artifact_record(path, root, started_at):
         "updated": bool(started_at and stat.st_mtime >= started_at - 0.05),
     }
 
+
 def _collect_artifacts(root, started_at=0.0):
     if not root:
         return []
@@ -69,6 +71,7 @@ def _collect_artifacts(root, started_at=0.0):
     out.sort(key=lambda r: (not r["updated"], r["rel"].lower()))
     return out[:ARTIFACT_LIMIT]
 
+
 def _figures_from_artifacts(artifacts):
     figures = []
     for rec in artifacts:
@@ -83,6 +86,7 @@ def _figures_from_artifacts(artifacts):
         if len(figures) >= PREVIEW_IMAGE_LIMIT:
             break
     return figures
+
 
 def _resolve_output_dir(script_path, params):
     def _as_base_dir(raw_base):
@@ -123,6 +127,7 @@ def _resolve_output_dir(script_path, params):
 
     return str((Path(script_path).parent / out_path).resolve())
 
+
 def _artifact_root(script_path, output_dir):
     out = Path(output_dir).expanduser() if output_dir else None
     if out and out.is_dir():
@@ -131,9 +136,11 @@ def _artifact_root(script_path, output_dir):
         return out
     return Path(script_path).parent
 
+
 def _prefer_run_artifacts(artifacts):
     updated = [rec for rec in artifacts if rec.get("updated")]
     return updated if updated else artifacts
+
 
 def _common_artifact_dir(artifacts, fallback_root):
     parents = [str(Path(rec["path"]).parent) for rec in artifacts if rec.get("path")]
@@ -143,6 +150,7 @@ def _common_artifact_dir(artifacts, fallback_root):
         return os.path.commonpath(parents)
     except ValueError:
         return str(fallback_root or "")
+
 
 def _collect_job_artifacts(script_path, output_dir, started_at):
     root = _artifact_root(script_path, output_dir)
@@ -156,6 +164,7 @@ def _collect_job_artifacts(script_path, output_dir, started_at):
     current = _prefer_run_artifacts(artifacts)
     return current, _common_artifact_dir(current, root)
 
+
 def _run_script_job(job_ctx, script_path, env_vars, output_dir):
     """Background worker that runs a Python script as a subprocess."""
     job_id = job_ctx.job_id
@@ -165,22 +174,34 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
     _running_scripts[job_id] = {"done": False, "ok": True, "output_dir": str(output_dir or "")}
     job_ctx.set_progress(0.05, "Starting script")
     try:
-        result = subprocess.run(
+        job_ctx.check_cancelled()
+        proc = subprocess.Popen(
             [sys.executable, script_path],
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=300,
             env=env,
             cwd=str(Path(script_path).parent),
         )
+        deadline = time.time() + 300
+        while proc.poll() is None:
+            job_ctx.check_cancelled()
+            if time.time() > deadline:
+                proc.kill()
+                stdout, stderr = proc.communicate()
+                raise subprocess.TimeoutExpired(
+                    [sys.executable, script_path], 300, output=stdout, stderr=stderr
+                )
+            time.sleep(0.25)
+        stdout, stderr = proc.communicate()
         artifacts, resolved_output_dir = _collect_job_artifacts(script_path, output_dir, started_at)
         payload = {
             "job_id": job_id,
             "done": True,
-            "ok": result.returncode == 0,
-            "stdout": result.stdout[-3000:],
-            "message": result.stdout[-500:],
-            "stderr": result.stderr[-2000:],
+            "ok": proc.returncode == 0,
+            "stdout": stdout[-3000:],
+            "message": stdout[-500:],
+            "stderr": stderr[-2000:],
             "artifacts": artifacts,
             "output_dir": resolved_output_dir,
             "figures": _figures_from_artifacts(artifacts),
@@ -202,6 +223,8 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
         _running_scripts[job_id] = payload
         return payload
     except Exception as e:
+        if e.__class__.__name__ == "JobCancelled":
+            raise
         artifacts, resolved_output_dir = _collect_job_artifacts(script_path, output_dir, started_at)
         payload = {
             "job_id": job_id,
@@ -215,6 +238,7 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
         }
         _running_scripts[job_id] = payload
         return payload
+
 
 def _script_status_payload(job_id, jobs=None, fallback_output_dir=""):
     job = jobs.get(job_id) if jobs else None

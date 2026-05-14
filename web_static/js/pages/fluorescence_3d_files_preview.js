@@ -300,3 +300,30 @@ async function loadSlicePreview() {
     setStatus('status', 'Preview error', 'error');
   }
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'clearLoadedInfo',
+  'currentPreviewPayload',
+  'extraIndicesPayload',
+  'loadSlicePreview',
+  'loadTiffStack',
+  'onDimSlide',
+  'refreshSlicePreview',
+  'renderAvailableTiffList',
+  'renderChannelRangeControls',
+  'renderDistributionControls',
+  'renderStackDetails',
+  'scanAvailableInfo',
+  'scanTiffFolder',
+  'selectAvailableTiff',
+  'setSliderDim',
+  'updateExtraControls',
+  'updatePreviewControls',
+  'updateSelectedSummary',
+  'updateSliderLabel',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

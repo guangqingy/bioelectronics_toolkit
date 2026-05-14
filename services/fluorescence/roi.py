@@ -8,20 +8,23 @@ import numpy as np
 import pandas as pd
 
 from services.fluorescence.roi_primitives import (
-    apply_metric_mode,
-    background_mean,
-    circle_geometry,
-    empty_metrics,
+    apply_metric_mode,  # noqa: F401 - public facade re-export
+    background_mean,  # noqa: F401 - public facade re-export
+    circle_geometry,  # noqa: F401 - public facade re-export
+    empty_metrics,  # noqa: F401 - public facade re-export
     metrics_2d,
-    metrics_from_flat,
-    ring_count,
-    ring_width_px,
-    safe_ratio,
-    sequence_number,
-    shape_type,
-    values_2d,
+    metrics_from_flat,  # noqa: F401 - public facade re-export
+    ring_count,  # noqa: F401 - public facade re-export
+    ring_width_px,  # noqa: F401 - public facade re-export
+    safe_ratio,  # noqa: F401 - public facade re-export
+    sequence_number,  # noqa: F401 - public facade re-export
+    shape_type,  # noqa: F401 - public facade re-export
+    values_2d,  # noqa: F401 - public facade re-export
 )
-from services.fluorescence.roi_radial import radial_metrics_2d, radial_pair_rows
+from services.fluorescence.roi_radial import (  # noqa: F401 - public facade re-export
+    radial_metrics_2d,
+    radial_pair_rows,
+)
 
 
 def import_tifffile(tifflib_module: Any = None):

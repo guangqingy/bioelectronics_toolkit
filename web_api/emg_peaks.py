@@ -11,7 +11,12 @@ from services import emg_peaks as emg_peaks_service
 from web_api.common import mode_is_save
 
 from .jobs import submit_json_task
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 
 
@@ -153,7 +158,9 @@ def register_emg_peaks_routes(app, ctx):
     @request_schema(EmgDetectRequest)
     def api_emg_detect_compat():
         try:
-            return jsonify(service.detect_payload(parse_json_payload(EmgDetectRequest).model_dump()))
+            return jsonify(
+                service.detect_payload(parse_json_payload(EmgDetectRequest).model_dump())
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -166,7 +173,9 @@ def register_emg_peaks_routes(app, ctx):
     def api_emg_export_compat():
         try:
             return _download_or_save(
-                service.grouped_export_payload(parse_json_payload(EmgGroupedExportRequest).model_dump())
+                service.grouped_export_payload(
+                    parse_json_payload(EmgGroupedExportRequest).model_dump()
+                )
             )
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -205,7 +214,9 @@ def register_emg_peaks_routes(app, ctx):
     @request_schema(EmgDetectPeaksRequest)
     def api_emg_detect_peaks():
         try:
-            return jsonify(service.detect_peaks_payload(parse_json_payload(EmgDetectPeaksRequest).model_dump()))
+            return jsonify(
+                service.detect_peaks_payload(parse_json_payload(EmgDetectPeaksRequest).model_dump())
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:

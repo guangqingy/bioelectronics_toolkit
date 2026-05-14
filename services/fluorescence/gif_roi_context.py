@@ -13,7 +13,9 @@ from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
 
 
-def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b64, float_or) -> dict:
+def build_gif_roi_context(
+    *, image_mod, image_draw_mod, image_font_mod, fig_to_b64, float_or
+) -> dict:
     _fl_normalize_hex_color = fl_helpers.normalize_hex_color
     _fl_apply_lut = fl_helpers.apply_lut
     _fl_roi_empty_metrics = fl_roi.empty_metrics
@@ -109,7 +111,9 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
             )
         return out
 
-    def _fl_gif_polygon_mask(shape: tuple[int, int], points: list[tuple[float, float]]) -> np.ndarray:
+    def _fl_gif_polygon_mask(
+        shape: tuple[int, int], points: list[tuple[float, float]]
+    ) -> np.ndarray:
         h, w = int(shape[0]), int(shape[1])
         if h <= 0 or w <= 0 or len(points) < 3:
             return np.zeros((max(0, h), max(0, w)), dtype=bool)
@@ -127,7 +131,9 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
         specs = []
         used_keys = set()
         for idx, roi in enumerate(_fl_normalize_gif_polygons(raw_rois)):
-            label = str(roi.get("label", f"{fallback_prefix} {idx + 1}") or f"{fallback_prefix} {idx + 1}").strip()
+            label = str(
+                roi.get("label", f"{fallback_prefix} {idx + 1}") or f"{fallback_prefix} {idx + 1}"
+            ).strip()
             key = _re2.sub(r"[^a-zA-Z0-9]+", "_", label.lower()).strip("_") or f"roi_{idx + 1}"
             if key in used_keys:
                 suffix = 2
@@ -162,12 +168,16 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
             return _fl_roi_empty_metrics()
         return _fl_roi_metrics_from_flat(arr[mask])
 
-    def _fl_gif_roi_background_mean(img2d: np.ndarray, bg_mode: str, bg_roi: dict | None, mask_cache: dict) -> float:
+    def _fl_gif_roi_background_mean(
+        img2d: np.ndarray, bg_mode: str, bg_roi: dict | None, mask_cache: dict
+    ) -> float:
         if bg_mode == "roi" and bg_roi:
             return float(_fl_gif_roi_metrics_2d(img2d, bg_roi, mask_cache).get("mean", np.nan))
         return _fl_roi_background_mean(img2d, bg_mode, None)
 
-    def _fl_gif_roi_apply_value(raw_val: float, area_px: int, metric: str, bg_mean: float, plot_metric: str) -> float:
+    def _fl_gif_roi_apply_value(
+        raw_val: float, area_px: int, metric: str, bg_mean: float, plot_metric: str
+    ) -> float:
         if plot_metric == "delta_f_over_f0":
             if np.isfinite(bg_mean):
                 return _fl_roi_apply_metric_mode(raw_val, area_px, metric, bg_mean, "bg_subtracted")
@@ -225,7 +235,9 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
             out[(slice(None),) + idx] = np.convolve(moved[(slice(None),) + idx], k, mode="valid")
         return np.moveaxis(out, 0, axis)
 
-    def _fl_smooth_heatmap_2d(hist_pct_arr: np.ndarray, intensity_sigma: float, time_sigma: float) -> np.ndarray:
+    def _fl_smooth_heatmap_2d(
+        hist_pct_arr: np.ndarray, intensity_sigma: float, time_sigma: float
+    ) -> np.ndarray:
         sm = np.asarray(hist_pct_arr, dtype=np.float64)
         if sm.size == 0:
             return sm.copy()
@@ -261,7 +273,12 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
             return str(int(round(x)))
         return f"{x:g}".replace(".", "p")
 
-    def _fl_parse_percent_list(raw: object, max_items: int = 8, lower_exclusive: float = 0.0, upper_inclusive: float = 100.0) -> list[float]:
+    def _fl_parse_percent_list(
+        raw: object,
+        max_items: int = 8,
+        lower_exclusive: float = 0.0,
+        upper_inclusive: float = 100.0,
+    ) -> list[float]:
         values = []
         if isinstance(raw, list):
             tokens = raw
@@ -428,11 +445,25 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
             arr = np.squeeze(arr)
         if arr.ndim != 2:
             raise ValueError(f"Unsupported TIFF plane shape for crop: {arr.shape}")
-        crop_box, rect_label = _fl_gif_rect_crop_box_for(arr.shape, crop_rects, crop_mode, crop_rect_label, crop_padding_px)
+        crop_box, rect_label = _fl_gif_rect_crop_box_for(
+            arr.shape, crop_rects, crop_mode, crop_rect_label, crop_padding_px
+        )
         if not crop_box:
-            crop_box = _fl_gif_crop_box_for(arr.shape, roi_polygons, crop_mode, crop_roi_label, crop_padding_px)
+            crop_box = _fl_gif_crop_box_for(
+                arr.shape, roi_polygons, crop_mode, crop_roi_label, crop_padding_px
+            )
         if not crop_box:
-            return arr, roi_polygons or [], {"mode": "full", "x": 0, "y": 0, "width": int(arr.shape[1]), "height": int(arr.shape[0])}
+            return (
+                arr,
+                roi_polygons or [],
+                {
+                    "mode": "full",
+                    "x": 0,
+                    "y": 0,
+                    "width": int(arr.shape[1]),
+                    "height": int(arr.shape[0]),
+                },
+            )
         x0, y0, x1, y1 = crop_box
         return (
             arr[y0:y1, x0:x1],
@@ -527,7 +558,12 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
                 fontsize=8.5,
                 weight="bold",
                 va="top",
-                bbox={"facecolor": "black", "alpha": 0.62, "edgecolor": "none", "boxstyle": "round,pad=0.22"},
+                bbox={
+                    "facecolor": "black",
+                    "alpha": 0.62,
+                    "edgecolor": "none",
+                    "boxstyle": "round,pad=0.22",
+                },
             )
 
         if show_name:
@@ -540,7 +576,12 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
                     color="white",
                     fontsize=8.5,
                     va="top",
-                    bbox={"facecolor": "black", "alpha": 0.65, "edgecolor": "none", "boxstyle": "round,pad=0.25"},
+                    bbox={
+                        "facecolor": "black",
+                        "alpha": 0.65,
+                        "edgecolor": "none",
+                        "boxstyle": "round,pad=0.25",
+                    },
                 )
 
         if show_scale_bar and scale_bar_um > 0 and pixels_per_um > 0:
@@ -561,7 +602,9 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
                     alpha=0.65,
                 )
             )
-            ax.add_patch(Rectangle((x0, y0), bar_px, bar_thick, facecolor="white", edgecolor="none"))
+            ax.add_patch(
+                Rectangle((x0, y0), bar_px, bar_thick, facecolor="white", edgecolor="none")
+            )
             ax.text(x0, y0 - 4, label_text, color="white", fontsize=8.0, va="bottom")
 
         fig.tight_layout(pad=0.15)
@@ -572,7 +615,6 @@ def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b
         img.save(buf, format=fmt)
         buf.seek(0)
         return base64.b64encode(buf.read()).decode()
-
 
     return {
         "_fl_apply_gif_crop": _fl_apply_gif_crop,

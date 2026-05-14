@@ -302,7 +302,9 @@ def process_payload(
         }
 
     df = pd.DataFrame(records)
-    out_dir = source_dir / f"{main_token}_{treat_token}" if main_token else source_dir / "batch_output"
+    out_dir = (
+        source_dir / f"{main_token}_{treat_token}" if main_token else source_dir / "batch_output"
+    )
     out_dir.mkdir(parents=True, exist_ok=True)
     csv_path = out_dir / f"summary_{main_token}_{treat_token}.csv"
     df.to_csv(csv_path, index=False)

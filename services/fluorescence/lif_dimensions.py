@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from xml.etree import ElementTree as ET
 
 import numpy as np
@@ -161,7 +160,9 @@ def float_from_settings(settings: dict, keys: tuple[str, ...]) -> float | None:
     return None
 
 
-def apply_xml_dimension_calibration(calibration: dict, xml_dims: list[dict], settings: dict, dims_n: dict) -> dict:
+def apply_xml_dimension_calibration(
+    calibration: dict, xml_dims: list[dict], settings: dict, dims_n: dict
+) -> dict:
     out = dict(calibration or {})
     dim_counts = {}
 
@@ -240,7 +241,9 @@ def xml_metadata_summary(element: ET.Element | None) -> dict:
         elif tag == "ChannelDescription":
             channels.append(attrs)
         elif "setting" in tag.lower() or any(
-            "setting" in str(v).lower() for k, v in node.attrib.items() if k.lower() in {"identifier", "name", "key"}
+            "setting" in str(v).lower()
+            for k, v in node.attrib.items()
+            if k.lower() in {"identifier", "name", "key"}
         ):
             if len(settings) < 300:
                 settings.append({"tag": tag, "attributes": attrs})

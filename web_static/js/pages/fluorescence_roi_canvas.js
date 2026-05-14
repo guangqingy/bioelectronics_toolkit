@@ -235,3 +235,15 @@ function drawConcentricOnCanvas(ctx, roi, isBg) {
   ctx.fillText(label, center.x + 5, Math.max(12, center.y - radius - 4));
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'drawConcentricOnCanvas',
+  'drawRects',
+  'imgToNative',
+  'initCanvas',
+  'nativeToImg',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

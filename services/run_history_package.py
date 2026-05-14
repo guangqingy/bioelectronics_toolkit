@@ -18,7 +18,9 @@ from services.run_history_paths import (
 )
 
 
-def package_run_manifest(body: dict[str, Any], base_dir: Path, job_ctx: Any = None) -> dict[str, Any]:
+def package_run_manifest(
+    body: dict[str, Any], base_dir: Path, job_ctx: Any = None
+) -> dict[str, Any]:
     body = body if isinstance(body, dict) else {}
     include_inputs = bool(body.get("include_inputs"))
     include_outputs = body.get("include_outputs") is not False
@@ -57,7 +59,10 @@ def package_run_manifest(body: dict[str, Any], base_dir: Path, job_ctx: Any = No
         job_ctx.check_cancelled()
         job_ctx.set_progress(0.4, "Writing package")
     with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("manifest.json", json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        zf.writestr(
+            "manifest.json",
+            json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        )
         zf.writestr("report.md", report_text)
         if include_outputs:
             included, missing = _add_records_to_zip(zf, manifest.get("outputs"), "outputs", used)
@@ -67,7 +72,10 @@ def package_run_manifest(body: dict[str, Any], base_dir: Path, job_ctx: Any = No
             included, missing = _add_records_to_zip(zf, manifest.get("input_files"), "inputs", used)
             index["included"].extend(included)
             index["missing"].extend(missing)
-        zf.writestr("package_index.json", json.dumps(index, indent=2, ensure_ascii=False, sort_keys=True) + "\n")
+        zf.writestr(
+            "package_index.json",
+            json.dumps(index, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        )
     os.replace(tmp, package_path)
 
     return {

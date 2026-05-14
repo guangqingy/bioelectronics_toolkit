@@ -6,7 +6,12 @@ from pydantic import Field, ValidationError
 
 from services.background_jobs import JobContext, JobManager
 
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_error, api_ok
 
 
@@ -51,7 +56,9 @@ def run_json_task_job(
 ):
     """Run a body-driven service task without manufacturing a Flask request."""
     job_ctx.set_progress(0.02, "Starting job")
+    job_ctx.check_cancelled()
     result = task_func(job_ctx, body or {})
+    job_ctx.check_cancelled()
     if result is None:
         result = {}
     if not isinstance(result, dict):
@@ -101,7 +108,9 @@ def register_job_routes(app, ctx) -> None:
             payload = parse_json_payload(JobListRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        return api_ok({"jobs": jobs.list(limit=payload.limit, include_finished=payload.include_finished)})
+        return api_ok(
+            {"jobs": jobs.list(limit=payload.limit, include_finished=payload.include_finished)}
+        )
 
     @app.route("/api/jobs/get", methods=["POST"])
     @request_schema(JobIdRequest)

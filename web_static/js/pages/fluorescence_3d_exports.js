@@ -168,3 +168,17 @@ window.addEventListener('load', () => {
     renderAvailableTiffList();
   }
 });
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'analyzeIntensityDistribution',
+  'currentRotationGifPayload',
+  'exportRotationGif',
+  'previewRotationGif',
+  'showLog',
+  'upsertResultCard',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

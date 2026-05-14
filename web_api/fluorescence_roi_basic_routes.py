@@ -155,9 +155,7 @@ def register_fluorescence_roi_basic_routes(app, fl):
                 img_h = int_or(d.get("img_height", 0), 0)
                 if img_w <= 0 or img_h <= 0:
                     first_stack = (
-                        stack1_path
-                        if (stack1_path and Path(stack1_path).exists())
-                        else stack2_path
+                        stack1_path if (stack1_path and Path(stack1_path).exists()) else stack2_path
                     )
                     if first_stack and Path(first_stack).exists():
                         with tifflib.TiffFile(first_stack) as tif:
@@ -166,7 +164,12 @@ def register_fluorescence_roi_basic_routes(app, fl):
                 if img_w > 0 and img_h > 0:
                     sz = max(4, min(40, img_h // 4, img_w // 4))
                     if bg_mode == "corner_br":
-                        bg_roi_to_use = {"x1": img_w - sz, "y1": img_h - sz, "x2": img_w, "y2": img_h}
+                        bg_roi_to_use = {
+                            "x1": img_w - sz,
+                            "y1": img_h - sz,
+                            "x2": img_w,
+                            "y2": img_h,
+                        }
                     else:
                         bg_roi_to_use = {"x1": 0, "y1": 0, "x2": sz, "y2": sz}
             elif bg_mode == "roi" and bg_roi:
@@ -182,7 +185,10 @@ def register_fluorescence_roi_basic_routes(app, fl):
                             if plot_metric == "bg_subtracted":
                                 results_all[k] = [a - b for a, b in zip(results_all[k], bg1_vals)]
                             else:
-                                results_all[k] = [a / b if b and b != 0 else float("nan") for a, b in zip(results_all[k], bg1_vals)]
+                                results_all[k] = [
+                                    a / b if b and b != 0 else float("nan")
+                                    for a, b in zip(results_all[k], bg1_vals)
+                                ]
                 if stack2_path and Path(stack2_path).exists():
                     bg2, _ = _fl_roi_compute(stack2_path, bg_rois, metric)
                     bg2_vals = bg2["_BG"]
@@ -191,7 +197,10 @@ def register_fluorescence_roi_basic_routes(app, fl):
                             if plot_metric == "bg_subtracted":
                                 results_all[k] = [a - b for a, b in zip(results_all[k], bg2_vals)]
                             else:
-                                results_all[k] = [a / b if b and b != 0 else float("nan") for a, b in zip(results_all[k], bg2_vals)]
+                                results_all[k] = [
+                                    a / b if b and b != 0 else float("nan")
+                                    for a, b in zip(results_all[k], bg2_vals)
+                                ]
 
             t_axis = np.arange(n_frames) * frame_interval_s
 

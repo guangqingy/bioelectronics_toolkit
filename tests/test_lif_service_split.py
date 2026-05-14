@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import unittest
 import tempfile
+import unittest
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -30,7 +30,13 @@ class LifServiceSplitTests(unittest.TestCase):
             {"full_name": "B", "original_order": 1, "sort_value": None},
             {"full_name": "A", "original_order": 2, "sort_value": stamp["sort_value"]},
         ]
-        self.assertEqual([r["full_name"] for r in sorted(records, key=lambda r: lif_metadata.record_sort_tuple(r, "time"))], ["A", "B"])
+        self.assertEqual(
+            [
+                r["full_name"]
+                for r in sorted(records, key=lambda r: lif_metadata.record_sort_tuple(r, "time"))
+            ],
+            ["A", "B"],
+        )
 
     def test_record_helpers_clone_and_read_planes_by_dimension(self) -> None:
         class Dims:
@@ -65,7 +71,9 @@ class LifServiceSplitTests(unittest.TestCase):
             def get_image(self, _index):
                 return Image()
 
-        rec = lif_records.record_from_image(Lif(), 0, [{"element": ET.fromstring("<Element/>"), "xml_path": "Folder/Subfile"}])
+        rec = lif_records.record_from_image(
+            Lif(), 0, [{"element": ET.fromstring("<Element/>"), "xml_path": "Folder/Subfile"}]
+        )
         self.assertEqual(rec["name"], "Subfile")
         self.assertEqual(rec["dimensions"]["z"], 2)
         cloned = lif_records.clone_records([rec])
@@ -81,7 +89,9 @@ class LifServiceSplitTests(unittest.TestCase):
             "dimensions": {"x": 12, "y": 8, "z": 4, "t": 2},
         }
 
-        self.assertEqual([d["label"] for d in lif_dimensions.plane_dimensions_from_record(record)], ["Z", "T"])
+        self.assertEqual(
+            [d["label"] for d in lif_dimensions.plane_dimensions_from_record(record)], ["Z", "T"]
+        )
         arr = np.arange(6).reshape(2, 3)
         oriented = lif_dimensions.apply_orientation(arr, {"swap_xy": True, "flip_x": True})
         self.assertEqual(oriented.shape, (3, 2))
@@ -110,14 +120,19 @@ class LifServiceSplitTests(unittest.TestCase):
         self.assertEqual(len(combos), 4)
         self.assertEqual(combos[0], (0, {4: 0, 10: 0}))
         self.assertEqual(combos[1], (1, {4: 1, 10: 0}))
-        rows = lif_export.manifest_rows([{"index": 0, "original_order": 0, "name": "raw", "dimensions": {"x": 5}}], rename_map={"0": "clean"})
+        rows = lif_export.manifest_rows(
+            [{"index": 0, "original_order": 0, "name": "raw", "dimensions": {"x": 5}}],
+            rename_map={"0": "clean"},
+        )
         self.assertEqual(rows[0]["display_name"], "clean")
         self.assertEqual(lif_export.sanitize_filename("bad:name.tiff", "fallback"), "bad_name")
 
         with tempfile.TemporaryDirectory(prefix="dataprocess_lif_export_") as tmp:
             first = Path(tmp) / "stack.tiff"
             first.write_bytes(b"x")
-            self.assertEqual(lif_export.unique_output_path(first, overwrite=False).name, "stack_2.tiff")
+            self.assertEqual(
+                lif_export.unique_output_path(first, overwrite=False).name, "stack_2.tiff"
+            )
 
     def test_volume_point_helpers_are_service_level(self) -> None:
         positions, colors = lif_volume.plane_points(
@@ -141,7 +156,12 @@ class LifServiceSplitTests(unittest.TestCase):
                 "title": "<sample>",
                 "dimensions": {"z": 2, "c": 1},
                 "calibration": {"pixel_width_um": 1.0, "z_spacing_um": 1.0},
-                "render": {"positions": [0, 0, 0], "colors": [1, 1, 1], "n_points": 1, "point_size": 1},
+                "render": {
+                    "positions": [0, 0, 0],
+                    "colors": [1, 1, 1],
+                    "n_points": 1,
+                    "point_size": 1,
+                },
             }
         )
         self.assertIn("&lt;sample&gt;", html)

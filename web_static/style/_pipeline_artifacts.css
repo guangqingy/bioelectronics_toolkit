@@ -1,0 +1,90 @@
+.pipeline-output-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.figure-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 12px;
+}
+.figure-card {
+  min-width: 0;
+}
+.figure-card-body {
+  padding: 12px;
+  background: var(--surface-panel);
+}
+.figure-card-body img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--white);
+}
+.artifact-empty {
+  border: 1px dashed var(--border-dashed);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--silver);
+  font-size: 12.5px;
+  line-height: 1.6;
+  padding: 16px;
+  text-align: center;
+}
+.artifact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 340px;
+  overflow: auto;
+}
+.artifact-row {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-sm);
+  background: var(--white);
+  padding: 8px 9px;
+}
+.artifact-ext {
+  border: 1px solid var(--border-muted);
+  border-radius: 4px;
+  background: var(--surface-panel);
+  color: var(--pewter);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 4px;
+  text-align: center;
+}
+.artifact-main {
+  min-width: 0;
+}
+.artifact-name {
+  color: var(--carbon);
+  font-family: "SF Mono", "Menlo", monospace;
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.artifact-meta {
+  margin-top: 2px;
+  color: var(--silver);
+  font-size: 11px;
+}
+.artifact-updated {
+  border-radius: 4px;
+  background: var(--success-bg);
+  color: var(--success);
+  font-size: 10.5px;
+  font-weight: 600;
+  padding: 3px 7px;
+  white-space: nowrap;
+}
+

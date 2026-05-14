@@ -72,11 +72,11 @@
       {% endif %}
     </div>
     <div class="nav-right">
-      <button id="commandBtn" class="nav-settings" type="button" onclick="openCommandPalette()" title="Command palette">Search</button>
-      <button id="shortcutBtn" class="nav-settings" type="button" onclick="openShortcutModal()" title="Keyboard shortcuts">?</button>
-      <button id="prefsBtn" class="nav-settings" type="button" onclick="openPrefsModal()">Settings</button>
+      <button id="commandBtn" class="nav-settings" type="button" onclick="DP.palette.open()" title="Command palette">Search</button>
+      <button id="shortcutBtn" class="nav-settings" type="button" onclick="DP.dom.openShortcutModal()" title="Keyboard shortcuts">?</button>
+      <button id="prefsBtn" class="nav-settings" type="button" onclick="DP.settings.open()">Settings</button>
       <span class="nav-version" title="bioelectronics_toolkit {{ app_version_label }}">{{ app_version_label }}</span>
-      <button id="logoutBtn" class="nav-logout" type="button" onclick="logoutServer()">Log Out</button>
+      <button id="logoutBtn" class="nav-logout" type="button" onclick="DP.page.logoutServer()">Log Out</button>
     </div>
   </div>
 </nav>

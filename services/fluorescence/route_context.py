@@ -112,7 +112,9 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     _fl_parse_percent_list = _fl_gif_roi_helpers["_fl_parse_percent_list"]
     _fl_percent_label = _fl_gif_roi_helpers["_fl_percent_label"]
     _fl_render_gif_frame = _fl_gif_roi_helpers["_fl_render_gif_frame"]
-    _fl_render_gif_roi_reference_preview = _fl_gif_roi_helpers["_fl_render_gif_roi_reference_preview"]
+    _fl_render_gif_roi_reference_preview = _fl_gif_roi_helpers[
+        "_fl_render_gif_roi_reference_preview"
+    ]
     _fl_smooth_heatmap_2d = _fl_gif_roi_helpers["_fl_smooth_heatmap_2d"]
     _fl_smooth_series_nan = _fl_gif_roi_helpers["_fl_smooth_series_nan"]
 
@@ -142,7 +144,9 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     def _fl_read_tiff_as_pages(tiff_path: Path) -> list[np.ndarray]:
         return fl_stack.read_tiff_as_pages(tiff_path, tifflib)
 
-    def _fl_export_with_settings(tiff_path: Path, pages: list[np.ndarray], settings: list[dict]) -> dict:
+    def _fl_export_with_settings(
+        tiff_path: Path, pages: list[np.ndarray], settings: list[dict]
+    ) -> dict:
         return fl_stack.export_with_settings(tiff_path, pages, settings, tifflib)
 
     _fl_roi_render_helpers = fl_roi_render_context.build_roi_render_context(
@@ -231,11 +235,15 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     def _fl_roi_read_first_page(stack_path: str) -> np.ndarray:
         return fl_roi.read_first_page(stack_path, tifflib)
 
-    def _fl_roi_plot_radial_profiles(radial_df: pd.DataFrame, roi_specs: list, metric: str, plot_metric: str, has_ref: bool) -> str:
+    def _fl_roi_plot_radial_profiles(
+        radial_df: pd.DataFrame, roi_specs: list, metric: str, plot_metric: str, has_ref: bool
+    ) -> str:
         if radial_df is None or radial_df.empty:
             return ""
 
-        seq_vals_all = pd.to_numeric(radial_df["sequence_number"], errors="coerce").to_numpy(dtype=float)
+        seq_vals_all = pd.to_numeric(radial_df["sequence_number"], errors="coerce").to_numpy(
+            dtype=float
+        )
         use_sequence_axis = np.isfinite(seq_vals_all).any()
         x_label = "Sequence"
         metric_labels = {
@@ -258,12 +266,16 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         ring_keys = (
             radial_df.assign(
                 _ring_inner_key=np.where(
-                    pd.to_numeric(radial_df.get("inner_radius_um", np.nan), errors="coerce").notna(),
+                    pd.to_numeric(
+                        radial_df.get("inner_radius_um", np.nan), errors="coerce"
+                    ).notna(),
                     pd.to_numeric(radial_df.get("inner_radius_um", np.nan), errors="coerce"),
                     pd.to_numeric(radial_df["inner_radius_px"], errors="coerce"),
                 ),
                 _ring_outer_key=np.where(
-                    pd.to_numeric(radial_df.get("outer_radius_um", np.nan), errors="coerce").notna(),
+                    pd.to_numeric(
+                        radial_df.get("outer_radius_um", np.nan), errors="coerce"
+                    ).notna(),
                     pd.to_numeric(radial_df.get("outer_radius_um", np.nan), errors="coerce"),
                     pd.to_numeric(radial_df["outer_radius_px"], errors="coerce"),
                 ),
@@ -273,7 +285,11 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         )
         ring_color = {
             tuple(row): plt.cm.tab20(i % 20)
-            for i, row in enumerate(ring_keys[["roi_key", "_ring_inner_key", "_ring_outer_key"]].itertuples(index=False, name=None))
+            for i, row in enumerate(
+                ring_keys[["roi_key", "_ring_inner_key", "_ring_outer_key"]].itertuples(
+                    index=False, name=None
+                )
+            )
         }
         show_legend = len(ring_keys) <= 18
 
@@ -289,9 +305,19 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         radial_plot_df = radial_df.copy()
         inner_um = pd.to_numeric(radial_plot_df.get("inner_radius_um", np.nan), errors="coerce")
         outer_um = pd.to_numeric(radial_plot_df.get("outer_radius_um", np.nan), errors="coerce")
-        radial_plot_df["_ring_inner_key"] = np.where(inner_um.notna(), inner_um, pd.to_numeric(radial_plot_df["inner_radius_px"], errors="coerce"))
-        radial_plot_df["_ring_outer_key"] = np.where(outer_um.notna(), outer_um, pd.to_numeric(radial_plot_df["outer_radius_px"], errors="coerce"))
-        grouped = radial_plot_df.groupby(["roi_key", "roi_label", "_ring_inner_key", "_ring_outer_key"], sort=False)
+        radial_plot_df["_ring_inner_key"] = np.where(
+            inner_um.notna(),
+            inner_um,
+            pd.to_numeric(radial_plot_df["inner_radius_px"], errors="coerce"),
+        )
+        radial_plot_df["_ring_outer_key"] = np.where(
+            outer_um.notna(),
+            outer_um,
+            pd.to_numeric(radial_plot_df["outer_radius_px"], errors="coerce"),
+        )
+        grouped = radial_plot_df.groupby(
+            ["roi_key", "roi_label", "_ring_inner_key", "_ring_outer_key"], sort=False
+        )
         for ax, y_col, title, panel_ylabel in panels:
             x_tick_pairs = []
             for (roi_key, roi_label, inner_key, outer_key), grp in grouped:
@@ -303,14 +329,23 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
                 else:
                     grp = grp.sort_values(["base_name"], kind="stable")
                     x = np.arange(len(grp), dtype=float)
-                    x_tick_pairs.extend((float(i), str(v)) for i, v in enumerate(grp["base_name"].astype(str).tolist()))
+                    x_tick_pairs.extend(
+                        (float(i), str(v))
+                        for i, v in enumerate(grp["base_name"].astype(str).tolist())
+                    )
                 y = pd.to_numeric(grp[y_col], errors="coerce").to_numpy(dtype=float)
                 if not np.isfinite(x).any() or not np.isfinite(y).any():
                     continue
-                inner_um_vals = pd.to_numeric(grp.get("inner_radius_um", pd.Series(dtype=float)), errors="coerce").dropna()
-                outer_um_vals = pd.to_numeric(grp.get("outer_radius_um", pd.Series(dtype=float)), errors="coerce").dropna()
+                inner_um_vals = pd.to_numeric(
+                    grp.get("inner_radius_um", pd.Series(dtype=float)), errors="coerce"
+                ).dropna()
+                outer_um_vals = pd.to_numeric(
+                    grp.get("outer_radius_um", pd.Series(dtype=float)), errors="coerce"
+                ).dropna()
                 if not inner_um_vals.empty and not outer_um_vals.empty:
-                    ring_label = f"{float(inner_um_vals.iloc[0]):g}-{float(outer_um_vals.iloc[0]):g} um"
+                    ring_label = (
+                        f"{float(inner_um_vals.iloc[0]):g}-{float(outer_um_vals.iloc[0]):g} um"
+                    )
                 else:
                     ring_label = f"{float(inner_key):g}-{float(outer_key):g} px"
                 label = f"{roi_label} {ring_label}".strip()
@@ -357,7 +392,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     _fl_roi_resolve_ref_index = fl_roi.resolve_ref_index
     _fl_roi_normalize_to_reference = fl_roi.normalize_to_reference
     _fl_roi_delta_f_over_f0 = fl_roi.delta_f_over_f0
-
 
     gif_route_ctx = {
         "err": err,
@@ -429,4 +463,9 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         "_fl_roi_shared_ylim": _fl_roi_shared_ylim,
         "_fl_sanitize_prefix": _fl_sanitize_prefix,
     }
-    return {"stack": stack_route_ctx, "volume": volume_route_ctx, "gif": gif_route_ctx, "roi": roi_route_ctx}
+    return {
+        "stack": stack_route_ctx,
+        "volume": volume_route_ctx,
+        "gif": gif_route_ctx,
+        "roi": roi_route_ctx,
+    }

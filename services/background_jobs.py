@@ -68,14 +68,18 @@ class JobManager:
                     """
                 )
         except Exception:
-            LOG.warning("Could not initialize job persistence at %s", self.persistence_path, exc_info=True)
+            LOG.warning(
+                "Could not initialize job persistence at %s", self.persistence_path, exc_info=True
+            )
 
     def _load_persisted_jobs(self) -> None:
         try:
             with self._connect() as conn:
                 rows = conn.execute("SELECT payload FROM jobs ORDER BY updated_at DESC").fetchall()
         except Exception:
-            LOG.warning("Could not load persisted jobs from %s", self.persistence_path, exc_info=True)
+            LOG.warning(
+                "Could not load persisted jobs from %s", self.persistence_path, exc_info=True
+            )
             return
 
         restored: dict[str, dict[str, Any]] = {}
@@ -155,11 +159,15 @@ class JobManager:
             self._jobs[job_id] = record
             self._persist_job_locked(record)
             self._trim_locked()
-        thread = threading.Thread(target=self._run, args=(job_id, target, args, kwargs), daemon=True)
+        thread = threading.Thread(
+            target=self._run, args=(job_id, target, args, kwargs), daemon=True
+        )
         thread.start()
         return self.get(job_id) or record
 
-    def _run(self, job_id: str, target: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]) -> None:
+    def _run(
+        self, job_id: str, target: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> None:
         self.update(job_id, status="running", started_at=_now_iso(), message="Running")
         ctx = JobContext(self, job_id)
         try:
@@ -183,11 +191,17 @@ class JobManager:
                 finished_at=_now_iso(),
                 data=data,
                 outputs=outputs,
-                warnings=result.get("warnings") if isinstance(result.get("warnings"), list) else current_job.get("warnings", []),
-                error=None if result_ok else (result.get("error") or result.get("stderr") or "Job failed"),
+                warnings=result.get("warnings")
+                if isinstance(result.get("warnings"), list)
+                else current_job.get("warnings", []),
+                error=None
+                if result_ok
+                else (result.get("error") or result.get("stderr") or "Job failed"),
             )
         except JobCancelled as exc:
-            self.update(job_id, status="cancelled", finished_at=_now_iso(), message=str(exc), error=str(exc))
+            self.update(
+                job_id, status="cancelled", finished_at=_now_iso(), message=str(exc), error=str(exc)
+            )
         except Exception as exc:
             self.update(
                 job_id,

@@ -172,15 +172,23 @@ def build_volume3d_payload(
         except Exception:
             continue
 
-    calibration = lif_dimensions.oriented_calibration(record.get("calibration", {}) or {}, record.get("scan_orientation", {}) or {})
+    calibration = lif_dimensions.oriented_calibration(
+        record.get("calibration", {}) or {}, record.get("scan_orientation", {}) or {}
+    )
     fallback_channel_luts = ["Red", "Green", "Blue", "Magenta", "Cyan", "Yellow"]
     for z in z_indices:
         dim_values = dict(base_dims)
         dim_values[z_dim_id] = int(z)
         for channel in channels:
-            arr = display_array(get_plane_by_dimensions(image, c=channel, dimension_values=dim_values), record)
+            arr = display_array(
+                get_plane_by_dimensions(image, c=channel, dimension_values=dim_values), record
+            )
             lut_name = channel_luts[channel] if channel < len(channel_luts) else "Gray"
-            if channel_mode != "current" and str(lut_name or "").strip().lower() in {"", "gray"} and c_count > 1:
+            if (
+                channel_mode != "current"
+                and str(lut_name or "").strip().lower() in {"", "gray"}
+                and c_count > 1
+            ):
                 lut_name = fallback_channel_luts[channel % len(fallback_channel_luts)]
             p, col = plane_points(
                 arr=arr,
@@ -207,7 +215,9 @@ def build_volume3d_payload(
         n_points = len(positions) // 3
 
     if n_points <= 0:
-        raise ValueError("No bright voxels were found for 3D rendering. Try lowering the threshold.")
+        raise ValueError(
+            "No bright voxels were found for 3D rendering. Try lowering the threshold."
+        )
 
     pixel_w = lif_dimensions.positive_float(calibration.get("pixel_width_um")) or 1.0
     pixel_h = lif_dimensions.positive_float(calibration.get("pixel_height_um")) or pixel_w
@@ -245,7 +255,9 @@ def build_volume3d_payload(
 
 def volume3d_html(volume_payload: dict) -> str:
     payload_json = json.dumps(volume_payload, ensure_ascii=False).replace("</", "<\\/")
-    title = html.escape(str(volume_payload.get("title", "Leica LIF 3D Viewer") or "Leica LIF 3D Viewer"))
+    title = html.escape(
+        str(volume_payload.get("title", "Leica LIF 3D Viewer") or "Leica LIF 3D Viewer")
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>

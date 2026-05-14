@@ -50,3 +50,12 @@ function exportGrouped() {
     })
     .finally(() => btnBusy('btnExport', false, 'Export Grouped Peaks'));
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'exportGrouped',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

@@ -78,7 +78,11 @@ def register_fluorescence_gif_basic_routes(app, fl):
         manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
         auto_scale = _fl_bool(d.get("auto_scale"), True)
         label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {"none", "off", "no"}
+        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+            "none",
+            "off",
+            "no",
+        }
         slice_spec = d.get("slice_spec", "")
         roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
         crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
@@ -86,7 +90,9 @@ def register_fluorescence_gif_basic_routes(app, fl):
         crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
         crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
         crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
-        show_roi_overlay = _fl_bool(d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"})
+        show_roi_overlay = _fl_bool(
+            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+        )
         try:
             p_in = Path(input_path_str)
             if not p_in.exists():
@@ -284,7 +290,11 @@ def register_fluorescence_gif_basic_routes(app, fl):
         manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
         auto_scale = _fl_bool(d.get("auto_scale"), True)
         label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {"none", "off", "no"}
+        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+            "none",
+            "off",
+            "no",
+        }
         slice_spec = d.get("slice_spec", "")
         roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
         crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
@@ -292,7 +302,9 @@ def register_fluorescence_gif_basic_routes(app, fl):
         crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
         crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
         crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
-        show_roi_overlay = _fl_bool(d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"})
+        show_roi_overlay = _fl_bool(
+            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+        )
         try:
             if not str(input_path_str or "").strip():
                 return err("input_path is required")
@@ -435,16 +447,24 @@ def register_fluorescence_gif_basic_routes(app, fl):
         manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
         auto_scale = _fl_bool(d.get("auto_scale"), True)
         label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {"none", "off", "no"}
+        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+            "none",
+            "off",
+            "no",
+        }
         roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
         crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
         crop_mode = str(d.get("crop_mode", "full") or "full").strip().lower()
         crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
         crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
         crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
-        show_roi_overlay = _fl_bool(d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"})
+        show_roi_overlay = _fl_bool(
+            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+        )
         output_path_str = (d.get("output_path") or "").strip()
-        has_slice_selection = any(str(s or "").strip().lower() not in {"", "all", "*"} for s in slice_specs)
+        has_slice_selection = any(
+            str(s or "").strip().lower() not in {"", "all", "*"} for s in slice_specs
+        )
 
         try:
             # Validate all paths first
@@ -457,8 +477,12 @@ def register_fluorescence_gif_basic_routes(app, fl):
 
             # Derive default output path from first TIFF
             if not output_path_str:
-                crop_suffix = "_crop" if crop_mode not in {"", "none", "full", "full_frame", "frame"} else ""
-                suffix = f"_slices{crop_suffix}.gif" if has_slice_selection else f"{crop_suffix}.gif"
+                crop_suffix = (
+                    "_crop" if crop_mode not in {"", "none", "full", "full_frame", "frame"} else ""
+                )
+                suffix = (
+                    f"_slices{crop_suffix}.gif" if has_slice_selection else f"{crop_suffix}.gif"
+                )
                 output_path_str = str(paths[0].with_name(f"{paths[0].stem}{suffix}"))
             elif not Path(output_path_str).is_absolute():
                 output_path_str = str(paths[0].parent / output_path_str)

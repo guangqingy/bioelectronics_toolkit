@@ -30,7 +30,7 @@
 }
 
 /* ─── Peak/pair table ─── */
-.pair-selected { background: #EEF2FF !important; }
+.pair-selected { background: var(--surface-blue-strong) !important; }
 .pair-selected td { color: var(--blue); }
 
 /* ─── Separator ─── */

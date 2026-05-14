@@ -15,7 +15,7 @@
 <div id="errorBanner" class="error-banner" role="alert" aria-live="assertive" hidden>
   <div class="error-banner-title">Error</div>
   <div id="errorBannerText" class="error-banner-text"></div>
-  <button class="btn-icon error-banner-close" type="button" onclick="dismissErrorBanner()">Dismiss</button>
+  <button class="btn-icon error-banner-close" type="button" onclick="DP.dom.dismissErrorBanner()">Dismiss</button>
 </div>
 
 <!-- ─── Page body ─── -->
@@ -43,7 +43,7 @@
         <div class="modal-title" id="shortcutTitle">Keyboard Shortcuts</div>
         <div class="prefs-sub">Available everywhere unless a text field has focus.</div>
       </div>
-      <button class="btn-icon" type="button" onclick="closeShortcutModal()">Close</button>
+      <button class="btn-icon" type="button" onclick="DP.dom.closeShortcutModal()">Close</button>
     </div>
     <div class="modal-body">
       <div class="shortcut-grid">
@@ -59,14 +59,14 @@
   </div>
 </div>
 
-<div id="commandPalette" class="modal-overlay" aria-hidden="true" onclick="if(event.target===this) closeCommandPalette()">
+<div id="commandPalette" class="modal-overlay" aria-hidden="true" onclick="if(event.target===this) DP.palette.close()">
   <div class="modal-card command-card" role="dialog" aria-modal="true" aria-labelledby="commandTitle">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="commandTitle">Command Palette</div>
         <div class="prefs-sub">Jump to tools, demos, pipeline categories, and repository utilities.</div>
       </div>
-      <button class="btn-icon" type="button" onclick="closeCommandPalette()">Close</button>
+      <button class="btn-icon" type="button" onclick="DP.palette.close()">Close</button>
     </div>
     <div class="modal-body">
       <input id="commandSearch" class="command-search" type="search" placeholder="Search tools, demos, or pipelines" autocomplete="off">
@@ -101,21 +101,22 @@ let _genericFileProfileState = null;
 <script src="/static/js/dp_palette.js"></script>
 <script src="/static/js/dp_api.js"></script>
 <script src="/static/js/dp_params.js"></script>
+<script src="/static/js/dp_param_glossary.js"></script>
 <script src="/static/js/dp_keyboard.js"></script>
-<script src="/static/js/dp_core.js"></script>
 <script src="/static/js/dp_manifest.js"></script>
 <script src="/static/js/dp_settings_core.js"></script>
 <script src="/static/js/dp_settings_modal.js"></script>
 <script src="/static/js/dp_settings_generic.js"></script>
 <script src="/static/js/dp_profiles.js"></script>
 <script src="/static/js/dp_jobs.js"></script>
+<script src="/static/js/dp_core.js"></script>
 <script>
 
 document.addEventListener('DOMContentLoaded', async () => {
   /* Auto-fill path inputs with the default data dir */
   await applyInitialPathDefaults();
   await dpConsumePendingRunManifest();
-  if (typeof dpRecordTelemetry === 'function') dpRecordTelemetry('page_open');
+  if (window.DP?.telemetry?.pageOpen) DP.telemetry.pageOpen(CURRENT_VIEW);
 
   /* Hide ctrl-panel if it has no content (full-width pages) */
   const ctrl = document.getElementById('ctrlPanel');
@@ -127,9 +128,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 document.addEventListener('click', (event) => {
   const target = event.target && event.target.closest ? event.target.closest('button, a') : null;
-  if (!target || typeof dpRecordTelemetry !== 'function') return;
+  if (!target || !window.DP?.telemetry?.exportClick) return;
   const label = (target.textContent || target.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
-  if (/^Export\b/i.test(label)) dpRecordTelemetry('export_click', {label});
+  if (/^Export\b/i.test(label)) DP.telemetry.exportClick(label, CURRENT_VIEW);
 });
 
 </script>

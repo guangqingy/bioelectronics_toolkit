@@ -10,7 +10,12 @@ from typing import Any
 from flask import jsonify
 from pydantic import Field, ValidationError
 
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 
 
 _prefs_lock = threading.Lock()
@@ -72,7 +77,9 @@ def _write_preferences(path: Path, data: dict[str, Any]) -> None:
     data["updated_at"] = _now_iso()
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
+    tmp.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8"
+    )
     os.replace(tmp, path)
 
 

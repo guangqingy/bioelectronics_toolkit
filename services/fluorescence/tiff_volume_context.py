@@ -12,7 +12,9 @@ from services.fluorescence import stack as fl_stack
 from services.fluorescence import tiff_metadata_context as fl_tiff_metadata_context
 
 
-def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, denoise_options: list[str]) -> dict:
+def build_tiff_volume_context(
+    *, tifflib, has_tiff: bool, int_or, float_or, denoise_options: list[str]
+) -> dict:
     _FL_DENOISE_OPTIONS = list(denoise_options or [])
     _fl_clean_choice = fl_stack.clean_choice
     _fl_apply_optional_denoise = fl_stack.apply_optional_denoise
@@ -57,7 +59,9 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
             return fallback
         return s.lower()
 
-    def _fl_hex_color_to_rgb(color: object, fallback: str = "#f2f2f2") -> tuple[float, float, float]:
+    def _fl_hex_color_to_rgb(
+        color: object, fallback: str = "#f2f2f2"
+    ) -> tuple[float, float, float]:
         s = _fl_normalize_hex_color(color, fallback).lstrip("#")
         return tuple(int(s[i : i + 2], 16) / 255.0 for i in (0, 2, 4))
 
@@ -95,7 +99,9 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
             return [], []
 
         range_low_percentile = max(0.0, min(99.0, float(range_low_percentile)))
-        range_high_percentile = max(range_low_percentile + 0.1, min(100.0, float(range_high_percentile)))
+        range_high_percentile = max(
+            range_low_percentile + 0.1, min(100.0, float(range_high_percentile))
+        )
         lo = float(np.percentile(finite, range_low_percentile))
         hi = float(np.percentile(finite, range_high_percentile))
         if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
@@ -242,8 +248,12 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
         cell_size = max(float(radius_um), 1e-6)
         origin = np.min(pos, axis=0)
         cells = np.floor((pos - origin) / cell_size).astype(np.int32)
-        unique_cells, inverse, counts = np.unique(cells, axis=0, return_inverse=True, return_counts=True)
-        count_map = {tuple(int(v) for v in cell): int(count) for cell, count in zip(unique_cells, counts)}
+        unique_cells, inverse, counts = np.unique(
+            cells, axis=0, return_inverse=True, return_counts=True
+        )
+        count_map = {
+            tuple(int(v) for v in cell): int(count) for cell, count in zip(unique_cells, counts)
+        }
         offsets = [(dx, dy, dz) for dx in (-1, 0, 1) for dy in (-1, 0, 1) for dz in (-1, 0, 1)]
         density_by_cell = np.zeros(unique_cells.shape[0], dtype=np.int32)
         for i, cell in enumerate(unique_cells):
@@ -265,7 +275,9 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
             removed + int(n_points - pos.shape[0]),
         )
 
-    def _fl_channel_render_range(channel_ranges: object, channel: int, default_threshold: float, default_color: str) -> dict:
+    def _fl_channel_render_range(
+        channel_ranges: object, channel: int, default_threshold: float, default_color: str
+    ) -> dict:
         default = {
             "enabled": True,
             "low": 1.0,
@@ -314,7 +326,9 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
         x_count = max(1, int(dims.get("x", 1) or 1))
         y_count = max(1, int(dims.get("y", 1) or 1))
         if z_count < 2:
-            raise ValueError("This TIFF has only one readable stack plane; 3D stacking needs Z/slices > 1.")
+            raise ValueError(
+                "This TIFF has only one readable stack plane; 3D stacking needs Z/slices > 1."
+            )
 
         arr, axes, roles = _fl_tiff_read_array(tiff_path)
         max_points = max(1000, min(250000, int(max_points or 70000)))
@@ -340,8 +354,14 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
         channel_render_settings: dict[int, dict] = {}
         channels: list[int] = []
         for channel in candidate_channels:
-            default_color = fallback_colors[channel % len(fallback_colors)] if channel_mode == "composite" else "#f2f2f2"
-            chan_range = _fl_channel_render_range(channel_ranges, channel, threshold_percentile, default_color)
+            default_color = (
+                fallback_colors[channel % len(fallback_colors)]
+                if channel_mode == "composite"
+                else "#f2f2f2"
+            )
+            chan_range = _fl_channel_render_range(
+                channel_ranges, channel, threshold_percentile, default_color
+            )
             channel_settings[str(channel)] = {
                 "enabled": bool(chan_range["enabled"]),
                 "low": chan_range["low"],
@@ -355,11 +375,19 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
         if not channels:
             raise ValueError("Select at least one channel for 3D rendering/export.")
         rendered_plane_count = len(z_indices) + max(0, len(z_indices) - 1) * interlayer_steps
-        plane_quota = max(12, int(np.ceil(max_points / max(1, rendered_plane_count * len(channels)))))
+        plane_quota = max(
+            12, int(np.ceil(max_points / max(1, rendered_plane_count * len(channels))))
+        )
         for channel in channels:
             for z_i, z in enumerate(z_indices):
-                plane = _fl_tiff_plane_from_array(arr, axes, roles, z=z, c=channel, t=t, extra_indices=extra_indices)
-                default_color = fallback_colors[channel % len(fallback_colors)] if channel_mode == "composite" else "#f2f2f2"
+                plane = _fl_tiff_plane_from_array(
+                    arr, axes, roles, z=z, c=channel, t=t, extra_indices=extra_indices
+                )
+                default_color = (
+                    fallback_colors[channel % len(fallback_colors)]
+                    if channel_mode == "composite"
+                    else "#f2f2f2"
+                )
                 chan_range = channel_render_settings[channel]
                 p, col = _fl_plane_points_3d(
                     arr=plane,
@@ -461,8 +489,12 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
             },
             "calibration": {
                 "pixel_width_um": float(calibration.get("pixel_width_um", 1.0)),
-                "pixel_height_um": float(calibration.get("pixel_height_um", calibration.get("pixel_width_um", 1.0))),
-                "z_spacing_um": float(calibration.get("z_spacing_um", calibration.get("pixel_width_um", 1.0))),
+                "pixel_height_um": float(
+                    calibration.get("pixel_height_um", calibration.get("pixel_width_um", 1.0))
+                ),
+                "z_spacing_um": float(
+                    calibration.get("z_spacing_um", calibration.get("pixel_width_um", 1.0))
+                ),
                 "pixel_source": calibration.get("pixel_source", ""),
                 "z_source": calibration.get("z_source", ""),
             },
@@ -484,7 +516,9 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
                 "density_removed": density_removed,
                 "show_scale_bar": bool(show_scale_bar and scale_bar_um > 0),
                 "scale_bar_um": scale_bar_um,
-                "point_size": max(0.35, min(4.0, float(calibration.get("pixel_width_um", 1.0)) * xy_step * 0.9)),
+                "point_size": max(
+                    0.35, min(4.0, float(calibration.get("pixel_width_um", 1.0)) * xy_step * 0.9)
+                ),
             },
         }
 
@@ -567,7 +601,6 @@ def build_tiff_volume_context(*, tifflib, has_tiff: bool, int_or, float_or, deno
     </script>
     </body>
     </html>"""
-
 
     return {
         "_fl_tiff_plane_from_array": _fl_tiff_plane_from_array,

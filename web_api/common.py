@@ -7,7 +7,7 @@ register_*_routes() closure.
 
 # ── String → boolean helpers ─────────────────────────────────────────────────
 _SAVE_MODES = frozenset({"save", "server", "path", "local", "source"})
-_TRUE_STRS  = frozenset({"1", "true", "yes", "y", "on"})
+_TRUE_STRS = frozenset({"1", "true", "yes", "y", "on"})
 _FALSE_STRS = frozenset({"0", "false", "no", "n", "off"})
 
 

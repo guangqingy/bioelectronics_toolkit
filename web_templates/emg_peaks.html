@@ -13,7 +13,7 @@
   <div class="ctrl-label">Main Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/emg/data">
-    <button class="btn-icon" onclick="pickFolder('folderPath','browseMain')">Browse</button>
+    <button class="btn-icon" onclick="DP.folder.pick('folderPath','browseMain')">Browse</button>
   </div>
 </div>
 
@@ -91,7 +91,7 @@
   </div>
 </div>
 
-<button id="btnDetect" class="btn-primary" onclick="detectPeaks()">Detect Peaks</button>
+<button id="btnDetect" class="btn-primary" onclick="DP.page.detectPeaks()">Detect Peaks</button>
 </details>
 
 <details class="ctrl-section ctrl-details">
@@ -109,14 +109,14 @@
     <div class="param-label">Group start</div>
     <input type="number" id="grpStart" class="input-sm" value="0" step="1">
   </div>
-  <button class="btn-secondary" onclick="autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
+  <button class="btn-secondary" onclick="DP.page.autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Manual Group Assignment</div>
   <div class="input-row">
     <input type="text" id="groupInput" class="input-group" placeholder="Group label, e.g. A">
   </div>
-  <button class="btn-secondary" onclick="setGroupForSelected()" style="width:100%; margin-top:8px;">Set Group for Selected</button>
+  <button class="btn-secondary" onclick="DP.page.setGroupForSelected()" style="width:100%; margin-top:8px;">Set Group for Selected</button>
 </div>
 </details>
 
@@ -124,19 +124,19 @@
   <summary class="ctrl-label">Edit</summary>
   <div class="ctrl-label">Peak Operations</div>
   <div class="input-row" style="gap:6px;">
-    <button class="btn-secondary" onclick="selectAllPeaks()" style="flex:1;">Select All</button>
-    <button class="btn-secondary" onclick="clearPeakSelection()" style="flex:1;">Clear Selection</button>
+    <button class="btn-secondary" onclick="DP.page.selectAllPeaks()" style="flex:1;">Select All</button>
+    <button class="btn-secondary" onclick="DP.page.clearPeakSelection()" style="flex:1;">Clear Selection</button>
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="removeSelectedPeaks()" style="flex:1;">Remove Selected</button>
-    <button class="btn-secondary" onclick="restoreSelectedPeaks()" style="flex:1;">Undo Removal</button>
+    <button class="btn-secondary" onclick="DP.page.removeSelectedPeaks()" style="flex:1;">Remove Selected</button>
+    <button class="btn-secondary" onclick="DP.page.restoreSelectedPeaks()" style="flex:1;">Undo Removal</button>
   </div>
-  <button class="btn-secondary" onclick="resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
+  <button class="btn-secondary" onclick="DP.page.resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
 </details>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
-  <button id="btnExport" class="btn-secondary" onclick="exportGrouped()" style="width:100%;">Export Grouped Peaks</button>
+  <button id="btnExport" class="btn-secondary" onclick="DP.page.exportGrouped()" style="width:100%;">Export Grouped Peaks</button>
 </details>
 
 <div id="status" class="status-bar"></div>

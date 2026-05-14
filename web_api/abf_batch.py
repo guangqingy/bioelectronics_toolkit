@@ -8,7 +8,12 @@ from pydantic import Field, ValidationError
 from services import abf_batch as abf_batch_service
 
 from .jobs import submit_json_task
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 
 ROOT_DIR = Path(__file__).resolve().parents[1]

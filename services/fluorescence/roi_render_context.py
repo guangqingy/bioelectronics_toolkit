@@ -92,9 +92,20 @@ def build_roi_render_context(
                     continue
                 r = ring_width
                 while r < radius:
-                    ax.add_patch(Circle((cx, cy), r, linewidth=0.85, edgecolor=color, facecolor="none", alpha=0.55))
+                    ax.add_patch(
+                        Circle(
+                            (cx, cy),
+                            r,
+                            linewidth=0.85,
+                            edgecolor=color,
+                            facecolor="none",
+                            alpha=0.55,
+                        )
+                    )
                     r += ring_width
-                ax.add_patch(Circle((cx, cy), radius, linewidth=1.7, edgecolor=color, facecolor="none"))
+                ax.add_patch(
+                    Circle((cx, cy), radius, linewidth=1.7, edgecolor=color, facecolor="none")
+                )
                 ax.plot([cx - 5, cx + 5], [cy, cy], color=color, lw=1.1)
                 ax.plot([cx, cx], [cy - 5, cy + 5], color=color, lw=1.1)
                 ax.text(cx + 4, max(0, cy - radius - 4), label, color=color, fontsize=fs_roi)
@@ -127,7 +138,12 @@ def build_roi_render_context(
                 color="white",
                 fontsize=fs_name,
                 va="top",
-                bbox={"facecolor": "black", "alpha": 0.65, "edgecolor": "none", "boxstyle": "round,pad=0.25"},
+                bbox={
+                    "facecolor": "black",
+                    "alpha": 0.65,
+                    "edgecolor": "none",
+                    "boxstyle": "round,pad=0.25",
+                },
             )
 
         pixel_size_um = pixel_size_um_override
@@ -162,13 +178,22 @@ def build_roi_render_context(
                     edgecolor="none",
                 )
             )
-            ax.text(x0, y0 - 4, text_label, color="white", fontsize=max(8.0, 8.0 * label_scale), va="bottom")
+            ax.text(
+                x0,
+                y0 - 4,
+                text_label,
+                color="white",
+                fontsize=max(8.0, 8.0 * label_scale),
+                va="bottom",
+            )
 
         fig.tight_layout(pad=0.2)
         img_b64 = fig_to_b64(fig)
         return {
             "img": img_b64,
-            "pixel_size_um": float(pixel_size_um) if pixel_size_um is not None and np.isfinite(pixel_size_um) else None,
+            "pixel_size_um": float(pixel_size_um)
+            if pixel_size_um is not None and np.isfinite(pixel_size_um)
+            else None,
             "path": str(preview_path),
         }
 
@@ -226,9 +251,13 @@ def build_roi_render_context(
                     continue
                 rr = ring_width
                 while rr < radius:
-                    draw.ellipse((cx - rr, cy - rr, cx + rr, cy + rr), outline=color, width=max(1, width - 1))
+                    draw.ellipse(
+                        (cx - rr, cy - rr, cx + rr, cy + rr), outline=color, width=max(1, width - 1)
+                    )
                     rr += ring_width
-                draw.ellipse((cx - radius, cy - radius, cx + radius, cy + radius), outline=color, width=width)
+                draw.ellipse(
+                    (cx - radius, cy - radius, cx + radius, cy + radius), outline=color, width=width
+                )
                 cross = max(4, min(12, int(radius * 0.08)))
                 draw.line((cx - cross, cy, cx + cross, cy), fill=color, width=width)
                 draw.line((cx, cy - cross, cx, cy + cross), fill=color, width=width)
@@ -299,8 +328,6 @@ def build_roi_render_context(
             )
 
         return pil_img
-
-
 
     return {
         "_fl_roi_pick_output_dir": _fl_roi_pick_output_dir,

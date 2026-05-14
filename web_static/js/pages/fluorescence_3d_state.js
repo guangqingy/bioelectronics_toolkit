@@ -52,3 +52,17 @@ function formatDimText(info) {
   if ((d.t || 1) > 1) parts.push(`T${d.t}`);
   return parts.join(' · ');
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'compactPath',
+  'escHtml',
+  'fileBasename',
+  'formatDimText',
+  'formatNumber',
+  'stackDims',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

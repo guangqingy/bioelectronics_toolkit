@@ -134,3 +134,18 @@ function plot() {
       setStatus('status', 'Error: ' + e.message, 'error');
     });
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'onPreviewMergeChanged',
+  'plot',
+  'populateChannelList',
+  'reloadCurrentRhdFile',
+  'selectChannel',
+  'selectFile',
+  'updateInfoCard',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

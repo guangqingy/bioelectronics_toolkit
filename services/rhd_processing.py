@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import matplotlib.pyplot as plt
-from matplotlib.colors import is_color_like
 import numpy as np
 import pandas as pd
+from matplotlib.colors import is_color_like
 from scipy import signal
 
 
@@ -144,7 +144,9 @@ def apply_time_window(
 
 def filter_params(params: dict) -> dict[str, Any]:
     return {
-        "type": str(params.get("filter_type", params.get("filter", "none")) or "none").strip().lower(),
+        "type": str(params.get("filter_type", params.get("filter", "none")) or "none")
+        .strip()
+        .lower(),
         "low_hz": _float_or(params.get("filter_low_hz"), None),
         "high_hz": _float_or(params.get("filter_high_hz"), None),
         "notch_hz": _float_or(params.get("filter_notch_hz"), 60.0),
@@ -190,7 +192,9 @@ def apply_filter(y: np.ndarray, fs: float, params: dict) -> np.ndarray:
         return y
 
 
-def finish_axis(ax, t: np.ndarray, y_min: float | None, y_max: float | None, *, grid: bool = True) -> None:
+def finish_axis(
+    ax, t: np.ndarray, y_min: float | None, y_max: float | None, *, grid: bool = True
+) -> None:
     if len(t):
         x0 = float(t[0])
         x1 = float(t[-1])
@@ -200,7 +204,9 @@ def finish_axis(ax, t: np.ndarray, y_min: float | None, y_max: float | None, *, 
     ax.margins(x=0)
     if y_min is not None or y_max is not None:
         ymin, ymax = ax.get_ylim()
-        ax.set_ylim(ymin if y_min is None else float(y_min), ymax if y_max is None else float(y_max))
+        ax.set_ylim(
+            ymin if y_min is None else float(y_min), ymax if y_max is None else float(y_max)
+        )
     if grid:
         ax.grid(True, alpha=0.4)
     else:
@@ -218,7 +224,9 @@ def process_trace(
     mode = str(params.get("process_type") or "envelope").strip().lower()
     t = np.asarray(t, dtype=float)
     y = np.asarray(y, dtype=float)
-    fig_params = figure_params(params, default_line_color=default_line_color, default_show_title=False)
+    fig_params = figure_params(
+        params, default_line_color=default_line_color, default_show_title=False
+    )
     fig, ax = plt.subplots(
         figsize=(fig_params["width_in"], fig_params["height_in"]),
         dpi=fig_params["dpi"],
@@ -236,22 +244,35 @@ def process_trace(
         envelope_smooth_ms = _float_or(params.get("envelope_smooth_ms"), 0.0) or 0.0
         processed = smooth_signal(processed, fs, envelope_smooth_ms)
         dsf = downsample_factor(params.get("downsample", "auto"), len(t))
-        ax.plot(t[::dsf], processed[::dsf], color=fig_params["line_color"], lw=fig_params["line_width"])
+        ax.plot(
+            t[::dsf], processed[::dsf], color=fig_params["line_color"], lw=fig_params["line_width"]
+        )
         ax.set_ylabel("Envelope (uV)")
         finish_axis(ax, t, None, None, grid=fig_params["show_grid"])
         table = pd.DataFrame({"time_s": t, "envelope_uV": processed})
-        meta.update({"envelope_smooth_ms": envelope_smooth_ms, "points": int(len(processed[::dsf]))})
+        meta.update(
+            {"envelope_smooth_ms": envelope_smooth_ms, "points": int(len(processed[::dsf]))}
+        )
     elif mode == "smooth":
         win_ms = max(0.01, _float_or(params.get("smooth_ms"), 5.0) or 5.0)
         method = str(params.get("smooth_method") or "moving").strip().lower()
         sg_poly = max(1, min(5, _int_or(params.get("sg_poly"), 2)))
         processed = smooth_signal(y, fs, win_ms, method, sg_poly)
         dsf = downsample_factor(params.get("downsample", "auto"), len(t))
-        ax.plot(t[::dsf], processed[::dsf], color=fig_params["line_color"], lw=fig_params["line_width"])
+        ax.plot(
+            t[::dsf], processed[::dsf], color=fig_params["line_color"], lw=fig_params["line_width"]
+        )
         ax.set_ylabel("Smoothed (uV)")
         finish_axis(ax, t, None, None, grid=fig_params["show_grid"])
         table = pd.DataFrame({"time_s": t, "smoothed_uV": processed})
-        meta.update({"smooth_ms": win_ms, "smooth_method": method, "sg_poly": sg_poly, "points": int(len(processed[::dsf]))})
+        meta.update(
+            {
+                "smooth_ms": win_ms,
+                "smooth_method": method,
+                "sg_poly": sg_poly,
+                "points": int(len(processed[::dsf])),
+            }
+        )
     elif mode == "fitting":
         degree = max(1, min(5, _int_or(params.get("fit_degree"), 1)))
         t0 = t - float(t[0])
@@ -259,8 +280,15 @@ def process_trace(
         fitted = np.polyval(coeff, t0)
         dsf = downsample_factor(params.get("downsample", "auto"), len(t))
         if _as_bool(params.get("fit_show_raw"), True):
-            ax.plot(t[::dsf], y[::dsf], color="#A5AFBF", lw=max(0.2, fig_params["line_width"] * 0.7))
-        ax.plot(t[::dsf], fitted[::dsf], color=fig_params["line_color"], lw=max(0.2, fig_params["line_width"] * 1.4))
+            ax.plot(
+                t[::dsf], y[::dsf], color="#A5AFBF", lw=max(0.2, fig_params["line_width"] * 0.7)
+            )
+        ax.plot(
+            t[::dsf],
+            fitted[::dsf],
+            color=fig_params["line_color"],
+            lw=max(0.2, fig_params["line_width"] * 1.4),
+        )
         ax.set_ylabel("Fit (uV)")
         finish_axis(ax, t, None, None, grid=fig_params["show_grid"])
         table = pd.DataFrame({"time_s": t, "raw_uV": y, "fitted_uV": fitted})
@@ -305,7 +333,9 @@ def process_trace(
         nperseg = min(nperseg, y.size)
         overlap_pct = _float_range(params, "stft_overlap_pct", 50.0, 0.0, 95.0)
         noverlap = max(0, min(nperseg - 1, int(round(nperseg * overlap_pct / 100.0))))
-        window_name = str(params.get("stft_window") or params.get("fft_window") or "hann").strip().lower()
+        window_name = (
+            str(params.get("stft_window") or params.get("fft_window") or "hann").strip().lower()
+        )
         freq, tt, zxx = signal.stft(
             y - np.nanmean(y),
             fs=fs if fs > 0 else 1.0,

@@ -291,3 +291,21 @@ document.addEventListener('dp:prefs-saved', event => {
   applyGifPrefs(_gifPrefs.defaults || {});
   setStatus('gifPrefsStatus', 'Defaults updated from Settings.', 'ok');
 });
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'buildGifKymoPayload',
+  'exportGifKymoAll',
+  'exportGifKymoHeatmapCSV',
+  'exportGifKymoPlotPNG',
+  'exportGifKymoSummaryCSV',
+  'openFolder',
+  'parseGifKymoPercentList',
+  'runGifKymograph',
+  'saveGifKymoOutputs',
+  'setupRoiCanvasEvents',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

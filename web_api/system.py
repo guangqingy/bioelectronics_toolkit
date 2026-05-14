@@ -17,7 +17,12 @@ from services.system_picker import (
     _default_picker_dir,
 )
 
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 
 
@@ -39,7 +44,9 @@ def _choose_folder(default_dir: Path) -> str:
                 'POSIX path of (choose folder with prompt "Select Data Folder" '
                 f'default location POSIX file "{_applescript_string(default_dir)}")'
             )
-            out = system_picker.subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            out = system_picker.subprocess.run(
+                ["osascript", "-e", script], capture_output=True, text=True
+            )
             return out.stdout.strip() if out.returncode == 0 else ""
         if sys.platform == "win32":
             return _choose_windows_folder(default_dir)
@@ -53,7 +60,9 @@ def _choose_file(default_dir: Path) -> str:
                 'POSIX path of (choose file with prompt "Select File" '
                 f'default location POSIX file "{_applescript_string(default_dir)}")'
             )
-            out = system_picker.subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+            out = system_picker.subprocess.run(
+                ["osascript", "-e", script], capture_output=True, text=True
+            )
             return out.stdout.strip() if out.returncode == 0 else ""
         if sys.platform == "win32":
             return _choose_windows_file(default_dir)
@@ -97,6 +106,7 @@ def register_system_routes(app, ctx) -> None:
     @app.route("/api/system/logout", methods=["POST"])
     def api_system_logout():
         try:
+
             def _shutdown_server():
                 time.sleep(0.25)
                 try:

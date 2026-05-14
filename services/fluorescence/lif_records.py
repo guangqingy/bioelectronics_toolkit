@@ -42,7 +42,9 @@ def record_from_image(lif, image_index: int, image_elements: list[dict]) -> dict
         dims_n,
     )
     record_shell = {"dimensions": dims, "dims_n": dims_n, "display_dims": display_dims}
-    plane_dimensions = lif_dimensions.plane_dimensions_from_record(record_shell, include_single=True)
+    plane_dimensions = lif_dimensions.plane_dimensions_from_record(
+        record_shell, include_single=True
+    )
     orientation = lif_dimensions.orientation_from_settings(settings)
 
     return {
@@ -132,10 +134,26 @@ def get_plane_by_dimensions(image, c: int, dimension_values: dict[int, int]):
     if not has_extra_dim and tuple(display_dims) == (1, 2):
         try:
             return image.get_frame(
-                z=max(0, min(int(dimension_values.get(3, 0) or 0), lif_dimensions.dim_int(image, "z") - 1)),
-                t=max(0, min(int(dimension_values.get(4, 0) or 0), lif_dimensions.dim_int(image, "t") - 1)),
+                z=max(
+                    0,
+                    min(
+                        int(dimension_values.get(3, 0) or 0), lif_dimensions.dim_int(image, "z") - 1
+                    ),
+                ),
+                t=max(
+                    0,
+                    min(
+                        int(dimension_values.get(4, 0) or 0), lif_dimensions.dim_int(image, "t") - 1
+                    ),
+                ),
                 c=c,
-                m=max(0, min(int(dimension_values.get(10, 0) or 0), lif_dimensions.dim_int(image, "m") - 1)),
+                m=max(
+                    0,
+                    min(
+                        int(dimension_values.get(10, 0) or 0),
+                        lif_dimensions.dim_int(image, "m") - 1,
+                    ),
+                ),
             )
         except Exception:
             if not dims_n:

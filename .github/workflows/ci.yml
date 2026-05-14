@@ -58,7 +58,7 @@ jobs:
           path: coverage-services.xml
           if-no-files-found: error
 
-      - name: web_api/services ratio report
+      - name: web_api/services baseline ratchet
         run: python dev_scripts/check_services_ratio.py
 
       - name: private service boundary check
@@ -80,6 +80,31 @@ jobs:
         run: ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402,E501
       - name: Strict unused-name lint for Web API modules
         run: ruff check web_api --select F --ignore E402
+
+  e2e:
+    name: playwright e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install package and dev tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Run Playwright smoke tests
+        run: python -m pytest tests/e2e
+      - name: Upload Playwright artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-artifacts
+          path: test-results/e2e
+          if-no-files-found: ignore
 
   windows-smoke:
     name: windows smoke

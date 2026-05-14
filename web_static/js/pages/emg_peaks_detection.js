@@ -70,3 +70,13 @@ function mergeDetectedPeaks(newPeaks) {
   });
   _peaks = Array.from(merged.values()).sort((a, b) => peakTime(a) - peakTime(b));
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'detectPeaks',
+  'mergeDetectedPeaks',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

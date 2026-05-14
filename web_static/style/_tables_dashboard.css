@@ -50,7 +50,7 @@ table.dp-table tr:hover td { background: var(--ash); }
   background: var(--white);
 }
 .dash-card:hover {
-  border-color: #c2c8d4;
+  border-color: var(--border-strong);
   box-shadow: 0 4px 12px rgba(22,26,32,0.06);
 }
 .dash-card-name {

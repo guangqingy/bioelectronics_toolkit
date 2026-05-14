@@ -87,3 +87,17 @@ function drawPolygons() {
 }
 
 /* ---------- Scan frame counts ---------- */
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'canvasToNative',
+  'drawOneCropRect',
+  'drawOnePolygon',
+  'drawPolygons',
+  'initRoiCanvas',
+  'nativeToCanvas',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

@@ -6,7 +6,9 @@ from pathlib import Path
 from typing import Any
 
 from services.run_history_checks import check_manifest_files, manifest_markdown
-from services.run_history_package import package_run_manifest
+from services.run_history_package import (
+    package_run_manifest,  # noqa: F401 - public facade re-export
+)
 from services.run_history_paths import (
     as_string_list,
     default_history,

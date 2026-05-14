@@ -13,6 +13,7 @@ from services.fluorescence.volume3d_exports import (
     Volume3DExportContext,
     distribution_payload,
     export_volume_payload,
+    rotation_gif_job_payload,
     rotation_gif_payload,
     volume_payload_from_body,
 )
@@ -66,10 +67,7 @@ def register_fluorescence_3d_routes(app, fl):
         return export_volume_payload(body, volume_export_ctx)
 
     def _export_rotation_gif_task(job_ctx, body: dict) -> dict:
-        job_ctx.set_progress(0.1, "Building 3D rotation GIF")
-        result = rotation_gif_payload(body, volume_export_ctx, preview=False)
-        job_ctx.set_progress(1.0, "3D rotation GIF exported")
-        return result
+        return rotation_gif_job_payload(body, volume_export_ctx, job_ctx)
 
     @app.route("/api/fluorescence/3d/tiff_info", methods=["POST"])
     @request_schema(FluorescencePathRequest)
@@ -127,7 +125,9 @@ def register_fluorescence_3d_routes(app, fl):
             if not p.exists():
                 return err(f"Input TIFF not found: {path}")
             arr, axes, roles = _fl_tiff_read_array(p)
-            plane = _fl_tiff_plane_from_array(arr, axes, roles, z=z, c=c, t=t, extra_indices=extra_indices)
+            plane = _fl_tiff_plane_from_array(
+                arr, axes, roles, z=z, c=c, t=t, extra_indices=extra_indices
+            )
             b64 = _fl_frame_to_b64(plane, lut, p_low, p_high)
             return jsonify({"ok": True, "img": b64, "z": z, "c": c, "t": t})
         except ValidationError as exc:

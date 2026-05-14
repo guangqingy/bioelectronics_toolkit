@@ -9,9 +9,9 @@
 }
 .logout-card {
   width: min(420px, 100%);
-  border: 1px solid #d9dde6;
+  border: 1px solid var(--border-muted);
   border-radius: 10px;
-  background: #fff;
+  background: var(--white);
   padding: 22px 20px;
   box-shadow: 0 10px 25px rgba(22, 26, 32, 0.08);
 }

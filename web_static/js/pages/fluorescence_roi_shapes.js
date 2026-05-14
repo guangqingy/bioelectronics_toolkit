@@ -219,3 +219,31 @@ function onRingWidthChange() {
   }
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'addRoi',
+  'currentDrawShape',
+  'effectiveDrawShape',
+  'getPixelSizeUmInput',
+  'getRingCount',
+  'getRingWidthPx',
+  'getRingWidthUm',
+  'isActiveBackgroundTarget',
+  'onBgModeChange',
+  'onBgRoiChange',
+  'onDrawShapeChange',
+  'onDrawTargetChange',
+  'onRingWidthChange',
+  'removeRoi',
+  'renderRoiList',
+  'renumberRois',
+  'resolveRingWidthPx',
+  'roiSummary',
+  'roiToPayload',
+  'roiTypeLabel',
+  'updateCanvasHint',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

@@ -41,7 +41,9 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
                 if not isinstance(dim, dict) or str(dim.get("DimID", "")) != "3":
                     continue
                 n = _fl_positive_float(dim.get("NumberOfElements"))
-                length = _fl_positive_float(abs(float(dim.get("Length", 0.0))) if dim.get("Length") is not None else None)
+                length = _fl_positive_float(
+                    abs(float(dim.get("Length", 0.0))) if dim.get("Length") is not None else None
+                )
                 unit = str(dim.get("Unit", "") or "").strip().lower()
                 if n is not None and length is not None and n > 1:
                     scale = _fl_unit_to_um_scale(unit)
@@ -161,7 +163,15 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
             if i in {y_axis, x_axis, z_axis, c_axis, t_axis, s_axis}:
                 continue
             extras.append({"axis": label or f"D{i}", "index": i, "count": int(shape[i])})
-        return {"y": y_axis, "x": x_axis, "z": z_axis, "c": c_axis, "t": t_axis, "s": s_axis, "extras": extras}
+        return {
+            "y": y_axis,
+            "x": x_axis,
+            "z": z_axis,
+            "c": c_axis,
+            "t": t_axis,
+            "s": s_axis,
+            "extras": extras,
+        }
 
     def _fl_tiff_series_info(tiff_path: Path) -> dict:
         with tifflib.TiffFile(str(tiff_path)) as tf:
@@ -239,7 +249,6 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
             plane = plane.reshape((-1, plane.shape[-2], plane.shape[-1]))[0]
         return plane
 
-
     def _fl_json_float(v) -> float | None:
         try:
             x = float(v)
@@ -297,7 +306,9 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
                 if not isinstance(dim, dict) or str(dim.get("DimID", "")) != "1":
                     continue
                 n = _fl_json_float(dim.get("NumberOfElements"))
-                length = _fl_json_float(abs(float(dim.get("Length", 0.0))) if dim.get("Length") is not None else None)
+                length = _fl_json_float(
+                    abs(float(dim.get("Length", 0.0))) if dim.get("Length") is not None else None
+                )
                 unit = str(dim.get("Unit", "") or "").strip().lower()
                 if n is not None and length is not None:
                     scale = _fl_unit_to_um_scale(unit)
@@ -312,7 +323,9 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
             meta_path = _fl_find_gif_metadata_json(tiff_path)
             if meta_path is not None:
                 try:
-                    px_um, source = _fl_metadata_pixel_size_um(json.loads(meta_path.read_text(encoding="utf-8")))
+                    px_um, source = _fl_metadata_pixel_size_um(
+                        json.loads(meta_path.read_text(encoding="utf-8"))
+                    )
                     if px_um is not None:
                         return {
                             "pixels_per_um": 1.0 / px_um,
@@ -338,8 +351,6 @@ def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
             "source": "manual px/um",
             "metadata_path": "",
         }
-
-
 
     return {
         "_fl_positive_float": _fl_positive_float,

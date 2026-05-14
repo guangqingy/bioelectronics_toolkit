@@ -36,11 +36,7 @@ def channel_label_from_source(src: Path) -> str:
 def pick_columns(df: pd.DataFrame) -> tuple[str, str]:
     t_col = next((c for c in df.columns if "time" in c.lower()), df.columns[0])
     v_col = next(
-        (
-            c
-            for c in df.columns
-            if any(k in c.lower() for k in ["value", "uv", "\u00b5v", "amp"])
-        ),
+        (c for c in df.columns if any(k in c.lower() for k in ["value", "uv", "\u00b5v", "amp"])),
         df.columns[1],
     )
     return t_col, v_col
@@ -96,9 +92,7 @@ def build_peak_kwargs(
             kwargs["wlen"] = wlen
 
     prom_thr = (
-        None
-        if (min_prominence_uV is None or min_prominence_uV <= 0)
-        else float(min_prominence_uV)
+        None if (min_prominence_uV is None or min_prominence_uV <= 0) else float(min_prominence_uV)
     )
     height_thr = None if min_height_uV is None else float(min_height_uV)
 
@@ -106,9 +100,7 @@ def build_peak_kwargs(
         sigma = robust_noise_std(sig)
         median = float(np.median(sig))
         prom_adapt = (
-            (sigma_for_prom or 0) * sigma
-            if (sigma_for_prom and sigma_for_prom > 0)
-            else None
+            (sigma_for_prom or 0) * sigma if (sigma_for_prom and sigma_for_prom > 0) else None
         )
         height_adapt = (
             median + (sigma_for_height or 0) * sigma

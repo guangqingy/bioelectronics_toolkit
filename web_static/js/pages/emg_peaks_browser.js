@@ -138,3 +138,17 @@ function plot() {
       toast('Plot failed: ' + e.message, true);
     });
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'browseMain',
+  'loadChannelData',
+  'loadChannels',
+  'plot',
+  'selectChannel',
+  'selectSubfolder',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

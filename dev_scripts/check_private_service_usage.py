@@ -10,7 +10,9 @@ ROOT = Path(__file__).resolve().parents[1]
 WEB_API = ROOT / "web_api"
 
 PRIVATE_ALIAS_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*_service\._[A-Za-z][A-Za-z0-9_]*")
-PRIVATE_IMPORT_RE = re.compile(r"^\s*from\s+services(?:\.[A-Za-z0-9_]+)+\s+import\s+.*\b_[A-Za-z][A-Za-z0-9_]*", re.MULTILINE)
+PRIVATE_IMPORT_RE = re.compile(
+    r"^\s*from\s+services(?:\.[A-Za-z0-9_]+)+\s+import\s+.*\b_[A-Za-z][A-Za-z0-9_]*", re.MULTILINE
+)
 
 
 def _scan_file(path: Path) -> list[str]:
@@ -26,7 +28,9 @@ def _scan_file(path: Path) -> list[str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Block web_api from calling private service helpers.")
+    parser = argparse.ArgumentParser(
+        description="Block web_api from calling private service helpers."
+    )
     parser.add_argument("--warn-only", action="store_true", help="Always exit 0.")
     args = parser.parse_args(argv)
 

@@ -230,3 +230,27 @@ function applyPreviewScale(redraw = true) {
   if (redraw) requestAnimationFrame(initCanvas);
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'addCheckedPairs',
+  'addPairByIndex',
+  'applyPreviewScale',
+  'clearAnalysisList',
+  'clearPairChecks',
+  'ensurePreviewStackAvailable',
+  'loadStack',
+  'onFrameSlide',
+  'removeActiveAnalysisPair',
+  'removeAnalysisPair',
+  'renderAnalysisList',
+  'renderPairList',
+  'scanFolder',
+  'selectAnalysisPair',
+  'selectPair',
+  'togglePairCheck',
+  'updateAnalysisCount',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

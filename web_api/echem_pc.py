@@ -15,7 +15,12 @@ from services import echem as echem_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 from .response import api_ok
 
 
@@ -72,8 +77,12 @@ def register_echem_pc_routes(app, ctx):
         return echem_service.load_photocurrent(path)
 
     def _pc_outputs(output_folder: Path, summary_path: Path, saved_paths: list[str]) -> list[dict]:
-        outputs = [{"path": str(output_folder), "type": "directory", "role": "photocurrent_pair_folder"}]
-        outputs.append({"path": str(summary_path), "type": "csv", "role": "photocurrent_pair_summary"})
+        outputs = [
+            {"path": str(output_folder), "type": "directory", "role": "photocurrent_pair_folder"}
+        ]
+        outputs.append(
+            {"path": str(summary_path), "type": "csv", "role": "photocurrent_pair_summary"}
+        )
         outputs.extend(
             {"path": path, "type": "csv", "role": "photocurrent_pair_window"}
             for path in saved_paths
@@ -164,8 +173,7 @@ def register_echem_pc_routes(app, ctx):
                 f.write(header + "\n")
                 for r in rows:
                     f.write(
-                        ",".join(f"{v:.9g}" if isinstance(v, float) else str(v) for v in r)
-                        + "\n"
+                        ",".join(f"{v:.9g}" if isinstance(v, float) else str(v) for v in r) + "\n"
                     )
 
             window_ms = float_or(d.get("pair_window_ms"), 50.0)
@@ -365,7 +373,9 @@ def register_echem_pc_routes(app, ctx):
             ax.axhline(-float(neg_min_abs_mA), color="#ef4444", lw=0.6, ls="--", alpha=0.7)
             ax.set_xlabel(t_col)
             ax.set_ylabel(i_col)
-            ax.set_title(f"{Path(path).name} - {len(pairs)} pairs detected", fontsize=10, color="#5C5E62")
+            ax.set_title(
+                f"{Path(path).name} - {len(pairs)} pairs detected", fontsize=10, color="#5C5E62"
+            )
             ax.grid(True, alpha=0.4)
             fig.tight_layout()
             return jsonify(

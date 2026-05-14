@@ -47,7 +47,9 @@ class EmgPeaksService:
         return bool(value)
 
     @staticmethod
-    def _peak_outputs(saved_path: str | Path, role: str, extra_paths: list[str] | None = None) -> list[dict]:
+    def _peak_outputs(
+        saved_path: str | Path, role: str, extra_paths: list[str] | None = None
+    ) -> list[dict]:
         output_path = Path(saved_path)
         outputs = [
             {
@@ -197,7 +199,9 @@ class EmgPeaksService:
 
         fig, ax = plt.subplots(figsize=(10, 3.5))
         ax.plot(tw, vw, color=self.line_color, lw=0.6)
-        ax.scatter([row["time"] for row in rows], [row["height"] for row in rows], color="#e06c00", s=18)
+        ax.scatter(
+            [row["time"] for row in rows], [row["height"] for row in rows], color="#e06c00", s=18
+        )
         ax.set_xlabel(t_col)
         ax.set_ylabel(v_col)
         ax.grid(True, alpha=0.4)
@@ -297,7 +301,11 @@ class EmgPeaksService:
             if src is not None and src.exists() and src.suffix.lower() == ".csv":
                 return self._save_grouped_segments(src, data, active)
 
-            out_path = src.with_name(f"{src.stem}_peaks.csv") if src is not None else Path.cwd() / "emg_peaks.csv"
+            out_path = (
+                src.with_name(f"{src.stem}_peaks.csv")
+                if src is not None
+                else Path.cwd() / "emg_peaks.csv"
+            )
             out_path.write_bytes(payload)
             return {
                 "kind": "save",
@@ -325,7 +333,11 @@ class EmgPeaksService:
         stem = Path(path).stem if path else "peaks"
         if self.mode_is_save(mode):
             src = Path(path) if path else emg_service.source_path(data)
-            out_path = src.with_name(f"{src.stem}_peaks_grouped.csv") if src is not None else Path.cwd() / f"{stem}_peaks_grouped.csv"
+            out_path = (
+                src.with_name(f"{src.stem}_peaks_grouped.csv")
+                if src is not None
+                else Path.cwd() / f"{stem}_peaks_grouped.csv"
+            )
             out_path.write_bytes(payload)
             return {
                 "kind": "save",
@@ -375,7 +387,9 @@ class EmgPeaksService:
                 peak_index = int(np.argmin(np.abs(t - peak_time)))
             peak_time = float(t[peak_index])
             group = str(peak.get("group", "")).strip()
-            duration = self.float_or(peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan)
+            duration = self.float_or(
+                peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
+            )
             height = self.float_or(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
 
             summary_rows.append(
@@ -387,7 +401,9 @@ class EmgPeaksService:
                     "group_id": group,
                 }
             )
-            prepared.append({"peak_idx": int(peak_index), "peak_time_s": peak_time, "group_id": group})
+            prepared.append(
+                {"peak_idx": int(peak_index), "peak_time_s": peak_time, "group_id": group}
+            )
 
         summary_path = src.parent / f"{src.parent.name}_{channel}_peaks_summary.csv"
         pd.DataFrame(summary_rows).to_csv(summary_path, index=False)

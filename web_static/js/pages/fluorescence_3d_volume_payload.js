@@ -107,3 +107,15 @@ window.dpApplyRunManifest = async manifest => {
   }
   setStatus('status', '3D stacking parameters loaded from run manifest', 'ok');
 };
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'channelRangesPayload',
+  'currentVolumePayload',
+  'hasEnabledChannel',
+  'volumeQualitySettings',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

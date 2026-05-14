@@ -9,7 +9,12 @@ from pydantic import Field, ValidationError
 from services import histology as histology_service
 
 from .jobs import route_response_to_payload, submit_json_task
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 
 sanitize_name = histology_service.sanitize_name
 find_histology_cases = histology_service.find_histology_cases
@@ -75,7 +80,9 @@ def register_histology_routes(app, ctx):
             rotate_deg = normalize_rotate_deg(d.get("rotate_deg", 0))
             do_ocr = parse_bool(d.get("do_ocr", False), default=False)
             ocr_lang = str(d.get("ocr_lang", "eng") or "eng")
-            payload = load_histology_preview_pair(case_path, rotate_deg=rotate_deg, do_ocr=do_ocr, ocr_lang=ocr_lang)
+            payload = load_histology_preview_pair(
+                case_path, rotate_deg=rotate_deg, do_ocr=do_ocr, ocr_lang=ocr_lang
+            )
             if payload.get("error"):
                 return err(payload["error"])
             return jsonify(payload)

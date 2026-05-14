@@ -78,7 +78,11 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
         tiff_paths = d.get("tiff_paths") or []
         slice_specs = d.get("slice_specs") or []
         roi_specs = _fl_gif_roi_make_specs(d.get("rois", d.get("roi_polygons", [])))
-        bg_specs = _fl_gif_roi_make_specs([d.get("bg_roi")], "BG") if isinstance(d.get("bg_roi"), dict) else []
+        bg_specs = (
+            _fl_gif_roi_make_specs([d.get("bg_roi")], "BG")
+            if isinstance(d.get("bg_roi"), dict)
+            else []
+        )
         bg_roi = bg_specs[0] if bg_specs else None
 
         metric = str(d.get("metric", "mean") or "mean").strip()
@@ -161,7 +165,9 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
                         m = _fl_gif_roi_metrics_2d(img2d, roi, mask_cache)
                         raw_val = float(m.get(metric, np.nan))
                         area_px = int(m.get("area_px", 0))
-                        val = _fl_gif_roi_apply_value(raw_val, area_px, metric, bg_mean, plot_metric)
+                        val = _fl_gif_roi_apply_value(
+                            raw_val, area_px, metric, bg_mean, plot_metric
+                        )
                         key = roi["key"]
                         row[f"{key}_raw_{metric}"] = raw_val
                         row[f"{key}_area_px"] = area_px
@@ -206,7 +212,15 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
                 if col not in df_out.columns:
                     continue
                 y = pd.to_numeric(df_out[col], errors="coerce").to_numpy(dtype=float)
-                ax.plot(x, y, lw=1.5, marker="o", markersize=2.8, color=roi.get("color", "#3E6AE1"), label=roi["label"])
+                ax.plot(
+                    x,
+                    y,
+                    lw=1.5,
+                    marker="o",
+                    markersize=2.8,
+                    color=roi.get("color", "#3E6AE1"),
+                    label=roi["label"],
+                )
 
             if plot_metric == "delta_f_over_f0":
                 ax.axhline(0.0, color="#8E8E8E", lw=1.0, ls="--", alpha=0.8)

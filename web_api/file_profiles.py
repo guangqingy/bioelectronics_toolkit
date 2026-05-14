@@ -7,7 +7,12 @@ from pydantic import Field, ValidationError
 
 from services import file_profiles as file_profile_service
 
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 
 
 class FileProfileGetRequest(RequestModel):

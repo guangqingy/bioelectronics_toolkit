@@ -147,3 +147,21 @@ function resetAllRemovals() {
   updatePeaksTable();
   setStatus('status', 'All removals reset', 'ok');
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'autoGroupByTime',
+  'clearPeakSelection',
+  'removeSelectedPeaks',
+  'resetAllRemovals',
+  'restoreSelectedPeaks',
+  'selectAllPeaks',
+  'setGroupForSelected',
+  'togglePeakRemoved',
+  'togglePeakSelection',
+  'updatePeaksTable',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

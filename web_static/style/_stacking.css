@@ -72,11 +72,11 @@
 }
 .lif-export-note {
   margin-top: 10px;
-  border: 1px solid #d9dde6;
+  border: 1px solid var(--border-muted);
   border-radius: var(--radius-sm);
   padding: 7px 9px;
   color: var(--pewter);
-  background: #FAFBFD;
+  background: var(--surface-panel);
   font-size: 12px;
 }
 

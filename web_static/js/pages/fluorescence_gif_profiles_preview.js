@@ -327,3 +327,32 @@ async function refreshGifPreview() {
 
 /* ---------- Polygon ROI overlay ---------- */
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'clearGeneratedGifPreview',
+  'collectGifFilePayload',
+  'compactPath',
+  'deleteSelectedGifFileProfile',
+  'fileBasename',
+  'formatScaleInfo',
+  'getPreviewEntry',
+  'gifPrimaryFile',
+  'gifProjectRoot',
+  'loadGifProfileForCurrent',
+  'loadSelectedGifFileProfile',
+  'pickTiffFile',
+  'refreshGifPreview',
+  'renderGifFileProfileOptions',
+  'restoreGifFilePayload',
+  'saveGifFileProfile',
+  'scheduleGifPreview',
+  'setGeneratedGifPreview',
+  'setPreviewImage',
+  'setPreviewPlaceholder',
+  'shortScaleInfo',
+  'toggleScaleMode',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

@@ -16,14 +16,18 @@ def fingerprint_status(record: dict[str, Any], current: dict[str, Any]) -> str:
         return "missing"
     if not recorded_exists and current_exists:
         return "created_after_manifest"
-    if record.get("size") == current.get("size") and record.get("mtime_ns") == current.get("mtime_ns"):
+    if record.get("size") == current.get("size") and record.get("mtime_ns") == current.get(
+        "mtime_ns"
+    ):
         return "unchanged"
     if record.get("size") == current.get("size"):
         return "timestamp_changed"
     return "changed"
 
 
-def check_file_records(records: Any, kind: str, project_root: Path) -> tuple[list[dict[str, Any]], dict[str, int]]:
+def check_file_records(
+    records: Any, kind: str, project_root: Path
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     rows: list[dict[str, Any]] = []
     summary = {
         "total": 0,
@@ -64,7 +68,10 @@ def check_file_records(records: Any, kind: str, project_root: Path) -> tuple[lis
                 "current_size": current.get("size"),
                 "recorded_mtime": item.get("mtime_iso") or "",
                 "current_mtime": current.get("mtime_iso") or "",
-                "rel": str(item.get("rel") or (rel_path(Path(path_text), project_root) if path_text else "")),
+                "rel": str(
+                    item.get("rel")
+                    or (rel_path(Path(path_text), project_root) if path_text else "")
+                ),
                 "path": path_text,
             }
         )
@@ -81,8 +88,12 @@ def combine_check_summary(*parts: dict[str, int]) -> dict[str, int]:
 
 def check_manifest_files(manifest: dict[str, Any]) -> dict[str, Any]:
     project_root = abs_path(as_path(manifest.get("project_root")) or Path.cwd())
-    input_rows, input_summary = check_file_records(manifest.get("input_files"), "input", project_root)
-    output_rows, output_summary = check_file_records(manifest.get("outputs"), "output", project_root)
+    input_rows, input_summary = check_file_records(
+        manifest.get("input_files"), "input", project_root
+    )
+    output_rows, output_summary = check_file_records(
+        manifest.get("outputs"), "output", project_root
+    )
     summary = combine_check_summary(input_summary, output_summary)
     problem_count = (
         summary.get("changed", 0)
@@ -118,7 +129,9 @@ def fmt_size(value: Any) -> str:
     return f"{n / 1024 / 1024:.1f} MB"
 
 
-def manifest_markdown(manifest: dict[str, Any], manifest_path: Path | None, check: dict[str, Any] | None) -> str:
+def manifest_markdown(
+    manifest: dict[str, Any], manifest_path: Path | None, check: dict[str, Any] | None
+) -> str:
     lines = [
         f"# {manifest.get('title') or manifest.get('view') or 'DataProcess Run'}",
         "",
@@ -133,13 +146,17 @@ def manifest_markdown(manifest: dict[str, Any], manifest_path: Path | None, chec
     lines.extend(["", "## Inputs", ""])
     for rec in manifest.get("input_files") or []:
         if isinstance(rec, dict):
-            lines.append(f"- `{rec.get('rel') or rec.get('path') or ''}` ({fmt_size(rec.get('size'))})")
+            lines.append(
+                f"- `{rec.get('rel') or rec.get('path') or ''}` ({fmt_size(rec.get('size'))})"
+            )
     if not (manifest.get("input_files") or []):
         lines.append("- None recorded")
     lines.extend(["", "## Outputs", ""])
     for rec in manifest.get("outputs") or []:
         if isinstance(rec, dict):
-            lines.append(f"- `{rec.get('rel') or rec.get('path') or ''}` ({fmt_size(rec.get('size'))})")
+            lines.append(
+                f"- `{rec.get('rel') or rec.get('path') or ''}` ({fmt_size(rec.get('size'))})"
+            )
     if not (manifest.get("outputs") or []):
         lines.append("- None recorded")
     if check:
@@ -162,7 +179,9 @@ def manifest_markdown(manifest: dict[str, Any], manifest_path: Path | None, chec
             "## Parameters",
             "",
             "```json",
-            json.dumps(manifest.get("parameters") or {}, indent=2, ensure_ascii=False, sort_keys=True),
+            json.dumps(
+                manifest.get("parameters") or {}, indent=2, ensure_ascii=False, sort_keys=True
+            ),
             "```",
             "",
         ]

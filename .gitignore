@@ -18,6 +18,7 @@ __pycache__/
 .pytest_cache/
 .coverage
 htmlcov/
+test-results/
 build/
 dist/
 .ipynb_checkpoints/

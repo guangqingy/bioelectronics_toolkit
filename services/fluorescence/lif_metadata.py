@@ -21,7 +21,9 @@ US_EU_RE = re.compile(
     r"(?:[T\s_]+(?P<h>\d{1,2}):(?P<mi>\d{2})(?::(?P<s>\d{2}(?:\.\d+)?))?"
     r"(?:\s*(?P<ampm>AM|PM|am|pm))?)?"
 )
-TIME_ONLY_RE = re.compile(r"\b(?P<h>\d{1,2}):(?P<mi>\d{2})(?::(?P<s>\d{2}(?:\.\d+)?))?\s*(?P<ampm>AM|PM|am|pm)?\b")
+TIME_ONLY_RE = re.compile(
+    r"\b(?P<h>\d{1,2}):(?P<mi>\d{2})(?::(?P<s>\d{2}(?:\.\d+)?))?\s*(?P<ampm>AM|PM|am|pm)?\b"
+)
 
 
 def clean_str(value) -> str:
@@ -93,7 +95,9 @@ def parse_datetime_text(value: str):
                 "sort_value": dt.timestamp(),
                 "iso": dt.isoformat(sep=" ", timespec="seconds"),
                 "display": dt.strftime("%Y-%m-%d %H:%M:%S"),
-                "kind": "datetime" if (dt.hour or dt.minute or dt.second or dt.microsecond) else "date",
+                "kind": "datetime"
+                if (dt.hour or dt.minute or dt.second or dt.microsecond)
+                else "date",
             }
         except Exception:
             pass
@@ -117,7 +121,9 @@ def parse_datetime_text(value: str):
             return {
                 "sort_value": dt.timestamp(),
                 "iso": dt.isoformat(sep=" ", timespec="seconds"),
-                "display": dt.strftime("%Y-%m-%d %H:%M:%S") if has_time else dt.strftime("%Y-%m-%d"),
+                "display": dt.strftime("%Y-%m-%d %H:%M:%S")
+                if has_time
+                else dt.strftime("%Y-%m-%d"),
                 "kind": "datetime" if has_time else "date",
             }
         except Exception:
@@ -142,7 +148,9 @@ def parse_datetime_text(value: str):
             return {
                 "sort_value": dt.timestamp(),
                 "iso": dt.isoformat(sep=" ", timespec="seconds"),
-                "display": dt.strftime("%Y-%m-%d %H:%M:%S") if has_time else dt.strftime("%Y-%m-%d"),
+                "display": dt.strftime("%Y-%m-%d %H:%M:%S")
+                if has_time
+                else dt.strftime("%Y-%m-%d"),
                 "kind": "datetime" if has_time else "date",
             }
         except Exception:

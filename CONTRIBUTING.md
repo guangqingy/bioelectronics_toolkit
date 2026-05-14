@@ -42,8 +42,9 @@ ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 python3 -m unittest discover -s tests -v
 coverage run --source=services -m unittest discover -s tests && coverage report
-python3 dev_scripts/check_services_ratio.py --warn-only
+python3 dev_scripts/check_services_ratio.py
 python3 dev_scripts/check_services_ratio.py --check-loc-budget --warn-only
+python3 dev_scripts/check_private_service_usage.py
 ```
 
 CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`
@@ -56,6 +57,12 @@ merge.
 
 Update [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` describing
 user-visible changes.
+
+If `dev_scripts/services_ratio_baseline.json` changes, the PR description must
+explain why the baseline update is acceptable. Normal feature work should make
+the service:route ratio stay the same or improve; use
+`python3 dev_scripts/check_services_ratio.py --update-baseline` only when the
+regression is intentional and justified.
 
 ## Adding or changing a GUI workflow
 
@@ -117,6 +124,9 @@ Follow the contract documented in [`WEB_README.md`](./WEB_README.md):
   - JavaScript module: target <= 400 LOC
 - Files exceeding these budgets need a top-of-file comment explaining why
   splitting would be worse than keeping the behavior together.
+- `dev_scripts/check_services_ratio.py` is a ratchet: existing modules may not
+  move reusable logic back from `services/` into `web_api/`, and new Web API
+  modules should start with service LOC >= route LOC.
 
 ## Reporting bugs
 

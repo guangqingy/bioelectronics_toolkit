@@ -31,4 +31,4 @@ def svg_with_metadata(svg_payload: str | bytes, metadata: dict[str, Any]) -> byt
     insert_at = text.find(">")
     if insert_at < 0 or "<svg" not in text[: max(5, insert_at + 1)].lower():
         return f"{element}\n{text}".encode("utf-8")
-    return f"{text[: insert_at + 1]}\n{element}{text[insert_at + 1:]}".encode("utf-8")
+    return f"{text[: insert_at + 1]}\n{element}{text[insert_at + 1 :]}".encode("utf-8")

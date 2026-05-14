@@ -249,3 +249,16 @@ function filterFileList(listId) {
 function installFileListFilters() {
   return dpEnhanceFileLists();
 }
+
+function dpEnhanceEmptyStates() {
+  document.querySelectorAll('.plot-placeholder, .file-list-empty, .artifact-empty').forEach(el => {
+    if (el.dataset.emptyEnhanced === '1') return;
+    const text = (el.textContent || '').trim();
+    if (!text || /examples\//i.test(text)) return;
+    const hint = document.createElement('div');
+    hint.className = 'empty-state-hint';
+    hint.innerHTML = 'Example data: <code>examples/</code>';
+    el.appendChild(hint);
+    el.dataset.emptyEnhanced = '1';
+  });
+}

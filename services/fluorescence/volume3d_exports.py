@@ -32,7 +32,9 @@ class Volume3DExportContext:
     fig_to_b64: Callable[..., str]
 
 
-def volume_payload_from_body(d: dict, ctx: Volume3DExportContext, *, for_export: bool = False) -> tuple[Path, dict]:
+def volume_payload_from_body(
+    d: dict, ctx: Volume3DExportContext, *, for_export: bool = False
+) -> tuple[Path, dict]:
     if not ctx.has_tiff:
         raise ValueError("tifffile is required")
     path = str(d.get("path", "") or "").strip()
@@ -50,15 +52,23 @@ def volume_payload_from_body(d: dict, ctx: Volume3DExportContext, *, for_export:
     max_points = ctx.int_or(d.get("max_points", max_points_default), max_points_default)
     max_xy = ctx.int_or(d.get("max_xy", max_xy_default), max_xy_default)
     max_z = ctx.int_or(d.get("max_z", max_z_default), max_z_default)
-    threshold_percentile = ctx.float_or(d.get("threshold_percentile", threshold_default), threshold_default)
+    threshold_percentile = ctx.float_or(
+        d.get("threshold_percentile", threshold_default), threshold_default
+    )
     channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
     denoise_mode = ctx.clean_choice(d.get("denoise"), ctx.denoise_options, "Off")
     interlayer_level = str(d.get("interlayer_level", "middle") or "middle").strip().lower()
     density_mode = str(d.get("density_mode", "off") or "off").strip().lower()
     density_radius_raw = d.get("density_radius_um", None)
-    density_radius_um = None if density_radius_raw is None or density_radius_raw == "" else ctx.float_or(density_radius_raw, 0.0)
+    density_radius_um = (
+        None
+        if density_radius_raw is None or density_radius_raw == ""
+        else ctx.float_or(density_radius_raw, 0.0)
+    )
     density_min_raw = d.get("density_min_neighbors", None)
-    density_min_neighbors = None if density_min_raw is None or density_min_raw == "" else ctx.int_or(density_min_raw, 0)
+    density_min_neighbors = (
+        None if density_min_raw is None or density_min_raw == "" else ctx.int_or(density_min_raw, 0)
+    )
     show_scale_bar = ctx.bool_value(d.get("show_scale_bar", True), True)
     scale_bar_um = max(0.0, ctx.float_or(d.get("scale_bar_um", 20.0), 20.0))
     p = Path(path)
@@ -107,7 +117,13 @@ def export_volume_payload(d: dict, ctx: Volume3DExportContext) -> dict:
     }
 
 
-def rotation_gif_payload(d: dict, ctx: Volume3DExportContext, *, preview: bool = False) -> dict:
+def rotation_gif_payload(
+    d: dict,
+    ctx: Volume3DExportContext,
+    *,
+    preview: bool = False,
+    cancel_check: Callable[[], None] | None = None,
+) -> dict:
     if not ctx.has_pil:
         raise ValueError("Pillow is required")
     p, payload = volume_payload_from_body(d, ctx, for_export=not preview)
@@ -133,6 +149,7 @@ def rotation_gif_payload(d: dict, ctx: Volume3DExportContext, *, preview: bool =
         max_gif_points=max_gif_points,
         show_scale_bar=show_scale_bar,
         scale_bar_um=scale_bar_um,
+        cancel_check=cancel_check,
     )
     result = {
         "ok": True,
@@ -157,9 +174,19 @@ def rotation_gif_payload(d: dict, ctx: Volume3DExportContext, *, preview: bool =
     result.update(
         {
             "output_path": str(out_path),
-            "outputs": [{"path": str(out_path), "type": "gif", "role": "fluorescence_3d_rotation_gif"}],
+            "outputs": [
+                {"path": str(out_path), "type": "gif", "role": "fluorescence_3d_rotation_gif"}
+            ],
         }
     )
+    return result
+
+
+def rotation_gif_job_payload(d: dict, ctx: Volume3DExportContext, job_ctx) -> dict:
+    """Build an export rotation GIF inside a cancellable background job."""
+    job_ctx.set_progress(0.1, "Building 3D rotation GIF")
+    result = rotation_gif_payload(d, ctx, preview=False, cancel_check=job_ctx.check_cancelled)
+    job_ctx.set_progress(1.0, "3D rotation GIF exported")
     return result
 
 
@@ -199,7 +226,9 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
         counts = np.ones(z_count, dtype=np.float64)
 
     for z in range(z_count):
-        plane = ctx.tiff_plane_from_array(arr, axes, roles, z=z, c=c, t=t, extra_indices=extra_indices)
+        plane = ctx.tiff_plane_from_array(
+            arr, axes, roles, z=z, c=c, t=t, extra_indices=extra_indices
+        )
         data = np.asarray(plane, dtype=np.float32)
         data = ctx.apply_optional_denoise(data, denoise_mode)
         if axis == "z":
@@ -256,7 +285,9 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
     overwrite = ctx.bool_value(d.get("overwrite", True), True)
     output_dir = _output_dir_for(p, output_dir_raw)
     safe_name = ctx.sanitize_prefix(output_name or p.stem, p.stem)
-    csv_path = _unique_output_path(output_dir / f"{safe_name}_C{c + 1}_{axis}_{metric}_distribution.csv", overwrite)
+    csv_path = _unique_output_path(
+        output_dir / f"{safe_name}_C{c + 1}_{axis}_{metric}_distribution.csv", overwrite
+    )
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["axis", "index", "coordinate_um", "intensity"])
         writer.writeheader()
@@ -269,7 +300,9 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
         "axis": axis,
         "metric": metric,
         "channel": c,
-        "outputs": [{"path": str(csv_path), "type": "csv", "role": "fluorescence_3d_intensity_distribution"}],
+        "outputs": [
+            {"path": str(csv_path), "type": "csv", "role": "fluorescence_3d_intensity_distribution"}
+        ],
     }
 
 
@@ -349,6 +382,7 @@ def rotation_gif_bytes(
     max_gif_points: int,
     show_scale_bar: bool,
     scale_bar_um: float,
+    cancel_check: Callable[[], None] | None = None,
 ) -> bytes:
     from PIL import Image, ImageDraw
 
@@ -375,6 +409,8 @@ def rotation_gif_bytes(
     rgb = np.clip(colors * 255.0, 0, 255).astype(np.uint8)
     frames = []
     for i in range(frame_count):
+        if cancel_check is not None:
+            cancel_check()
         angle = sign * (2.0 * math.pi * i / frame_count)
         rotated = positions @ (rotation_matrix(axis_vector, angle).T)
         view = rotated @ tilt.T
@@ -386,14 +422,22 @@ def rotation_gif_bytes(
         for idx in depth_order:
             x = int(xs[idx])
             y = int(ys[idx])
-            if x < -point_radius or y < -point_radius or x > image_size + point_radius or y > image_size + point_radius:
+            if (
+                x < -point_radius
+                or y < -point_radius
+                or x > image_size + point_radius
+                or y > image_size + point_radius
+            ):
                 continue
             color = tuple(int(v) for v in rgb[idx])
             alpha = 175 + int(70 * max(0.0, min(1.0, float(np.mean(colors[idx])))))
             if point_radius <= 1:
                 draw.point((x, y), fill=(*color, alpha))
             else:
-                draw.ellipse((x - point_radius, y - point_radius, x + point_radius, y + point_radius), fill=(*color, alpha))
+                draw.ellipse(
+                    (x - point_radius, y - point_radius, x + point_radius, y + point_radius),
+                    fill=(*color, alpha),
+                )
         if show_scale_bar:
             _draw_gif_scale_bar(draw, image_size, scale, scale_bar_um)
         frames.append(img)
@@ -413,7 +457,9 @@ def rotation_gif_bytes(
 
 
 def _output_dir_for(p: Path, output_dir_raw: str) -> Path:
-    output_dir = Path(output_dir_raw).expanduser() if output_dir_raw else p.parent / f"{p.stem}_3d_exports"
+    output_dir = (
+        Path(output_dir_raw).expanduser() if output_dir_raw else p.parent / f"{p.stem}_3d_exports"
+    )
     if not output_dir.is_absolute():
         output_dir = p.parent / output_dir
     output_dir.mkdir(parents=True, exist_ok=True)

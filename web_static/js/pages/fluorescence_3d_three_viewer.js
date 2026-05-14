@@ -227,3 +227,18 @@ async function exportVolume3D() {
     btnBusy('btnExport3D', false, 'Export 3D HTML');
   }
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'clearVolume3D',
+  'disposeVolume3D',
+  'exportVolume3D',
+  'generateVolume3D',
+  'loadThreeModules',
+  'renderVolume3D',
+  'setVolumeMessage',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

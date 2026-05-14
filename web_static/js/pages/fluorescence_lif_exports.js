@@ -178,3 +178,17 @@ window.addEventListener('load', () => {
     setStatus('status', 'Ready', 'ok');
   }
 });
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'exportAllTiff',
+  'exportLifManifest',
+  'exportSelectedTiff',
+  'runLifBackgroundJob',
+  'showLog',
+  'upsertResultCard',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

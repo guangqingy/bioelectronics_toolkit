@@ -89,6 +89,46 @@ async function dpPollJob(jobId, onUpdate, options) {
   }
 }
 
+let _dpActiveJobId = '';
+
+function dpEnsureJobCancelButton() {
+  const status = document.getElementById('status');
+  if (!status || document.getElementById('dpActiveJobCancel')) return document.getElementById('dpActiveJobCancel');
+  const btn = document.createElement('button');
+  btn.id = 'dpActiveJobCancel';
+  btn.type = 'button';
+  btn.className = 'btn-secondary dp-job-cancel';
+  btn.textContent = 'Cancel';
+  btn.hidden = true;
+  btn.addEventListener('click', async () => {
+    if (!_dpActiveJobId) return;
+    btn.disabled = true;
+    try {
+      await dpJobCancel(_dpActiveJobId);
+      setStatus('status', 'Cancel requested', 'warning');
+    } catch (e) {
+      setStatus('status', 'Cancel failed: ' + e.message, 'error');
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  status.insertAdjacentElement('afterend', btn);
+  return btn;
+}
+
+function dpShowJobCancel(jobId) {
+  _dpActiveJobId = jobId || '';
+  const btn = dpEnsureJobCancelButton();
+  if (btn) btn.hidden = !jobId;
+}
+
+function dpHideJobCancel(jobId) {
+  if (jobId && _dpActiveJobId && jobId !== _dpActiveJobId) return;
+  _dpActiveJobId = '';
+  const btn = document.getElementById('dpActiveJobCancel');
+  if (btn) btn.hidden = true;
+}
+
 function dpNormalizeJobData(data) {
   if (!data || typeof data !== 'object') return {};
   if (
@@ -107,22 +147,27 @@ async function dpRunJobEndpoint(endpoint, payload, options) {
   if (started.error) throw new Error(started.error);
   const jobId = started.job_id || (started.job && started.job.job_id);
   if (!jobId) return dpNormalizeJobData(started);
+  dpShowJobCancel(jobId);
 
-  const finalJob = await dpPollJob(jobId, opts.on_update, {
-    interval_ms: opts.interval_ms || 1000,
-  });
-  const data = dpNormalizeJobData(finalJob.data || {});
-  if ((!Array.isArray(data.outputs) || !data.outputs.length) && Array.isArray(finalJob.outputs) && finalJob.outputs.length) {
-    data.outputs = finalJob.outputs;
+  try {
+    const finalJob = await dpPollJob(jobId, opts.on_update, {
+      interval_ms: opts.interval_ms || 1000,
+    });
+    const data = dpNormalizeJobData(finalJob.data || {});
+    if ((!Array.isArray(data.outputs) || !data.outputs.length) && Array.isArray(finalJob.outputs) && finalJob.outputs.length) {
+      data.outputs = finalJob.outputs;
+    }
+    if ((!Array.isArray(data.warnings) || !data.warnings.length) && Array.isArray(finalJob.warnings) && finalJob.warnings.length) {
+      data.warnings = finalJob.warnings;
+    }
+    if (finalJob.status === 'failed' || finalJob.status === 'cancelled') {
+      throw new Error(finalJob.error || data.error || finalJob.message || 'Background job failed');
+    }
+    if (data.error) throw new Error(data.error);
+    return data;
+  } finally {
+    dpHideJobCancel(jobId);
   }
-  if ((!Array.isArray(data.warnings) || !data.warnings.length) && Array.isArray(finalJob.warnings) && finalJob.warnings.length) {
-    data.warnings = finalJob.warnings;
-  }
-  if (finalJob.status === 'failed' || finalJob.status === 'cancelled') {
-    throw new Error(finalJob.error || data.error || finalJob.message || 'Background job failed');
-  }
-  if (data.error) throw new Error(data.error);
-  return data;
 }
 
 function showLogoutScreen(message) {

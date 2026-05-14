@@ -45,10 +45,10 @@
   cursor: pointer;
 }
 .lif-table tbody tr:hover td {
-  background: #FAFBFD;
+  background: var(--surface-panel);
 }
 .lif-table tr.active td {
-  background: #EEF2FF;
+  background: var(--surface-blue-strong);
   color: var(--carbon);
 }
 .lif-name {
@@ -207,7 +207,7 @@
   padding: 9px 10px;
   border: 1px solid var(--cloud);
   border-radius: var(--radius-sm);
-  background: #FAFBFD;
+  background: var(--surface-panel);
 }
 .lif-volume-controls .param-row {
   margin: 0 0 7px;

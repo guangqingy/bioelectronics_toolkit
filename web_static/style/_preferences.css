@@ -9,9 +9,9 @@
   overflow-x: auto;
 }
 .prefs-tab {
-  border: 1px solid #d7dce6;
+  border: 1px solid var(--border-muted);
   border-radius: var(--radius-sm);
-  background: #fff;
+  background: var(--white);
   color: var(--pewter);
   cursor: pointer;
   font-size: 12.5px;
@@ -21,8 +21,8 @@
 }
 .prefs-tab:hover,
 .prefs-tab.active {
-  border-color: #cbd6f6;
-  background: #F2F5FF;
+  border-color: var(--border-blue-muted);
+  background: var(--surface-blue);
   color: var(--blue);
 }
 .prefs-layout {
@@ -61,7 +61,7 @@
 .prefs-file {
   border: 1px solid var(--cloud);
   border-radius: var(--radius-sm);
-  background: #FAFBFD;
+  background: var(--surface-panel);
   color: var(--silver);
   font-family: "SF Mono", "Menlo", monospace;
   font-size: 11px;
@@ -71,7 +71,7 @@
 .prefs-card {
   border: 1px solid var(--cloud);
   border-radius: var(--radius-md);
-  background: #FAFBFD;
+  background: var(--surface-panel);
   padding: 10px;
 }
 .prefs-section-title {
@@ -107,7 +107,7 @@
   overflow: auto;
   border: 1px solid var(--cloud);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--white);
   padding: 10px;
 }
 .prefs-form-section {
@@ -169,7 +169,7 @@
 .prefs-advanced {
   border: 1px solid var(--cloud);
   border-radius: var(--radius-md);
-  background: #FAFBFD;
+  background: var(--surface-panel);
   padding: 8px 10px;
 }
 .prefs-advanced summary {

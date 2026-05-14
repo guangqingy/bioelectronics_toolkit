@@ -377,3 +377,25 @@ function exportAllOutputs() {
   saveSequenceOutputs({ saveCsv: true, savePlot: true, savePreview: true, saveRadialCsv: true, saveRadialPlot: true });
 }
 
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'activeRecordsForExport',
+  'buildExportPrefix',
+  'exportAllOutputs',
+  'exportCSV',
+  'exportGif',
+  'exportPlotPNG',
+  'exportPreviewPNG',
+  'exportRadialCSV',
+  'exportRadialPlotPNG',
+  'nowStamp',
+  'roiInputFileRecords',
+  'runAnalysis',
+  'sanitizePrefix',
+  'saveSequenceOutputs',
+  'upsertResultCard',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

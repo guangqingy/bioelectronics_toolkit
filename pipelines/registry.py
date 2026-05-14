@@ -48,7 +48,9 @@ def _annotate_script(
     out["available"] = available
     out["availability"] = "available" if available else "missing"
     out["availability_label"] = "Available" if available else "Local script missing"
-    out["availability_message"] = "" if available else out.get("missing_message", MISSING_SCRIPT_MESSAGE)
+    out["availability_message"] = (
+        "" if available else out.get("missing_message", MISSING_SCRIPT_MESSAGE)
+    )
     if include_resolved_path:
         out["resolved_script_path"] = str(resolved) if available and resolved else ""
     return out

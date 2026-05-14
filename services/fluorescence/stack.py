@@ -225,8 +225,8 @@ def build_fiji_macro(tiff_path: Path, included_settings: list[dict]) -> str:
         lines.append(f"Stack.setChannel({i});")
         lines.append(imagej_lut_command(str(settings.get("lut", "Gray"))))
         lines.append(
-            f'setMinAndMax({float(settings.get("min", 0.0)):.6f}, '
-            f'{float(settings.get("max", 1.0)):.6f});'
+            f"setMinAndMax({float(settings.get('min', 0.0)):.6f}, "
+            f"{float(settings.get('max', 1.0)):.6f});"
         )
 
     return "\n".join(lines) + "\n"

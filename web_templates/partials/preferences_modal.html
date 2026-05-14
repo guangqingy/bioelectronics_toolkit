@@ -1,18 +1,18 @@
-<div id="prefsOverlay" class="modal-overlay" onclick="if(event.target===this) closePrefsModal()">
+<div id="prefsOverlay" class="modal-overlay" onclick="if(event.target===this) DP.settings.close()">
   <section class="modal-card prefs-modal" role="dialog" aria-modal="true" aria-labelledby="prefsTitle">
     <div class="modal-header">
       <div>
         <div class="page-eyebrow">Local Cache</div>
         <div class="modal-title" id="prefsTitle">GUI Settings</div>
       </div>
-      <button class="btn-icon" type="button" onclick="closePrefsModal()">Close</button>
+      <button class="btn-icon" type="button" onclick="DP.settings.close()">Close</button>
     </div>
     <div class="modal-body prefs-body">
       <div class="prefs-tabs" role="tablist" aria-label="Settings sections">
-        <button class="prefs-tab active" type="button" data-prefs-tab="defaults" onclick="openPrefsTab('defaults')">Defaults</button>
-        <button class="prefs-tab" type="button" data-prefs-tab="history" onclick="openPrefsTab('history')">Run History</button>
-        <button class="prefs-tab" type="button" data-prefs-tab="jobs" onclick="openPrefsTab('jobs')">Jobs</button>
-        <button class="prefs-tab" type="button" data-prefs-tab="json" onclick="openPrefsTab('json')">Advanced JSON</button>
+        <button class="prefs-tab active" type="button" data-prefs-tab="defaults" onclick="DP.settings.openTab('defaults')">Defaults</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="history" onclick="DP.settings.openTab('history')">Run History</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="jobs" onclick="DP.settings.openTab('jobs')">Jobs</button>
+        <button class="prefs-tab" type="button" data-prefs-tab="json" onclick="DP.settings.openTab('json')">Advanced JSON</button>
       </div>
       <div class="prefs-layout" data-prefs-tab-panel="defaults">
         <div class="prefs-pane prefs-side">
@@ -26,7 +26,7 @@
             <div class="prefs-section-title">Browser Default</div>
             <div class="input-row">
               <input type="text" id="prefsGlobalDefaultFolder" class="input-path" placeholder="/path/to/default/data/folder">
-              <button class="btn-icon" type="button" onclick="pickFolderForSettings('prefsGlobalDefaultFolder')">Browse</button>
+              <button class="btn-icon" type="button" onclick="DP.page.pickFolderForSettings('prefsGlobalDefaultFolder')">Browse</button>
             </div>
             <label class="checkbox-row" style="margin-top:8px">
               <input type="checkbox" id="prefsUseDefaultOnEmpty" checked>
@@ -49,20 +49,20 @@
               <div class="prefs-section-title">Default Parameters</div>
               <div class="prefs-sub" id="prefsFormSub">Choose an interface to edit its defaults.</div>
             </div>
-            <button class="btn-secondary" type="button" onclick="loadCurrentPageIntoSettings()">Load From Page</button>
+            <button class="btn-secondary" type="button" onclick="DP.page.loadCurrentPageIntoSettings()">Load From Page</button>
           </div>
           <div id="prefsVisualForm" class="prefs-form-grid"></div>
           <div class="prefs-actions">
-            <button class="btn-secondary" type="button" onclick="loadPrefsModal()">Reload</button>
-            <button class="btn-secondary" type="button" onclick="applyPrefsToCurrentPage()">Apply To Page</button>
-            <button class="btn-primary prefs-save-btn" type="button" onclick="savePrefsVisual()">Save Defaults</button>
+            <button class="btn-secondary" type="button" onclick="DP.page.loadPrefsModal()">Reload</button>
+            <button class="btn-secondary" type="button" onclick="DP.page.applyPrefsToCurrentPage()">Apply To Page</button>
+            <button class="btn-primary prefs-save-btn" type="button" onclick="DP.page.savePrefsVisual()">Save Defaults</button>
           </div>
         </div>
       </div>
 
       <div class="prefs-card prefs-wide" data-prefs-tab-panel="history">
         <div class="prefs-section-title">Run History</div>
-        <button class="btn-secondary btn-block" type="button" onclick="loadRunHistoryForCurrentProject()">Refresh Recent Runs</button>
+        <button class="btn-secondary btn-block" type="button" onclick="DP.page.loadRunHistoryForCurrentProject()">Refresh Recent Runs</button>
         <div class="prefs-file" id="runHistoryRoot" style="margin-top:8px">Project folder not detected</div>
         <div id="runHistoryList" class="run-history-list"></div>
         <pre id="runHistoryDetails" class="run-history-details"></pre>
@@ -70,7 +70,7 @@
 
       <div class="prefs-card prefs-wide" data-prefs-tab-panel="jobs">
         <div class="prefs-section-title">Background Jobs</div>
-        <button class="btn-secondary btn-block" type="button" onclick="loadBackgroundJobs(false)">Refresh Jobs</button>
+        <button class="btn-secondary btn-block" type="button" onclick="DP.jobs.load(false)">Refresh Jobs</button>
         <div id="backgroundJobList" class="run-history-list"></div>
       </div>
 
@@ -78,8 +78,8 @@
         <summary>Advanced JSON</summary>
         <textarea id="prefsJson" class="prefs-json" spellcheck="false"></textarea>
         <div class="prefs-actions">
-          <button class="btn-secondary" type="button" onclick="renderPrefsView()">Discard JSON Edits</button>
-          <button class="btn-secondary" type="button" onclick="savePrefsJson()">Save JSON</button>
+          <button class="btn-secondary" type="button" onclick="DP.page.renderPrefsView()">Discard JSON Edits</button>
+          <button class="btn-secondary" type="button" onclick="DP.page.savePrefsJson()">Save JSON</button>
         </div>
       </details>
 

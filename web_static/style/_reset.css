@@ -4,7 +4,7 @@
 html { height: 100%; font-size: 15px; }
 body {
   height: 100%;
-  background: #F7F8FA;
+  background: var(--app-bg);
   color: var(--graphite);
   font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;

@@ -66,3 +66,19 @@ function planeCount(rec) {
     Math.max(1, Number(d.z || 1)) *
     Math.max(1, Number(d.m || 1));
 }
+
+// DP.page exports for template event handlers.
+window.DP = window.DP || {};
+window.DP.page = window.DP.page || {};
+[
+  'displayName',
+  'escapeAttr',
+  'escapeHtml',
+  'hasCustomName',
+  'loadRenameMap',
+  'planeCount',
+  'renameStorageKey',
+  'saveRenameMap',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});

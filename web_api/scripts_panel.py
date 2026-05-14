@@ -11,7 +11,12 @@ from pydantic import Field, ValidationError
 from pipelines.registry import find_pipeline_script, pipeline_catalog, validate_registry
 from services import scripts_panel as script_service
 
-from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+from .request_validation import (
+    RequestModel,
+    parse_json_payload,
+    request_schema,
+    validation_error_response,
+)
 
 
 class ScriptRunRequest(RequestModel):
@@ -163,7 +168,9 @@ def register_scripts_panel_routes(app, ctx):
                 "stderr": result.get("stderr", "")[:1000],
                 "output_dir": result.get("output_dir", ""),
                 "artifacts": artifacts,
-                "figures": script_service.figures_from_artifacts(artifacts) if result.get("done") else [],
+                "figures": script_service.figures_from_artifacts(artifacts)
+                if result.get("done")
+                else [],
                 "job_status": result.get("job_status", ""),
                 "progress": result.get("progress"),
             }

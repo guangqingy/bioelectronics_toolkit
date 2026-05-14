@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-14
+
 ### Changed
 - Migrate telemetry, preferences, file profiles, run history, and scripts-panel
   request handling to Pydantic schemas, with OpenAPI request bodies generated
@@ -39,6 +41,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   catalog exception, and GitHub issue drafts for the remaining oversized routes.
 - Extend the service-ratio checker with an optional LOC-budget mode that honors
   top-of-file `LOC budget exception` comments.
+- Upgrade the service-ratio checker to a baseline ratchet that fails route-layer
+  regressions, with an explicit baseline update workflow for justified changes.
+- Expand opt-in telemetry from a stub into explicit page-open and export-click
+  client APIs, backend endpoints, and protocol documentation.
+- Add a detailed module index for `services/fluorescence/` to make the
+  now-large service package easier to navigate without over-fragmenting it.
+- Add Playwright e2e smoke-test infrastructure for the dashboard, command
+  palette, ABF browse picker, pipeline missing-state, settings tabs, and error
+  banner flows.
+- Move remaining non-bootstrap inline page JavaScript into `web_static/js/pages/`
+  and route template event handlers through the `DP` namespace.
+- Add automatic parameter-label tooltips, richer empty-state hints, and
+  additional collapsible sections on dense fluorescence/RHD pages.
+- Strengthen background-job cancellation with a visible active-job cancel
+  control and cancellation checks in long-running workers.
 
 ## [0.5.0] - 2026-05-14
 
@@ -223,7 +240,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow (lint + unittest + compileall).
 - `sync_to_github.sh` helper script for quick chore-style syncs.
 
-[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.2.0...v0.3.0
