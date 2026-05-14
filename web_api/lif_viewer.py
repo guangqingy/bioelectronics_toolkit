@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move remaining LIF response assembly into services/fluorescence/lif_* helpers
+# and track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 import base64
 import csv
 import io

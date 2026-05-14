@@ -1,10 +1,12 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move ROI sequence image/GIF export assembly into fluorescence ROI services
+# and track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 from __future__ import annotations
 
 import traceback
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from flask import jsonify
 from pydantic import ValidationError
 
@@ -18,13 +20,11 @@ from .request_validation import parse_json_payload, request_schema, validation_e
 
 def register_fluorescence_roi_export_routes(app, fl):
     err = fl["err"]
-    fig_to_b64 = fl["fig_to_b64"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
     has_pil = fl["has_pil"]
     has_tiff = fl["has_tiff"]
     jobs = fl["jobs"]
-    tifflib = fl["tifflib"]
 
     _fl_bool = fl["_fl_bool"]
     _fl_decode_base64_payload = fl["_fl_decode_base64_payload"]

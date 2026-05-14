@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move EMG schemas or legacy compatibility wrappers out so this route file
+# returns to budget; see docs/loc_budget_issue_drafts.md.
 import traceback
 from typing import Any
 

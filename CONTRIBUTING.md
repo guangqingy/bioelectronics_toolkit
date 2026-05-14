@@ -43,6 +43,7 @@ python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cach
 python3 -m unittest discover -s tests -v
 coverage run --source=services -m unittest discover -s tests && coverage report
 python3 dev_scripts/check_services_ratio.py --warn-only
+python3 dev_scripts/check_services_ratio.py --check-loc-budget --warn-only
 ```
 
 CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`

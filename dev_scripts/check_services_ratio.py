@@ -6,7 +6,6 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WEB_API = ROOT / "web_api"
 SERVICES = ROOT / "services"
@@ -45,6 +44,7 @@ class RatioRecord:
     service_lines: int
     ratio: float | None
     status: str
+    loc_budget_exception: bool = False
 
 
 def _source_lines(path: Path) -> int:
@@ -53,6 +53,15 @@ def _source_lines(path: Path) -> int:
     except UnicodeDecodeError:
         text = path.read_text(encoding="utf-8", errors="replace")
     return len(text.splitlines())
+
+
+def _has_loc_budget_exception(path: Path) -> bool:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    header = "\n".join(text.splitlines()[:12])
+    return "LOC budget exception:" in header
 
 
 def _service_candidates(module_name: str) -> list[Path]:
@@ -88,13 +97,20 @@ def _service_line_count(module_name: str) -> tuple[str, int]:
     return "", 0
 
 
-def collect_ratios(max_ratio: float = 2.0, min_web_lines: int = 200) -> list[RatioRecord]:
+def collect_ratios(
+    max_ratio: float = 2.0,
+    min_web_lines: int = 200,
+    *,
+    check_loc_budget: bool = False,
+    max_web_lines: int = 200,
+) -> list[RatioRecord]:
     records: list[RatioRecord] = []
     for path in sorted(WEB_API.glob("*.py")):
         stem = path.stem
         if stem in IGNORED_WEB_MODULES:
             continue
         web_lines = _source_lines(path)
+        loc_budget_exception = _has_loc_budget_exception(path)
         service_target, service_lines = _service_line_count(stem)
         ratio = (web_lines / service_lines) if service_lines else None
         status = "ok"
@@ -102,6 +118,8 @@ def collect_ratios(max_ratio: float = 2.0, min_web_lines: int = 200) -> list[Rat
             status = "missing_service"
         elif ratio is not None and ratio > max_ratio and web_lines >= min_web_lines:
             status = "route_too_thick"
+        elif check_loc_budget and web_lines > max_web_lines and not loc_budget_exception:
+            status = "route_over_loc_budget"
         records.append(
             RatioRecord(
                 web_module=path.relative_to(ROOT).as_posix(),
@@ -110,6 +128,7 @@ def collect_ratios(max_ratio: float = 2.0, min_web_lines: int = 200) -> list[Rat
                 service_lines=service_lines,
                 ratio=ratio,
                 status=status,
+                loc_budget_exception=loc_budget_exception,
             )
         )
     return records
@@ -119,11 +138,22 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Report web_api/services line-count balance.")
     parser.add_argument("--max-ratio", type=float, default=2.0)
     parser.add_argument("--min-web-lines", type=int, default=200)
+    parser.add_argument(
+        "--check-loc-budget",
+        action="store_true",
+        help="Also report route modules over the LOC budget.",
+    )
+    parser.add_argument("--max-web-lines", type=int, default=200)
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
     parser.add_argument("--warn-only", action="store_true", help="Always exit 0.")
     args = parser.parse_args(argv)
 
-    records = collect_ratios(max_ratio=args.max_ratio, min_web_lines=args.min_web_lines)
+    records = collect_ratios(
+        max_ratio=args.max_ratio,
+        min_web_lines=args.min_web_lines,
+        check_loc_budget=args.check_loc_budget,
+        max_web_lines=args.max_web_lines,
+    )
     offenders = [record for record in records if record.status != "ok"]
 
     if args.json:
@@ -133,10 +163,11 @@ def main(argv: list[str] | None = None) -> int:
         for record in offenders:
             ratio_text = "n/a" if record.ratio is None else f"{record.ratio:.2f}"
             service = record.service_target or "(no matching service)"
+            exception = " [LOC exception]" if record.loc_budget_exception else ""
             print(
                 f"- {record.status}: {record.web_module} "
                 f"({record.web_lines} LOC) vs {service} ({record.service_lines} LOC), "
-                f"ratio={ratio_text}"
+                f"ratio={ratio_text}{exception}"
             )
         if not offenders:
             print("- ok: no route modules exceeded the configured threshold")

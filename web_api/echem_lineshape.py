@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move line-shape loading/plot/export payload assembly into echem services and
+# track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 import re as _re
 import traceback
 from pathlib import Path

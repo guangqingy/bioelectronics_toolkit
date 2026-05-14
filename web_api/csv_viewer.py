@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move remaining CSV export/download response assembly into services/csv_viewer
+# and track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 import traceback
 from pathlib import Path
 from typing import Any

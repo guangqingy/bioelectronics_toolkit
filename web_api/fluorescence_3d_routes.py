@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move remaining 3D response assembly into volume3d service helpers and track
+# the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 from __future__ import annotations
 
 import traceback

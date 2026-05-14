@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Split stack browse/preview/export/normalize route helpers into focused
+# services and track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 from __future__ import annotations
 
 import traceback

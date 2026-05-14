@@ -1,3 +1,6 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move ABF schemas or remaining export wrappers out so this route file returns
+# to the route-only budget; see docs/loc_budget_issue_drafts.md.
 import traceback
 from typing import Any
 

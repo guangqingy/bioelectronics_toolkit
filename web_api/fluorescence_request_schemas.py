@@ -1,3 +1,9 @@
+# LOC budget exception: this module is about 313 lines because it is a
+# fluorescence request-schema catalog, not a route module.
+# Splitting attempted on 2026-05-14; abandoned because one domain-level schema
+# registry keeps OpenAPI request naming and route imports easier to audit.
+# Re-evaluate when this file exceeds 500 lines or per-feature schema packages
+# are introduced for the fluorescence route modules.
 from __future__ import annotations
 
 from typing import Any

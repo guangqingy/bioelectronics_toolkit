@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   non-empty path and LIF 3D export keeps its export-quality defaults.
 - Thin the RHD viewer route module below the route LOC budget by moving plotting,
   processing, and export payload logic into a dedicated RHD viewer service.
+- Thin the figure generator route module below the route LOC budget by splitting
+  summary parsing, plotting, and export workflows into a focused service package.
+- Document current Web API LOC budget violations with split TODOs, a schema
+  catalog exception, and GitHub issue drafts for the remaining oversized routes.
+- Extend the service-ratio checker with an optional LOC-budget mode that honors
+  top-of-file `LOC budget exception` comments.
 
 ## [0.5.0] - 2026-05-14
 

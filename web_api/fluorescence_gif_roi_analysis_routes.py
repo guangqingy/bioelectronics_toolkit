@@ -1,6 +1,8 @@
+# TODO(structure-debt): this route module exceeds the 200-line route budget.
+# Move GIF ROI analysis/export workflow helpers into services/fluorescence/ and
+# track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 from __future__ import annotations
 
-import base64
 import io
 import traceback
 from pathlib import Path
