@@ -7,10 +7,30 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import Field, ValidationError
+
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 
 
 _prefs_lock = threading.Lock()
+
+
+class PreferencesGetRequest(RequestModel):
+    pass
+
+
+class PreferencesSaveRequest(RequestModel):
+    prefs: dict[str, Any]
+
+
+class ViewPreferencesGetRequest(RequestModel):
+    view: str = Field(min_length=1)
+
+
+class ViewPreferencesSaveRequest(RequestModel):
+    view: str = Field(min_length=1)
+    data: dict[str, Any]
 
 
 def _now_iso() -> str:
@@ -61,35 +81,40 @@ def register_preferences_routes(app, ctx):
     prefs_path = Path(ctx["BASE_DIR"]) / "web_gui_settings.json"
 
     @app.route("/api/preferences/get", methods=["POST"])
+    @request_schema(PreferencesGetRequest)
     def api_preferences_get():
         try:
+            parse_json_payload(PreferencesGetRequest)
             with _prefs_lock:
                 prefs = _read_preferences(prefs_path)
             return jsonify({"ok": True, "path": str(prefs_path), "prefs": prefs})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as exc:
             return err(exc)
 
     @app.route("/api/preferences/save", methods=["POST"])
+    @request_schema(PreferencesSaveRequest)
     def api_preferences_save():
         try:
-            data = request.json or {}
-            prefs = data.get("prefs")
-            if not isinstance(prefs, dict):
-                return err("Missing preferences object")
+            payload = parse_json_payload(PreferencesSaveRequest)
+            prefs = payload.prefs
             prefs.setdefault("global", {})
             prefs.setdefault("views", {})
             with _prefs_lock:
                 _write_preferences(prefs_path, prefs)
             return jsonify({"ok": True, "path": str(prefs_path), "prefs": prefs})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as exc:
             return err(exc)
 
     @app.route("/api/preferences/view_get", methods=["POST"])
+    @request_schema(ViewPreferencesGetRequest)
     def api_preferences_view_get():
         try:
-            view = str((request.json or {}).get("view", "")).strip()
-            if not view:
-                return err("Missing view")
+            payload = parse_json_payload(ViewPreferencesGetRequest)
+            view = payload.view.strip()
             with _prefs_lock:
                 prefs = _read_preferences(prefs_path)
             return jsonify(
@@ -100,23 +125,24 @@ def register_preferences_routes(app, ctx):
                     "data": prefs.get("views", {}).get(view, {}),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as exc:
             return err(exc)
 
     @app.route("/api/preferences/view_save", methods=["POST"])
+    @request_schema(ViewPreferencesSaveRequest)
     def api_preferences_view_save():
         try:
-            body = request.json or {}
-            view = str(body.get("view", "")).strip()
-            data = body.get("data")
-            if not view:
-                return err("Missing view")
-            if not isinstance(data, dict):
-                return err("Missing view data object")
+            payload = parse_json_payload(ViewPreferencesSaveRequest)
+            view = payload.view.strip()
+            data = payload.data
             with _prefs_lock:
                 prefs = _read_preferences(prefs_path)
                 prefs.setdefault("views", {})[view] = data
                 _write_preferences(prefs_path, prefs)
             return jsonify({"ok": True, "path": str(prefs_path), "view": view, "data": data})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception as exc:
             return err(exc)

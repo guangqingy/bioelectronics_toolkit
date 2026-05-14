@@ -3,11 +3,29 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import Field, ValidationError
 
 from pipelines.registry import find_pipeline_script, pipeline_catalog, validate_registry
 from services import scripts_panel as script_service
+
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+
+
+class ScriptRunRequest(RequestModel):
+    script_id: str = Field(min_length=1)
+    params: dict[str, Any] = Field(default_factory=dict)
+    cat: str = ""
+
+
+class ScriptStatusRequest(RequestModel):
+    job_id: str = Field(min_length=1)
+
+
+class ScriptOpenFolderRequest(RequestModel):
+    path: str = Field(min_length=1)
 
 
 def register_scripts_panel_routes(app, ctx):
@@ -31,16 +49,18 @@ def register_scripts_panel_routes(app, ctx):
         )
 
     @app.route("/api/scripts/run", methods=["POST"])
+    @request_schema(ScriptRunRequest)
     def api_scripts_run():
         """
         For analysis scripts: attempt to run the script with modified parameters
         injected via environment variables (DP_BASE_DIR, DP_OUTPUT_DIR, etc.).
         """
-        d = request.json or {}
-        script_id = d.get("script_id", "")
-        params = d.get("params", {})
-        if not isinstance(params, dict):
-            params = {}
+        try:
+            payload = parse_json_payload(ScriptRunRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        script_id = payload.script_id
+        params = payload.params
 
         script_entry = find_pipeline_script(script_id, base_dir)
         if not script_entry:
@@ -65,7 +85,7 @@ def register_scripts_panel_routes(app, ctx):
                 out_dir,
                 metadata={
                     "script_id": script_id,
-                    "category": script_entry.get("category") or d.get("cat", ""),
+                    "category": script_entry.get("category") or payload.cat,
                     "script_path": str(script_path),
                     "output_dir": str(out_dir or ""),
                 },
@@ -123,8 +143,13 @@ def register_scripts_panel_routes(app, ctx):
         )
 
     @app.route("/api/scripts/status", methods=["POST"])
+    @request_schema(ScriptStatusRequest)
     def api_scripts_status():
-        job_id = (request.json or {}).get("job_id", "")
+        try:
+            payload = parse_json_payload(ScriptStatusRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        job_id = payload.job_id
         result = _script_status_payload(job_id)
         if not result:
             return err(f"Unknown script job: {job_id}", 404)
@@ -145,8 +170,13 @@ def register_scripts_panel_routes(app, ctx):
         )
 
     @app.route("/api/scripts/open_folder", methods=["POST"])
+    @request_schema(ScriptOpenFolderRequest)
     def api_scripts_open_folder():
-        path = (request.json or {}).get("path", "")
+        try:
+            payload = parse_json_payload(ScriptOpenFolderRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        path = payload.path
         p = Path(path)
         if p.is_dir():
             try:

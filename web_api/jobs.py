@@ -6,7 +6,7 @@ from pydantic import Field, ValidationError
 
 from services.background_jobs import JobContext, JobManager
 
-from .request_validation import RequestModel, parse_json_payload, validation_error_response
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_error, api_ok
 
 
@@ -95,6 +95,7 @@ def register_job_routes(app, ctx) -> None:
     jobs: JobManager = ctx["jobs"]
 
     @app.route("/api/jobs/list", methods=["POST"])
+    @request_schema(JobListRequest)
     def api_jobs_list():
         try:
             payload = parse_json_payload(JobListRequest)
@@ -103,6 +104,7 @@ def register_job_routes(app, ctx) -> None:
         return api_ok({"jobs": jobs.list(limit=payload.limit, include_finished=payload.include_finished)})
 
     @app.route("/api/jobs/get", methods=["POST"])
+    @request_schema(JobIdRequest)
     def api_jobs_get():
         try:
             payload = parse_json_payload(JobIdRequest)
@@ -115,6 +117,7 @@ def register_job_routes(app, ctx) -> None:
         return api_ok({"job": job})
 
     @app.route("/api/jobs/cancel", methods=["POST"])
+    @request_schema(JobIdRequest)
     def api_jobs_cancel():
         try:
             payload = parse_json_payload(JobIdRequest)

@@ -17,7 +17,7 @@ from services.system_picker import (
     _default_picker_dir,
 )
 
-from .request_validation import RequestModel, parse_json_payload, validation_error_response
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
 
 
@@ -65,6 +65,7 @@ def register_system_routes(app, ctx) -> None:
     base_dir = Path(ctx["BASE_DIR"])
 
     @app.route("/api/system/select_folder", methods=["POST"])
+    @request_schema(PickerRequest)
     def api_system_select_folder():
         try:
             payload = parse_json_payload(PickerRequest)
@@ -79,6 +80,7 @@ def register_system_routes(app, ctx) -> None:
             return err(traceback.format_exc())
 
     @app.route("/api/system/select_file", methods=["POST"])
+    @request_schema(PickerRequest)
     def api_system_select_file():
         try:
             payload = parse_json_payload(PickerRequest)

@@ -925,9 +925,37 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["openapi"], "3.1.0")
         self.assertIn("PickerRequest", payload["components"]["schemas"])
+        for schema_name in [
+            "TelemetryEventRequest",
+            "PreferencesSaveRequest",
+            "FileProfileSaveRequest",
+            "RunPackageRequest",
+            "ScriptRunRequest",
+        ]:
+            self.assertIn(schema_name, payload["components"]["schemas"])
+
+        request_refs = {
+            "/api/telemetry/event": "#/components/schemas/TelemetryEventRequest",
+            "/api/preferences/view_save": "#/components/schemas/ViewPreferencesSaveRequest",
+            "/api/file_profiles/save": "#/components/schemas/FileProfileSaveRequest",
+            "/api/run_history/package_job": "#/components/schemas/RunPackageRequest",
+            "/api/scripts/run": "#/components/schemas/ScriptRunRequest",
+        }
+        for path, expected_ref in request_refs.items():
+            operation = payload["paths"][path]["post"]
+            schema_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+            self.assertEqual(schema_ref, expected_ref)
 
     def test_schema_validation_returns_422(self) -> None:
         response = self.client.post("/api/jobs/list", json={"limit": 9999})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 422)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"], "Invalid request payload")
+
+    def test_migrated_preference_schema_validation_returns_422(self) -> None:
+        response = self.client.post("/api/preferences/view_get", json={})
         payload = response.get_json()
 
         self.assertEqual(response.status_code, 422)

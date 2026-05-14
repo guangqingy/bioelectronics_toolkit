@@ -7,13 +7,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from flask import request
+from pydantic import Field, ValidationError
 
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
 
 
 _telemetry_lock = threading.Lock()
 _ALLOWED_EVENTS = {"page_open", "export_click", "startup"}
+
+
+class TelemetryEventRequest(RequestModel):
+    event: str = Field(default="", max_length=80)
+    view: str = Field(default="unknown", max_length=80)
+    label: str = Field(default="", max_length=80)
 
 
 def _now_iso() -> str:
@@ -45,28 +52,35 @@ def _telemetry_enabled(prefs_path: Path) -> bool:
 
 def register_telemetry_routes(app, ctx) -> None:
     base_dir = Path(ctx["BASE_DIR"])
+    err = ctx["err"]
     prefs_path = base_dir / "web_gui_settings.json"
     telemetry_path = base_dir / ".dataprocess_cache" / "telemetry.json"
 
     @app.route("/api/telemetry/event", methods=["POST"])
+    @request_schema(TelemetryEventRequest)
     def api_telemetry_event():
-        body = request.get_json(silent=True) or {}
-        event = str(body.get("event") or "").strip()
-        if event not in _ALLOWED_EVENTS:
-            return api_ok({"enabled": False, "recorded": False})
-        if not _telemetry_enabled(prefs_path):
-            return api_ok({"enabled": False, "recorded": False})
+        try:
+            payload = parse_json_payload(TelemetryEventRequest)
+            event = payload.event.strip()
+            if event not in _ALLOWED_EVENTS:
+                return api_ok({"enabled": False, "recorded": False})
+            if not _telemetry_enabled(prefs_path):
+                return api_ok({"enabled": False, "recorded": False})
 
-        view = str(body.get("view") or "unknown").strip()[:80] or "unknown"
-        label = str(body.get("label") or "").strip()[:80]
-        key = f"{event}:{view}" + (f":{label}" if label else "")
+            view = payload.view.strip()[:80] or "unknown"
+            label = payload.label.strip()[:80]
+            key = f"{event}:{view}" + (f":{label}" if label else "")
 
-        with _telemetry_lock:
-            data = _read_json(telemetry_path, {"version": 1, "events": {}, "updated_at": ""})
-            events = data.setdefault("events", {})
-            events[key] = int(events.get(key) or 0) + 1
-            data["updated_at"] = _now_iso()
-            data["webgui_version"] = str(app.config.get("APP_VERSION") or "")
-            data["remote_url_configured"] = bool(os.environ.get("DATAPROCESS_TELEMETRY_URL"))
-            _write_json(telemetry_path, data)
-        return api_ok({"enabled": True, "recorded": True})
+            with _telemetry_lock:
+                data = _read_json(telemetry_path, {"version": 1, "events": {}, "updated_at": ""})
+                events = data.setdefault("events", {})
+                events[key] = int(events.get(key) or 0) + 1
+                data["updated_at"] = _now_iso()
+                data["webgui_version"] = str(app.config.get("APP_VERSION") or "")
+                data["remote_url_configured"] = bool(os.environ.get("DATAPROCESS_TELEMETRY_URL"))
+                _write_json(telemetry_path, data)
+            return api_ok({"enabled": True, "recorded": True})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception as exc:
+            return err(exc)

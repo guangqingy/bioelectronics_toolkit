@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Migrate telemetry, preferences, file profiles, run history, and scripts-panel
+  request handling to Pydantic schemas, with OpenAPI request bodies generated
+  from registered schemas.
+
 ## [0.5.0] - 2026-05-14
 
 ### Changed
