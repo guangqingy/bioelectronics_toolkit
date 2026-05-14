@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import traceback
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import Field, ValidationError
 
 from services.figure_generator import (
     DEFAULT_OUT_NAME,
@@ -34,6 +36,27 @@ from services.figure_generator import (
 )
 
 from .jobs import route_response_to_payload, submit_json_task
+from .request_validation import RequestModel, parse_json_payload, request_schema, validation_error_response
+
+
+class FigureBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class FigurePlotRequest(RequestModel):
+    main_folder: str = ""
+    output_name: str = ""
+    queue: list[Any] = Field(default_factory=list)
+    metrics: Any = None
+    metric: str = ""
+    use_peak: bool = True
+    use_integral: bool = True
+    x_lin_ranges: Any = ""
+    x_log_ranges: Any = ""
+
+
+class FigureRunRequest(FigurePlotRequest):
+    action: str = "analyze"
 
 
 def register_figure_generator_routes(app, ctx):
@@ -47,8 +70,12 @@ def register_figure_generator_routes(app, ctx):
             return route_response_to_payload(handler(body or {}))
 
     @app.route("/api/figure/browse", methods=["POST"])
+    @request_schema(FigureBrowseRequest)
     def api_figure_browse():
-        folder = (request.json or {}).get("folder", "")
+        try:
+            folder = parse_json_payload(FigureBrowseRequest).folder
+        except ValidationError as exc:
+            return validation_error_response(exc)
         p = Path(folder)
         if not p.is_dir():
             return jsonify({"subfolders": []})
@@ -62,8 +89,12 @@ def register_figure_generator_routes(app, ctx):
         return jsonify({"subfolders": subs})
 
     @app.route("/api/figure/plot", methods=["POST"])
+    @request_schema(FigurePlotRequest)
     def api_figure_plot():
-        d = request.json or {}
+        try:
+            d = parse_json_payload(FigurePlotRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         queue = d.get("queue", [])
         if not queue:
             return err("Queue is empty")
@@ -155,8 +186,15 @@ def register_figure_generator_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/figure/run", methods=["POST"])
+    @request_schema(FigureRunRequest)
     def api_figure_run(payload=None):
-        d = (request.json or {}) if payload is None else payload
+        try:
+            if payload is None:
+                d = parse_json_payload(FigureRunRequest).model_dump()
+            else:
+                d = FigureRunRequest.model_validate(payload).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         queue = d.get("queue", [])
         action = str(d.get("action", "analyze")).strip().lower()
 
@@ -499,7 +537,12 @@ def register_figure_generator_routes(app, ctx):
             return err(traceback.format_exc())
 
     @app.route("/api/figure/run_job", methods=["POST"])
+    @request_schema(FigureRunRequest)
     def api_figure_run_job():
+        try:
+            body = parse_json_payload(FigureRunRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "figure.run",
@@ -507,6 +550,6 @@ def register_figure_generator_routes(app, ctx):
             lambda job_ctx, body: _response_task(
                 job_ctx, body, api_figure_run, "Running figure export"
             ),
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/figure/run"},
         )
