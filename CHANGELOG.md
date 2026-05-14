@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   sequence export endpoints to shared Pydantic request schemas.
 - Migrate fluorescence GIF generation, ROI time analysis, ROI preview export,
   and kymograph endpoints to shared Pydantic request schemas.
+- Migrate fluorescence stack export, normalization, TIFF metadata, and 3D
+  rendering/export endpoints to shared Pydantic request schemas.
 
 ## [0.5.0] - 2026-05-14
 

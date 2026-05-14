@@ -4,9 +4,21 @@ import traceback
 from pathlib import Path
 
 import numpy as np
-from flask import jsonify, request
+from flask import jsonify
+from pydantic import ValidationError
 
+from .fluorescence_request_schemas import (
+    FluorescenceBrowseRequest,
+    FluorescenceNormalizeRequest,
+    FluorescencePathRequest,
+    FluorescencePreviewFrameRequest,
+    FluorescenceStackAutoRangeRequest,
+    FluorescenceStackExportBatchRequest,
+    FluorescenceStackExportRequest,
+    FluorescenceTiffInfoBatchRequest,
+)
 from .jobs import submit_json_task
+from .request_validation import parse_json_payload, request_schema, validation_error_response
 from .response import api_ok
 
 
@@ -154,9 +166,12 @@ def register_fluorescence_stack_routes(app, fl):
         return _normalize_payload(body)
 
     @app.route("/api/fluorescence/browse", methods=["POST"])
+    @request_schema(FluorescenceBrowseRequest)
     def api_fl_browse():
-        d = request.json or {}
-        folder = d.get("folder", "")
+        try:
+            folder = parse_json_payload(FluorescenceBrowseRequest).folder
+        except ValidationError as exc:
+            return validation_error_response(exc)
         files = [
             f
             for f in browse_files(folder, {".tif", ".tiff"})
@@ -172,11 +187,12 @@ def register_fluorescence_stack_routes(app, fl):
         return jsonify({"files": files})
 
     @app.route("/api/fluorescence/info", methods=["POST"])
+    @request_schema(FluorescencePathRequest)
     def api_fl_info():
         if not has_tiff:
             return err("tifffile not installed. Run: pip install tifffile")
-        path = (request.json or {}).get("path", "")
         try:
+            path = parse_json_payload(FluorescencePathRequest).path
             stack = tifflib.imread(path)
             if stack.ndim == 2:
                 n_frames, h, w = 1, stack.shape[0], stack.shape[1]
@@ -195,45 +211,50 @@ def register_fluorescence_stack_routes(app, fl):
                     "shape": list(stack.shape),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/preview_frame", methods=["POST"])
+    @request_schema(FluorescencePreviewFrameRequest)
     def api_fl_preview_frame():
         if not has_tiff:
             return err("tifffile not installed")
         if not has_pil:
             return err("Pillow not installed. Run: pip install Pillow")
-        d = request.json or {}
-        path = d.get("path", "")
-        frame_idx = int_or(d.get("frame", 0), 0)
-        lut = d.get("lut", "Gray")
-        p_low = float_or(d.get("p_low", 1.0), 1.0)
-        p_high = float_or(d.get("p_high", 99.0), 99.0)
-        mode = d.get("mode", "single")
-        z_start = d.get("z_start", None)
-        z_end = d.get("z_end", None)
         try:
+            d = parse_json_payload(FluorescencePreviewFrameRequest)
+            path = d.path
+            frame_idx = int_or(d.frame, 0)
+            lut = d.lut
+            p_low = float_or(d.p_low, 1.0)
+            p_high = float_or(d.p_high, 99.0)
+            mode = d.mode
+            z_start = d.z_start
+            z_end = d.z_end
             stack = tifflib.imread(path)
             z_start_i = None if z_start in {None, ""} else int_or(z_start, 0)
             z_end_i = None if z_end in {None, ""} else int_or(z_end, 0)
             frame, info = _fl_select_display_frame(stack, frame_idx, mode, z_start_i, z_end_i)
             b64 = _fl_frame_to_b64(frame, lut, p_low, p_high)
             return jsonify({"img": b64, **info})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/stack_defaults", methods=["POST"])
+    @request_schema(FluorescencePathRequest)
     def api_fl_stack_defaults():
         if not has_tiff:
             return err("tifffile not installed")
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
         try:
+            path = parse_json_payload(FluorescencePathRequest).path.strip()
             p = Path(path)
             if not p.exists():
                 return err(f"Input file not found: {path}")
@@ -247,19 +268,22 @@ def register_fluorescence_stack_routes(app, fl):
                 "background_options": _FL_BACKGROUND_OPTIONS,
                 "denoise_options": _FL_DENOISE_OPTIONS,
             })
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/stack_auto_range", methods=["POST"])
+    @request_schema(FluorescenceStackAutoRangeRequest)
     def api_fl_stack_auto_range():
         if not has_tiff:
             return err("tifffile not installed")
-        d = request.json or {}
-        path = str(d.get("path", "") or "").strip()
-        page_index = int_or(d.get("page_index", 0), 0)
-        background = _fl_clean_choice(d.get("background"), _FL_BACKGROUND_OPTIONS, "Off")
-        denoise = _fl_clean_choice(d.get("denoise"), _FL_DENOISE_OPTIONS, "Off")
         try:
+            d = parse_json_payload(FluorescenceStackAutoRangeRequest)
+            path = d.path.strip()
+            page_index = int_or(d.page_index, 0)
+            background = _fl_clean_choice(d.background, _FL_BACKGROUND_OPTIONS, "Off")
+            denoise = _fl_clean_choice(d.denoise, _FL_DENOISE_OPTIONS, "Off")
             p = Path(path)
             if not p.exists():
                 return err(f"Input file not found: {path}")
@@ -268,74 +292,101 @@ def register_fluorescence_stack_routes(app, fl):
                 return err(f"Invalid page index: {page_index}")
             vmin, vmax = _fl_compute_auto_range_with_processing(pages[page_index], background, denoise)
             return jsonify({"ok": True, "min": float(vmin), "max": float(vmax)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/stack_export", methods=["POST"])
+    @request_schema(FluorescenceStackExportRequest)
     def api_fl_stack_export():
-        d = request.json or {}
         try:
+            d = parse_json_payload(FluorescenceStackExportRequest).model_dump()
             result = _stack_export_payload(d)
             return api_ok(result, outputs=result.get("outputs"))
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/stack_export_job", methods=["POST"])
+    @request_schema(FluorescenceStackExportRequest)
     def api_fl_stack_export_job():
+        try:
+            body = parse_json_payload(FluorescenceStackExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.stack_export",
             "Export TIFF stack",
             _stack_export_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/stack_export"},
         )
 
     @app.route("/api/fluorescence/stack_export_batch", methods=["POST"])
+    @request_schema(FluorescenceStackExportBatchRequest)
     def api_fl_stack_export_batch():
-        d = request.json or {}
         try:
+            d = parse_json_payload(FluorescenceStackExportBatchRequest).model_dump()
             result = _stack_export_batch_payload(d)
             return api_ok(result, outputs=result.get("outputs"))
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
 
     @app.route("/api/fluorescence/stack_export_batch_job", methods=["POST"])
+    @request_schema(FluorescenceStackExportBatchRequest)
     def api_fl_stack_export_batch_job():
+        try:
+            body = parse_json_payload(FluorescenceStackExportBatchRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.stack_export_batch",
             "Batch export TIFF stacks",
             _stack_export_batch_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/stack_export_batch"},
         )
 
     @app.route("/api/fluorescence/normalize", methods=["POST"])
+    @request_schema(FluorescenceNormalizeRequest)
     def api_fl_normalize():
-        d = request.json or {}
         try:
+            d = parse_json_payload(FluorescenceNormalizeRequest).model_dump()
             result = _normalize_payload(d)
             return api_ok(result, outputs=result["outputs"])
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
     @app.route("/api/fluorescence/normalize_job", methods=["POST"])
+    @request_schema(FluorescenceNormalizeRequest)
     def api_fl_normalize_job():
+        try:
+            body = parse_json_payload(FluorescenceNormalizeRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
         return submit_json_task(
             jobs,
             "fluorescence.normalize",
             "Normalize fluorescence TIFF",
             _normalize_task,
-            request.json or {},
+            body,
             metadata={"endpoint": "/api/fluorescence/normalize"},
         )
 
     @app.route("/api/fluorescence/tiff_info_batch", methods=["POST"])
+    @request_schema(FluorescenceTiffInfoBatchRequest)
     def api_fl_tiff_info_batch():
         """Return frame count and shape for a list of TIFF files.
 
@@ -344,7 +395,10 @@ def register_fluorescence_stack_routes(app, fl):
         """
         if not has_tiff:
             return err("tifffile is required")
-        paths = (request.json or {}).get("paths") or []
+        try:
+            paths = parse_json_payload(FluorescenceTiffInfoBatchRequest).paths
+        except ValidationError as exc:
+            return validation_error_response(exc)
         info = {}
         for raw in paths:
             p = Path(str(raw).strip())

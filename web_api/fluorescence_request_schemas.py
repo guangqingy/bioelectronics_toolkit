@@ -193,3 +193,118 @@ class FluorescenceGifRoiKymographExportRequest(RequestModel):
     heatmap_csv: str = ""
     summary_csv: str = ""
     plot_png_b64: str = ""
+
+
+class FluorescenceBrowseRequest(RequestModel):
+    folder: str = ""
+
+
+class FluorescencePathRequest(RequestModel):
+    path: str = Field(min_length=1)
+
+
+class FluorescencePreviewFrameRequest(RequestModel):
+    path: str = Field(min_length=1)
+    frame: Any = 0
+    lut: str = "Gray"
+    p_low: Any = 1.0
+    p_high: Any = 99.0
+    mode: str = "single"
+    z_start: Any = None
+    z_end: Any = None
+
+
+class FluorescenceStackAutoRangeRequest(RequestModel):
+    path: str = Field(min_length=1)
+    page_index: Any = 0
+    background: Any = None
+    denoise: Any = None
+
+
+class FluorescenceStackExportRequest(RequestModel):
+    input_path: str = Field(min_length=1)
+    settings: Any = None
+
+
+class FluorescenceStackExportBatchRequest(RequestModel):
+    paths: list[Any] = Field(default_factory=list)
+    use_template: Any = True
+    lock_ranges: Any = False
+    template_settings: Any = Field(default_factory=list)
+
+
+class FluorescenceNormalizeRequest(RequestModel):
+    input_path: str = Field(min_length=1)
+    output_path: str = ""
+    low_pct: Any = 1.0
+    high_pct: Any = 99.8
+    dtype: str = "uint16"
+
+
+class FluorescenceTiffInfoBatchRequest(RequestModel):
+    paths: list[Any] = Field(default_factory=list)
+
+
+class Fluorescence3dPreviewSliceRequest(RequestModel):
+    path: str = Field(min_length=1)
+    z: Any = 0
+    c: Any = 0
+    t: Any = 0
+    extra_indices: Any = Field(default_factory=dict)
+    lut: str = "Gray"
+    p_low: Any = 1.0
+    p_high: Any = 99.0
+
+
+class Fluorescence3dVolumeRequest(RequestModel):
+    path: str = Field(min_length=1)
+    z: Any = 0
+    c: Any = 0
+    t: Any = 0
+    extra_indices: Any = Field(default_factory=dict)
+    lut: str = "Gray"
+    p_low: Any = 1.0
+    p_high: Any = 99.0
+    channel_mode: str = "composite"
+    max_points: Any = None
+    max_xy: Any = None
+    max_z: Any = None
+    threshold_percentile: Any = None
+    channel_ranges: Any = Field(default_factory=dict)
+    denoise: Any = None
+    interlayer_level: str = "middle"
+    density_mode: str = "off"
+    density_radius_um: Any = None
+    density_min_neighbors: Any = None
+    show_scale_bar: Any = True
+    scale_bar_um: Any = 20.0
+    output_name: str = ""
+    output_dir: str = ""
+    overwrite: Any = True
+
+
+class Fluorescence3dRotationGifRequest(Fluorescence3dVolumeRequest):
+    rotation_axis: str = "z"
+    rotation_direction: str = "forward"
+    gif_frames: Any = None
+    gif_fps: Any = None
+    gif_size: Any = None
+    gif_points: Any = None
+
+
+class Fluorescence3dDistributionRequest(RequestModel):
+    path: str = Field(min_length=1)
+    distribution_channel: Any = None
+    z: Any = 0
+    c: Any = 0
+    t: Any = 0
+    extra_indices: Any = Field(default_factory=dict)
+    lut: str = "Gray"
+    p_low: Any = 1.0
+    p_high: Any = 99.0
+    distribution_axis: str = "z"
+    distribution_metric: str = "mean"
+    denoise: Any = None
+    output_name: str = ""
+    output_dir: str = ""
+    overwrite: Any = True
