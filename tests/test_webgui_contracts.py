@@ -369,11 +369,11 @@ class WebAppSmokeTests(unittest.TestCase):
 
         with (
             mock.patch(
-                "web_api.rhd_viewer.rhd_service.recording_metadata_with_merge_option",
+                "services.rhd_viewer.rhd_service.recording_metadata_with_merge_option",
                 side_effect=fake_recording_metadata,
             ),
             mock.patch(
-                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ),
         ):
@@ -450,7 +450,7 @@ class WebAppSmokeTests(unittest.TestCase):
             src.write_bytes(b"placeholder")
             saved = {}
             with mock.patch(
-                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ):
                 for fmt in ("csv", "png", "svg"):
@@ -499,7 +499,7 @@ class WebAppSmokeTests(unittest.TestCase):
             src = Path(tmp) / "record_0000.rhd"
             src.write_bytes(b"placeholder")
             with mock.patch(
-                "web_api.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ):
                 first = self.client.get(

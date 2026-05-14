@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   export, and 3D viewer export endpoints to Pydantic request schemas.
 - Align recently migrated request schemas so file-based echem exports require a
   non-empty path and LIF 3D export keeps its export-quality defaults.
+- Thin the RHD viewer route module below the route LOC budget by moving plotting,
+  processing, and export payload logic into a dedicated RHD viewer service.
 
 ## [0.5.0] - 2026-05-14
 

@@ -1,624 +1,161 @@
-import io
 import traceback
-import zipfile
-from pathlib import Path
-from typing import Any
 
-import matplotlib.pyplot as plt
-import pandas as pd
 from flask import Response, jsonify, request
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
-from services import rhd as rhd_service
-from services import rhd_processing
-from services.output_naming import sanitize_name_part
-
+from services.rhd_viewer import RhdViewerService
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
 from .plot_export import clean_trace_svg, next_numbered_path
-from .request_validation import (
-    RequestModel,
-    parse_json_payload,
-    parse_query_params,
-    request_schema,
-    validation_error_response,
-)
+from .request_validation import parse_json_payload, parse_query_params, request_schema, validation_error_response
 from .response import api_ok
-
-
-class RhdBrowseRequest(RequestModel):
-    folder: str = ""
-
-
-class RhdLoadRequest(RequestModel):
-    path: str = Field(min_length=1)
-    merge_pair: Any = False
-    preview_merge_pair: Any = None
-
-
-class RhdViewRequest(RhdLoadRequest):
-    channel: Any = 0
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    downsample: Any = "auto"
-    dsf: Any = None
-    filter_type: str = "none"
-    filter_low_hz: Any = None
-    filter_high_hz: Any = None
-    filter_notch_hz: Any = None
-    filter_order: Any = None
-    filter_notch_q: Any = None
-    fig_width_in: Any = None
-    fig_height_in: Any = None
-    fig_dpi: Any = None
-    trace_line_width: Any = None
-    trace_color: str = "#3E6AE1"
-    show_grid: Any = False
-    show_title: Any = False
-
-
-class RhdProcessingRequest(RhdViewRequest):
-    process_type: str = "envelope"
-    smooth_ms: Any = None
-    envelope_smooth_ms: Any = None
-    smooth_method: str = "moving"
-    sg_poly: Any = None
-    fit_degree: Any = None
-    fit_show_raw: Any = False
-    fft_window: str = "hann"
-    fft_max_hz: Any = None
-    fft_log: Any = False
-    stft_ms: Any = None
-    stft_overlap_pct: Any = None
-    stft_max_hz: Any = None
-    stft_cmap: str = "viridis"
-    stft_log: Any = False
-    fmt: str = "csv"
-    mode: Any = "download"
-
-
-class RhdExportChannelRequest(RhdViewRequest):
-    fmt: str = "csv"
-    mode: Any = "download"
-
-
-class RhdExportAllRequest(RequestModel):
-    path: str = Field(min_length=1)
-    mode: Any = "download"
-    merge_pair: Any = True
-    preview_merge_pair: Any = None
-    wide_csv: Any = False
-
-
-class RhdExportQueueRequest(RequestModel):
-    paths: list[Any] = Field(default_factory=list)
-    merge_pair: Any = True
-    preview_merge_pair: Any = None
-    wide_csv: Any = False
+from .rhd_request_schemas import (
+    RhdBrowseRequest,
+    RhdExportAllRequest,
+    RhdExportChannelRequest,
+    RhdExportQueueRequest,
+    RhdLoadRequest,
+    RhdProcessingRequest,
+    RhdViewRequest,
+)
 
 
 def register_rhd_viewer_routes(app, ctx):
     err = ctx["err"]
     browse_files = ctx["browse_files"]
     browse_files_recursive = ctx["browse_files_recursive"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    float_or = ctx["float_or"]
-    line_color = ctx["LINE_COLOR"]
-    has_rhd = ctx["HAS_RHD"]
-    rhd = ctx.get("rhd")
     jobs = ctx.get("jobs")
+    service = RhdViewerService(
+        has_rhd=ctx["HAS_RHD"],
+        rhd_module=ctx.get("rhd"),
+        fig_to_b64=ctx["fig_to_b64"],
+        float_or=ctx["float_or"],
+        bool_value=as_bool,
+        mode_is_save=mode_is_save,
+        clean_trace_svg=clean_trace_svg,
+        next_numbered_path=next_numbered_path,
+        line_color=ctx["LINE_COLOR"],
+    )
 
-    _mode_is_save = mode_is_save
-    _as_bool = as_bool
+    def _json(schema):
+        return parse_json_payload(schema).model_dump()
 
-    def _load_rhd_with_merge_option(path, do_merge):
-        return rhd_service.load_with_merge_option(path, rhd, do_merge)
+    def _request_body(schema):
+        if request.method == "GET":
+            return parse_query_params(schema).model_dump()
+        return _json(schema)
 
-    def _load_rhd_metadata_with_merge_option(path, do_merge):
-        return rhd_service.recording_metadata_with_merge_option(path, rhd, do_merge)
-
-    def _load_rhd_channel_with_merge_option(path, channel, do_merge):
-        return rhd_service.load_channel_with_merge_option(path, rhd, channel, do_merge)
-
-    def _df_all_channels_wide(time_s, ch_names, amp):
-        return rhd_service.all_channels_wide_frame(time_s, ch_names, amp)
-
-    def _rhd_output(path: str | Path, role: str = "rhd_export") -> dict:
-        p = Path(path)
-        return {
-            "path": str(p),
-            "type": "directory" if p.is_dir() else (p.suffix.lower().lstrip(".") or "file"),
-            "role": role,
-        }
-
-    def _rhd_recording_key(path: Path, do_merge: bool) -> tuple[str, ...]:
-        if not do_merge:
-            return (str(path),)
-        return tuple(str(p) for p in rhd_service.recording_files_for_path(path, True))
-
-    def _rhd_export_all_payload(d: dict) -> dict:
-        if not has_rhd:
-            raise ValueError("Intan RHD parser is not available")
-
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
-        do_merge = _as_bool(d.get("merge_pair"), True)
-        wide_csv = _as_bool(d.get("wide_csv"), False)
-        src = Path(path)
-        if not src.is_file():
-            raise ValueError(f"RHD file not found: {path}")
-        t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(src, do_merge)
-
-        if _mode_is_save(mode):
-            base_dir = src.parent
-            if wide_csv:
-                out_path = base_dir / f"{base_stem}.csv"
-                dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
-                dfw.to_csv(out_path, index=False, sep="\t")
-                return {
-                    "kind": "save",
-                    "data": {
-                        "ok": True,
-                        "saved_path": str(out_path),
-                        "saved_paths": [str(out_path)],
-                        "outputs": [_rhd_output(out_path, "rhd_all_channels_wide")],
-                    },
-                }
-
-            target_dir = base_dir / base_stem
-            target_dir.mkdir(parents=True, exist_ok=True)
-            saved = 0
-            saved_paths = []
-            for i, name in enumerate(ch_all):
-                out_path = target_dir / f"{base_stem}_{name}.csv"
-                pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(out_path, index=False)
-                saved += 1
-                saved_paths.append(str(out_path))
-            outputs = [_rhd_output(target_dir, "rhd_channel_folder")]
-            outputs.extend(_rhd_output(path, "rhd_channel_csv") for path in saved_paths)
-            return {
-                "kind": "save",
-                "data": {
-                    "ok": True,
-                    "saved_path": str(target_dir),
-                    "saved_count": saved,
-                    "saved_paths": saved_paths,
-                    "outputs": outputs,
-                },
-            }
-
-        out = io.BytesIO()
-        with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            for i, name in enumerate(ch_all):
-                csv_bytes = pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(
-                    index=False
-                ).encode("utf-8")
-                zf.writestr(f"{base_stem}_{name}.csv", csv_bytes)
-        out.seek(0)
-        return {
-            "kind": "download",
-            "payload": out.getvalue(),
-            "mimetype": "application/zip",
-            "download_name": f"{base_stem}_all_channels.zip",
-        }
-
-    def _rhd_export_all_task(job_ctx, body: dict) -> dict:
-        job_ctx.set_progress(0.2, "Exporting all RHD channels")
-        save_body = dict(body or {})
-        save_body["mode"] = "save"
-        return _rhd_export_all_payload(save_body)["data"]
-
-    def _rhd_export_queue_payload(d: dict) -> dict:
-        if not has_rhd:
-            raise ValueError("Intan RHD parser is not available")
-
-        paths = d.get("paths", [])
-        if not isinstance(paths, list) or not paths:
-            raise ValueError("Queue is empty.")
-
-        do_merge = _as_bool(d.get("merge_pair"), True)
-        wide_csv = _as_bool(d.get("wide_csv"), False)
-
-        total = 0
-        ok = 0
-        warnings = []
-        saved_paths = []
-        processed_recordings = set()
-
-        for raw in paths:
-            total += 1
-            p = Path(str(raw))
-            try:
-                recording_key = _rhd_recording_key(p, do_merge)
-                if do_merge and recording_key in processed_recordings:
-                    continue
-
-                t_all, _fs, ch_all, amp_all, base_stem, _used_pair = _load_rhd_with_merge_option(p, do_merge)
-
-                base_dir = p.parent
-                if wide_csv:
-                    out_path = base_dir / f"{base_stem}.csv"
-                    dfw = _df_all_channels_wide(t_all, ch_all, amp_all)
-                    dfw.to_csv(out_path, index=False, sep="\t")
-                    saved_paths.append(str(out_path))
-                else:
-                    target_dir = base_dir / base_stem
-                    target_dir.mkdir(parents=True, exist_ok=True)
-                    for i, name in enumerate(ch_all):
-                        out_path = target_dir / f"{base_stem}_{name}.csv"
-                        pd.DataFrame({"time_s": t_all, "value_uV": amp_all[i, :]}).to_csv(
-                            out_path, index=False
-                        )
-                    saved_paths.append(str(target_dir))
-
-                if do_merge:
-                    processed_recordings.add(recording_key)
-                ok += 1
-            except Exception as e:
-                warnings.append(f"{p}: {e}")
-
-        return {
-            "ok": True,
-            "saved_count": ok,
-            "total": total,
-            "saved_paths": saved_paths,
-            "warnings": warnings,
-            "outputs": [_rhd_output(path, "rhd_queue_export") for path in saved_paths],
-        }
-
-    def _rhd_export_queue_task(job_ctx, body: dict) -> dict:
-        job_ctx.set_progress(0.2, "Exporting RHD queue")
-        return _rhd_export_queue_payload(body)
-
-    def _rhd_processing_result(d: dict):
-        path = d.get("path", "")
-        ch_in = d.get("channel", 0)
-        x_min = float_or(d.get("x_min"), None)
-        x_max = float_or(d.get("x_max"), None)
-        do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
-        filter_params = rhd_processing.filter_params(d)
-
-        src = Path(path)
-        t, fs, _ch_names, y, _ch, ch_name, base_stem, used_pair, _segment_count = (
-            _load_rhd_channel_with_merge_option(src, ch_in, do_merge)
+    def _download_or_api(result: dict):
+        if result["kind"] == "save":
+            data = result["data"]
+            return api_ok(data, outputs=result.get("outputs") or data.get("outputs"))
+        return Response(
+            result["payload"],
+            mimetype=result["mimetype"],
+            headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
         )
-        t, y = rhd_processing.apply_time_window(t, y, x_min, x_max)
-        y = rhd_processing.apply_filter(y, fs, filter_params)
-        result = rhd_processing.process_trace(t, y, fs, d, default_line_color=line_color)
-        out_stem = base_stem if used_pair else src.stem
-        return src, out_stem, ch_name, result
 
-    def _rhd_export_processing_payload(d: dict) -> dict:
-        if not has_rhd:
-            raise ValueError("Intan RHD parser is not available")
-
-        fmt = str(d.get("fmt", "csv") or "csv").strip().lower()
-        if fmt not in {"csv", "png", "svg"}:
-            raise ValueError("Processing export format must be csv, png, or svg.")
-
-        mode = d.get("mode", "download")
-        src, out_stem, ch_name, result = _rhd_processing_result(d)
-        stem = sanitize_name_part(f"{out_stem}_{ch_name}_{result.kind}", "rhd_processing")
-
+    def _job_payload(job_ctx, body: dict, message: str, handler):
+        job_ctx.set_progress(0.2, message)
+        return handler(body or {})
+    def _json_response(schema, handler):
         try:
-            if fmt == "csv":
-                payload = rhd_processing.dataframe_csv_bytes(result.table)
-                mimetype = "text/csv"
-            else:
-                fig_params = rhd_processing.figure_params(
-                    d,
-                    default_line_color=line_color,
-                    default_show_title=False,
-                )
-                payload = rhd_processing.figure_bytes(result.figure, fmt, dpi=fig_params["dpi"])
-                mimetype = "image/png" if fmt == "png" else "image/svg+xml"
-        finally:
-            plt.close(result.figure)
-
-        filename = f"{stem}.{fmt}"
-        if _mode_is_save(mode):
-            out_path = next_numbered_path(src.with_name(filename))
-            out_path.write_bytes(payload)
-            outputs = [_rhd_output(out_path, f"rhd_processing_{fmt}")]
-            data = {
-                "ok": True,
-                "saved_path": str(out_path),
-                "saved_paths": [str(out_path)],
-                "outputs": outputs,
-                "process_type": result.kind,
-                **result.metadata,
-            }
-            return {
-                "kind": "save",
-                "data": data,
-                "outputs": outputs,
-            }
-
-        return {
-            "kind": "download",
-            "payload": payload,
-            "mimetype": mimetype,
-            "download_name": filename,
-            "metadata": result.metadata,
-        }
-
-    def _rhd_export_processing_task(job_ctx, body: dict) -> dict:
-        job_ctx.set_progress(0.2, "Exporting RHD processing output")
-        save_body = dict(body or {})
-        save_body["mode"] = "save"
-        result = _rhd_export_processing_payload(save_body)
-        return result["data"]
-
-    @app.route("/api/rhd/browse", methods=["POST"])
-    @request_schema(RhdBrowseRequest)
-    def api_rhd_browse():
-        try:
-            folder = parse_json_payload(RhdBrowseRequest).folder
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        files = browse_files(folder, {".rhd"})
-        return jsonify({"files": [f["path"] for f in files], "file_meta": files})
-
-    @app.route("/api/rhd/browse_recursive", methods=["POST"])
-    @request_schema(RhdBrowseRequest)
-    def api_rhd_browse_recursive():
-        try:
-            folder = parse_json_payload(RhdBrowseRequest).folder
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        files = browse_files_recursive(folder, {".rhd"})
-        return jsonify({"files": [f["path"] for f in files], "file_meta": files})
-
-    @app.route("/api/rhd/load", methods=["POST"])
-    @request_schema(RhdLoadRequest)
-    def api_rhd_load():
-        if not has_rhd:
-            return err("Intan RHD parser is not available")
-
-        try:
-            d = parse_json_payload(RhdLoadRequest).model_dump()
-            path = d.get("path", "")
-            do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
-            return jsonify(_load_rhd_metadata_with_merge_option(Path(path), do_merge))
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception:
-            return err(traceback.format_exc())
-
-    @app.route("/api/rhd/plot", methods=["POST"])
-    @request_schema(RhdViewRequest)
-    def api_rhd_plot():
-        if not has_rhd:
-            return err("Intan RHD parser is not available")
-
-        try:
-            d = parse_json_payload(RhdViewRequest).model_dump()
-            path = d.get("path", "")
-            ch_in = d.get("channel", 0)
-            x_min = float_or(d.get("x_min"), None)
-            x_max = float_or(d.get("x_max"), None)
-            y_min = float_or(d.get("y_min"), None)
-            y_max = float_or(d.get("y_max"), None)
-            downsample = d.get("downsample", d.get("dsf", "auto"))
-            do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
-            filter_params = rhd_processing.filter_params(d)
-            fig_params = rhd_processing.figure_params(
-                d,
-                default_line_color=line_color,
-                default_show_title=True,
-            )
-            t, fs, _ch_names, y, ch, ch_label, base_stem, used_pair, _segment_count = (
-                _load_rhd_channel_with_merge_option(Path(path), ch_in, do_merge)
-            )
-            t, y = rhd_processing.apply_time_window(t, y, x_min, x_max)
-            y = rhd_processing.apply_filter(y, fs, filter_params)
-
-            dsf = rhd_processing.downsample_factor(downsample, len(t))
-            t_d = t[::dsf]
-            y_d = y[::dsf]
-
-            fig, ax = plt.subplots(
-                figsize=(fig_params["width_in"], fig_params["height_in"]),
-                dpi=fig_params["dpi"],
-            )
-            ax.plot(t_d, y_d, color=fig_params["line_color"], lw=fig_params["line_width"])
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Amplitude (uV)")
-            title_name = f"{base_stem} (merged)" if used_pair else Path(path).name
-            if fig_params["show_title"]:
-                ax.set_title(
-                    f"{title_name} - Ch {ch}: {ch_label}",
-                    fontsize=10,
-                    color="#5C5E62",
-                )
-            rhd_processing.finish_axis(ax, t_d, y_min, y_max, grid=fig_params["show_grid"])
-            fig.tight_layout()
-            return jsonify({"img": fig_to_b64(fig), "downsample": dsf, "plotted_points": int(len(t_d))})
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception:
-            return err(traceback.format_exc())
-
-    @app.route("/api/rhd/process", methods=["POST"])
-    @request_schema(RhdProcessingRequest)
-    def api_rhd_process():
-        if not has_rhd:
-            return err("Intan RHD parser is not available")
-
-        try:
-            d = parse_json_payload(RhdProcessingRequest).model_dump()
-            _src, _out_stem, _ch_name, result = _rhd_processing_result(d)
-            return jsonify({"img": fig_to_b64(result.figure), **result.metadata})
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception:
-            return err(traceback.format_exc())
-
-    @app.route("/api/rhd/export_channel", methods=["GET", "POST"])
-    @request_schema(RhdExportChannelRequest)
-    def api_rhd_export_channel():
-        if not has_rhd:
-            return err("Intan RHD parser is not available")
-
-        try:
-            if request.method == "GET":
-                d = parse_query_params(RhdExportChannelRequest).model_dump()
-            else:
-                d = parse_json_payload(RhdExportChannelRequest).model_dump()
-            path = d.get("path", "")
-            fmt = d.get("fmt", "csv")
-            mode = d.get("mode", "download")
-            ch_in = d.get("channel", 0)
-            x_min = float_or(d.get("x_min"), None)
-            x_max = float_or(d.get("x_max"), None)
-            y_min = float_or(d.get("y_min"), None)
-            y_max = float_or(d.get("y_max"), None)
-            downsample = d.get("downsample", d.get("dsf", "auto"))
-            do_merge = _as_bool(d.get("merge_pair", d.get("preview_merge_pair")), False)
-            filter_params = rhd_processing.filter_params(d)
-            fig_params = rhd_processing.figure_params(
-                d,
-                default_line_color=line_color,
-                default_show_title=False,
-            )
-            src = Path(path)
-            t, fs, _ch_names, y, _ch, ch_name, base_stem, used_pair, _segment_count = (
-                _load_rhd_channel_with_merge_option(src, ch_in, do_merge)
-            )
-            out_stem = base_stem if used_pair else src.stem
-
-            if fmt == "csv":
-                buf = io.BytesIO()
-                pd.DataFrame({"time_s": t, "value_uV": y}).to_csv(buf, index=False)
-                buf.seek(0)
-                payload = buf.getvalue()
-                if _mode_is_save(mode):
-                    out_path = src.with_name(f"{out_stem}_{ch_name}.csv")
-                    out_path.write_bytes(payload)
-                    return jsonify({"ok": True, "saved_path": str(out_path)})
-                return Response(
-                    payload,
-                    mimetype="text/csv",
-                    headers={"Content-Disposition": f"attachment; filename={out_stem}_{ch_name}.csv"},
-                )
-
-            t_view, y_view = rhd_processing.apply_time_window(t, y, x_min, x_max)
-            y_view = rhd_processing.apply_filter(y_view, fs, filter_params)
-            dsf = rhd_processing.downsample_factor(downsample, len(t_view))
-            t_view = t_view[::dsf]
-            y_view = y_view[::dsf]
-
-            if str(fmt).lower() == "svg":
-                payload = clean_trace_svg(
-                    t_view,
-                    y_view,
-                    y_min=y_min,
-                    y_max=y_max,
-                    width=fig_params["width_in"] * 72.0,
-                    height=fig_params["height_in"] * 72.0,
-                    line_color=fig_params["line_color"],
-                    line_width=fig_params["line_width"],
-                )
-                if _mode_is_save(mode):
-                    base_path = src.with_name(f"{out_stem}_{ch_name}.svg")
-                    out_path = next_numbered_path(base_path)
-                    out_path.write_bytes(payload)
-                    return jsonify({"ok": True, "saved_path": str(out_path)})
-                return Response(
-                    payload,
-                    mimetype="image/svg+xml",
-                    headers={"Content-Disposition": f"attachment; filename={out_stem}_{ch_name}.svg"},
-                )
-
-            fig, ax = plt.subplots(
-                figsize=(fig_params["width_in"], fig_params["height_in"]),
-                dpi=fig_params["dpi"],
-            )
-            ax.plot(t_view, y_view, color=fig_params["line_color"], lw=fig_params["line_width"])
-            ax.set_xlabel("Time (s)")
-            ax.set_ylabel("Amplitude (uV)")
-            if fig_params["show_title"]:
-                title_name = f"{out_stem} (merged)" if used_pair else src.name
-                ax.set_title(f"{title_name} - {ch_name}", fontsize=10, color="#5C5E62")
-            rhd_processing.finish_axis(ax, t_view, y_min, y_max, grid=fig_params["show_grid"])
-            fig.tight_layout()
-            buf = io.BytesIO()
-            fig.savefig(buf, format=fmt, dpi=fig_params["dpi"] if fmt == "png" else None, bbox_inches="tight")
-            plt.close(fig)
-            buf.seek(0)
-            payload = buf.getvalue()
-            if _mode_is_save(mode):
-                out_path = next_numbered_path(src.with_name(f"{out_stem}_{ch_name}.{fmt}"))
-                out_path.write_bytes(payload)
-                return jsonify({"ok": True, "saved_path": str(out_path)})
-            mt = "image/png" if fmt == "png" else "image/svg+xml"
-            return Response(
-                payload,
-                mimetype=mt,
-                headers={"Content-Disposition": f"attachment; filename={out_stem}_{ch_name}.{fmt}"},
-            )
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception:
-            return err(traceback.format_exc())
-
-    @app.route("/api/rhd/export_processing", methods=["GET", "POST"])
-    @request_schema(RhdProcessingRequest)
-    def api_rhd_export_processing():
-        try:
-            if request.method == "GET":
-                d = parse_query_params(RhdProcessingRequest).model_dump()
-            else:
-                d = parse_json_payload(RhdProcessingRequest).model_dump()
-            result = _rhd_export_processing_payload(d)
-            if result["kind"] == "save":
-                data = result["data"]
-                return api_ok(data, outputs=result["outputs"])
-            return Response(
-                result["payload"],
-                mimetype=result["mimetype"],
-                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
-            )
+            return jsonify(handler(_json(schema)))
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
-
-    @app.route("/api/rhd/export_processing_job", methods=["POST"])
-    @request_schema(RhdProcessingRequest)
-    def api_rhd_export_processing_job():
+    def _export_response(schema, handler):
         try:
-            body = parse_json_payload(RhdProcessingRequest).model_dump()
+            return _download_or_api(handler(_request_body(schema)))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+    def _submit(schema, kind: str, label: str, message: str, handler, endpoint: str):
+        try:
+            body = _json(schema)
         except ValidationError as exc:
             return validation_error_response(exc)
         return submit_json_task(
             jobs,
+            kind,
+            label,
+            lambda job_ctx, payload: _job_payload(job_ctx, payload, message, handler),
+            body,
+            metadata={"endpoint": endpoint},
+        )
+    @app.route("/api/rhd/browse", methods=["POST"])
+    @request_schema(RhdBrowseRequest)
+    def api_rhd_browse():
+        try:
+            folder = parse_json_payload(RhdBrowseRequest).folder
+            files = browse_files(folder, {".rhd"})
+            return jsonify({"files": [f["path"] for f in files], "file_meta": files})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+    @app.route("/api/rhd/browse_recursive", methods=["POST"])
+    @request_schema(RhdBrowseRequest)
+    def api_rhd_browse_recursive():
+        try:
+            folder = parse_json_payload(RhdBrowseRequest).folder
+            files = browse_files_recursive(folder, {".rhd"})
+            return jsonify({"files": [f["path"] for f in files], "file_meta": files})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+    @app.route("/api/rhd/load", methods=["POST"])
+    @request_schema(RhdLoadRequest)
+    def api_rhd_load():
+        return _json_response(RhdLoadRequest, service.metadata_payload)
+
+    @app.route("/api/rhd/plot", methods=["POST"])
+    @request_schema(RhdViewRequest)
+    def api_rhd_plot():
+        return _json_response(RhdViewRequest, service.plot_payload)
+
+    @app.route("/api/rhd/process", methods=["POST"])
+    @request_schema(RhdProcessingRequest)
+    def api_rhd_process():
+        return _json_response(RhdProcessingRequest, service.processing_payload)
+
+    @app.route("/api/rhd/export_channel", methods=["GET", "POST"])
+    @request_schema(RhdExportChannelRequest)
+    def api_rhd_export_channel():
+        return _export_response(RhdExportChannelRequest, service.export_channel_payload)
+
+    @app.route("/api/rhd/export_processing", methods=["GET", "POST"])
+    @request_schema(RhdProcessingRequest)
+    def api_rhd_export_processing():
+        return _export_response(RhdProcessingRequest, service.export_processing_payload)
+
+    @app.route("/api/rhd/export_processing_job", methods=["POST"])
+    @request_schema(RhdProcessingRequest)
+    def api_rhd_export_processing_job():
+        return _submit(
+            RhdProcessingRequest,
             "rhd.export_processing",
             "Export RHD processing output",
-            _rhd_export_processing_task,
-            body,
-            metadata={"endpoint": "/api/rhd/export_processing"},
+            "Exporting RHD processing output",
+            service.export_processing_job_payload,
+            "/api/rhd/export_processing",
         )
 
     @app.route("/api/rhd/export_all", methods=["POST"])
     @request_schema(RhdExportAllRequest)
     def api_rhd_export_all():
         try:
-            d = parse_json_payload(RhdExportAllRequest).model_dump()
-            result = _rhd_export_all_payload(d)
+            result = service.export_all_payload(_json(RhdExportAllRequest))
             if result["kind"] == "save":
                 data = result["data"]
                 return api_ok(data, outputs=data["outputs"], warnings=data.get("warnings"))
-            return Response(
-                result["payload"],
-                mimetype=result["mimetype"],
-                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
-            )
+            return _download_or_api(result)
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -629,25 +166,20 @@ def register_rhd_viewer_routes(app, ctx):
     @app.route("/api/rhd/export_all_job", methods=["POST"])
     @request_schema(RhdExportAllRequest)
     def api_rhd_export_all_job():
-        try:
-            body = parse_json_payload(RhdExportAllRequest).model_dump()
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return submit_json_task(
-            jobs,
+        return _submit(
+            RhdExportAllRequest,
             "rhd.export_all",
             "Export all RHD channels",
-            _rhd_export_all_task,
-            body,
-            metadata={"endpoint": "/api/rhd/export_all"},
+            "Exporting all RHD channels",
+            service.export_all_job_payload,
+            "/api/rhd/export_all",
         )
 
     @app.route("/api/rhd/export_queue", methods=["POST"])
     @request_schema(RhdExportQueueRequest)
     def api_rhd_export_queue():
         try:
-            d = parse_json_payload(RhdExportQueueRequest).model_dump()
-            result = _rhd_export_queue_payload(d)
+            result = service.export_queue_payload(_json(RhdExportQueueRequest))
             return api_ok(result, outputs=result["outputs"], warnings=result.get("warnings"))
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -657,15 +189,11 @@ def register_rhd_viewer_routes(app, ctx):
     @app.route("/api/rhd/export_queue_job", methods=["POST"])
     @request_schema(RhdExportQueueRequest)
     def api_rhd_export_queue_job():
-        try:
-            body = parse_json_payload(RhdExportQueueRequest).model_dump()
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return submit_json_task(
-            jobs,
+        return _submit(
+            RhdExportQueueRequest,
             "rhd.export_queue",
             "Export RHD queue",
-            _rhd_export_queue_task,
-            body,
-            metadata={"endpoint": "/api/rhd/export_queue"},
+            "Exporting RHD queue",
+            service.export_queue_payload,
+            "/api/rhd/export_queue",
         )
