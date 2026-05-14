@@ -58,6 +58,10 @@ def _bool(v: Any, default: bool = False) -> bool:
     return default
 
 
+def parse_bool(v: Any, default: bool = False) -> bool:
+    return _bool(v, default=default)
+
+
 def _int(v: Any, default: int = 0) -> int:
     try:
         return int(v)
@@ -70,6 +74,10 @@ def _normalize_rotate_deg(v: Any) -> int:
     if deg not in {0, 90, 180, 270}:
         return 0
     return deg
+
+
+def normalize_rotate_deg(v: Any) -> int:
+    return _normalize_rotate_deg(v)
 
 
 def _ensure_vm() -> bool:

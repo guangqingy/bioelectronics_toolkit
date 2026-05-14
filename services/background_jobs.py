@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from web_api.response import infer_outputs
+from services.output_records import infer_outputs
 
 LOG = logging.getLogger(__name__)
 

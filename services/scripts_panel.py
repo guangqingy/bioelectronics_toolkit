@@ -237,3 +237,19 @@ def _script_status_payload(job_id, jobs=None, fallback_output_dir=""):
         payload["progress"] = job.get("progress")
         return payload
     return _running_scripts.get(job_id)
+
+
+def figures_from_artifacts(artifacts):
+    return _figures_from_artifacts(artifacts)
+
+
+def resolve_output_dir(script_path, params):
+    return _resolve_output_dir(script_path, params)
+
+
+def run_script_job(job_ctx, script_path, env_vars, output_dir):
+    return _run_script_job(job_ctx, script_path, env_vars, output_dir)
+
+
+def script_status_payload(job_id, jobs=None, fallback_output_dir=""):
+    return _script_status_payload(job_id, jobs, fallback_output_dir)

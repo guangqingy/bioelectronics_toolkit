@@ -7,24 +7,7 @@ from pathlib import Path
 from flask import jsonify, request
 
 from pipelines.registry import find_pipeline_script, pipeline_catalog, validate_registry
-
-
-_running_scripts = {}
-
-ARTIFACT_EXTS = {
-    ".png",
-    ".svg",
-    ".pdf",
-    ".csv",
-    ".xlsx",
-    ".xls",
-    ".json",
-    ".txt",
-    ".npz",
-    ".pt",
-}
-PREVIEW_IMAGE_LIMIT = 6
-ARTIFACT_LIMIT = 240
+from services import scripts_panel as script_service
 
 
 def register_scripts_panel_routes(app, ctx):
@@ -32,14 +15,8 @@ def register_scripts_panel_routes(app, ctx):
     base_dir = ctx["BASE_DIR"]
     jobs = ctx.get("jobs")
 
-    from services import scripts_panel as script_service
-
-    _figures_from_artifacts = script_service._figures_from_artifacts
-    _resolve_output_dir = script_service._resolve_output_dir
-    _run_script_job = script_service._run_script_job
-
     def _script_status_payload(job_id, fallback_output_dir=""):
-        return script_service._script_status_payload(job_id, jobs, fallback_output_dir)
+        return script_service.script_status_payload(job_id, jobs, fallback_output_dir)
 
     @app.route("/api/pipelines/catalog")
     def api_pipeline_catalog():
@@ -76,13 +53,13 @@ def register_scripts_panel_routes(app, ctx):
         )
 
         if script_path and script_path.exists():
-            out_dir = _resolve_output_dir(script_path, params)
+            out_dir = script_service.resolve_output_dir(script_path, params)
             if not jobs:
                 return err("Job manager is not available")
             job = jobs.submit(
                 "script",
                 f"Pipeline script: {script_id}",
-                _run_script_job,
+                script_service.run_script_job,
                 str(script_path),
                 params,
                 out_dir,
@@ -102,7 +79,7 @@ def register_scripts_panel_routes(app, ctx):
 
             if result.get("done"):
                 artifacts = result.get("artifacts", [])
-                figures = _figures_from_artifacts(artifacts)
+                figures = script_service.figures_from_artifacts(artifacts)
                 return jsonify(
                     {
                         "message": result.get("stdout", "Done")[:500],
@@ -161,7 +138,7 @@ def register_scripts_panel_routes(app, ctx):
                 "stderr": result.get("stderr", "")[:1000],
                 "output_dir": result.get("output_dir", ""),
                 "artifacts": artifacts,
-                "figures": _figures_from_artifacts(artifacts) if result.get("done") else [],
+                "figures": script_service.figures_from_artifacts(artifacts) if result.get("done") else [],
                 "job_status": result.get("job_status", ""),
                 "progress": result.get("progress"),
             }

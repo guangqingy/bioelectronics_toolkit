@@ -13,8 +13,8 @@ find_histology_cases = histology_service.find_histology_cases
 load_histology_preview_pair = histology_service.load_histology_preview_pair
 rename_histology_case = histology_service.rename_histology_case
 sync_qupath_names_from_histology_cases = histology_service.sync_qupath_names_from_histology_cases
-_bool = histology_service._bool
-_normalize_rotate_deg = histology_service._normalize_rotate_deg
+parse_bool = histology_service.parse_bool
+normalize_rotate_deg = histology_service.normalize_rotate_deg
 
 
 def register_histology_routes(app, ctx):
@@ -43,8 +43,8 @@ def register_histology_routes(app, ctx):
             case_path = d.get("case_path", "")
             if not case_path:
                 return err("case_path is required")
-            rotate_deg = _normalize_rotate_deg(d.get("rotate_deg", 0))
-            do_ocr = _bool(d.get("do_ocr", False), default=False)
+            rotate_deg = normalize_rotate_deg(d.get("rotate_deg", 0))
+            do_ocr = parse_bool(d.get("do_ocr", False), default=False)
             ocr_lang = str(d.get("ocr_lang", "eng") or "eng")
             payload = load_histology_preview_pair(case_path, rotate_deg=rotate_deg, do_ocr=do_ocr, ocr_lang=ocr_lang)
             if payload.get("error"):
@@ -59,7 +59,7 @@ def register_histology_routes(app, ctx):
             d = (request.json or {}) if payload is None else payload
             case_path = d.get("case_path", "")
             new_name = d.get("new_name", "")
-            update_server_json = _bool(d.get("update_server_json", True), default=True)
+            update_server_json = parse_bool(d.get("update_server_json", True), default=True)
             qupath_project = d.get("qupath_project", None)
             if not case_path:
                 return err("case_path is required")
@@ -91,7 +91,7 @@ def register_histology_routes(app, ctx):
         try:
             d = (request.json or {}) if payload is None else payload
             qupath_project = d.get("qupath_project", None)
-            update_server_json = _bool(d.get("update_server_json", True), default=True)
+            update_server_json = parse_bool(d.get("update_server_json", True), default=True)
             cases = d.get("cases")
             if not isinstance(cases, list) or not cases:
                 folder = str(d.get("folder", "") or "").strip()

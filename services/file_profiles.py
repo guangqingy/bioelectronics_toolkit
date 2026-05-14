@@ -150,3 +150,91 @@ def _profile_response(
         "selected_profile": selected,
         "profile": profile,
     }
+
+
+def get_file_profile(body: dict[str, Any]) -> dict[str, Any]:
+    body = body if isinstance(body, dict) else {}
+    view = str(body.get("view", "")).strip()
+    if not view:
+        raise ValueError("Missing view")
+    file_path = _resolve_file(body.get("file_path"))
+    project_root = _resolve_root(body.get("project_root"), file_path)
+    cache_path = _cache_path(project_root)
+    key = _file_key(project_root, file_path)
+    profile_name = str(body.get("profile_name", "") or "").strip() or None
+    current_fp = _fingerprint(file_path)
+    with _profile_lock:
+        cache = _read_cache(cache_path, project_root)
+        file_entry = cache.get("files", {}).get(key, {})
+        if not isinstance(file_entry, dict):
+            file_entry = {}
+    return _profile_response(cache_path, project_root, key, file_entry, view, profile_name, current_fp)
+
+
+def save_file_profile(body: dict[str, Any]) -> dict[str, Any]:
+    body = body if isinstance(body, dict) else {}
+    view = str(body.get("view", "")).strip()
+    if not view:
+        raise ValueError("Missing view")
+    profile_name = str(body.get("profile_name", "") or "default").strip() or "default"
+    settings = body.get("settings") or {}
+    payload = body.get("payload") or {}
+    if not isinstance(settings, dict):
+        raise ValueError("settings must be an object")
+    if not isinstance(payload, dict):
+        raise ValueError("payload must be an object")
+
+    file_path = _resolve_file(body.get("file_path"))
+    project_root = _resolve_root(body.get("project_root"), file_path)
+    cache_path = _cache_path(project_root)
+    key = _file_key(project_root, file_path)
+    current_fp = _fingerprint(file_path)
+    with _profile_lock:
+        cache = _read_cache(cache_path, project_root)
+        files = cache.setdefault("files", {})
+        file_entry = files.setdefault(key, {})
+        file_entry["path"] = str(file_path)
+        file_entry["fingerprint"] = current_fp
+        file_entry["updated_at"] = _now_iso()
+        views = file_entry.setdefault("views", {})
+        view_entry = views.setdefault(view, {})
+        profiles = view_entry.setdefault("profiles", {})
+        profiles[profile_name] = {
+            "settings": settings,
+            "payload": payload,
+            "updated_at": _now_iso(),
+        }
+        if body.get("make_last", True):
+            view_entry["last_profile"] = profile_name
+        view_entry["updated_at"] = _now_iso()
+        _write_cache(cache_path, cache)
+        file_entry = files.get(key, {})
+    return _profile_response(cache_path, project_root, key, file_entry, view, profile_name, current_fp)
+
+
+def delete_file_profile(body: dict[str, Any]) -> dict[str, Any]:
+    body = body if isinstance(body, dict) else {}
+    view = str(body.get("view", "")).strip()
+    profile_name = str(body.get("profile_name", "") or "").strip()
+    if not view:
+        raise ValueError("Missing view")
+    if not profile_name:
+        raise ValueError("Missing profile_name")
+    file_path = _resolve_file(body.get("file_path"))
+    project_root = _resolve_root(body.get("project_root"), file_path)
+    cache_path = _cache_path(project_root)
+    key = _file_key(project_root, file_path)
+    current_fp = _fingerprint(file_path)
+    with _profile_lock:
+        cache = _read_cache(cache_path, project_root)
+        file_entry = cache.get("files", {}).get(key, {})
+        view_entry = (file_entry.get("views") or {}).get(view, {}) if isinstance(file_entry, dict) else {}
+        profiles = view_entry.get("profiles") if isinstance(view_entry, dict) else {}
+        if isinstance(profiles, dict):
+            profiles.pop(profile_name, None)
+            if view_entry.get("last_profile") == profile_name:
+                view_entry["last_profile"] = next(iter(profiles), "")
+            view_entry["updated_at"] = _now_iso()
+            file_entry["updated_at"] = _now_iso()
+            _write_cache(cache_path, cache)
+    return _profile_response(cache_path, project_root, key, file_entry or {}, view, None, current_fp)
