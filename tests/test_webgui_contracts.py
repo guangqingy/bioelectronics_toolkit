@@ -297,6 +297,26 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("window.FL3D_FLAGS", template)
         self.assertNotIn("function renderVolume3D(volume)", template)
 
+    def test_emg_peaks_uses_workflow_specific_js_modules(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "emg_peaks.html").read_text(encoding="utf-8")
+        modules = (
+            "emg_peaks_state.js",
+            "emg_peaks_browser.js",
+            "emg_peaks_detection.js",
+            "emg_peaks_table_edit.js",
+            "emg_peaks_export.js",
+        )
+        js_source = "\n".join((root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8") for module in modules)
+
+        for module in modules:
+            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
+        self.assertIn("function detectPeaks()", js_source)
+        self.assertIn("function autoGroupByTime()", js_source)
+        self.assertIn("function exportGrouped()", js_source)
+        self.assertNotIn("let _currentFolder = null", template)
+
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np
 
