@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Pydantic schemas, including job endpoints and CSV export query validation.
 - Migrate figure generator and histology request handling to Pydantic schemas,
   keeping direct routes and background job routes on the same validation path.
+- Migrate EMG peaks request handling to Pydantic schemas across the current
+  grouped-peak workflow and legacy peak-export compatibility endpoints.
 
 ## [0.5.0] - 2026-05-14
 
