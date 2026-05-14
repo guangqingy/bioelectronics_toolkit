@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and kymograph endpoints to shared Pydantic request schemas.
 - Migrate fluorescence stack export, normalization, TIFF metadata, and 3D
   rendering/export endpoints to shared Pydantic request schemas.
+- Migrate ABF viewer browse, metadata, plotting, detection, and export endpoints
+  to Pydantic request schemas.
 
 ## [0.5.0] - 2026-05-14
 

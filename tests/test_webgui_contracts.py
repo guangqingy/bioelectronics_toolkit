@@ -927,6 +927,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("PickerRequest", payload["components"]["schemas"])
         for schema_name in [
             "AbfBatchProcessRequest",
+            "AbfExportPeaksRequest",
+            "AbfExportRequest",
+            "AbfPlotRequest",
             "CsvExportRequest",
             "CsvMergeRequest",
             "EchemPcDetectRequest",
@@ -962,6 +965,9 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/telemetry/event": "#/components/schemas/TelemetryEventRequest",
             "/api/csv/export_job": "#/components/schemas/CsvExportRequest",
             "/api/abf_batch/process_job": "#/components/schemas/AbfBatchProcessRequest",
+            "/api/abf/plot": "#/components/schemas/AbfPlotRequest",
+            "/api/abf/export_job": "#/components/schemas/AbfExportRequest",
+            "/api/abf/export_peaks_job": "#/components/schemas/AbfExportPeaksRequest",
             "/api/echem/detect": "#/components/schemas/EchemPcDetectRequest",
             "/api/echem_pv/detect": "#/components/schemas/EchemPvDetectRequest",
             "/api/echem/lineshape/plot": "#/components/schemas/LineshapePlotRequest",
