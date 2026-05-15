@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from services import abf, csv_tools, echem, emg, rhd
+from services import abf, csv_tools, echem, echem_lineshape, emg, rhd
 
 
 def _fake_find_peaks(signal, height=None, distance=None, **_kwargs):
@@ -98,6 +98,120 @@ class EchemServiceTests(unittest.TestCase):
 
         self.assertEqual(pulses[0]["idx"], 4)
         self.assertAlmostEqual(pulses[0]["width_ms"], 2.0)
+
+
+class EchemLineshapeServiceTests(unittest.TestCase):
+    def _write_segment(self, path: Path, values: list[float]) -> None:
+        times = [-0.002, -0.001, 0.0, 0.001, 0.002]
+        rows = ["time_s,current_mA"]
+        rows.extend(f"{t},{v}" for t, v in zip(times, values))
+        path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+    def test_load_samples_filters_chambers_and_centers_peak(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_") as tmp:
+            root = Path(tmp)
+            keep_dir = root / "ATAT" / "Photocurrent" / "ATAT_1001_3"
+            skip_dir = root / "ATAT" / "Photocurrent" / "ATAT_1004_3"
+            keep_dir.mkdir(parents=True)
+            skip_dir.mkdir(parents=True)
+            self._write_segment(keep_dir / "ATAT_1001_3_pair_001.csv", [0, 1, 5, 2, 0])
+            self._write_segment(skip_dir / "ATAT_1004_3_pair_001.csv", [0, 1, 4, 2, 0])
+
+            payload = echem_lineshape.load_samples_payload(
+                {
+                    "base_dir": str(root),
+                    "material": "ATAT",
+                    "index_k": 3,
+                    "kind": "photocurrent",
+                    "chambers": "1,2,3",
+                }
+            )
+
+            self.assertEqual(payload["n"], 1)
+            sample = payload["samples"][0]
+            self.assertEqual(sample["device"], "ATAT_1001_3")
+            peak_index = int(np.argmax(sample["y"]))
+            self.assertAlmostEqual(sample["t"][peak_index], 0.0)
+
+    def test_load_samples_from_source_file_reads_same_stem_pair_folder(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_source_") as tmp:
+            root = Path(tmp)
+            source = root / "ATAT" / "Photocurrent" / "ATAT_photocurrent_1_1.txt"
+            pair_dir = source.with_suffix("")
+            pair_dir.mkdir(parents=True)
+            source.write_text("time_s,current_mA\n0,0\n", encoding="utf-8")
+            self._write_segment(
+                pair_dir / "ATAT_photocurrent_1_1_pair_001.csv",
+                [0, 1, 5, 2, 0],
+            )
+            self._write_segment(
+                pair_dir / "ATAT_photocurrent_1_1_pair_002.csv",
+                [0, 1, 4, 2, 0],
+            )
+
+            payload = echem_lineshape.load_samples_payload(
+                {
+                    "source_path": str(source),
+                    "kind": "photocurrent",
+                }
+            )
+
+            self.assertEqual(payload["n"], 2)
+            self.assertEqual(payload["kind"], "photocurrent")
+            self.assertEqual(payload["source_path"], str(source))
+            self.assertTrue(payload["segment_dir"].endswith("ATAT_photocurrent_1_1"))
+
+    def test_average_and_export_files(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_export_") as tmp:
+            root = Path(tmp)
+            samples = [
+                {"label": "a", "t": [-0.001, 0.0, 0.001], "y": [0.0, 2.0, 0.0]},
+                {"label": "b", "t": [-0.001, 0.0, 0.001], "y": [0.0, 4.0, 0.0]},
+            ]
+            grid, avg = echem_lineshape.compute_average(
+                samples,
+                [0, 1],
+                x_min=-0.001,
+                x_max=0.001,
+                x_offset=0.0,
+            )
+            self.assertAlmostEqual(float(avg[np.argmin(np.abs(grid))]), 3.0)
+
+            result = echem_lineshape.export_average_files(
+                {
+                    "base_dir": str(root),
+                    "material": "ATAT",
+                    "index_k": 1,
+                    "kind": "photocurrent",
+                    "avg_data": {"time_s": grid.tolist(), "y": avg.tolist()},
+                    "crop_t0": -0.001,
+                    "crop_t1": 0.001,
+                }
+            )
+
+            self.assertTrue(Path(result["csv_path"]).exists())
+            self.assertTrue(Path(result["png_path"]).exists())
+            self.assertTrue(Path(result["svg_path"]).exists())
+            self.assertEqual(len(result["outputs"]), 3)
+
+    def test_source_export_defaults_to_project_plots_folder(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_source_export_") as tmp:
+            source = Path(tmp) / "DateRun" / "ATAT" / "Photocurrent" / "ATAT_photocurrent_1_1.txt"
+            source.parent.mkdir(parents=True)
+            source.write_text("time_s,current_mA\n0,0\n", encoding="utf-8")
+
+            result = echem_lineshape.export_average_files(
+                {
+                    "source_path": str(source),
+                    "kind": "photocurrent",
+                    "avg_data": {"time_s": [-0.001, 0.0, 0.001], "y": [0.0, 1.0, 0.0]},
+                    "crop_t0": -0.001,
+                    "crop_t1": 0.001,
+                }
+            )
+
+            self.assertEqual(Path(result["output_dir"]), Path(tmp) / "DateRun" / "plots_shape_average")
+            self.assertTrue(Path(result["csv_path"]).name.startswith("shape_ATAT_photocurrent_1_1"))
 
 
 class AbfServiceTests(unittest.TestCase):

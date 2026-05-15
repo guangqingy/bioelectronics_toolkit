@@ -1,17 +1,90 @@
 {% extends "base.html" %}
 {% block title %}EChem Lineshape{% endblock %}
 
+{% block head %}
+<style>
+.lineshape-workbench {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.85fr) minmax(440px, 1.15fr);
+  gap: 12px;
+  align-items: stretch;
+}
+.lineshape-panel {
+  min-height: 420px;
+}
+.lineshape-mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.lineshape-mini {
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  background: var(--surface-panel);
+  min-height: 198px;
+  padding: 6px;
+  cursor: pointer;
+}
+.lineshape-mini.active {
+  border-color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--blue);
+}
+.lineshape-mini.empty {
+  cursor: default;
+  opacity: 0.6;
+}
+.lineshape-mini-title {
+  font-size: 11px;
+  color: var(--ink);
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineshape-mini:not(.active) .lineshape-mini-title {
+  color: var(--silver);
+}
+.lineshape-mini svg {
+  width: 100%;
+  height: 158px;
+  display: block;
+}
+.lineshape-pager {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lineshape-pager span {
+  flex: 1;
+  color: var(--silver);
+  font-size: 12px;
+  text-align: center;
+}
+@media (max-width: 1100px) {
+  .lineshape-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
 {% block controls %}
 <div class="ctrl-section">
-  <div class="ctrl-label">Base Directory</div>
+  <div class="ctrl-label">Pair Source</div>
   <div class="input-row">
-    <input type="text" id="baseDir" class="input-path" placeholder="/path/to/material/base">
-    <button class="btn-icon" onclick="DP.folder.pick('baseDir','browseBase')">Browse</button>
+    <input type="text" id="sourcePath" class="input-path" placeholder="/path/to/ATAT_photocurrent_1_1.txt">
+    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('sourcePath','loadSamples')">Choose</button>
   </div>
 </div>
 
-<div class="ctrl-section">
-  <div class="ctrl-label">Parameters</div>
+<details class="ctrl-section">
+  <summary class="ctrl-label">Advanced Directory Scan</summary>
+  <div style="margin-top:10px">
+    <div class="input-row">
+      <input type="text" id="baseDir" class="input-path" placeholder="/path/to/electrochemistry/date">
+      <button class="btn-icon" type="button" onclick="DP.folder.pick('baseDir','browseBase')">Browse</button>
+    </div>
+  </div>
   <div class="param-row">
     <div class="param-label">Material</div>
     <input type="text" id="material" value="ATAT" style="flex:1">
@@ -21,32 +94,32 @@
     <input type="number" id="indexK" class="input-sm" value="1" step="1" min="1" max="20">
   </div>
   <div class="param-row">
+    <div class="param-label">Chambers</div>
+    <input type="text" id="chambers" value="1,2,3" style="flex:1">
+  </div>
+  <div class="param-row">
     <div class="param-label">Kind</div>
     <select id="kind">
       <option value="photocurrent">Photocurrent</option>
       <option value="photovoltage">Photovoltage</option>
     </select>
   </div>
-</div>
+</details>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">Crop Window (s)</div>
+  <div class="ctrl-label">Axes</div>
   <div class="param-row">
-    <div class="param-label">T0</div>
+    <div class="param-label">X min</div>
     <input type="number" id="cropT0" class="input-sm" value="-0.005" step="0.001">
   </div>
   <div class="param-row">
-    <div class="param-label">T1</div>
+    <div class="param-label">X max</div>
     <input type="number" id="cropT1" class="input-sm" value="0.020" step="0.001">
   </div>
   <div class="param-row">
     <div class="param-label">X offset</div>
     <input type="number" id="xOffset" class="input-sm" value="0" step="0.0001">
   </div>
-</div>
-
-<div class="ctrl-section">
-  <div class="ctrl-label">Y Limits</div>
   <div class="param-row">
     <div class="param-label">Y min</div>
     <input type="number" id="yMin" class="input-sm" placeholder="auto" step="any">
@@ -55,9 +128,13 @@
     <div class="param-label">Y max</div>
     <input type="number" id="yMax" class="input-sm" placeholder="auto" step="any">
   </div>
+  <div class="btn-row" style="margin-top:6px">
+    <button class="btn-secondary" type="button" onclick="DP.page.applyAutoY()">Auto Y</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.resetX()">Reset X</button>
+  </div>
 </div>
 
-<button class="btn-primary" id="btnLoad" data-label="Load Segments" onclick="DP.page.loadSamples()">Load Segments</button>
+<button class="btn-primary" id="btnLoad" data-label="Load Pairs" type="button" onclick="DP.page.loadSamples()">Load Pairs</button>
 
 <div class="ctrl-section" id="sampleListSection" style="display:none">
   <div class="ctrl-label" style="display:flex;justify-content:space-between">
@@ -66,19 +143,23 @@
   </div>
   <div id="sampleList" class="file-list" style="max-height:200px"></div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" onclick="DP.page.selectAll(true)">All</button>
-    <button class="btn-secondary" onclick="DP.page.selectAll(false)">None</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.selectAll(true)">All</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.selectAll(false)">None</button>
   </div>
 </div>
 
-<hr class="sep">
-<button class="btn-primary" id="btnPlot" data-label="Update Plot" onclick="DP.page.updatePlot()" style="display:none">Update Plot</button>
-
-<div class="ctrl-section" style="margin-top:6px">
-  <div class="btn-row">
-    <button class="btn-secondary" id="btnExportCSV" onclick="DP.page.exportCSV()" style="display:none">Export CSV</button>
-    <button class="btn-secondary" id="btnExportPNG" onclick="DP.page.exportPNG()" style="display:none">Export PNG</button>
+<div class="ctrl-section">
+  <div class="ctrl-label">Export</div>
+  <div class="param-row">
+    <div class="param-label">Output</div>
+    <input type="text" id="outputDir" placeholder="plots_shape_average" style="flex:1">
   </div>
+  <div class="param-row">
+    <div class="param-label">DPI</div>
+    <input type="number" id="exportDpi" class="input-sm" value="300" min="72" max="600" step="1">
+  </div>
+  <button class="btn-primary" id="btnExportFiles" data-label="Export CSV + PNG + SVG" type="button" onclick="DP.page.exportFiles()" style="display:none">Export CSV + PNG + SVG</button>
+  <button class="btn-secondary btn-block" id="btnDownloadPNG" type="button" onclick="DP.page.downloadPNG()" style="display:none;margin-top:6px">Download PNG</button>
 </div>
 
 <div id="status" class="status-bar"></div>
@@ -86,22 +167,36 @@
 
 {% block main %}
 <div class="view-main">
-  <div class="view-header">
+    <div class="view-header">
     <div class="view-title">EChem Lineshape Average</div>
-    <div class="view-sub" id="fileInfo">Set base directory, choose material / index / kind, then Load Segments.</div>
+    <div class="view-sub" id="fileInfo">Choose a photocurrent file or pair folder.</div>
   </div>
 
-  <div id="avgPlotArea" class="plot-area" style="min-height:320px">
-    <div class="plot-placeholder">Average trace will appear here after loading</div>
-  </div>
-
-  <div class="result-card" id="gridCard" style="display:none">
-    <div class="result-card-header">
-      <span>Individual Segments</span>
-      <span id="gridInfo" style="font-weight:400;color:var(--silver)"></span>
+  <div class="lineshape-workbench">
+    <div class="result-card lineshape-panel">
+      <div class="result-card-header">
+        <span>Average</span>
+        <span id="avgInfo" style="font-weight:400;color:var(--silver)"></span>
+      </div>
+      <div class="result-card-body">
+        <div id="avgPlotArea" class="plot-area" style="min-height:360px">
+          <div class="plot-placeholder">No samples selected</div>
+        </div>
+      </div>
     </div>
-    <div class="result-card-body" style="padding:8px">
-      <img id="gridImg" style="max-width:100%;border-radius:4px"/>
+
+    <div class="result-card lineshape-panel">
+      <div class="result-card-header">
+        <span>Preview</span>
+        <div class="lineshape-pager">
+          <button class="btn-secondary" type="button" onclick="DP.page.prevPage()">Prev</button>
+          <span id="pageLabel">Page 1 / 1</span>
+          <button class="btn-secondary" type="button" onclick="DP.page.nextPage()">Next</button>
+        </div>
+      </div>
+      <div class="result-card-body">
+        <div id="previewGrid" class="lineshape-mini-grid"></div>
+      </div>
     </div>
   </div>
 </div>

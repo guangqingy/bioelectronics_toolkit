@@ -56,9 +56,9 @@ const GUI_ITEMS = [
   {
     id: 'echem_lineshape',
     name: 'EChem Lineshape',
-    desc: 'Compare electrochemistry trace shapes and normalized responses across files.',
-    why: 'Use this when the shape of the response curve matters more than single peak values.',
-    tag: 'Shape',
+    desc: 'Average centered photocurrent or photovoltage pair shapes from one source file or pair folder.',
+    why: 'Use this after pair or pulse export when response shape needs manual sample selection before figure export.',
+    tag: 'Avg Shape',
     domain: 'EChem',
     href: '/echem/lineshape',
   },

@@ -45,6 +45,7 @@ env/
 temp*.py
 tmp*.py
 scratch*.py
+sync_to_github.sh
 
 # ---- Large data archives ----
 *.zip
