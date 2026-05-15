@@ -56,7 +56,7 @@ const GUI_ITEMS = [
   {
     id: 'echem_lineshape',
     name: 'EChem Lineshape',
-    desc: 'Average centered photocurrent or photovoltage pair shapes from one source file or pair folder.',
+    desc: 'Build a selected source-file set and average centered photocurrent or photovoltage pair shapes.',
     why: 'Use this after pair or pulse export when response shape needs manual sample selection before figure export.',
     tag: 'Avg Shape',
     domain: 'EChem',

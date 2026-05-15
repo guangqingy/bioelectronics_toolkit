@@ -123,7 +123,8 @@ const SETTINGS_SCHEMAS = {
     {section: 'Peaks'}, {id: 'peakMinV', label: 'Peak min V', type: 'number'}, {id: 'minWidthMs', label: 'Min width ms', type: 'number'}, {id: 'minSpacingMs', label: 'Min spacing ms', type: 'number'}, {id: 'polarity', label: 'Polarity', type: 'select'}, {id: 'showDetrended', label: 'Show detrended trace', type: 'checkbox'},
   ],
   echem_lineshape: [
-    {section: 'Paths'}, {id: 'sourcePath', label: 'Pair source file', type: 'path'},
+    {section: 'Paths'}, {id: 'sourceFolder', label: 'Source folder', type: 'path'},
+    {id: 'sourcePath', label: 'Pair source file', type: 'path'},
     {id: 'baseDir', label: 'Material base folder', type: 'path'},
     {section: 'Advanced scan'}, {id: 'material', label: 'Material', type: 'text'},
     {id: 'indexK', label: 'Index', type: 'number'},

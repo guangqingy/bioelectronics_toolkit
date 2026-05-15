@@ -14,6 +14,7 @@ DEFAULT_CROP_T0 = -0.005
 DEFAULT_CROP_T1 = 0.020
 DEVICE_DIR_RE = re.compile(r"^(?P<prefix>.*)(?P<ch>\d)_(?P<idx>\d+)$")
 FLOAT_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?")
+SOURCE_SUFFIXES = {".csv", ".txt", ".tsv"}
 
 
 def _figure_class():
@@ -82,6 +83,10 @@ def _pattern(kind: str) -> str:
     return "*_pulse_*.csv" if normalize_kind(kind) == "photovoltage" else "*_pair_*.csv"
 
 
+def _natural_key(path: Path) -> list[object]:
+    return [int(part) if part.isdigit() else part.lower() for part in re.split(r"(\d+)", path.name)]
+
+
 def infer_kind_from_path(path: str | Path, fallback: object = "photocurrent") -> str:
     text = str(path).lower()
     if "photovoltage" in text or "_pulse_" in text:
@@ -117,7 +122,7 @@ def list_device_dirs(
     idx_target = _int_or(index_k, 1)
     chamber_set = set(parse_chambers(chambers))
     out: list[Path] = []
-    for path in sorted(root.iterdir()):
+    for path in sorted(root.iterdir(), key=_natural_key):
         if not path.is_dir():
             continue
         match = DEVICE_DIR_RE.match(path.name)
@@ -147,12 +152,53 @@ def segment_paths_from_source(source_path: str | Path, kind: str) -> tuple[list[
         segment_dir = source.with_suffix("")
 
     if source.is_file() and re.search(r"_(pair|pulse)_\d+", source.stem):
-        csv_paths = sorted(segment_dir.glob(pattern))
+        csv_paths = sorted(segment_dir.glob(pattern), key=_natural_key)
     else:
-        csv_paths = sorted(segment_dir.rglob(pattern)) if segment_dir.is_dir() else []
+        csv_paths = sorted(segment_dir.rglob(pattern), key=_natural_key) if segment_dir.is_dir() else []
     if source.is_file() and source.match(pattern) and source not in csv_paths:
         csv_paths = [source]
     return csv_paths, source, segment_dir
+
+
+def _source_path_list(data: dict[str, Any]) -> list[str]:
+    raw = data.get("source_paths")
+    if isinstance(raw, list):
+        candidates = [str(item).strip() for item in raw]
+    else:
+        candidates = []
+    single = str(data.get("source_path") or "").strip()
+    if single:
+        candidates.append(single)
+    seen: set[str] = set()
+    return [path for path in candidates if path and not (path in seen or seen.add(path))]
+
+
+def list_source_files(folder: str | Path, kind: object = "photocurrent") -> list[dict[str, Any]]:
+    root = Path(folder).expanduser()
+    if not root.is_dir():
+        raise ValueError(f"Not a directory: {folder}")
+    files: list[dict[str, Any]] = []
+    for path in sorted(root.iterdir(), key=_natural_key):
+        if not path.is_file() or path.name.startswith(".") or path.suffix.lower() not in SOURCE_SUFFIXES:
+            continue
+        if re.search(r"_(pair|pulse)_\d+", path.stem) or path.stem.endswith(
+            ("_pairs_summary", "_pulses_summary")
+        ):
+            continue
+        source_kind = infer_kind_from_path(path, kind)
+        csv_paths, _source, segment_dir = segment_paths_from_source(path, source_kind)
+        if not csv_paths:
+            continue
+        files.append(
+            {
+                "name": path.name,
+                "path": str(path),
+                "kind": source_kind,
+                "segment_dir": str(segment_dir),
+                "segment_count": len(csv_paths),
+            }
+        )
+    return files
 
 
 def read_two_column_csv(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
@@ -263,6 +309,7 @@ def samples_payload_from_csvs(
                 "device": device_dir.name,
                 "file": str(csv_path),
                 "kind": kind,
+                "source": str(source_path) if source_path else "",
                 "t": t_rel.tolist(),
                 "y": y_proc.tolist(),
             }
@@ -283,25 +330,63 @@ def samples_payload_from_csvs(
     }
 
 
-def load_samples_from_source(data: dict[str, Any]) -> dict[str, Any]:
-    source_text = str(data.get("source_path") or "").strip()
-    if not source_text:
+def load_samples_from_sources(data: dict[str, Any]) -> dict[str, Any]:
+    source_texts = _source_path_list(data)
+    if not source_texts:
         raise ValueError("source_path is required")
-    kind = infer_kind_from_path(source_text, data.get("kind"))
-    csv_paths, source, segment_dir = segment_paths_from_source(source_text, kind)
-    if not csv_paths:
-        raise ValueError(f"No {_pattern(kind)} files found under {segment_dir}")
-    return samples_payload_from_csvs(
-        csv_paths,
-        kind=kind,
-        source_path=source,
-        segment_dir=segment_dir,
-    )
+    kind = infer_kind_from_path(source_texts[0], data.get("kind"))
+    samples: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    segment_dirs: list[str] = []
+    valid_sources: list[str] = []
+    for source_text in source_texts:
+        source_kind = infer_kind_from_path(source_text, kind)
+        if source_kind != kind:
+            warnings.append(f"Skipped {Path(source_text).name}: mixed source kind")
+            continue
+        try:
+            csv_paths, source, segment_dir = segment_paths_from_source(source_text, kind)
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+        if not csv_paths:
+            warnings.append(f"Skipped {source.name}: no {_pattern(kind)} files found")
+            continue
+        try:
+            payload = samples_payload_from_csvs(
+                csv_paths,
+                kind=kind,
+                source_path=source,
+                segment_dir=segment_dir,
+            )
+        except ValueError as exc:
+            warnings.append(str(exc))
+            continue
+        samples.extend(payload["samples"])
+        warnings.extend(payload.get("warnings", []))
+        valid_sources.append(str(source))
+        segment_dirs.append(str(segment_dir))
+
+    if not samples:
+        raise ValueError("No valid pair segments found in selected files")
+    return {
+        "samples": samples,
+        "n": len(samples),
+        "warnings": warnings,
+        "y_limits": y_limits_for_samples(samples),
+        "x_limits": [DEFAULT_CROP_T0, DEFAULT_CROP_T1],
+        "kind": kind,
+        "source_path": valid_sources[0] if valid_sources else "",
+        "source_paths": valid_sources,
+        "segment_dir": segment_dirs[0] if segment_dirs else "",
+        "segment_dirs": segment_dirs,
+        "n_sources": len(valid_sources),
+    }
 
 
 def load_samples_payload(data: dict[str, Any]) -> dict[str, Any]:
-    if str(data.get("source_path") or "").strip():
-        return load_samples_from_source(data)
+    if _source_path_list(data):
+        return load_samples_from_sources(data)
 
     base_dir = data.get("base_dir", "")
     material = str(data.get("material") or "").strip()
@@ -491,7 +576,8 @@ def csv_bytes(avg_data: dict[str, Any], kind: str) -> bytes:
 
 
 def _project_root_from_source(source_path: object) -> Path | None:
-    text = str(source_path or "").strip()
+    paths = source_path if isinstance(source_path, list) else [source_path]
+    text = str(next((path for path in paths if str(path or "").strip()), "")).strip()
     if not text:
         return None
     source = Path(text).expanduser()
@@ -524,10 +610,13 @@ def export_base_name(
     kind: str,
     source_path: object = "",
 ) -> str:
-    source_text = str(source_path or "").strip()
-    if source_text:
-        source = Path(source_text).expanduser()
-        return f"shape_{sanitize_name_part(source.stem or source.name, 'source')}_avg"
+    source_paths = source_path if isinstance(source_path, list) else [source_path]
+    sources = [Path(str(path)).expanduser() for path in source_paths if str(path or "").strip()]
+    if len(sources) == 1:
+        return f"shape_{sanitize_name_part(sources[0].stem or sources[0].name, 'source')}_avg"
+    if len(sources) > 1:
+        first = sanitize_name_part(sources[0].stem or sources[0].name, "source")
+        return f"shape_{first}_plus{len(sources) - 1}_avg"
     mat = sanitize_name_part(material, "material")
     idx = _int_or(index_k, 1)
     return f"shape_{mat}_idx{idx}_{normalize_kind(kind)}_avg"
@@ -543,9 +632,10 @@ def export_average_files(data: dict[str, Any]) -> dict[str, Any]:
     y_min = _float_or(data.get("y_min"), None)
     y_max = _float_or(data.get("y_max"), None)
     dpi = max(72, min(600, _int_or(data.get("dpi"), 300)))
-    out_dir = _resolve_output_dir(data.get("base_dir"), data.get("output_dir"), data.get("source_path"))
+    source_paths = data.get("source_paths") or data.get("source_path")
+    out_dir = _resolve_output_dir(data.get("base_dir"), data.get("output_dir"), source_paths)
     out_dir.mkdir(parents=True, exist_ok=True)
-    base = export_base_name(data.get("material"), data.get("index_k"), kind, data.get("source_path"))
+    base = export_base_name(data.get("material"), data.get("index_k"), kind, source_paths)
     csv_path = out_dir / f"{base}.csv"
     png_path = out_dir / f"{base}.png"
     svg_path = out_dir / f"{base}.svg"

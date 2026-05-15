@@ -161,6 +161,41 @@ class EchemLineshapeServiceTests(unittest.TestCase):
             self.assertEqual(payload["source_path"], str(source))
             self.assertTrue(payload["segment_dir"].endswith("ATAT_photocurrent_1_1"))
 
+    def test_source_file_browse_and_multi_source_load(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_multi_") as tmp:
+            folder = Path(tmp) / "ATAT" / "Photocurrent"
+            sources = [
+                folder / "ATAT_photocurrent_1_1.txt",
+                folder / "ATAT_photocurrent_2_1.txt",
+            ]
+            for offset, source in enumerate(sources):
+                pair_dir = source.with_suffix("")
+                pair_dir.mkdir(parents=True)
+                source.write_text("time_s,current_mA\n0,0\n", encoding="utf-8")
+                self._write_segment(
+                    pair_dir / f"{source.stem}_pair_001.csv",
+                    [0, 1, 5 + offset, 2, 0],
+                )
+                self._write_segment(
+                    pair_dir / f"{source.stem}_pair_002.csv",
+                    [0, 1, 4 + offset, 2, 0],
+                )
+
+            files = echem_lineshape.list_source_files(folder, "photocurrent")
+            self.assertEqual([item["name"] for item in files], [source.name for source in sources])
+            self.assertEqual([item["segment_count"] for item in files], [2, 2])
+
+            payload = echem_lineshape.load_samples_payload(
+                {
+                    "source_paths": [str(source) for source in sources],
+                    "kind": "photocurrent",
+                }
+            )
+
+            self.assertEqual(payload["n_sources"], 2)
+            self.assertEqual(payload["n"], 4)
+            self.assertEqual(payload["source_paths"], [str(source) for source in sources])
+
     def test_average_and_export_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_export_") as tmp:
             root = Path(tmp)

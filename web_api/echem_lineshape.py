@@ -23,8 +23,15 @@ class LineshapeBrowseRequest(RequestModel):
     base_dir: str = ""
 
 
+class LineshapeSourceBrowseRequest(RequestModel):
+    folder: str = ""
+    kind: str = "photocurrent"
+
+
 class LineshapeLoadRequest(RequestModel):
     source_path: str = ""
+    source_paths: list[Any] = Field(default_factory=list)
+    source_folder: str = ""
     base_dir: str = ""
     material: str = ""
     index_k: Any = 1
@@ -50,6 +57,8 @@ class LineshapePlotRequest(RequestModel):
 
 class LineshapeExportAvgRequest(RequestModel):
     source_path: str = ""
+    source_paths: list[Any] = Field(default_factory=list)
+    source_folder: str = ""
     avg_data: dict[str, Any] = Field(default_factory=dict)
     mode: str = "download"
     base_dir: str = ""
@@ -78,6 +87,19 @@ def register_echem_lineshape_routes(app, ctx):
         try:
             payload = parse_json_payload(LineshapeBrowseRequest)
             return jsonify({"materials": lineshape_service.list_materials(payload.base_dir)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/echem/lineshape/source_browse", methods=["POST"])
+    @request_schema(LineshapeSourceBrowseRequest)
+    def api_ls_source_browse():
+        try:
+            payload = parse_json_payload(LineshapeSourceBrowseRequest)
+            return jsonify({"files": lineshape_service.list_source_files(payload.folder, payload.kind)})
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -127,7 +149,7 @@ def register_echem_lineshape_routes(app, ctx):
                 body.get("material"),
                 body.get("index_k"),
                 body.get("kind"),
-                body.get("source_path"),
+                body.get("source_paths") or body.get("source_path"),
             )
             name = f"{base_name}.csv"
             return Response(

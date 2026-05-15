@@ -4,10 +4,99 @@ let _avgData = null;
 let _avgB64 = null;
 let _yLimits = null;
 let _page = 0;
+let _sourceFiles = [];
+let _selectedSources = [];
 const _perPage = 4;
 
 function baseName(path) {
   return (path || '').split('/').pop() || path;
+}
+
+function normalizePath(path) {
+  return String(path || '').trim();
+}
+
+function sourceKey(path) {
+  return normalizePath(path);
+}
+
+function renderSourceFiles() {
+  const el = document.getElementById('sourceFileList');
+  if (!el) return;
+  if (!_sourceFiles.length) {
+    el.innerHTML = '<div class="file-list-empty">No files loaded</div>';
+    if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
+    return;
+  }
+  const selected = new Set(_selectedSources.map(item => sourceKey(item.path)));
+  el.innerHTML = _sourceFiles.map((file, i) => {
+    const active = selected.has(sourceKey(file.path));
+    const count = Number(file.segment_count || 0);
+    const suffix = count ? ` · ${count}` : '';
+    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.addSourceIndex(${i})">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+  }).join('');
+  if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
+}
+
+function renderSelectedSources() {
+  const el = document.getElementById('selectedSourceList');
+  if (!el) return;
+  document.getElementById('sourceCount').textContent = `${_selectedSources.length}`;
+  if (!_selectedSources.length) {
+    el.innerHTML = '<div class="file-list-empty">No selected files</div>';
+    if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('selectedSourceList');
+    return;
+  }
+  el.innerHTML = _selectedSources.map((file, i) => {
+    const count = Number(file.segment_count || 0);
+    const suffix = count ? ` · ${count}` : '';
+    return `<div class="file-item active" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.removeSource(${i})">${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+  }).join('');
+  if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('selectedSourceList');
+}
+
+function addSourceRecord(file) {
+  const path = normalizePath(file && file.path ? file.path : file);
+  if (!path) return;
+  if (_selectedSources.some(item => sourceKey(item.path) === sourceKey(path))) {
+    renderSourceFiles();
+    renderSelectedSources();
+    return;
+  }
+  _selectedSources.push(Object.assign({name: baseName(path), path}, file && typeof file === 'object' ? file : {}));
+  document.getElementById('sourcePath').value = '';
+  renderSourceFiles();
+  renderSelectedSources();
+  setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
+}
+
+function addSourceIndex(i) {
+  const file = _sourceFiles[i];
+  if (file) addSourceRecord(file);
+}
+
+function addSourceFromPath() {
+  const path = normalizePath(document.getElementById('sourcePath').value);
+  if (!path) {
+    setStatus('status', 'Choose or paste a source file first', 'error');
+    return;
+  }
+  addSourceRecord({name: baseName(path), path});
+}
+
+function removeSource(i) {
+  if (i < 0 || i >= _selectedSources.length) return;
+  _selectedSources.splice(i, 1);
+  renderSourceFiles();
+  renderSelectedSources();
+  setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
+}
+
+function clearSources() {
+  _selectedSources = [];
+  renderSourceFiles();
+  renderSelectedSources();
+  setStatus('status', 'Selected files cleared', 'ok');
 }
 
 function parseNum(id, fallback) {
@@ -32,8 +121,11 @@ function axisState() {
 
 function currentMetadata() {
   const sourcePath = document.getElementById('sourcePath').value.trim();
+  const selectedSourcePaths = _selectedSources.map(item => item.path);
   return {
-    source_path: sourcePath,
+    source_path: selectedSourcePaths[0] || sourcePath,
+    source_paths: selectedSourcePaths,
+    source_folder: document.getElementById('sourceFolder').value.trim(),
     base_dir: document.getElementById('baseDir').value.trim(),
     material: document.getElementById('material').value.trim(),
     index_k: parseInt(document.getElementById('indexK').value, 10) || 1,
@@ -57,17 +149,37 @@ function browseBase() {
   });
 }
 
+function scanSourceFolder() {
+  const folder = document.getElementById('sourceFolder').value.trim();
+  if (!folder) {
+    setStatus('status', 'Choose a source folder first', 'error');
+    return;
+  }
+  setStatus('status', 'Scanning source files...', 'loading');
+  api('/api/echem/lineshape/source_browse', {
+    folder,
+    kind: document.getElementById('kind').value,
+  }).then(d => {
+    if (d.error) throw new Error(d.error);
+    _sourceFiles = Array.isArray(d.files) ? d.files : [];
+    renderSourceFiles();
+    setStatus('status', `${_sourceFiles.length} source file(s) found`, 'ok');
+  }).catch(e => {
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
 function loadSamples() {
   const meta = currentMetadata();
-  if (!meta.source_path && (!meta.base_dir || !meta.material)) {
-    setStatus('status', 'Choose a source file or set advanced directory scan fields', 'error');
+  if (!meta.source_paths.length && !meta.source_path && (!meta.base_dir || !meta.material)) {
+    setStatus('status', 'Add source files or set advanced directory scan fields', 'error');
     return;
   }
   btnBusy('btnLoad', true, 'Loading...');
   setStatus('status', 'Loading pairs...', 'loading');
   api('/api/echem/lineshape/load', Object.assign({}, meta, axisState()))
     .then(d => {
-      btnBusy('btnLoad', false, 'Load Pairs');
+      btnBusy('btnLoad', false, 'Load Selected Pairs');
       if (d.error) {
         setStatus('status', 'Error: ' + d.error, 'error');
         return;
@@ -83,7 +195,8 @@ function loadSamples() {
         document.getElementById('yMax').placeholder = _yLimits[1].toPrecision(4);
       }
       document.getElementById('sampleListSection').style.display = '';
-      const sourceLabel = d.source_path ? baseName(d.source_path) : `${meta.material} · index ${meta.index_k}`;
+      const nSources = Array.isArray(d.source_paths) ? d.source_paths.length : (d.source_path ? 1 : 0);
+      const sourceLabel = nSources > 1 ? `${nSources} source files` : (d.source_path ? baseName(d.source_path) : `${meta.material} · index ${meta.index_k}`);
       if (d.kind) document.getElementById('kind').value = d.kind;
       document.getElementById('fileInfo').textContent =
         `${sourceLabel} · ${d.kind || meta.kind} · ${_samples.length} pair segment(s)`;
@@ -94,7 +207,7 @@ function loadSamples() {
       setStatus('status', `${_samples.length} pair segment(s) loaded${warningSuffix}`, 'ok');
     })
     .catch(e => {
-      btnBusy('btnLoad', false, 'Load Pairs');
+      btnBusy('btnLoad', false, 'Load Selected Pairs');
       setStatus('status', 'Error: ' + e.message, 'error');
     });
 }
@@ -285,13 +398,16 @@ function exportFiles() {
     btnBusy('btnExportFiles', false, 'Export CSV + PNG + SVG');
     const outputs = Array.isArray(d.outputs) ? d.outputs : [];
     const outputDir = d.output_dir || '';
+    const sourceInputs = meta.source_paths.length
+      ? _selectedSources.map(item => ({path: item.path, role: 'source_echem'}))
+      : (meta.source_path ? [{path: meta.source_path, role: 'source_echem'}] : []);
     setStatus('status', `Exported ${outputs.length || 3} file(s)${outputDir ? ': ' + outputDir : ''}`, 'ok');
     recordRunHistory({
       view: 'echem_lineshape',
       title: 'EChem Lineshape Average',
       status: 'ok',
-      project_root: meta.base_dir || dpPathDir(meta.source_path),
-      input_files: meta.source_path ? [{path: meta.source_path, role: 'source_echem'}].concat(outputsBefore) : outputsBefore,
+      project_root: meta.source_folder || meta.base_dir || dpPathDir(meta.source_path),
+      input_files: sourceInputs.concat(outputsBefore),
       outputs,
       parameters: Object.assign({}, meta, axisState(), {
         selected_count: _selected.size,
@@ -307,7 +423,14 @@ function exportFiles() {
 function downloadPNG() {
   if (!_avgB64) return;
   const meta = currentMetadata();
-  const sourceStem = meta.source_path ? baseName(meta.source_path).replace(/\.[^.]+$/, '') : '';
+  let sourceStem = '';
+  if (meta.source_paths.length > 1) {
+    sourceStem = `${baseName(meta.source_paths[0]).replace(/\.[^.]+$/, '')}_plus${meta.source_paths.length - 1}`;
+  } else if (meta.source_paths.length === 1) {
+    sourceStem = baseName(meta.source_paths[0]).replace(/\.[^.]+$/, '');
+  } else if (meta.source_path) {
+    sourceStem = baseName(meta.source_path).replace(/\.[^.]+$/, '');
+  }
   const a = Object.assign(document.createElement('a'), {
     href: 'data:image/png;base64,' + _avgB64,
     download: sourceStem ? `shape_${sourceStem}_avg.png` : `shape_${meta.material || 'material'}_idx${meta.index_k}_${meta.kind}_avg.png`,
@@ -327,11 +450,14 @@ function downloadPNG() {
 });
 
 window.addEventListener('load', () => {
+  renderSourceFiles();
+  renderSelectedSources();
   renderPreviewPage();
   setStatus('status', 'Ready', 'ok');
   const sourcePath = new URLSearchParams(window.location.search).get('path');
   if (sourcePath) {
     document.getElementById('sourcePath').value = sourcePath;
+    addSourceFromPath();
     loadSamples();
   }
 });
@@ -340,13 +466,18 @@ window.DP = window.DP || {};
 window.DP.page = window.DP.page || {};
 [
   'applyAutoY',
+  'addSourceFromPath',
+  'addSourceIndex',
   'browseBase',
+  'clearSources',
   'downloadPNG',
   'exportFiles',
   'loadSamples',
   'nextPage',
   'prevPage',
+  'removeSource',
   'resetX',
+  'scanSourceFolder',
   'selectAll',
   'toggleSample',
   'updatePlot',
