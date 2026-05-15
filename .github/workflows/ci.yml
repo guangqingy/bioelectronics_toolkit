@@ -52,7 +52,7 @@ jobs:
           coverage xml -o coverage-services.xml
 
       - name: upload service coverage artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: service-coverage-py${{ matrix.python-version }}
           path: coverage-services.xml
@@ -99,7 +99,7 @@ jobs:
       - name: Run Playwright smoke tests
         run: python -m pytest tests/e2e
       - name: Upload Playwright artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: playwright-artifacts
