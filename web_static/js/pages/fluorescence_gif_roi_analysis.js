@@ -199,7 +199,7 @@ async function exportGifRoiPreview() {
       `ROI Preview <span style="font-weight:400;color:var(--silver)">` +
       `${d.roi_polygons || rois.length} ROI | slice ${d.frame} | ${escHtml(formatScaleInfo(d))}</span>`;
     const body = `
-      <img src="data:image/png;base64,${d.img}" style="max-width:100%;border-radius:4px"/>
+      <img class="gif-reference-img" src="data:image/png;base64,${d.img}" alt="GIF ROI preview"/>
       <div style="font-size:11px;color:var(--silver);margin-top:6px;word-break:break-all">Exported: <code>${escHtml(d.output_path || '')}</code></div>
       <div style="font-size:11px;color:var(--silver);margin-top:2px">Scale bar: ${Number(d.scale_bar_um || 0).toPrecision(4)} um · ${escHtml(formatScaleInfo(d))}</div>
       <div style="margin-top:8px">${openButton}</div>`;
@@ -307,7 +307,7 @@ async function runGifRoiAnalysis() {
       `ROI Time Analysis <span style="font-weight:400;color:var(--silver)">` +
       `${d.n_frames} frames | ${d.n_rois} ROI | ${d.metric} | ${d.plot_metric}${refText}</span>`;
     const body = `
-      <img src="data:image/png;base64,${d.img}" style="max-width:100%;border-radius:4px"/>
+      <img class="gif-result-img" src="data:image/png;base64,${d.img}" alt="GIF ROI time analysis plot"/>
       ${warnText}`;
     upsertGifResultCard('gifRoiTimeResultCard', header, body);
     document.getElementById('gifRoiExportSection').style.display = '';

@@ -209,7 +209,7 @@ function runAnalysis() {
     const header =
       `ROI Sequence Result <span style="font-weight:400;color:var(--silver)">` +
       `${d.n_records} files | ${d.n_rois} ROI | ${d.metric} | ${d.plot_metric}${refText}</span>`;
-    const body = `<img src="data:image/png;base64,${d.img}" style="max-width:100%;border-radius:4px"/>`;
+    const body = `<img class="roi-result-img" src="data:image/png;base64,${d.img}" alt="ROI sequence plot"/>`;
     upsertResultCard('roiSequenceResultCard', header, body);
 
 	    if (_lastPreviewB64) {
@@ -217,7 +217,7 @@ function runAnalysis() {
 	      const prevHeader =
 	        `ROI Reference Preview <span style="font-weight:400;color:var(--silver)">` +
 	        `${d.roi_preview_path ? escapeHtml(d.roi_preview_path.split('/').pop()) : 'selected preview'}${pxInfo}</span>`;
-	      const prevBody = `<img src="data:image/png;base64,${_lastPreviewB64}" style="max-width:100%;border-radius:4px"/>`;
+	      const prevBody = `<img class="roi-reference-img" src="data:image/png;base64,${_lastPreviewB64}" alt="ROI reference preview"/>`;
 	      upsertResultCard('roiPreviewResultCard', prevHeader, prevBody);
 	    }
 
@@ -225,7 +225,7 @@ function runAnalysis() {
 	      const radialHeader =
 	        `Concentric ROI Ring Sequence <span style="font-weight:400;color:var(--silver)">` +
 	        `${d.n_radial_rows || 0} ring measurements</span>`;
-	      const radialBody = `<img src="data:image/png;base64,${_lastRadialPlotB64}" style="max-width:100%;border-radius:4px"/>`;
+	      const radialBody = `<img class="roi-result-img" src="data:image/png;base64,${_lastRadialPlotB64}" alt="Concentric ROI ring plot"/>`;
 	      upsertResultCard('roiRadialResultCard', radialHeader, radialBody);
 	    } else {
 	      const oldRadial = document.getElementById('roiRadialResultCard');

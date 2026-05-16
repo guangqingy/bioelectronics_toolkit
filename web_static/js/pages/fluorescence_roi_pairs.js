@@ -223,10 +223,12 @@ function onFrameSlide() {
 
 function applyPreviewScale(redraw = true) {
   if (!_imgW) return;
-  const scale = parseFloat(document.getElementById('previewScale').value) || 0.35;
+  const scale = parseFloat(document.getElementById('previewScale').value) || 0.85;
   const wrap = document.getElementById('previewWrap');
-  const targetW = Math.max(260, Math.round(_imgW * scale));
-  wrap.style.width = Math.min(760, targetW) + 'px';
+  const surface = wrap?.closest('.roi-preview-surface');
+  const available = surface ? Math.max(360, surface.clientWidth - 24) : 1120;
+  const targetW = Math.max(360, Math.round(_imgW * scale));
+  wrap.style.width = Math.min(1120, available, targetW) + 'px';
   if (redraw) requestAnimationFrame(initCanvas);
 }
 

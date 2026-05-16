@@ -133,7 +133,7 @@ async function runGifKymograph() {
     if ((d.overlay_top_means || []).length) overlayBits.push(`top mean % ${(d.overlay_top_means || []).map(x => Number(x).toPrecision(4)).join(', ')}`);
     const overlayText = overlayBits.length ? ` · overlay: ${overlayBits.join(' / ')}` : ' · no overlay lines';
     const body = `
-      <img src="data:image/png;base64,${d.img}" style="max-width:100%;border-radius:4px"/>
+      <img class="gif-result-img" src="data:image/png;base64,${d.img}" alt="GIF ROI kymograph plot"/>
       <div style="font-size:11px;color:var(--silver);margin-top:6px">Intensity range: ${Number(d.range_min).toPrecision(4)} to ${Number(d.range_max).toPrecision(4)}${thresholdText}${overlayText} · heatmap CSV includes raw and smoothed bin percentages</div>
       ${warnText}`;
     upsertGifResultCard('gifKymoResultCard', header, body);

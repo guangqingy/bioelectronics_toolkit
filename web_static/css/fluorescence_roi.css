@@ -1,0 +1,81 @@
+.fluorescence-roi-main {
+  gap: 14px;
+}
+
+.roi-preview-body {
+  padding: 12px;
+}
+
+.roi-preview-surface {
+  width: 100%;
+  min-height: clamp(420px, 58vh, 760px);
+  padding: 12px;
+  border-radius: var(--radius-md);
+  background: #111;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.roi-preview-wrap {
+  position: relative;
+  display: block;
+  width: min(900px, 100%);
+  max-width: 100%;
+  margin: 0 auto;
+  flex: 0 0 auto;
+}
+
+.roi-preview-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.roi-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  cursor: crosshair;
+}
+
+.roi-result-area {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.roi-result-area .result-card-body {
+  overflow: auto;
+}
+
+.roi-result-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.roi-reference-img {
+  display: block;
+  width: min(100%, 1120px);
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+
+@media (max-width: 780px) {
+  .roi-preview-body,
+  .roi-preview-surface {
+    padding: 8px;
+  }
+
+  .roi-preview-surface {
+    min-height: 320px;
+    justify-content: flex-start;
+  }
+}

@@ -351,7 +351,7 @@
 {% endblock %}
 
 {% block main %}
-<div class="view-main">
+<div class="view-main fluorescence-gif-main fluorescence-gif-main-{{ gif_page_mode }}">
   <div class="view-header">
     <div class="view-title">{{ gif_page_title }}</div>
     <div class="view-sub" id="viewSub">
@@ -365,13 +365,13 @@
     </div>
   </div>
 
-  <div class="result-card">
+  <div class="result-card gif-preview-card">
     <div class="result-card-header">
       ROI / Frame Preview
       <span id="gifPreviewName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
     </div>
-    <div class="result-card-body">
-      <div class="tiff-preview" id="gifPreview">
+    <div class="result-card-body gif-preview-body">
+      <div class="tiff-preview gif-preview-surface" id="gifPreview">
         <div id="gifPreviewPlaceholder" class="plot-placeholder">Scan a folder or choose a TIFF stack to preview</div>
         <div id="gifPreviewWrap" class="gif-preview-wrap" style="display:none">
           <img id="gifPreviewImg" src="" alt="GIF preview frame"/>
@@ -383,13 +383,13 @@
   </div>
 
   {% if gif_page_mode == 'gif' %}
-  <div class="result-card" id="generatedGifCard">
+  <div class="result-card generated-gif-card" id="generatedGifCard">
     <div class="result-card-header">
       Generated GIF Preview
       <span id="generatedGifName" style="font-size:11px;color:var(--silver);font-weight:400"></span>
     </div>
-    <div class="result-card-body">
-      <div class="tiff-preview" id="generatedGifPreview">
+    <div class="result-card-body gif-preview-body">
+      <div class="tiff-preview gif-preview-surface generated-gif-preview" id="generatedGifPreview">
         <div class="plot-placeholder">Generated GIF will appear here without replacing the ROI preview.</div>
       </div>
       <div id="generatedGifMeta" style="font-size:12px;color:var(--pewter);margin-top:8px;word-break:break-word"></div>
@@ -398,7 +398,7 @@
   {% endif %}
 
   <!-- Result info -->
-  <div id="resultArea" style="display:flex;flex-direction:column;gap:10px"></div>
+  <div id="resultArea" class="gif-result-area"></div>
 </div>
 {% endblock %}
 

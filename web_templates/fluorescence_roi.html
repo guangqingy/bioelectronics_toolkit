@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 {% block title %}Fluorescence ROI Analysis{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="/static/css/fluorescence_roi.css"/>
+{% endblock %}
 
 {% block controls %}
 <details class="ctrl-section ctrl-details" open>
@@ -57,9 +60,9 @@
   <div class="param-row">
     <div class="param-label">Size</div>
     <select id="previewScale" onchange="applyPreviewScale()">
-      <option value="0.35" selected>Small</option>
-      <option value="0.50">Medium</option>
-      <option value="0.70">Large</option>
+      <option value="0.60">Compact</option>
+      <option value="0.85" selected>Comfortable</option>
+      <option value="1.10">Full</option>
     </select>
   </div>
   <div class="frame-slider-wrap" style="margin-top:6px">
@@ -239,27 +242,29 @@
 {% endblock %}
 
 {% block main %}
-<div class="view-main">
+<div class="view-main fluorescence-roi-main">
   <div class="view-header">
     <div class="view-title">Fluorescence ROI Analysis</div>
     <div class="view-sub" id="stackInfo">Select stack pairs, choose a subset of files, draw ROI, then run sequence analysis.</div>
   </div>
 
-  <div class="result-card">
+  <div class="result-card roi-frame-card">
     <div class="result-card-header">
       Frame Preview
       <span style="font-size:11px;color:var(--silver);font-weight:400" id="canvasHint">Select a stack pair to load</span>
     </div>
-    <div class="result-card-body" style="padding:8px">
-      <div id="previewWrap" style="position:relative;display:inline-block;width:min(560px,100%);max-width:100%">
-        <img id="tiffImg" style="display:block;width:100%;height:auto;image-rendering:pixelated" src="" alt=""/>
-        <canvas id="roiCanvas" style="position:absolute;top:0;left:0;cursor:crosshair;display:none"></canvas>
+    <div class="result-card-body roi-preview-body">
+      <div class="roi-preview-surface">
+        <div id="previewWrap" class="roi-preview-wrap">
+          <img id="tiffImg" class="roi-preview-img" src="" alt=""/>
+          <canvas id="roiCanvas" class="roi-canvas" style="display:none"></canvas>
+        </div>
       </div>
       <div id="coordHint" style="font-size:11px;color:var(--silver);margin-top:4px"></div>
     </div>
   </div>
 
-  <div id="resultArea" style="display:flex;flex-direction:column;gap:12px"></div>
+  <div id="resultArea" class="roi-result-area"></div>
 </div>
 {% endblock %}
 

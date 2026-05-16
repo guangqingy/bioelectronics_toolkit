@@ -182,13 +182,17 @@
 }
 .gif-preview-wrap {
   position: relative;
-  display: inline-block;
+  display: block;
+  width: min(100%, 1120px);
   max-width: 100%;
+  margin: 0 auto;
 }
 .gif-preview-wrap img {
   display: block;
+  width: 100%;
   max-width: 100%;
-  max-height: 560px;
+  max-height: none;
+  height: auto;
   image-rendering: pixelated;
 }
 .gif-roi-canvas {
@@ -226,4 +230,59 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.fluorescence-gif-main {
+  gap: 14px;
+}
+.gif-preview-body {
+  padding: 12px;
+}
+.gif-preview-surface {
+  min-height: clamp(420px, 58vh, 760px);
+  padding: 12px;
+  overflow: auto;
+  align-items: center;
+}
+.generated-gif-preview img {
+  display: block;
+  width: min(100%, 1120px);
+  max-width: 100%;
+  max-height: none;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+.gif-result-area {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.gif-result-area .result-card-body {
+  overflow: auto;
+}
+.gif-result-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+.gif-reference-img {
+  display: block;
+  width: min(100%, 1120px);
+  max-width: 100%;
+  height: auto;
+  margin: 0 auto;
+  border-radius: 4px;
+}
+@media (max-width: 780px) {
+  .gif-preview-body,
+  .gif-preview-surface {
+    padding: 8px;
+  }
+  .gif-preview-surface {
+    min-height: 320px;
+    justify-content: flex-start;
+  }
 }
