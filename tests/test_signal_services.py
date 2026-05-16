@@ -221,13 +221,38 @@ class EchemLineshapeServiceTests(unittest.TestCase):
                     "avg_data": {"time_s": grid.tolist(), "y": avg.tolist()},
                     "crop_t0": -0.001,
                     "crop_t1": 0.001,
+                    "selected_count": 2,
+                    "selected_segments": [
+                        {
+                            "selected_order": 1,
+                            "sample_index": 0,
+                            "label": "a",
+                            "device": "ATAT_1_1",
+                            "source": str(root / "ATAT_photocurrent_1_1.txt"),
+                            "file": str(root / "ATAT_photocurrent_1_1_pair_001.csv"),
+                        },
+                        {
+                            "selected_order": 2,
+                            "sample_index": 1,
+                            "label": "b",
+                            "device": "ATAT_2_1",
+                            "source": str(root / "ATAT_photocurrent_2_1.txt"),
+                            "file": str(root / "ATAT_photocurrent_2_1_pair_001.csv"),
+                        },
+                    ],
                 }
             )
 
             self.assertTrue(Path(result["csv_path"]).exists())
             self.assertTrue(Path(result["png_path"]).exists())
             self.assertTrue(Path(result["svg_path"]).exists())
-            self.assertEqual(len(result["outputs"]), 3)
+            manifest_path = Path(result["source_manifest_path"])
+            self.assertTrue(manifest_path.exists())
+            manifest_text = manifest_path.read_text(encoding="utf-8")
+            self.assertIn("lineshape_average_source_manifest", {o["role"] for o in result["outputs"]})
+            self.assertIn("ATAT_photocurrent_1_1_pair_001.csv", manifest_text)
+            self.assertIn("ATAT_photocurrent_2_1_pair_001.csv", manifest_text)
+            self.assertEqual(len(result["outputs"]), 4)
 
     def test_source_export_defaults_to_project_plots_folder(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_source_export_") as tmp:

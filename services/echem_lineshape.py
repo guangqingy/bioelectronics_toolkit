@@ -575,6 +575,104 @@ def csv_bytes(avg_data: dict[str, Any], kind: str) -> bytes:
     return average_dataframe(avg_data, kind).to_csv(index=False).encode("utf-8")
 
 
+def _as_text_list(value: object) -> list[str]:
+    raw = value if isinstance(value, list) else [value]
+    return [str(item).strip() for item in raw if str(item or "").strip()]
+
+
+def _export_source_manifest_rows(
+    data: dict[str, Any],
+    *,
+    base_name: str,
+    kind: str,
+    x_min: float,
+    x_max: float,
+) -> list[dict[str, Any]]:
+    source_paths = _as_text_list(data.get("source_paths") or data.get("source_path"))
+    source_set = set(source_paths)
+    selected_segments = data.get("selected_segments")
+    rows: list[dict[str, Any]] = []
+    common = {
+        "average_stem": base_name,
+        "kind": normalize_kind(kind),
+        "crop_t0_s": x_min,
+        "crop_t1_s": x_max,
+        "x_offset_s": _float_or(data.get("x_offset"), 0.0) or 0.0,
+        "selected_count": _int_or(data.get("selected_count"), 0),
+    }
+
+    if isinstance(selected_segments, list):
+        for item in selected_segments:
+            if not isinstance(item, dict):
+                continue
+            source = str(item.get("source") or "").strip()
+            segment_file = str(item.get("file") or "").strip()
+            if source:
+                source_set.add(source)
+            rows.append(
+                {
+                    **common,
+                    "role": "averaged_segment",
+                    "selected_order": _int_or(item.get("selected_order"), len(rows) + 1),
+                    "sample_index": _int_or(item.get("sample_index"), len(rows)),
+                    "label": str(item.get("label") or "").strip(),
+                    "device": str(item.get("device") or "").strip(),
+                    "source_file": source,
+                    "segment_file": segment_file,
+                }
+            )
+
+    for source in sorted(source_set):
+        if any(row.get("source_file") == source for row in rows):
+            continue
+        rows.append(
+            {
+                **common,
+                "role": "source_file",
+                "selected_order": "",
+                "sample_index": "",
+                "label": Path(source).name,
+                "device": "",
+                "source_file": source,
+                "segment_file": "",
+            }
+        )
+    return rows
+
+
+def source_manifest_dataframe(
+    data: dict[str, Any],
+    *,
+    base_name: str,
+    kind: str,
+    x_min: float,
+    x_max: float,
+) -> pd.DataFrame:
+    columns = [
+        "average_stem",
+        "kind",
+        "role",
+        "selected_order",
+        "sample_index",
+        "label",
+        "device",
+        "source_file",
+        "segment_file",
+        "crop_t0_s",
+        "crop_t1_s",
+        "x_offset_s",
+        "selected_count",
+    ]
+    rows = _export_source_manifest_rows(
+        data,
+        base_name=base_name,
+        kind=kind,
+        x_min=x_min,
+        x_max=x_max,
+    )
+    return pd.DataFrame(rows, columns=columns)
+
+
 def _project_root_from_source(source_path: object) -> Path | None:
     paths = source_path if isinstance(source_path, list) else [source_path]
     text = str(next((path for path in paths if str(path or "").strip()), "")).strip()
@@ -639,6 +737,7 @@ def export_average_files(data: dict[str, Any]) -> dict[str, Any]:
     csv_path = out_dir / f"{base}.csv"
     png_path = out_dir / f"{base}.png"
     svg_path = out_dir / f"{base}.svg"
+    manifest_path = out_dir / f"{base}_source_manifest.csv"
     x = frame["time_s"].to_numpy(dtype=float)
     y = frame.iloc[:, 1].to_numpy(dtype=float)
 
@@ -665,10 +764,22 @@ def export_average_files(data: dict[str, Any]) -> dict[str, Any]:
     fig_svg.savefig(svg_path, format="svg", bbox_inches="tight", pad_inches=0, transparent=True)
 
     frame.to_csv(csv_path, index=False)
+    source_manifest_dataframe(
+        data,
+        base_name=base,
+        kind=kind,
+        x_min=x_min,
+        x_max=x_max,
+    ).to_csv(manifest_path, index=False)
     outputs = [
         {"path": str(csv_path), "type": "csv", "role": "lineshape_average_csv"},
         {"path": str(png_path), "type": "png", "role": "lineshape_average_plot"},
         {"path": str(svg_path), "type": "svg", "role": "lineshape_average_signal_svg"},
+        {
+            "path": str(manifest_path),
+            "type": "csv",
+            "role": "lineshape_average_source_manifest",
+        },
     ]
     return {
         "ok": True,
@@ -676,5 +787,6 @@ def export_average_files(data: dict[str, Any]) -> dict[str, Any]:
         "csv_path": str(csv_path),
         "png_path": str(png_path),
         "svg_path": str(svg_path),
+        "source_manifest_path": str(manifest_path),
         "outputs": outputs,
     }

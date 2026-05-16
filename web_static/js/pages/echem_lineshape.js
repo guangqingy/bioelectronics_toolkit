@@ -390,12 +390,27 @@ function exportFiles() {
     return;
   }
   const meta = currentMetadata();
-  const outputsBefore = _samples.map(s => ({path: s.file, role: 'segment'})).filter(s => s.path);
+  const selectedIndices = Array.from(_selected).sort((a, b) => a - b);
+  const selectedSegments = selectedIndices.map((idx, order) => {
+    const sample = _samples[idx] || {};
+    return {
+      selected_order: order + 1,
+      sample_index: idx,
+      label: sample.label || '',
+      file: sample.file || '',
+      source: sample.source || '',
+      device: sample.device || '',
+    };
+  });
+  const outputsBefore = selectedSegments
+    .map(s => ({path: s.file, role: 'averaged_segment'}))
+    .filter(s => s.path);
   btnBusy('btnExportFiles', true, 'Exporting...');
   dpRunJobEndpoint('/api/echem/lineshape/export_avg_job', {
     ...meta,
     ...axisState(),
     avg_data: _avgData,
+    selected_segments: selectedSegments,
     output_dir: document.getElementById('outputDir').value.trim(),
     dpi: parseInt(document.getElementById('exportDpi').value, 10) || 300,
     selected_count: _selected.size,
@@ -407,7 +422,7 @@ function exportFiles() {
       setStatus('status', job.message || 'Exporting...', 'loading', pct);
     },
   }).then(d => {
-    btnBusy('btnExportFiles', false, 'Export CSV + PNG + SVG');
+    btnBusy('btnExportFiles', false, 'Export CSV + PNG + SVG + Sources');
     const outputs = Array.isArray(d.outputs) ? d.outputs : [];
     const outputDir = d.output_dir || '';
     const sourceInputs = meta.source_paths.length
@@ -423,11 +438,12 @@ function exportFiles() {
       outputs,
       parameters: Object.assign({}, meta, axisState(), {
         selected_count: _selected.size,
+        selected_segments: selectedSegments,
         output_dir: document.getElementById('outputDir').value.trim() || 'plots_shape_average',
       }),
     });
   }).catch(e => {
-    btnBusy('btnExportFiles', false, 'Export CSV + PNG + SVG');
+    btnBusy('btnExportFiles', false, 'Export CSV + PNG + SVG + Sources');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }

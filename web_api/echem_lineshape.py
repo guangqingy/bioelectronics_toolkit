@@ -74,6 +74,7 @@ class LineshapeExportAvgRequest(RequestModel):
     y_min: Any = None
     y_max: Any = None
     selected_count: Any = 0
+    selected_segments: list[Any] = Field(default_factory=list)
 
 
 def register_echem_lineshape_routes(app, ctx):
