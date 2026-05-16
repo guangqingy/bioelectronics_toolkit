@@ -20,7 +20,7 @@ const GUI_ITEMS = [
   {
     id: 'abf_figure',
     name: 'Figure Generator',
-    desc: 'Load summary CSVs, queue multiple folders, and plot peak/integral metrics with linear and log x-ranges.',
+    desc: 'Load Batch Processor summary folders, queue comparisons, and plot peak/integral metrics with linear and log x-ranges.',
     why: 'Use this after batch processing to compare summary metrics across conditions.',
     tag: 'Comparison',
     domain: 'ABF',
@@ -55,7 +55,7 @@ const GUI_ITEMS = [
   },
   {
     id: 'echem_lineshape',
-    name: 'EChem Lineshape',
+    name: 'EChem Waveform Averager',
     desc: 'Build a selected source-file set and average centered photocurrent or photovoltage pair shapes.',
     why: 'Use this after pair or pulse export when response shape needs manual sample selection before figure export.',
     tag: 'Avg Shape',
@@ -64,7 +64,7 @@ const GUI_ITEMS = [
   },
   {
     id: 'rhd_viewer',
-    name: 'Intan RHD Viewer',
+    name: 'RHD Viewer (Intan)',
     desc: 'Browse .rhd recordings, preview channels, and export selected/all channels as CSV.',
     why: 'Use this first when raw Intan recordings need channel inspection or conversion.',
     tag: 'rhd channels',
@@ -86,7 +86,7 @@ const GUI_ITEMS = [
     desc: 'Browse CSV files, choose X/Y columns, and overlay multiple files with export options.',
     why: 'Use this as a general trace viewer for quick CSV inspection and merged plots.',
     tag: 'CSV Merge',
-    domain: 'Data',
+    domain: 'CSV',
     href: '/csv',
   },
   {
@@ -140,7 +140,7 @@ const GUI_ITEMS = [
     desc: 'Preview Overview.vsi main and label images, then manually rename folders and QuPath display names.',
     why: 'Use this for histology folder cleanup before downstream image analysis.',
     tag: 'VSI rename',
-    domain: 'Histology',
+    domain: 'Utilities',
     href: '/histology',
   },
 ];

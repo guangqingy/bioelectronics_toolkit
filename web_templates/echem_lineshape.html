@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}EChem Lineshape{% endblock %}
+{% block title %}EChem Waveform Averager{% endblock %}
 
 {% block head %}
 <style>
@@ -70,30 +70,36 @@
 
 {% block controls %}
 <div class="ctrl-section">
-  <div class="ctrl-label">Source Folder</div>
+  <div class="ctrl-label">1 Source Folder</div>
   <div class="input-row">
     <input type="text" id="sourceFolder" class="input-path" placeholder="/path/to/Photocurrent">
     <button class="btn-icon" type="button" onclick="DP.folder.pick('sourceFolder','scanSourceFolder')">Browse</button>
   </div>
   <button class="btn-secondary btn-block" type="button" onclick="DP.page.scanSourceFolder()" style="margin-top:6px">Scan Files</button>
-  <div id="sourceFileList" class="file-list" style="max-height:160px;margin-top:8px"></div>
 </div>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">Selected Files <span id="sourceCount" style="color:var(--silver);font-size:10px"></span></div>
-  <div id="selectedSourceList" class="file-list" style="max-height:130px"></div>
-  <div class="input-row" style="margin-top:8px">
-    <input type="text" id="sourcePath" class="input-path" placeholder="/path/to/ATAT_photocurrent_1_1.txt">
-    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('sourcePath','addSourceFromPath')">Choose</button>
+  <div class="ctrl-label" style="display:flex;justify-content:space-between">
+    <span>2 Source Files</span>
+    <span id="sourceCount" style="color:var(--silver);font-size:10px">0 selected</span>
   </div>
-  <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.page.addSourceFromPath()">Add</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.clearSources()">Clear</button>
+  <div id="sourceFileList" class="file-list" style="max-height:210px"></div>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn-secondary" type="button" onclick="DP.page.selectAllSources(true)">All</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.selectAllSources(false)">None</button>
   </div>
+  <details style="margin-top:8px">
+    <summary class="ctrl-label">Add Single File</summary>
+    <div class="input-row" style="margin-top:8px">
+      <input type="text" id="sourcePath" class="input-path" placeholder="/path/to/ATAT_photocurrent_1_1.txt">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('sourcePath','addSourceFromPath')">Choose</button>
+    </div>
+    <button class="btn-secondary btn-block" type="button" onclick="DP.page.addSourceFromPath()" style="margin-top:6px">Add File</button>
+  </details>
 </div>
 
 <details class="ctrl-section">
-  <summary class="ctrl-label">Advanced Directory Scan</summary>
+  <summary class="ctrl-label">Advanced Directory Scan · Material/Chamber/Index naming</summary>
   <div style="margin-top:10px">
     <div class="input-row">
       <input type="text" id="baseDir" class="input-path" placeholder="/path/to/electrochemistry/date">
@@ -149,11 +155,11 @@
   </div>
 </div>
 
-<button class="btn-primary" id="btnLoad" data-label="Load Selected Pairs" type="button" onclick="DP.page.loadSamples()">Load Selected Pairs</button>
+<button class="btn-primary" id="btnLoad" data-label="3 Load & Average" type="button" onclick="DP.page.loadSamples()">3 Load & Average</button>
 
 <div class="ctrl-section" id="sampleListSection" style="display:none">
   <div class="ctrl-label" style="display:flex;justify-content:space-between">
-    <span>Samples</span>
+    <span>Included Segments</span>
     <span id="sampleCount" style="color:var(--silver);font-size:10px"></span>
   </div>
   <div id="sampleList" class="file-list" style="max-height:200px"></div>
@@ -183,8 +189,8 @@
 {% block main %}
 <div class="view-main">
     <div class="view-header">
-    <div class="view-title">EChem Lineshape Average</div>
-    <div class="view-sub" id="fileInfo">Scan a folder, add source files, then average their pair segments.</div>
+    <div class="view-title">EChem Waveform Averager</div>
+    <div class="view-sub" id="fileInfo">Averages pair/pulse segments exported by Photocurrent or Photovoltage.</div>
   </div>
 
   <div class="lineshape-workbench">

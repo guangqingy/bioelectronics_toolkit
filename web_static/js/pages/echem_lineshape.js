@@ -20,11 +20,17 @@ function sourceKey(path) {
   return normalizePath(path);
 }
 
+function updateSourceCount() {
+  const el = document.getElementById('sourceCount');
+  if (el) el.textContent = `${_selectedSources.length} selected`;
+}
+
 function renderSourceFiles() {
   const el = document.getElementById('sourceFileList');
   if (!el) return;
   if (!_sourceFiles.length) {
-    el.innerHTML = '<div class="file-list-empty">No files loaded</div>';
+    el.innerHTML = '<div class="file-list-empty">Scan a source folder</div>';
+    updateSourceCount();
     if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
     return;
   }
@@ -33,31 +39,22 @@ function renderSourceFiles() {
     const active = selected.has(sourceKey(file.path));
     const count = Number(file.segment_count || 0);
     const suffix = count ? ` · ${count}` : '';
-    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.addSourceIndex(${i})">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.toggleSourceIndex(${i})">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
   }).join('');
+  updateSourceCount();
   if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
 }
 
 function renderSelectedSources() {
-  const el = document.getElementById('selectedSourceList');
-  if (!el) return;
-  document.getElementById('sourceCount').textContent = `${_selectedSources.length}`;
-  if (!_selectedSources.length) {
-    el.innerHTML = '<div class="file-list-empty">No selected files</div>';
-    if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('selectedSourceList');
-    return;
-  }
-  el.innerHTML = _selectedSources.map((file, i) => {
-    const count = Number(file.segment_count || 0);
-    const suffix = count ? ` · ${count}` : '';
-    return `<div class="file-item active" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.removeSource(${i})">${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
-  }).join('');
-  if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('selectedSourceList');
+  updateSourceCount();
 }
 
 function addSourceRecord(file) {
   const path = normalizePath(file && file.path ? file.path : file);
   if (!path) return;
+  if (!_sourceFiles.some(item => sourceKey(item.path) === sourceKey(path))) {
+    _sourceFiles.push(Object.assign({name: baseName(path), path}, file && typeof file === 'object' ? file : {}));
+  }
   if (_selectedSources.some(item => sourceKey(item.path) === sourceKey(path))) {
     renderSourceFiles();
     renderSelectedSources();
@@ -70,9 +67,15 @@ function addSourceRecord(file) {
   setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
 }
 
-function addSourceIndex(i) {
+function toggleSourceIndex(i) {
   const file = _sourceFiles[i];
-  if (file) addSourceRecord(file);
+  if (!file) return;
+  const existing = _selectedSources.findIndex(item => sourceKey(item.path) === sourceKey(file.path));
+  if (existing >= 0) _selectedSources.splice(existing, 1);
+  else _selectedSources.push(file);
+  renderSourceFiles();
+  renderSelectedSources();
+  setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
 }
 
 function addSourceFromPath() {
@@ -97,6 +100,13 @@ function clearSources() {
   renderSourceFiles();
   renderSelectedSources();
   setStatus('status', 'Selected files cleared', 'ok');
+}
+
+function selectAllSources(value) {
+  _selectedSources = value ? _sourceFiles.map(file => Object.assign({}, file)) : [];
+  renderSourceFiles();
+  renderSelectedSources();
+  setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
 }
 
 function parseNum(id, fallback) {
@@ -162,6 +172,8 @@ function scanSourceFolder() {
   }).then(d => {
     if (d.error) throw new Error(d.error);
     _sourceFiles = Array.isArray(d.files) ? d.files : [];
+    const available = new Set(_sourceFiles.map(item => sourceKey(item.path)));
+    _selectedSources = _selectedSources.filter(item => available.has(sourceKey(item.path)));
     renderSourceFiles();
     setStatus('status', `${_sourceFiles.length} source file(s) found`, 'ok');
   }).catch(e => {
@@ -179,13 +191,13 @@ function loadSamples() {
   setStatus('status', 'Loading pairs...', 'loading');
   api('/api/echem/lineshape/load', Object.assign({}, meta, axisState()))
     .then(d => {
-      btnBusy('btnLoad', false, 'Load Selected Pairs');
+      btnBusy('btnLoad', false, '3 Load & Average');
       if (d.error) {
         setStatus('status', 'Error: ' + d.error, 'error');
         return;
       }
       _samples = Array.isArray(d.samples) ? d.samples : [];
-      _selected = new Set();
+      _selected = new Set(_samples.map((_, i) => i));
       _avgData = null;
       _avgB64 = null;
       _yLimits = Array.isArray(d.y_limits) ? d.y_limits : null;
@@ -202,12 +214,12 @@ function loadSamples() {
         `${sourceLabel} · ${d.kind || meta.kind} · ${_samples.length} pair segment(s)`;
       renderSampleList();
       renderPreviewPage();
-      clearAverage();
       const warningSuffix = Array.isArray(d.warnings) && d.warnings.length ? ` · ${d.warnings.length} skipped` : '';
       setStatus('status', `${_samples.length} pair segment(s) loaded${warningSuffix}`, 'ok');
+      updatePlot();
     })
     .catch(e => {
-      btnBusy('btnLoad', false, 'Load Selected Pairs');
+      btnBusy('btnLoad', false, '3 Load & Average');
       setStatus('status', 'Error: ' + e.message, 'error');
     });
 }
@@ -404,7 +416,7 @@ function exportFiles() {
     setStatus('status', `Exported ${outputs.length || 3} file(s)${outputDir ? ': ' + outputDir : ''}`, 'ok');
     recordRunHistory({
       view: 'echem_lineshape',
-      title: 'EChem Lineshape Average',
+      title: 'EChem Waveform Averager',
       status: 'ok',
       project_root: meta.source_folder || meta.base_dir || dpPathDir(meta.source_path),
       input_files: sourceInputs.concat(outputsBefore),
@@ -454,7 +466,13 @@ window.addEventListener('load', () => {
   renderSelectedSources();
   renderPreviewPage();
   setStatus('status', 'Ready', 'ok');
-  const sourcePath = new URLSearchParams(window.location.search).get('path');
+  const params = new URLSearchParams(window.location.search);
+  const sourceFolder = params.get('folder');
+  const sourcePath = params.get('path');
+  if (sourceFolder) {
+    document.getElementById('sourceFolder').value = sourceFolder;
+    scanSourceFolder();
+  }
   if (sourcePath) {
     document.getElementById('sourcePath').value = sourcePath;
     addSourceFromPath();
@@ -467,7 +485,6 @@ window.DP.page = window.DP.page || {};
 [
   'applyAutoY',
   'addSourceFromPath',
-  'addSourceIndex',
   'browseBase',
   'clearSources',
   'downloadPNG',
@@ -478,8 +495,10 @@ window.DP.page = window.DP.page || {};
   'removeSource',
   'resetX',
   'scanSourceFolder',
+  'selectAllSources',
   'selectAll',
   'toggleSample',
+  'toggleSourceIndex',
   'updatePlot',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];

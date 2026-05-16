@@ -34,7 +34,7 @@ const SETTINGS_VIEW_LABELS = {
   abf_peaks: 'ABF Peak Detection',
   echem_pc: 'EChem Photocurrent',
   echem_pv: 'EChem Photovoltage',
-  echem_lineshape: 'EChem Lineshape',
+  echem_lineshape: 'EChem Waveform Averager',
   rhd_viewer: 'RHD Viewer',
   emg_peaks: 'EMG Peaks',
   fluorescence: 'TIFF Browser',

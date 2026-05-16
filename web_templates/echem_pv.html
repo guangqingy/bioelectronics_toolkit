@@ -23,11 +23,11 @@
   </label>
   <div id="windowRow">
     <div class="param-row">
-      <div class="param-label">Start</div>
+      <div class="param-label param-label-with-help">Start (s)<span class="help-tip" title="First timestamp included in the pulse detection window.">?</span></div>
       <input type="number" id="t0" class="input-sm" value="0" step="0.1">
     </div>
     <div class="param-row">
-      <div class="param-label">End</div>
+      <div class="param-label param-label-with-help">End (s)<span class="help-tip" title="Last timestamp included in the pulse detection window.">?</span></div>
       <input type="number" id="t1" class="input-sm" value="10" step="0.1">
     </div>
   </div>
@@ -94,6 +94,7 @@
     <button class="btn-secondary" onclick="DP.page.restoreAllPulses()">Undo All Removals</button>
     <button class="btn-secondary" onclick="DP.page.exportCSV()">Pulses CSV</button>
     <button class="btn-secondary" onclick="DP.page.exportSegments()">Summary + Pulse Files</button>
+    <button class="btn-secondary" onclick="DP.page.openWaveformAverager()">Open Waveform Averager</button>
   </div>
 </div>
 

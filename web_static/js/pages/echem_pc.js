@@ -206,6 +206,14 @@ function exportSegments() {
   }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
 }
 
+function openWaveformAverager() {
+  const params = new URLSearchParams();
+  const folder = document.getElementById('folderPath').value.trim() || dpPathDir(_currentFile);
+  if (folder) params.set('folder', folder);
+  if (_currentFile) params.set('path', _currentFile);
+  window.location.href = '/echem/lineshape' + (params.toString() ? `?${params.toString()}` : '');
+}
+
 window.addEventListener('load', () => {
   setStatus('status', 'Ready', 'ok');
   if (new URLSearchParams(window.location.search).get('demo') === 'echem') {
@@ -224,6 +232,7 @@ window.DP.page = window.DP.page || {};
   'exportCSV',
   'exportSegments',
   'num',
+  'openWaveformAverager',
   'restoreAllPairs',
   'scanFolder',
   'selectFile',

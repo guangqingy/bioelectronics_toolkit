@@ -3,7 +3,7 @@
 {% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
-{% set workflow_active = active in ['scripts', 'run_history'] %}
+{% set workflow_active = active in ['scripts', 'run_history', 'histology'] %}
 <nav class="top-nav">
   <div class="nav-inner">
     <a class="nav-brand" href="{% if standalone_lif %}/fluorescence/lif{% else %}/{% endif %}">{% if standalone_lif %}Leica LIF Browser{% else %}DataProcess{% endif %}</a>
@@ -13,11 +13,14 @@
       {% else %}
       <div class="nav-menu {% if abf_active %}active{% endif %}">
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">ABF</button>
-        <div class="nav-dropdown" role="menu">
+        <div class="nav-dropdown nav-dropdown-wide" role="menu">
+          <div class="nav-dropdown-label">Inspect</div>
           <a class="nav-dropdown-item {% if active=='abf_viewer' %}active{% endif %}" href="/abf/viewer" title="ABF Viewer">Viewer</a>
+          <div class="nav-dropdown-label">Process</div>
           <a class="nav-dropdown-item {% if active=='abf_batch' %}active{% endif %}" href="/abf/batch" title="ABF Batch Processor">Batch Processor</a>
-          <a class="nav-dropdown-item {% if active=='abf_figure' %}active{% endif %}" href="/abf/figure" title="ABF Figure Generator">Figure Generator</a>
           <a class="nav-dropdown-item {% if active=='abf_peaks' %}active{% endif %}" href="/abf/peaks" title="ABF Peak Detection">Peak Detection</a>
+          <div class="nav-dropdown-label">Compare</div>
+          <a class="nav-dropdown-item {% if active=='abf_figure' %}active{% endif %}" href="/abf/figure" title="Uses Batch Processor summary folders">Figure Generator</a>
         </div>
       </div>
 
@@ -26,24 +29,19 @@
         <div class="nav-dropdown" role="menu">
           <a class="nav-dropdown-item {% if active=='echem_pc' %}active{% endif %}" href="/echem/photocurrent" title="Photocurrent Detector">Photocurrent</a>
           <a class="nav-dropdown-item {% if active=='echem_pv' %}active{% endif %}" href="/echem/photovoltage" title="Photovoltage Detector">Photovoltage</a>
-          <a class="nav-dropdown-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape" title="Electrochemistry Lineshape Analysis">Lineshape</a>
+          <a class="nav-dropdown-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape" title="Average exported pair/pulse segments from Photocurrent or Photovoltage">Waveform Averager</a>
         </div>
       </div>
 
       <div class="nav-menu {% if emg_active %}active{% endif %}">
-        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EMG</button>
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EMG (RHD)</button>
         <div class="nav-dropdown" role="menu">
-          <a class="nav-dropdown-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd" title="Intan RHD Viewer">Intan RHD Viewer</a>
-          <a class="nav-dropdown-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks" title="RHD Peak Selector">Peak Selector</a>
+          <a class="nav-dropdown-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd" title="Intan .rhd recording viewer">RHD Viewer (Intan)</a>
+          <a class="nav-dropdown-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks" title="Peak-centered event selection from exported RHD channels">RHD Peak Selector</a>
         </div>
       </div>
 
-      <div class="nav-menu {% if data_active %}active{% endif %}">
-        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Data</button>
-        <div class="nav-dropdown" role="menu">
-          <a class="nav-dropdown-item {% if active=='csv_viewer' %}active{% endif %}" href="/csv" title="CSV Viewer and Trace Merge">CSV Viewer</a>
-        </div>
-      </div>
+      <a class="nav-item {% if data_active %}active{% endif %}" href="/csv" title="CSV Viewer and Trace Merge">CSV Viewer</a>
 
       <div class="nav-menu {% if fl_active %}active{% endif %}">
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Fluorescence</button>
@@ -60,13 +58,15 @@
         </div>
       </div>
 
-      <a class="nav-item {% if active=='histology' %}active{% endif %}" href="/histology" title="Histology Folder Namer">Histology</a>
-
       <div class="nav-menu {% if workflow_active %}active{% endif %}">
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Workflows</button>
         <div class="nav-dropdown nav-dropdown-right" role="menu">
+          <div class="nav-dropdown-label">Run</div>
           <a class="nav-dropdown-item {% if active=='scripts' %}active{% endif %}" href="/scripts" title="General Script Pipelines">Pipelines</a>
-          <a class="nav-dropdown-item {% if active=='run_history' %}active{% endif %}" href="/runs" title="Run History and Manifests">Runs</a>
+          <div class="nav-dropdown-label">Review</div>
+          <a class="nav-dropdown-item {% if active=='run_history' %}active{% endif %}" href="/runs" title="Run History and Manifests">Run History</a>
+          <div class="nav-dropdown-label">Utilities</div>
+          <a class="nav-dropdown-item {% if active=='histology' %}active{% endif %}" href="/histology" title="Histology Folder Namer">Histology Namer</a>
         </div>
       </div>
       {% endif %}
