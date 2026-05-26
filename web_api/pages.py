@@ -103,7 +103,6 @@ def register_page_routes(app, ctx) -> None:
             has_pil=has_pil,
         )
 
-    @app.route("/histology")
     @app.route("/histology/naming")
     def histology_naming():
         return render_template("histology_naming.html", active="histology_naming")

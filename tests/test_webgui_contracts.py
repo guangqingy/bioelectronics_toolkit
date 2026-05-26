@@ -158,7 +158,6 @@ class WebAppSmokeTests(unittest.TestCase):
         "/fluorescence/timecourse",
         "/fluorescence/kymograph",
         "/fluorescence/lif",
-        "/histology",
         "/histology/naming",
         "/histology/analysis",
         "/runs",
@@ -176,6 +175,10 @@ class WebAppSmokeTests(unittest.TestCase):
             with self.subTest(route=route):
                 response = self.client.get(route)
                 self.assertEqual(response.status_code, 200)
+
+    def test_histology_root_is_not_a_module_page(self) -> None:
+        response = self.client.get("/histology")
+        self.assertEqual(response.status_code, 404)
 
     def test_templates_do_not_expose_developer_absolute_paths(self) -> None:
         root = Path(__file__).resolve().parents[1]
