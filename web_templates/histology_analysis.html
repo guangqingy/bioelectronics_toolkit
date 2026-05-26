@@ -3,18 +3,11 @@
 
 {% block controls %}
 <div class="ctrl-section" id="histologyAnalysisProjectControls">
-  <div class="ctrl-label">Project</div>
+  <div class="ctrl-label">QuPath Project</div>
   <div class="param-row">
-    <div class="param-label">Folder</div>
+    <div class="param-label">.qpproj</div>
     <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/project" style="flex:1;min-width:0">
-      <button class="btn-icon" type="button" onclick="DP.folder.pick('projectPath')">Browse</button>
-    </div>
-  </div>
-  <div class="param-row">
-    <div class="param-label">QuPath</div>
-    <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
+      <input type="text" id="qupathProject" class="input-path" data-path-default="false" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
       <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
     </div>
   </div>

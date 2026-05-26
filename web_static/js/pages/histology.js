@@ -94,7 +94,11 @@ function renderCaseList() {
 function scanProject() {
   const folder = document.getElementById('projectPath').value.trim();
   if (!folder) {
-    setStatus('status', 'Enter a project folder', 'error');
+    setStatus('status', 'Choose a histology case folder first', 'error');
+    return;
+  }
+  if (folder.toLowerCase().endsWith('.qpproj')) {
+    setStatus('status', 'The case folder field needs a folder; choose .qpproj in the QuPath field', 'error');
     return;
   }
   _selectedCase = null;
@@ -102,14 +106,14 @@ function scanProject() {
   setStatus('status', 'Scanning project…', 'loading');
   btnBusy('btnScan', true, 'Loading…');
   api('/api/histology/browse', {folder}).then(d => {
-    btnBusy('btnScan', false, 'Load Project');
+    btnBusy('btnScan', false, 'Load Case Folder');
     if (d.error) throw new Error(d.error);
     _histologyCases = d.cases || [];
     renderCaseList();
     setStatus('status', `${_histologyCases.length} case(s) found`, 'ok');
     document.getElementById('histologyMeta').textContent = `Loaded ${_histologyCases.length} case(s) from ${folder}`;
   }).catch(e => {
-    btnBusy('btnScan', false, 'Load Project');
+    btnBusy('btnScan', false, 'Load Case Folder');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }

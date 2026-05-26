@@ -235,6 +235,8 @@ class WebAppSmokeTests(unittest.TestCase):
         html = response.data.decode("utf-8")
 
         self.assertIn("Histology Naming", html)
+        self.assertIn("Load Case Folder", html)
+        self.assertIn('data-path-default="false"', html)
         self.assertIn("histologyNamingControls", html)
         self.assertIn("Sync QuPath Names", html)
         self.assertIn("Rename Folder", html)
@@ -246,6 +248,8 @@ class WebAppSmokeTests(unittest.TestCase):
         html = response.data.decode("utf-8")
 
         self.assertIn("Histology ROI Analysis", html)
+        self.assertIn("QuPath Project", html)
+        self.assertIn('data-path-default="false"', html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyRoiLabelInline", html)
         self.assertIn("Start ROI", html)

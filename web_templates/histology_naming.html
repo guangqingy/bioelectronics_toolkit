@@ -3,16 +3,16 @@
 
 {% block controls %}
 <div class="ctrl-section" id="histologyProjectControls">
-  <div class="ctrl-label">Project Folder</div>
+  <div class="ctrl-label">Case Folder</div>
   <div class="input-row">
-    <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/project">
+    <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/case-folder">
     <button class="btn-icon" onclick="DP.folder.pick('projectPath','scanProject')">Browse Folder</button>
   </div>
-  <button class="btn-primary" id="btnScan" onclick="DP.page.scanProject()" style="margin-top:8px">Load Project</button>
+  <button class="btn-primary" id="btnScan" onclick="DP.page.scanProject()" style="margin-top:8px">Load Case Folder</button>
   <div class="param-row" style="margin-top:8px">
-    <div class="param-label">QuPath</div>
+    <div class="param-label">.qpproj</div>
     <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
+      <input type="text" id="qupathProject" class="input-path" data-path-default="false" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
       <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
     </div>
   </div>
@@ -60,7 +60,7 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology Naming</div>
-    <div class="view-sub" id="histologyMeta">Load a histology project, preview main and label images, then rename folders and QuPath display names.</div>
+    <div class="view-sub" id="histologyMeta">Load a histology case folder, preview main and label images, then rename folders and QuPath display names.</div>
   </div>
 
   <div class="view-results" id="histologyNamingModuleMain" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
