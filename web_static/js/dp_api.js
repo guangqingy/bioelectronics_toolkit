@@ -46,6 +46,10 @@ async function api(url, body, options) {
     method,
     headers: Object.assign({'Content-Type': 'application/json'}, opts.headers || {}),
   };
+  if (opts.signal) fetchOptions.signal = opts.signal;
+  if (Object.prototype.hasOwnProperty.call(opts, 'keepalive')) {
+    fetchOptions.keepalive = !!opts.keepalive;
+  }
   if (method.toUpperCase() !== 'GET') {
     fetchOptions.body = JSON.stringify(body || {});
   }
@@ -185,14 +189,29 @@ async function logoutServer() {
   if (!confirm(`Close ${APP_LABEL} and stop the Python server?`)) return;
 
   btnBusy('logoutBtn', true, 'Closing...');
+  let screenShown = false;
+  const showClosed = (message, delay) => {
+    setTimeout(() => {
+      screenShown = true;
+      showLogoutScreen(message);
+    }, delay);
+  };
+  const fallbackTimer = setTimeout(() => {
+    screenShown = true;
+    showLogoutScreen('Shutdown requested. DataProcess Web should be closed now.');
+  }, 2000);
   try {
-    const d = await api('/api/system/logout', {});
-    toast((d && d.message) || `${APP_LABEL} is closing...`);
-    setTimeout(() => showLogoutScreen('The Python service has stopped. You can close this tab now.'), 300);
+    const d = await api('/api/system/logout', {}, {keepalive: true});
+    clearTimeout(fallbackTimer);
+    if (!screenShown) {
+      toast((d && d.message) || `${APP_LABEL} is closing...`);
+      showClosed('The Python service has stopped. You can close this tab now.', 300);
+    }
   } catch (e) {
+    clearTimeout(fallbackTimer);
     const msg = (e && e.message) || '';
     if (/failed to fetch|networkerror/i.test(msg)) {
-      setTimeout(() => showLogoutScreen('Connection ended. DataProcess Web is closed.'), 150);
+      if (!screenShown) showClosed('Connection ended. DataProcess Web is closed.', 150);
       return;
     }
     btnBusy('logoutBtn', false, 'Log Out');

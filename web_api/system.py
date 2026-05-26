@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import signal
 import sys
 import threading
 import time
@@ -10,6 +9,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
+from services import scripts_panel as script_service
 from services import system_picker
 from services.system_picker import (
     PickerUnavailableError,
@@ -35,6 +35,41 @@ _choose_windows_folder = system_picker._choose_windows_folder
 _choose_windows_file = system_picker._choose_windows_file
 _choose_tk_folder = system_picker._choose_tk_folder
 _choose_tk_file = system_picker._choose_tk_file
+
+
+def _cancel_running_jobs(jobs) -> int:
+    if not jobs:
+        return 0
+    cancelled = 0
+    try:
+        candidates = jobs.list(limit=getattr(jobs, "max_jobs", 200), include_finished=False)
+    except Exception:
+        return 0
+    for job in candidates:
+        if job.get("status") not in {"pending", "running"}:
+            continue
+        job_id = str(job.get("job_id") or "")
+        if not job_id:
+            continue
+        try:
+            if jobs.request_cancel(job_id):
+                cancelled += 1
+        except Exception:
+            continue
+    return cancelled
+
+
+def _shutdown_current_process(jobs, delay_seconds: float = 0.35) -> None:
+    time.sleep(max(0.0, float(delay_seconds)))
+    try:
+        _cancel_running_jobs(jobs)
+    except Exception:
+        pass
+    try:
+        script_service.shutdown_running_scripts(grace_seconds=1.0)
+    except Exception:
+        pass
+    os._exit(0)
 
 
 def _choose_folder(default_dir: Path) -> str:
@@ -72,6 +107,7 @@ def _choose_file(default_dir: Path) -> str:
 def register_system_routes(app, ctx) -> None:
     err = ctx["err"]
     base_dir = Path(ctx["BASE_DIR"])
+    jobs = ctx.get("jobs")
 
     @app.route("/api/system/select_folder", methods=["POST"])
     @request_schema(PickerRequest)
@@ -106,15 +142,23 @@ def register_system_routes(app, ctx) -> None:
     @app.route("/api/system/logout", methods=["POST"])
     def api_system_logout():
         try:
-
-            def _shutdown_server():
-                time.sleep(0.25)
-                try:
-                    os.kill(os.getpid(), signal.SIGINT)
-                except Exception:
-                    os._exit(0)
-
-            threading.Thread(target=_shutdown_server, daemon=True).start()
-            return api_ok({"message": "DataProcess Web is closing..."})
+            cancelled_jobs = _cancel_running_jobs(jobs)
+            shutdown_handler = app.config.get("DATAPROCESS_LOGOUT_HANDLER")
+            if callable(shutdown_handler):
+                shutdown_handler(jobs)
+            else:
+                threading.Thread(
+                    target=_shutdown_current_process,
+                    args=(jobs,),
+                    daemon=True,
+                    name="dataprocess-logout-shutdown",
+                ).start()
+            return api_ok(
+                {
+                    "message": "DataProcess Web is closing...",
+                    "cancelled_jobs": cancelled_jobs,
+                    "shutdown": True,
+                }
+            )
         except Exception:
             return err(traceback.format_exc())

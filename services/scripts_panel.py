@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import base64
 import os
+import signal
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -23,6 +25,80 @@ PREVIEW_IMAGE_LIMIT = 6
 ARTIFACT_LIMIT = 240
 
 _running_scripts = {}
+_running_script_processes = {}
+_PROCESS_LOCK = threading.Lock()
+
+
+def _register_script_process(job_id, proc):
+    with _PROCESS_LOCK:
+        _running_script_processes[job_id] = proc
+
+
+def _forget_script_process(job_id):
+    with _PROCESS_LOCK:
+        _running_script_processes.pop(job_id, None)
+
+
+def _terminate_script_process(proc, grace_seconds=1.0):
+    if not proc or proc.poll() is not None:
+        return False
+
+    def _terminate():
+        if os.name == "posix":
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+                return True
+            except ProcessLookupError:
+                return True
+            except Exception:
+                pass
+        try:
+            proc.terminate()
+            return True
+        except ProcessLookupError:
+            return True
+        except Exception:
+            return False
+
+    def _kill():
+        if os.name == "posix":
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+                return True
+            except ProcessLookupError:
+                return True
+            except Exception:
+                pass
+        try:
+            proc.kill()
+            return True
+        except ProcessLookupError:
+            return True
+        except Exception:
+            return False
+
+    sent = _terminate()
+    try:
+        proc.wait(timeout=max(0.1, float(grace_seconds or 0.1)))
+        return sent
+    except subprocess.TimeoutExpired:
+        killed = _kill()
+        try:
+            proc.wait(timeout=0.5)
+        except subprocess.TimeoutExpired:
+            pass
+        return sent or killed
+
+
+def shutdown_running_scripts(grace_seconds=1.0):
+    with _PROCESS_LOCK:
+        items = list(_running_script_processes.items())
+    terminated = 0
+    for job_id, proc in items:
+        if _terminate_script_process(proc, grace_seconds=grace_seconds):
+            terminated += 1
+        _forget_script_process(job_id)
+    return {"process_count": len(items), "terminated_count": terminated}
 
 
 def _env_value(value):
@@ -173,21 +249,27 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
     started_at = time.time()
     _running_scripts[job_id] = {"done": False, "ok": True, "output_dir": str(output_dir or "")}
     job_ctx.set_progress(0.05, "Starting script")
+    proc = None
     try:
         job_ctx.check_cancelled()
-        proc = subprocess.Popen(
-            [sys.executable, script_path],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            env=env,
-            cwd=str(Path(script_path).parent),
-        )
+        popen_kwargs = {
+            "stdout": subprocess.PIPE,
+            "stderr": subprocess.PIPE,
+            "text": True,
+            "env": env,
+            "cwd": str(Path(script_path).parent),
+        }
+        if os.name == "posix":
+            popen_kwargs["start_new_session"] = True
+        elif os.name == "nt":
+            popen_kwargs["creationflags"] = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+        proc = subprocess.Popen([sys.executable, script_path], **popen_kwargs)
+        _register_script_process(job_id, proc)
         deadline = time.time() + 300
         while proc.poll() is None:
             job_ctx.check_cancelled()
             if time.time() > deadline:
-                proc.kill()
+                _terminate_script_process(proc, grace_seconds=0.2)
                 stdout, stderr = proc.communicate()
                 raise subprocess.TimeoutExpired(
                     [sys.executable, script_path], 300, output=stdout, stderr=stderr
@@ -224,6 +306,7 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
         return payload
     except Exception as e:
         if e.__class__.__name__ == "JobCancelled":
+            _terminate_script_process(proc, grace_seconds=1.0)
             raise
         artifacts, resolved_output_dir = _collect_job_artifacts(script_path, output_dir, started_at)
         payload = {
@@ -238,6 +321,8 @@ def _run_script_job(job_ctx, script_path, env_vars, output_dir):
         }
         _running_scripts[job_id] = payload
         return payload
+    finally:
+        _forget_script_process(job_id)
 
 
 def _script_status_payload(job_id, jobs=None, fallback_output_dir=""):

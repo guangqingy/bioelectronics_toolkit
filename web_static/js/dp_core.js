@@ -50,6 +50,7 @@ Object.assign(window.DP.jobs, {
   cancel: cancelBackgroundJob,
   cancelActive: () => dpJobCancel(_dpActiveJobId),
 });
+Object.assign(window.DP.page, {logoutServer});
 
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -220,6 +221,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Histology Namer", html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
+        self.assertIn('onclick="logoutServer()"', html)
         self.assertIn("v0.6.0", html)
         self.assertNotIn("unknown", html.lower())
 
@@ -770,6 +772,42 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Folder picker unavailable; please paste path manually.", payload["error"])
         tk_fallback.assert_not_called()
 
+    def test_logout_cancels_running_jobs_before_shutdown_handler(self) -> None:
+        app = Flask(__name__)
+        manager = JobManager()
+        started = threading.Event()
+
+        def slow_task(job_ctx):
+            started.set()
+            for _ in range(200):
+                job_ctx.check_cancelled()
+                time.sleep(0.01)
+            return {"ok": True}
+
+        submitted = manager.submit("test", "Slow task", slow_task)
+        self.assertTrue(started.wait(timeout=1.0))
+        called = []
+        system_api.register_system_routes(
+            app,
+            {
+                "err": api_error,
+                "BASE_DIR": Path.cwd(),
+                "jobs": manager,
+            },
+        )
+        app.config["DATAPROCESS_LOGOUT_HANDLER"] = lambda jobs: called.append(jobs)
+
+        response = app.test_client().post("/api/system/logout", json={})
+
+        payload = response.get_json()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["data"]["shutdown"])
+        self.assertEqual(payload["data"]["cancelled_jobs"], 1)
+        self.assertEqual(called, [manager])
+        final = JobManagerContractTests._wait_for_job(manager, submitted["job_id"])
+        self.assertEqual(final["status"], "cancelled")
+
     def test_extracted_page_assets_are_served(self) -> None:
         assets = (
             "/static/css/fluorescence_gif.css",
@@ -788,6 +826,7 @@ class WebAppSmokeTests(unittest.TestCase):
         js_root = root / "web_static" / "js"
         css_root = root / "web_static" / "style"
         palette_js = (js_root / "dp_palette.js").read_text(encoding="utf-8")
+        core_js = (js_root / "dp_core.js").read_text(encoding="utf-8")
         keyboard_js = (js_root / "dp_keyboard.js").read_text(encoding="utf-8")
         dom_js = (js_root / "dp_dom.js").read_text(encoding="utf-8")
         params_js = (js_root / "dp_params.js").read_text(encoding="utf-8")
@@ -801,6 +840,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function installFileListFilters()", dom_js)
         self.assertIn("function dpApplyParamGroups(selectId, attr)", params_js)
         self.assertIn("function dpApplyToggleGroups(controlId, attr)", params_js)
+        self.assertIn("Object.assign(window.DP.page, {logoutServer})", core_js)
         self.assertIn("[hidden] { display: none !important; }", reset_css)
         self.assertNotIn("btn.click();\n        btn.click();", keyboard_js)
 
