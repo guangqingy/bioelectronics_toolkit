@@ -5,8 +5,23 @@ let _histologyAnalysisImage = null;
 let _histologyAnalysisRois = [];
 let _histologyActivePolygon = null;
 let _histologyPolygonCounter = 1;
+let _histologyView = {
+  zoom: 1,
+  rotation: 0,
+  panX: 0,
+  panY: 0,
+  panMode: false,
+  dragging: false,
+  dragMoved: false,
+  dragStartX: 0,
+  dragStartY: 0,
+  dragPanX: 0,
+  dragPanY: 0,
+};
 
 const HISTOLOGY_ROI_COLOR_TOKENS = ['--blue', '--success', '--error', '--warning', '--blue-hover', '--error-text-strong'];
+const HISTOLOGY_ZOOM_MIN = 0.05;
+const HISTOLOGY_ZOOM_MAX = 8;
 
 function histologyThemeColor(token, fallback) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
@@ -37,6 +52,18 @@ function updateHistologyActionState() {
   histologySetButtonDisabled('btnClearHistologyRois', !hasImage || (!drawing && !hasRois));
   histologySetButtonDisabled('btnSaveHistologyRois', !isProjectImage || drawing || !hasRois);
   histologySetButtonDisabled('btnAnalyzeHistology', !hasImage || drawing || !hasRois);
+  [
+    'btnHistologyZoomOut',
+    'btnHistologyZoomIn',
+    'btnHistologyFit',
+    'btnHistologyActual',
+    'btnHistologyRotateLeft',
+    'btnHistologyRotateRight',
+    'btnHistologyPan',
+  ].forEach(id => histologySetButtonDisabled(id, !hasImage));
+  const slider = document.getElementById('histologyZoomSlider');
+  if (slider) slider.disabled = !hasImage;
+  updateHistologyViewControls();
 }
 
 function histologyAnalysisProjectPath() {
@@ -110,6 +137,192 @@ function histologySetAnalysisStatus(message, kind) {
   setStatus('status', message, kind || 'ok');
   const hint = document.getElementById('histologyAnalysisHint');
   if (hint && message) hint.textContent = message;
+}
+
+function histologyClamp(value, low, high) {
+  return Math.max(low, Math.min(high, Number(value) || 0));
+}
+
+function histologyPreviewSize() {
+  const img = document.getElementById('histologyAnalysisImg');
+  const width = Math.max(1, Number(_histologyAnalysisImage?.preview_width || img?.naturalWidth || 1));
+  const height = Math.max(1, Number(_histologyAnalysisImage?.preview_height || img?.naturalHeight || 1));
+  return {width, height};
+}
+
+function histologyRotatedBounds(zoom, rotation) {
+  const size = histologyPreviewSize();
+  const rad = (Number(rotation || 0) % 360) * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const points = [
+    {x: 0, y: 0},
+    {x: size.width * zoom, y: 0},
+    {x: size.width * zoom, y: size.height * zoom},
+    {x: 0, y: size.height * zoom},
+  ].map(p => ({x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos}));
+  const xs = points.map(p => p.x);
+  const ys = points.map(p => p.y);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  return {minX, minY, width: maxX - minX, height: maxY - minY};
+}
+
+function histologyViewportCenter() {
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  return {
+    x: Math.max(1, area?.clientWidth || 1) / 2,
+    y: Math.max(1, area?.clientHeight || 1) / 2,
+  };
+}
+
+function histologyFitScale() {
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  if (!area) return 1;
+  const size = histologyPreviewSize();
+  const rotated = Math.abs(_histologyView.rotation) % 180 === 90
+    ? {width: size.height, height: size.width}
+    : size;
+  const availW = Math.max(80, area.clientWidth - 24);
+  const availH = Math.max(80, area.clientHeight - 24);
+  return histologyClamp(Math.min(availW / rotated.width, availH / rotated.height, 1), HISTOLOGY_ZOOM_MIN, HISTOLOGY_ZOOM_MAX);
+}
+
+function histologyCenterPreview() {
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  if (!area || !_histologyAnalysisImage) return;
+  const bounds = histologyRotatedBounds(_histologyView.zoom, _histologyView.rotation);
+  _histologyView.panX = Math.round((area.clientWidth - bounds.width) / 2 - bounds.minX);
+  _histologyView.panY = Math.round((area.clientHeight - bounds.height) / 2 - bounds.minY);
+}
+
+function histologyLocalToViewport(point, zoom, rotation) {
+  const rad = (Number(rotation || 0) % 360) * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const x = Number(point.x || 0) * zoom;
+  const y = Number(point.y || 0) * zoom;
+  return {
+    x: x * cos - y * sin + _histologyView.panX,
+    y: x * sin + y * cos + _histologyView.panY,
+  };
+}
+
+function histologyViewportToLocal(viewX, viewY, allowOutside) {
+  const size = histologyPreviewSize();
+  const dx = Number(viewX || 0) - _histologyView.panX;
+  const dy = Number(viewY || 0) - _histologyView.panY;
+  const rad = (_histologyView.rotation % 360) * Math.PI / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const x = (dx * cos + dy * sin) / Math.max(HISTOLOGY_ZOOM_MIN, _histologyView.zoom);
+  const y = (-dx * sin + dy * cos) / Math.max(HISTOLOGY_ZOOM_MIN, _histologyView.zoom);
+  if (!allowOutside && (x < 0 || y < 0 || x > size.width || y > size.height)) return null;
+  return {
+    x: histologyClamp(x, 0, size.width),
+    y: histologyClamp(y, 0, size.height),
+  };
+}
+
+function histologyApplyViewTransform() {
+  const surface = document.getElementById('histologyAnalysisSurface');
+  const img = document.getElementById('histologyAnalysisImg');
+  const canvas = document.getElementById('histologyAnalysisCanvas');
+  if (!surface || !img || !canvas) return;
+  const size = histologyPreviewSize();
+  surface.style.width = `${size.width}px`;
+  surface.style.height = `${size.height}px`;
+  surface.style.transform = `translate(${_histologyView.panX}px, ${_histologyView.panY}px) rotate(${_histologyView.rotation}deg) scale(${_histologyView.zoom})`;
+  surface.style.cursor = _histologyView.panMode ? (_histologyView.dragging ? 'grabbing' : 'grab') : 'crosshair';
+  img.style.width = `${size.width}px`;
+  img.style.height = `${size.height}px`;
+  canvas.width = size.width;
+  canvas.height = size.height;
+  canvas.style.width = `${size.width}px`;
+  canvas.style.height = `${size.height}px`;
+  canvas.hidden = false;
+  drawHistologyRois();
+  updateHistologyViewControls();
+}
+
+function updateHistologyViewControls() {
+  const slider = document.getElementById('histologyZoomSlider');
+  const label = document.getElementById('histologyZoomLabel');
+  const pan = document.getElementById('btnHistologyPan');
+  if (slider) slider.value = String(Math.round(_histologyView.zoom * 100));
+  if (label) label.textContent = `${Math.round(_histologyView.zoom * 100)}%`;
+  if (pan) pan.classList.toggle('active', !!_histologyView.panMode);
+}
+
+function histologySetZoom(nextZoom, anchor) {
+  if (!_histologyAnalysisImage) return;
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  const zoom = histologyClamp(nextZoom, HISTOLOGY_ZOOM_MIN, HISTOLOGY_ZOOM_MAX);
+  const target = anchor || histologyViewportCenter();
+  const local = histologyViewportToLocal(target.x, target.y, true);
+  _histologyView.zoom = zoom;
+  if (local && area) {
+    const previousPan = {x: _histologyView.panX, y: _histologyView.panY};
+    _histologyView.panX = 0;
+    _histologyView.panY = 0;
+    const mapped = histologyLocalToViewport(local, zoom, _histologyView.rotation);
+    _histologyView.panX = Math.round(target.x - mapped.x);
+    _histologyView.panY = Math.round(target.y - mapped.y);
+    if (!Number.isFinite(_histologyView.panX) || !Number.isFinite(_histologyView.panY)) {
+      _histologyView.panX = previousPan.x;
+      _histologyView.panY = previousPan.y;
+    }
+  }
+  histologyApplyViewTransform();
+}
+
+function histologySetZoomFromSlider() {
+  const slider = document.getElementById('histologyZoomSlider');
+  const value = Number(slider?.value || 100) / 100;
+  histologySetZoom(value);
+}
+
+function histologyZoomStep(multiplier) {
+  histologySetZoom(_histologyView.zoom * Number(multiplier || 1));
+}
+
+function histologyFitPreview() {
+  if (!_histologyAnalysisImage) return;
+  _histologyView.zoom = histologyFitScale();
+  histologyCenterPreview();
+  histologyApplyViewTransform();
+}
+
+function histologyActualSize() {
+  if (!_histologyAnalysisImage) return;
+  _histologyView.zoom = 1;
+  histologyCenterPreview();
+  histologyApplyViewTransform();
+}
+
+function histologyRotatePreview(delta) {
+  if (!_histologyAnalysisImage) return;
+  const next = (_histologyView.rotation + Number(delta || 0)) % 360;
+  _histologyView.rotation = (next + 360) % 360;
+  histologyCenterPreview();
+  histologyApplyViewTransform();
+}
+
+function histologyTogglePanMode() {
+  _histologyView.panMode = !_histologyView.panMode;
+  histologyApplyViewTransform();
+}
+
+function histologyResetView(fit) {
+  _histologyView.zoom = fit ? histologyFitScale() : 1;
+  _histologyView.rotation = 0;
+  _histologyView.panMode = false;
+  _histologyView.dragging = false;
+  _histologyView.dragMoved = false;
+  histologyCenterPreview();
+  histologyApplyViewTransform();
 }
 
 function loadHistologyDataProject() {
@@ -278,6 +491,12 @@ function clearHistologyAnalysisImage(message) {
   const empty = document.getElementById('histologyAnalysisEmpty');
   const img = document.getElementById('histologyAnalysisImg');
   const canvas = document.getElementById('histologyAnalysisCanvas');
+  _histologyView.panMode = false;
+  _histologyView.dragging = false;
+  _histologyView.zoom = 1;
+  _histologyView.rotation = 0;
+  _histologyView.panX = 0;
+  _histologyView.panY = 0;
   if (surface) surface.hidden = true;
   if (empty) {
     empty.hidden = false;
@@ -288,6 +507,7 @@ function clearHistologyAnalysisImage(message) {
     img.removeAttribute('src');
   }
   if (canvas) canvas.hidden = true;
+  updateHistologyViewControls();
 }
 
 function loadHistologyAnalysisImage(payload) {
@@ -297,43 +517,29 @@ function loadHistologyAnalysisImage(payload) {
   const empty = document.getElementById('histologyAnalysisEmpty');
   if (surface) surface.hidden = false;
   if (empty) empty.hidden = true;
-  img.onload = () => resizeHistologyAnalysisCanvas();
+  img.onload = () => histologyResetView(true);
   img.hidden = false;
   img.src = 'data:image/png;base64,' + payload.img;
 }
 
 function resizeHistologyAnalysisCanvas() {
-  const img = document.getElementById('histologyAnalysisImg');
-  const canvas = document.getElementById('histologyAnalysisCanvas');
-  if (!img || !canvas || !img.clientWidth || !img.clientHeight) return;
-  canvas.width = img.clientWidth;
-  canvas.height = img.clientHeight;
-  canvas.style.width = img.clientWidth + 'px';
-  canvas.style.height = img.clientHeight + 'px';
-  canvas.hidden = false;
-  drawHistologyRois();
+  if (!_histologyAnalysisImage) return;
+  histologyCenterPreview();
+  histologyApplyViewTransform();
 }
 
 function histologyCanvasPoint(event) {
-  const canvas = document.getElementById('histologyAnalysisCanvas');
-  const rect = canvas.getBoundingClientRect();
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
-  const nativeW = Math.max(1, Number(_histologyAnalysisImage?.preview_width || canvas.width));
-  const nativeH = Math.max(1, Number(_histologyAnalysisImage?.preview_height || canvas.height));
-  return {
-    x: Math.max(0, Math.min(nativeW, x / Math.max(1, canvas.width) * nativeW)),
-    y: Math.max(0, Math.min(nativeH, y / Math.max(1, canvas.height) * nativeH)),
-  };
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  if (!area) return null;
+  const rect = area.getBoundingClientRect();
+  return histologyViewportToLocal(event.clientX - rect.left, event.clientY - rect.top, false);
 }
 
 function nativeToHistologyCanvas(point) {
-  const canvas = document.getElementById('histologyAnalysisCanvas');
-  const nativeW = Math.max(1, Number(_histologyAnalysisImage?.preview_width || canvas.width));
-  const nativeH = Math.max(1, Number(_histologyAnalysisImage?.preview_height || canvas.height));
+  const size = histologyPreviewSize();
   return {
-    x: Number(point.x || 0) / nativeW * canvas.width,
-    y: Number(point.y || 0) / nativeH * canvas.height,
+    x: histologyClamp(Number(point.x || 0), 0, size.width),
+    y: histologyClamp(Number(point.y || 0), 0, size.height),
   };
 }
 
@@ -342,16 +548,59 @@ function setupHistologyAnalysisCanvas() {
   if (!canvas || canvas.dataset.bound === '1') return;
   canvas.dataset.bound = '1';
   canvas.addEventListener('click', event => {
+    if (_histologyView.panMode || _histologyView.dragMoved) return;
     if (!_histologyActivePolygon) return;
     const point = histologyCanvasPoint(event);
+    if (!point) return;
     _histologyActivePolygon.points.push(point);
     drawHistologyRois();
   });
   canvas.addEventListener('dblclick', event => {
     event.preventDefault();
+    if (_histologyView.panMode) return;
     finishHistologyPolygon();
   });
+  canvas.addEventListener('mousedown', event => {
+    if (!_histologyView.panMode || !_histologyAnalysisImage || event.button !== 0) return;
+    event.preventDefault();
+    _histologyView.dragging = true;
+    _histologyView.dragMoved = false;
+    _histologyView.dragStartX = event.clientX;
+    _histologyView.dragStartY = event.clientY;
+    _histologyView.dragPanX = _histologyView.panX;
+    _histologyView.dragPanY = _histologyView.panY;
+    histologyApplyViewTransform();
+  });
+  window.addEventListener('mousemove', event => {
+    if (!_histologyView.dragging) return;
+    const dx = event.clientX - _histologyView.dragStartX;
+    const dy = event.clientY - _histologyView.dragStartY;
+    if (Math.abs(dx) + Math.abs(dy) > 2) _histologyView.dragMoved = true;
+    _histologyView.panX = Math.round(_histologyView.dragPanX + dx);
+    _histologyView.panY = Math.round(_histologyView.dragPanY + dy);
+    histologyApplyViewTransform();
+  });
+  window.addEventListener('mouseup', () => {
+    if (!_histologyView.dragging) return;
+    _histologyView.dragging = false;
+    setTimeout(() => {_histologyView.dragMoved = false;}, 0);
+    histologyApplyViewTransform();
+  });
   window.addEventListener('resize', () => requestAnimationFrame(resizeHistologyAnalysisCanvas));
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  if (area && area.dataset.boundWheel !== '1') {
+    area.dataset.boundWheel = '1';
+    area.addEventListener('wheel', event => {
+      if (!_histologyAnalysisImage) return;
+      event.preventDefault();
+      const rect = area.getBoundingClientRect();
+      const factor = event.deltaY > 0 ? 0.9 : 1.1;
+      histologySetZoom(_histologyView.zoom * factor, {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
+    }, {passive: false});
+  }
 }
 
 function nextHistologyRoiColor(index) {
@@ -709,9 +958,15 @@ window.DP.page = window.DP.page || {};
   'histologyAnalysisImagePath',
   'histologyCurrentRoiLabel',
   'histologyDataProjectPath',
+  'histologyActualSize',
+  'histologyFitPreview',
   'histologyProjectRoot',
   'histologyAnalysisProjectPath',
   'histologyRoiLabelElements',
+  'histologyRotatePreview',
+  'histologySetZoomFromSlider',
+  'histologyTogglePanMode',
+  'histologyZoomStep',
   'loadHistologyAnalysisImage',
   'loadHistologyDataProject',
   'loadHistologyFileImage',

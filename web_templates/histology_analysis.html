@@ -45,6 +45,33 @@
 .histology-roi-toolbar .btn-primary {
   width: auto;
 }
+.histology-view-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.histology-view-toolbar .btn-icon {
+  height: 30px;
+  min-width: 34px;
+  padding: 2px 8px;
+}
+.histology-view-toolbar .active {
+  border-color: var(--blue);
+  color: var(--blue);
+}
+.histology-zoom-slider {
+  max-width: 160px;
+  min-width: 110px;
+  width: 16%;
+}
+.histology-zoom-label {
+  color: var(--silver);
+  font-size: 12px;
+  min-width: 48px;
+  text-align: right;
+}
 .histology-roi-count {
   color: var(--silver);
   font-size: 12px;
@@ -92,19 +119,26 @@
 .histology-plot-area {
   background: var(--surface-panel);
   min-height: 500px;
+  overflow: hidden;
+  position: relative;
+  touch-action: none;
 }
 .histology-canvas-surface {
   background: var(--code-bg);
   border: 1px solid var(--border-muted);
   border-radius: 6px;
-  display: inline-block;
-  max-width: 100%;
+  cursor: crosshair;
+  left: 0;
+  max-width: none;
   overflow: hidden;
-  position: relative;
+  position: absolute;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 .histology-analysis-img {
   display: block;
-  max-width: 100%;
+  max-width: none;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -307,6 +341,17 @@
           <button class="btn-secondary" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()" disabled>Save ROI</button>
           <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" disabled>Analyze SMA + Macrophage</button>
           <span id="histologyRoiInlineCount" class="histology-roi-count">0 ROI</span>
+        </div>
+        <div id="histologyViewToolbar" class="histology-view-toolbar">
+          <button class="btn-icon" id="btnHistologyZoomOut" type="button" title="Zoom out" onclick="DP.page.histologyZoomStep(0.8)" disabled>-</button>
+          <input type="range" id="histologyZoomSlider" class="histology-zoom-slider" min="5" max="800" step="1" value="100" oninput="DP.page.histologySetZoomFromSlider()" disabled>
+          <button class="btn-icon" id="btnHistologyZoomIn" type="button" title="Zoom in" onclick="DP.page.histologyZoomStep(1.25)" disabled>+</button>
+          <span id="histologyZoomLabel" class="histology-zoom-label">100%</span>
+          <button class="btn-icon" id="btnHistologyFit" type="button" title="Fit image" onclick="DP.page.histologyFitPreview()" disabled>Fit</button>
+          <button class="btn-icon" id="btnHistologyActual" type="button" title="Actual preview size" onclick="DP.page.histologyActualSize()" disabled>1:1</button>
+          <button class="btn-icon" id="btnHistologyRotateLeft" type="button" title="Rotate left" onclick="DP.page.histologyRotatePreview(-90)" disabled>L</button>
+          <button class="btn-icon" id="btnHistologyRotateRight" type="button" title="Rotate right" onclick="DP.page.histologyRotatePreview(90)" disabled>R</button>
+          <button class="btn-icon" id="btnHistologyPan" type="button" title="Toggle pan mode" onclick="DP.page.histologyTogglePanMode()" disabled>Pan</button>
         </div>
         <div id="histologyAnalysisPlotArea" class="plot-area histology-plot-area">
           <div id="histologyAnalysisEmpty" class="plot-placeholder">Load a project image to begin ROI analysis</div>
