@@ -6,7 +6,7 @@ from tkinter import filedialog, messagebox, ttk
 
 from PIL import ImageTk
 
-from web_api.histology import (
+from services.histology import (
     find_histology_cases,
     load_histology_preview_pair,
     rename_histology_case,

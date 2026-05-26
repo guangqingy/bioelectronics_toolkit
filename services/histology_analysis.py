@@ -23,20 +23,12 @@ except Exception:  # pragma: no cover - optional dependency
     openslide = None
 
 try:
-    import bioformats  # type: ignore
-    import javabridge  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    bioformats = None
-    javabridge = None
-
-try:
     from scipy import ndimage as ndi  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     ndi = None
 
 ANALYSIS_KEY = "dataprocessHistologyAnalysis"
 ANALYSIS_VERSION = 1
-_VM_READY = False
 
 
 def _now_ms() -> int:
@@ -189,27 +181,6 @@ def load_qupath_project(project: str | Path) -> dict[str, Any]:
     }
 
 
-def _ensure_vm() -> bool:
-    global _VM_READY
-    if _VM_READY:
-        return True
-    if bioformats is None or javabridge is None:
-        return False
-    try:
-        env = javabridge.get_env()
-        if env is not None:
-            _VM_READY = True
-            return True
-    except Exception:
-        pass
-    try:
-        javabridge.start_vm(class_path=bioformats.JARS, run_headless=True)
-        _VM_READY = True
-        return True
-    except Exception:
-        return False
-
-
 def _scale_to_uint8(arr: np.ndarray) -> np.ndarray:
     data = np.asarray(arr)
     if data.dtype == np.uint8:
@@ -295,13 +266,6 @@ def _read_with_openslide(path: Path, max_side: int | None = None) -> tuple[np.nd
             pass
 
 
-def _read_with_bioformats(path: Path) -> tuple[np.ndarray, str]:
-    if bioformats is None or javabridge is None or not _ensure_vm():
-        raise RuntimeError("bioformats unavailable")
-    arr = bioformats.load_image(str(path), series=0, rescale=False)
-    return _array_to_rgb(arr), "bioformats"
-
-
 def _read_image(path_raw: str | Path, max_side: int | None = None) -> tuple[np.ndarray, str, list[str]]:
     path = Path(path_raw).expanduser().resolve()
     errors: list[str] = []
@@ -310,9 +274,9 @@ def _read_image(path_raw: str | Path, max_side: int | None = None) -> tuple[np.n
     readers = []
     if suffix in {".svs", ".ndpi", ".mrxs", ".scn"}:
         readers.append(_read_with_openslide)
-    if suffix in {".tif", ".tiff", ".vsi", ".ets", ".ome.tif", ".ome.tiff"}:
+    if suffix in {".tif", ".tiff", ".vsi", ".ome.tif", ".ome.tiff"}:
         readers.append(_read_with_tifffile)
-    readers.extend([_read_with_pil, _read_with_bioformats])
+    readers.append(_read_with_pil)
     if _read_with_openslide not in readers:
         readers.append(_read_with_openslide)
 
@@ -360,9 +324,13 @@ def _find_entry(project_path: Path, entry_id: str) -> tuple[dict[str, Any], dict
     raise ValueError(f"Entry not found in QuPath project: {entry_id}")
 
 
-def _png_b64(arr: np.ndarray) -> str:
+def _png_b64(arr: np.ndarray, max_side: int | None = None) -> str:
+    rgb = _array_to_rgb(arr)
+    img = Image.fromarray(rgb, mode="RGB")
+    if max_side and max(img.size) > int(max_side):
+        img.thumbnail((int(max_side), int(max_side)), Image.Resampling.LANCZOS)
     stream = BytesIO()
-    Image.fromarray(_array_to_rgb(arr), mode="RGB").save(stream, format="PNG")
+    img.save(stream, format="PNG")
     return base64.b64encode(stream.getvalue()).decode("ascii")
 
 

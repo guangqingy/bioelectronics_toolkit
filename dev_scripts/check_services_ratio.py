@@ -38,6 +38,10 @@ SERVICE_ALIASES = {
     "rhd_viewer": ["rhd"],
 }
 
+SERVICE_GLOBS = {
+    "histology": ["histology*.py"],
+}
+
 
 @dataclass(frozen=True)
 class RatioRecord:
@@ -99,6 +103,20 @@ def _service_candidates(module_name: str) -> list[Path]:
 
 
 def _service_line_count(module_name: str) -> tuple[str, int]:
+    glob_patterns = SERVICE_GLOBS.get(module_name, [])
+    if glob_patterns:
+        files: list[Path] = []
+        for pattern in glob_patterns:
+            files.extend(sorted(SERVICES.glob(pattern)))
+        files = [
+            path
+            for path in dict.fromkeys(files)
+            if path.is_file() and path.name != "__init__.py"
+        ]
+        if files:
+            target = f"{SERVICES.relative_to(ROOT).as_posix()}/" + ",".join(glob_patterns)
+            return target, sum(_source_lines(path) for path in files)
+
     for candidate in _service_candidates(module_name):
         if candidate.is_file():
             return candidate.relative_to(ROOT).as_posix(), _source_lines(candidate)

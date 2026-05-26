@@ -10,7 +10,7 @@ Functional implementation lives in smaller modules:
 - histology_qupath: case renaming and QuPath project synchronization
 - histology_analysis: legacy QuPath project ROI analysis helpers
 - histology_tiff_project: exported TIFF project discovery and manifests
-- histology_ets_analysis: DataProcess histology project and single-file ROI analysis
+- histology_project: DataProcess histology project store and single-file ROI analysis
 """
 
 from services.histology_common import (
@@ -28,7 +28,7 @@ from services.histology_discovery import (
     find_histology_cases,
     read_qupath_display_name,
 )
-from services.histology_ets_analysis import (
+from services.histology_project import (
     add_histology_data_project_paths,
     analyze_histology_data_project_rois,
     analyze_histology_file_rois,
@@ -44,6 +44,7 @@ from services.histology_qupath import rename_histology_case, sync_qupath_names_f
 from services.histology_tiff_project import (
     ImageRecord,
     SampleRecord,
+    convert_ets_folder_to_tiff,
     create_analysis_folders,
     create_project_from_exported_tiff,
     detect_channel_from_filename,
@@ -70,6 +71,7 @@ __all__ = [
     "analyze_histology_file_rois",
     "analyze_histology_data_project_rois",
     "candidate_overview_files",
+    "convert_ets_folder_to_tiff",
     "create_histology_data_project",
     "create_analysis_folders",
     "create_project_from_exported_tiff",

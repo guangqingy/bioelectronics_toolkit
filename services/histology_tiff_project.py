@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+import os
 import re
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -17,12 +18,20 @@ try:
 except Exception:  # pragma: no cover - declared project dependency, kept defensive
     tifffile = None
 
+from services.histology_ets_convert import (
+    EtsConversionResult,
+    convert_ets_folder_to_tiff,
+    iter_ets_files,
+)
+
 SUPPORTED_IMAGE_SUFFIXES = {".tif", ".tiff", ".png", ".jpg", ".jpeg"}
 TIFF_SUFFIXES = {".tif", ".tiff"}
 RAW_OLYMPUS_SUFFIXES = {".vsi", ".ets"}
 PROJECT_KIND = "dataprocess_histology_project"
 PROJECT_PROTOCOL = "dataprocess-tiff-histology"
 PROJECT_FILE_NAME = "histology_project.dphistology"
+DEFAULT_MAX_IMAGE_LOAD_BYTES = 1200 * 1024 * 1024
+DEFAULT_MAX_IMAGE_PIXELS = 300_000_000
 
 
 @dataclass
@@ -142,6 +151,83 @@ def discover_image_files(exported_dir: str | Path) -> list[Path]:
     return images
 
 
+def _conversion_dicts(conversions: list[EtsConversionResult]) -> list[dict[str, Any]]:
+    return [asdict(item) for item in conversions]
+
+
+def _successful_conversion_outputs(conversions: list[EtsConversionResult]) -> list[Path]:
+    outputs: list[Path] = []
+    for item in conversions:
+        if item.status not in {"converted", "skipped_existing"}:
+            continue
+        output = Path(item.output_path).expanduser()
+        if output.is_file():
+            outputs.append(output.resolve())
+    return outputs
+
+
+def _conversion_warnings(conversions: list[EtsConversionResult]) -> list[str]:
+    warnings: list[str] = []
+    for item in conversions:
+        for message in item.warning_messages:
+            warnings.append(f"{Path(item.source_path).name}: {message}")
+    return warnings
+
+
+def _prepare_image_sources(
+    source_dir: str | Path,
+    *,
+    convert_ets: bool = True,
+    progress=None,
+) -> tuple[Path, list[Path], list[EtsConversionResult]]:
+    source_root = Path(source_dir).expanduser().resolve()
+    conversions: list[EtsConversionResult] = []
+    if not source_root.exists():
+        # Let the normal image discovery path raise the established user-facing
+        # file/folder error for unsupported or missing paths.
+        return source_root, discover_image_files(source_root), conversions
+    ets_files = iter_ets_files(source_root) if convert_ets else []
+    if convert_ets and (source_root.suffix.lower() == ".ets" or ets_files):
+        conversions = convert_ets_folder_to_tiff(source_root, progress=progress)
+    if source_root.is_file() and source_root.suffix.lower() == ".ets":
+        image_files = _successful_conversion_outputs(conversions)
+    else:
+        image_files = discover_image_files(source_root)
+        converted = _successful_conversion_outputs(conversions)
+        seen = {str(path.resolve()) for path in image_files}
+        for path in converted:
+            key = str(path.resolve())
+            if key not in seen:
+                image_files.append(path)
+                seen.add(key)
+    image_files.sort(key=lambda item: str(item).lower())
+    return source_root, image_files, conversions
+
+
+def _attach_conversion_metadata(
+    samples: dict[str, SampleRecord],
+    conversions: list[EtsConversionResult],
+) -> None:
+    by_sample: dict[str, list[EtsConversionResult]] = {}
+    for item in conversions:
+        if item.status not in {"converted", "skipped_existing"}:
+            continue
+        sample_id = infer_sample_id(Path(item.output_path).name)
+        by_sample.setdefault(sample_id, []).append(item)
+    for sample_id, items in by_sample.items():
+        sample = samples.get(sample_id)
+        if sample is None:
+            continue
+        primary = items[0]
+        converted_payload = _conversion_dicts(items)
+        sample.metadata["case_dir"] = primary.case_dir
+        sample.metadata["physical_rename_dir"] = primary.case_dir
+        sample.metadata["converted_from_ets"] = converted_payload
+        sample.metadata["converted_tiff_paths"] = [item.output_path for item in items]
+        sample.metadata["conversion_roles"] = {item.role: item.output_path for item in items}
+        sample.metadata["ets_conversion_count"] = len(items)
+
+
 def detect_channel_from_filename(filename: str) -> dict[str, Any]:
     stem = Path(filename).stem.lower()
     patterns: list[tuple[str, tuple[str, ...], float]] = [
@@ -189,9 +275,46 @@ def infer_sample_id(filename: str) -> str:
     return stem
 
 
-def load_image_for_analysis(file_path: str | Path) -> np.ndarray:
-    """Load image values without normalization. TIFF uses tifffile; PNG/JPG uses Pillow."""
-    path = Path(file_path).expanduser().resolve()
+def _positive_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, "")
+    try:
+        value = int(str(raw).strip() or default)
+    except (TypeError, ValueError):
+        return int(default)
+    return max(0, value)
+
+
+def _max_image_load_bytes() -> int:
+    return _positive_int_env("DP_HISTOLOGY_MAX_IMAGE_LOAD_BYTES", DEFAULT_MAX_IMAGE_LOAD_BYTES)
+
+
+def _max_image_pixels() -> int:
+    return _positive_int_env("DP_HISTOLOGY_MAX_IMAGE_PIXELS", DEFAULT_MAX_IMAGE_PIXELS)
+
+
+def _shape_sample_count(shape: tuple[int, ...]) -> int:
+    count = 1
+    for dim in shape:
+        count *= max(1, int(dim))
+    return int(count)
+
+
+def _shape_pixel_count(shape: tuple[int, ...]) -> int:
+    if len(shape) >= 2:
+        return int(max(1, int(shape[0])) * max(1, int(shape[1])))
+    return _shape_sample_count(shape)
+
+
+def _format_bytes(value: int) -> str:
+    if value >= 1024**3:
+        return f"{value / 1024**3:.2f} GB"
+    if value >= 1024**2:
+        return f"{value / 1024**2:.1f} MB"
+    return f"{value:,} bytes"
+
+
+def _load_image_array_unchecked(path: Path) -> np.ndarray:
+    path = Path(path).expanduser().resolve()
     suffix = path.suffix.lower()
     if suffix not in SUPPORTED_IMAGE_SUFFIXES:
         raise ValueError(f"Unsupported image extension for analysis: {path.suffix}")
@@ -203,8 +326,55 @@ def load_image_for_analysis(file_path: str | Path) -> np.ndarray:
         return np.asarray(img)
 
 
-def _bit_depth_for_array(arr: np.ndarray) -> int:
-    dtype = np.dtype(arr.dtype)
+def estimate_image_load_size(file_path: str | Path) -> dict[str, Any]:
+    path = Path(file_path).expanduser().resolve()
+    dtype, shape = _read_image_metadata(path)
+    try:
+        itemsize = int(np.dtype(dtype).itemsize)
+    except Exception:
+        itemsize = 1
+    sample_count = _shape_sample_count(shape)
+    return {
+        "path": str(path),
+        "dtype": dtype,
+        "shape": shape,
+        "pixel_count": _shape_pixel_count(shape),
+        "sample_count": sample_count,
+        "estimated_bytes": int(sample_count * max(1, itemsize)),
+    }
+
+
+def _guard_image_load(path: Path) -> None:
+    meta = estimate_image_load_size(path)
+    max_pixels = _max_image_pixels()
+    max_bytes = _max_image_load_bytes()
+    pixels = int(meta["pixel_count"])
+    byte_count = int(meta["estimated_bytes"])
+    if max_pixels and pixels > max_pixels:
+        raise ValueError(
+            f"Image is too large to load safely ({pixels:,} pixels; limit {max_pixels:,}). "
+            "Export or downsample an ROI TIFF, or raise DP_HISTOLOGY_MAX_IMAGE_PIXELS."
+        )
+    if max_bytes and byte_count > max_bytes:
+        raise ValueError(
+            f"Image is too large to load safely ({_format_bytes(byte_count)}; "
+            f"limit {_format_bytes(max_bytes)}). Export or downsample an ROI TIFF, "
+            "or raise DP_HISTOLOGY_MAX_IMAGE_LOAD_BYTES."
+        )
+
+
+def load_image_for_analysis(file_path: str | Path) -> np.ndarray:
+    """Load image values without normalization. TIFF uses tifffile; PNG/JPG uses Pillow."""
+    path = Path(file_path).expanduser().resolve()
+    suffix = path.suffix.lower()
+    if suffix not in SUPPORTED_IMAGE_SUFFIXES:
+        raise ValueError(f"Unsupported image extension for analysis: {path.suffix}")
+    _guard_image_load(path)
+    return _load_image_array_unchecked(path)
+
+
+def _bit_depth_for_dtype(dtype: np.dtype) -> int:
+    dtype = np.dtype(dtype)
     if dtype.kind in {"u", "i"}:
         return int(dtype.itemsize * 8)
     if dtype.kind == "f":
@@ -212,19 +382,66 @@ def _bit_depth_for_array(arr: np.ndarray) -> int:
     return 0
 
 
-def _image_warnings(path: Path, arr: np.ndarray) -> list[str]:
+def _bit_depth_for_array(arr: np.ndarray) -> int:
+    return _bit_depth_for_dtype(np.dtype(arr.dtype))
+
+
+# PIL image mode -> (channel count, numpy dtype string) used to derive shape/dtype
+# without decoding the full pixel buffer during a scan.
+_PIL_MODE_INFO: dict[str, tuple[int, str]] = {
+    "1": (1, "bool"),
+    "L": (1, "uint8"),
+    "P": (1, "uint8"),
+    "I": (1, "int32"),
+    "I;16": (1, "uint16"),
+    "I;16L": (1, "uint16"),
+    "I;16B": (1, "uint16"),
+    "I;16N": (1, "uint16"),
+    "F": (1, "float32"),
+    "LA": (2, "uint8"),
+    "RGB": (3, "uint8"),
+    "RGBa": (4, "uint8"),
+    "YCbCr": (3, "uint8"),
+    "LAB": (3, "uint8"),
+    "HSV": (3, "uint8"),
+    "RGBA": (4, "uint8"),
+    "CMYK": (4, "uint8"),
+}
+
+
+def _read_image_metadata(path: Path) -> tuple[str, tuple[int, ...]]:
+    """Read dtype and shape cheaply, without decoding the full pixel buffer."""
+    suffix = path.suffix.lower()
+    if suffix in TIFF_SUFFIXES and tifffile is not None:
+        with tifffile.TiffFile(str(path)) as tf:
+            source = tf.series[0] if getattr(tf, "series", None) else tf.pages[0]
+            shape = tuple(int(x) for x in source.shape)
+            dtype = np.dtype(source.dtype)
+        return str(dtype), shape
+    with Image.open(path) as img:
+        width, height = img.size
+        channels, dtype_str = _PIL_MODE_INFO.get(
+            img.mode,
+            (max(1, len(getattr(img, "getbands", lambda: ())())), "uint8"),
+        )
+    shape = (height, width) if channels <= 1 else (height, width, channels)
+    return dtype_str, shape
+
+
+def _shape_warnings(path: Path, shape: tuple[int, ...], bit_depth: int) -> list[str]:
     warnings: list[str] = []
     suffix = path.suffix.lower()
     if suffix not in TIFF_SUFFIXES:
         warnings.append("Non-TIFF image; use 16-bit TIFF for quantitative fluorescence.")
-    if arr.ndim == 3:
-        if arr.shape[-1] <= 4:
+    ndim = len(shape)
+    if ndim == 3:
+        if shape[-1] <= 4:
             warnings.append("Multi-channel/color image stored in one file; expected single-channel XY.")
         else:
             warnings.append("Image has more than XY dimensions; expected 2D exported image.")
-    elif arr.ndim != 2:
+    elif ndim != 2:
         warnings.append("Image has unsupported dimensionality; expected XY only.")
-    if suffix in TIFF_SUFFIXES and _bit_depth_for_array(arr) < 16:
+    if suffix in TIFF_SUFFIXES and bit_depth < 16:
         warnings.append("TIFF is not 16-bit; confirm it is suitable for quantification.")
     return warnings
 
@@ -232,11 +449,9 @@ def _image_warnings(path: Path, arr: np.ndarray) -> list[str]:
 def _record_for_image(path: Path) -> ImageRecord:
     detection = detect_channel_from_filename(path.name)
     try:
-        arr = load_image_for_analysis(path)
-        dtype = str(arr.dtype)
-        shape = tuple(int(x) for x in arr.shape)
-        bit_depth = _bit_depth_for_array(arr)
-        warnings = _image_warnings(path, arr)
+        dtype, shape = _read_image_metadata(path)
+        bit_depth = _bit_depth_for_dtype(np.dtype(dtype)) if dtype else 0
+        warnings = _shape_warnings(path, shape, bit_depth)
     except Exception as exc:
         dtype = ""
         shape = ()
@@ -399,7 +614,7 @@ def _default_parameters(sample: SampleRecord) -> dict[str, Any]:
         "roi_measurements_path": sample.metadata.get("roi_measurements_path", ""),
         "rois_path": sample.metadata.get("rois_path", ""),
         "qc_overlay_path": sample.metadata.get("qc_overlay_path", ""),
-        "notes": "Generated from exported XY TIFF/images. Raw Olympus files are traceability-only.",
+        "notes": "Generated from readable XY TIFF/images. Olympus ETS sources are converted before analysis when present.",
     }
 
 
@@ -498,6 +713,12 @@ def _project_entry(sample: SampleRecord, project_path: Path) -> dict[str, Any]:
         "image_files": dict(sample.image_files),
         "image_records": [asdict(image) for image in sample.images],
         "raw_olympus_reference": sample.raw_olympus_reference,
+        "case_dir": paths.get("case_dir", ""),
+        "physical_rename_dir": paths.get("physical_rename_dir", ""),
+        "converted_from_ets": paths.get("converted_from_ets", []),
+        "converted_tiff_paths": paths.get("converted_tiff_paths", []),
+        "conversion_roles": paths.get("conversion_roles", {}),
+        "ets_conversion_count": paths.get("ets_conversion_count", 0),
         "analysis_folder": sample.analysis_folder,
         "manifest_path": paths.get("manifest_path", ""),
         "parameters_path": paths.get("parameters_path", ""),
@@ -521,12 +742,20 @@ def scan_exported_tiff_project(
     exported_dir: str | Path,
     raw_dir: str | Path | None = None,
     analysis_dir: str | Path | None = None,
+    convert_ets: bool = True,
+    progress=None,
 ) -> dict[str, Any]:
-    exported_root = Path(exported_dir).expanduser().resolve()
-    image_files = discover_image_files(exported_root)
+    exported_root, image_files, conversions = _prepare_image_sources(
+        exported_dir,
+        convert_ets=convert_ets,
+        progress=progress,
+    )
     samples = group_images_by_sample(image_files)
-    raw_index = scan_raw_olympus_folder(raw_dir)
+    _attach_conversion_metadata(samples, conversions)
     raw_ref = str(Path(raw_dir).expanduser().resolve()) if str(raw_dir or "").strip() else ""
+    if not raw_ref and conversions:
+        raw_ref = str(exported_root.parent if exported_root.is_file() else exported_root)
+    raw_index = scan_raw_olympus_folder(raw_ref) if raw_ref else pd.DataFrame()
     analysis_root = (
         Path(analysis_dir).expanduser().resolve() if str(analysis_dir or "").strip() else None
     )
@@ -535,7 +764,16 @@ def scan_exported_tiff_project(
         if analysis_root is not None:
             sample.analysis_folder = str((analysis_root / sample.sample_id).resolve())
             sample.metadata.update(_sample_analysis_paths(sample.sample_id, Path(sample.analysis_folder)))
-    warnings = sorted({warning for sample in samples.values() for warning in sample.warnings})
+    warnings = sorted(
+        {
+            warning
+            for warning in [
+                *[warning for sample in samples.values() for warning in sample.warnings],
+                *_conversion_warnings(conversions),
+            ]
+            if warning
+        }
+    )
     return {
         "ok": True,
         "kind": PROJECT_KIND,
@@ -546,6 +784,9 @@ def scan_exported_tiff_project(
         "image_count": len(image_files),
         "sample_count": len(samples),
         "raw_olympus_file_count": int(len(raw_index)),
+        "ets_conversion_count": len([item for item in conversions if item.status == "converted"]),
+        "ets_converted_file_count": len(_successful_conversion_outputs(conversions)),
+        "ets_conversions": _conversion_dicts(conversions),
         "samples": [asdict(sample) for sample in samples.values()],
         "warnings": warnings,
     }
@@ -557,13 +798,24 @@ def create_project_from_exported_tiff(
     raw_dir: str | Path | None = None,
     analysis_dir: str | Path | None = None,
     name: str = "",
+    convert_ets: bool = True,
+    progress=None,
 ) -> dict[str, Any]:
     project_file = _project_file_path(project_path, analysis_dir)
     analysis_root = _analysis_root(project_file, analysis_dir)
-    scan = scan_exported_tiff_project(exported_dir, raw_dir=raw_dir, analysis_dir=analysis_root)
-    image_files = discover_image_files(exported_dir)
+    # Discover and read each exported image exactly once; the previous
+    # implementation scanned (read every image) and then re-grouped (read them
+    # again), doubling disk I/O on whole-slide TIFFs.
+    exported_root, image_files, conversions = _prepare_image_sources(
+        exported_dir,
+        convert_ets=convert_ets,
+        progress=progress,
+    )
     samples = group_images_by_sample(image_files)
+    _attach_conversion_metadata(samples, conversions)
     raw_ref = str(Path(raw_dir).expanduser().resolve()) if str(raw_dir or "").strip() else ""
+    if not raw_ref and conversions:
+        raw_ref = str(exported_root.parent if exported_root.is_file() else exported_root)
     for sample in samples.values():
         sample.raw_olympus_reference = raw_ref
     samples = create_analysis_folders(samples, analysis_root)
@@ -572,11 +824,23 @@ def create_project_from_exported_tiff(
         export_sample_placeholders(sample)
 
     raw_index_path = ""
+    raw_file_count = 0
     if raw_ref:
         raw_index = scan_raw_olympus_folder(raw_ref)
+        raw_file_count = int(len(raw_index))
         raw_index_path = str((analysis_root / "raw_olympus_index.csv").resolve())
         raw_index.to_csv(raw_index_path, index=False)
 
+    warnings = sorted(
+        {
+            warning
+            for warning in [
+                *[warning for sample in samples.values() for warning in sample.warnings],
+                *_conversion_warnings(conversions),
+            ]
+            if warning
+        }
+    )
     entries = [_project_entry(sample, project_file) for sample in samples.values()]
     payload = {
         "version": 1,
@@ -585,23 +849,26 @@ def create_project_from_exported_tiff(
         "project_name": str(name or project_file.stem),
         "project_path": str(project_file),
         "project_root": str(project_file.parent),
-        "exported_dir": str(Path(exported_dir).expanduser().resolve()),
+        "exported_dir": str(exported_root),
         "raw_dir": raw_ref,
         "analysis_dir": str(analysis_root),
         "raw_olympus_index_path": raw_index_path,
+        "ets_conversion_count": len([item for item in conversions if item.status == "converted"]),
+        "ets_converted_file_count": len(_successful_conversion_outputs(conversions)),
+        "ets_conversions": _conversion_dicts(conversions),
         "created_at": _now_iso(),
         "updated_at": _now_iso(),
         "entry_count": len(entries),
         "images": entries,
         "samples": [asdict(sample) for sample in samples.values()],
-        "warnings": scan.get("warnings", []),
+        "warnings": warnings,
     }
     save_project_config(payload, project_file)
     return {
         "ok": True,
         **payload,
         "entries": entries,
-        "raw_olympus_file_count": scan.get("raw_olympus_file_count", 0),
+        "raw_olympus_file_count": raw_file_count,
     }
 
 
@@ -619,6 +886,7 @@ __all__ = [
     "load_image_for_display",
     "load_project_config",
     "save_project_config",
+    "convert_ets_folder_to_tiff",
     "scan_exported_tiff_project",
     "scan_raw_olympus_folder",
 ]

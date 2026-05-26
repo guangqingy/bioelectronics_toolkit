@@ -3,21 +3,6 @@ let _histologyProjectEntries = [];
 let _selectedHistologyProjectEntryId = '';
 let _histologyProjectPreviewSeq = 0;
 
-function getRotateDeg() {
-  const el = document.getElementById('rotateDeg');
-  const v = parseInt((el && el.value) ? el.value : '0', 10);
-  if ([0,90,180,270].includes(v)) return v;
-  return 0;
-}
-
-function onRotateChange() {
-  localStorage.setItem('histology_rotate_deg', String(getRotateDeg()));
-  const projectEntry = _histologyProjectEntries.find(e => String(e.entry_id) === String(_selectedHistologyProjectEntryId));
-  if (projectEntry) {
-    loadHistologyProjectEntryPreview(projectEntry);
-  }
-}
-
 function histologyDataProjectPath() {
   return (document.getElementById('histologyProjectPath')?.value || '').trim();
 }
@@ -32,6 +17,10 @@ function histologyRawOlympusPath() {
 
 function histologyAnalysisPath() {
   return (document.getElementById('histologyAnalysisPath')?.value || '').trim();
+}
+
+function histologyConvertEts() {
+  return !!document.getElementById('histologyConvertEts')?.checked;
 }
 
 function renderHistologyProjectImageList() {
@@ -107,23 +96,32 @@ function applyHistologyProjectPayload(d) {
 function scanHistologyTiffProject() {
   const exportedDir = histologyExportedTiffPath();
   if (!exportedDir) {
-    setStatus('status', 'Choose exported TIFF files or a folder first', 'error');
+    setStatus('status', 'Choose a TIFF/ETS source file or folder first', 'error');
     return;
   }
-  btnBusy('btnScanHistologyTiffProject', true, 'Scanning…');
-  setStatus('status', 'Scanning exported TIFF/images…', 'loading');
-  api('/api/histology/project/scan_tiff', {
+  btnBusy('btnScanHistologyTiffProject', true, 'Scanning...');
+  setStatus('status', 'Scanning source images and converting ETS when needed...', 'loading');
+  dpRunJobEndpoint('/api/histology/project/scan_tiff_job', {
     exported_dir: exportedDir,
     raw_dir: histologyRawOlympusPath(),
     analysis_dir: histologyAnalysisPath(),
+    convert_ets: histologyConvertEts(),
+  }, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Scanning histology source${pct}${msg}`, 'loading');
+    },
   }).then(d => {
-    btnBusy('btnScanHistologyTiffProject', false, 'Scan');
+    btnBusy('btnScanHistologyTiffProject', false, 'Scan Source');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
     const warnText = Array.isArray(d.warnings) && d.warnings.length ? ` · ${d.warnings[0]}` : '';
-    setStatus('status', `Scanned ${d.sample_count || 0} sample(s), ${d.image_count || 0} image(s)${warnText}`, 'ok');
+    const converted = d.ets_converted_file_count ? ` · ${d.ets_converted_file_count} ETS TIFF(s)` : '';
+    setStatus('status', `Scanned ${d.sample_count || 0} sample(s), ${d.image_count || 0} image(s)${converted}${warnText}`, 'ok');
   }).catch(e => {
-    btnBusy('btnScanHistologyTiffProject', false, 'Scan');
+    btnBusy('btnScanHistologyTiffProject', false, 'Scan Source');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }
@@ -136,22 +134,31 @@ function createHistologyTiffProject() {
     return;
   }
   if (!exportedDir) {
-    setStatus('status', 'Choose exported TIFF files or a folder first', 'error');
+    setStatus('status', 'Choose a TIFF/ETS source file or folder first', 'error');
     return;
   }
-  btnBusy('btnCreateHistologyProject', true, 'Creating…');
-  setStatus('status', 'Creating analysis project and manifests…', 'loading');
-  api('/api/histology/project/create_from_tiff', {
+  btnBusy('btnCreateHistologyProject', true, 'Creating...');
+  setStatus('status', 'Creating analysis project and converting ETS when needed...', 'loading');
+  dpRunJobEndpoint('/api/histology/project/create_from_tiff_job', {
     project_path: projectPath,
     exported_dir: exportedDir,
     raw_dir: histologyRawOlympusPath(),
     analysis_dir: histologyAnalysisPath(),
+    convert_ets: histologyConvertEts(),
+  }, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Creating histology project${pct}${msg}`, 'loading');
+    },
   }).then(d => {
     btnBusy('btnCreateHistologyProject', false, 'Create Analysis Project');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
     const rawText = d.raw_olympus_index_path ? ` · raw index ${d.raw_olympus_index_path}` : '';
-    setStatus('status', `Created project (${d.entry_count || 0} sample(s))${rawText}`, 'ok');
+    const converted = d.ets_converted_file_count ? ` · ${d.ets_converted_file_count} ETS TIFF(s)` : '';
+    setStatus('status', `Created project (${d.entry_count || 0} sample(s))${converted}${rawText}`, 'ok');
     toast('Histology analysis project created');
   }).catch(e => {
     btnBusy('btnCreateHistologyProject', false, 'Create Analysis Project');
@@ -168,12 +175,12 @@ function loadHistologyDataProject() {
   btnBusy('btnLoadHistologyProject', true, 'Loading…');
   setStatus('status', 'Loading histology project…', 'loading');
   api('/api/histology/project/load', {project_path: projectPath}).then(d => {
-    btnBusy('btnLoadHistologyProject', false, 'Load File');
+    btnBusy('btnLoadHistologyProject', false, 'Load Existing');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
     setStatus('status', `Loaded project (${d.entry_count || 0} image(s))`, 'ok');
   }).catch(e => {
-    btnBusy('btnLoadHistologyProject', false, 'Load File');
+    btnBusy('btnLoadHistologyProject', false, 'Load Existing');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }
@@ -234,6 +241,10 @@ function renderHistologyProjectEntryNotes(entry, extraNotes) {
   const previewPath = histologyProjectPrimaryImagePath(entry);
   const previewText = previewPath ? `\nPreview source: ${previewPath}` : '';
   const rawText = entry.raw_olympus_reference ? `\nRaw Olympus reference: ${entry.raw_olympus_reference}` : '';
+  const converted = Array.isArray(entry.converted_from_ets) ? entry.converted_from_ets : [];
+  const convertedText = converted.length
+    ? `\nConverted ETS:\n${converted.map(item => `- ${item.role || 'image'}: ${item.output_path || ''}`).join('\n')}`
+    : '';
   const analysisText = entry.analysis_folder ? `\nAnalysis folder: ${entry.analysis_folder}` : '';
   const manifestText = entry.manifest_path ? `\nManifest: ${entry.manifest_path}` : '';
   const warnings = Array.isArray(entry.warnings) && entry.warnings.length
@@ -244,7 +255,7 @@ function renderHistologyProjectEntryNotes(entry, extraNotes) {
     ? `\nPreview notes:\n${extraNotes.join('\n')}`
     : '';
   notesEl.textContent =
-    `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${channelText}${previewText}${rawText}${analysisText}${manifestText}${warnings}${previewNotes}${cacheText}`;
+    `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${channelText}${previewText}${rawText}${convertedText}${analysisText}${manifestText}${warnings}${previewNotes}${cacheText}`;
 }
 
 function loadHistologyProjectEntryPreview(entry) {
@@ -338,7 +349,8 @@ function renameHistologyDataProjectEntry() {
     applyHistologyProjectPayload(d);
     _selectedHistologyProjectEntryId = entryId;
     selectHistologyProjectEntry(entryId);
-    setStatus('status', `Project entry renamed to ${displayName}`, 'ok');
+    const physical = d.physical_rename && d.physical_rename.renamed ? ' · TIFF/folder renamed' : '';
+    setStatus('status', `Project entry renamed to ${displayName}${physical}`, 'ok');
     toast('Project entry renamed');
     recordRunHistory({
       view: 'histology_naming',
@@ -365,9 +377,6 @@ function setPreview(containerId, b64) {
 }
 
 window.addEventListener('load', () => {
-  const rot = parseInt(localStorage.getItem('histology_rotate_deg') || '0', 10);
-  const rotateEl = document.getElementById('rotateDeg');
-  if (rotateEl) rotateEl.value = [0,90,180,270].includes(rot) ? String(rot) : '0';
   renderHistologyProjectImageList();
   setStatus('status', 'Ready', 'ok');
 });
@@ -378,16 +387,15 @@ window.DP.page = window.DP.page || {};
 [
   'applyHistologyProjectPayload',
   'createHistologyTiffProject',
-  'getRotateDeg',
   'histologyDataProjectPath',
   'histologyExportedTiffPath',
   'histologyProjectChannelFiles',
   'histologyProjectPrimaryImagePath',
   'histologyRawOlympusPath',
   'histologyAnalysisPath',
+  'histologyConvertEts',
   'loadHistologyDataProject',
   'loadHistologyProjectEntryPreview',
-  'onRotateChange',
   'renderHistologyProjectEntryNotes',
   'renderHistologyProjectChannelPanel',
   'renderHistologyProjectImageList',

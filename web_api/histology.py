@@ -16,7 +16,6 @@ from .request_validation import (
     validation_error_response,
 )
 
-create_histology_data_project = histology_service.create_histology_data_project
 load_histology_data_project = histology_service.load_histology_data_project
 rename_histology_data_project_entry = histology_service.rename_histology_data_project_entry
 load_histology_data_project_image_preview = histology_service.load_histology_data_project_image_preview
@@ -28,15 +27,11 @@ scan_exported_tiff_project = histology_service.scan_exported_tiff_project
 create_project_from_exported_tiff = histology_service.create_project_from_exported_tiff
 
 
-class HistologyDataProjectCreateRequest(RequestModel):
-    project_path: str = Field(min_length=1)
-    name: str = ""
-
-
 class HistologyTiffProjectScanRequest(RequestModel):
     exported_dir: str = Field(min_length=1)
     raw_dir: str = ""
     analysis_dir: str = ""
+    convert_ets: bool = True
 
 
 class HistologyTiffProjectCreateRequest(RequestModel):
@@ -45,6 +40,7 @@ class HistologyTiffProjectCreateRequest(RequestModel):
     raw_dir: str = ""
     analysis_dir: str = ""
     name: str = ""
+    convert_ets: bool = True
 
 
 class HistologyDataProjectLoadRequest(RequestModel):
@@ -96,20 +92,13 @@ def register_histology_routes(app, ctx):
         with app.app_context():
             return route_response_to_payload(handler(body or {}))
 
-    @app.route("/api/histology/project/create", methods=["POST"])
-    @request_schema(HistologyDataProjectCreateRequest)
-    def api_histology_project_create():
-        try:
-            payload = parse_json_payload(HistologyDataProjectCreateRequest)
-            return jsonify(
-                create_histology_data_project(payload.project_path, name=payload.name)
-            )
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except (FileNotFoundError, ValueError) as exc:
-            return err(str(exc))
-        except Exception:
-            return err(traceback.format_exc())
+    def _job_progress(job_ctx, low: float = 0.05, high: float = 0.92):
+        def progress(fraction: float, message: str) -> None:
+            job_ctx.check_cancelled()
+            span = max(0.0, high - low)
+            job_ctx.set_progress(low + span * max(0.0, min(1.0, float(fraction))), message)
+
+        return progress
 
     @app.route("/api/histology/project/scan_tiff", methods=["POST"])
     @request_schema(HistologyTiffProjectScanRequest)
@@ -121,6 +110,7 @@ def register_histology_routes(app, ctx):
                     payload.exported_dir,
                     raw_dir=payload.raw_dir,
                     analysis_dir=payload.analysis_dir,
+                    convert_ets=payload.convert_ets,
                 )
             )
         except ValidationError as exc:
@@ -129,6 +119,33 @@ def register_histology_routes(app, ctx):
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
+
+    @app.route("/api/histology/project/scan_tiff_job", methods=["POST"])
+    @request_schema(HistologyTiffProjectScanRequest)
+    def api_histology_project_scan_tiff_job():
+        try:
+            body = parse_json_payload(HistologyTiffProjectScanRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+        def task(job_ctx, body: dict) -> dict:
+            job_ctx.set_progress(0.02, "Scanning histology source")
+            return scan_exported_tiff_project(
+                body["exported_dir"],
+                raw_dir=body.get("raw_dir", ""),
+                analysis_dir=body.get("analysis_dir", ""),
+                convert_ets=bool(body.get("convert_ets", True)),
+                progress=_job_progress(job_ctx),
+            )
+
+        return submit_json_task(
+            jobs,
+            "histology.project_scan",
+            "Scan histology source",
+            task,
+            body,
+            metadata={"endpoint": "/api/histology/project/scan_tiff"},
+        )
 
     @app.route("/api/histology/project/create_from_tiff", methods=["POST"])
     @request_schema(HistologyTiffProjectCreateRequest)
@@ -142,6 +159,7 @@ def register_histology_routes(app, ctx):
                     raw_dir=payload.raw_dir,
                     analysis_dir=payload.analysis_dir,
                     name=payload.name,
+                    convert_ets=payload.convert_ets,
                 )
             )
         except ValidationError as exc:
@@ -150,6 +168,35 @@ def register_histology_routes(app, ctx):
             return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
+
+    @app.route("/api/histology/project/create_from_tiff_job", methods=["POST"])
+    @request_schema(HistologyTiffProjectCreateRequest)
+    def api_histology_project_create_from_tiff_job():
+        try:
+            body = parse_json_payload(HistologyTiffProjectCreateRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+
+        def task(job_ctx, body: dict) -> dict:
+            job_ctx.set_progress(0.02, "Creating histology project")
+            return create_project_from_exported_tiff(
+                body["project_path"],
+                body["exported_dir"],
+                raw_dir=body.get("raw_dir", ""),
+                analysis_dir=body.get("analysis_dir", ""),
+                name=body.get("name", ""),
+                convert_ets=bool(body.get("convert_ets", True)),
+                progress=_job_progress(job_ctx),
+            )
+
+        return submit_json_task(
+            jobs,
+            "histology.project_create",
+            "Create histology project",
+            task,
+            body,
+            metadata={"endpoint": "/api/histology/project/create_from_tiff"},
+        )
 
     @app.route("/api/histology/project/load", methods=["POST"])
     @request_schema(HistologyDataProjectLoadRequest)

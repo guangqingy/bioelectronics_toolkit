@@ -38,6 +38,10 @@
 .histology-roi-toolbar .input-sm {
   width: 120px;
 }
+.histology-select-wide {
+  min-width: 132px;
+  width: min(100%, 156px) !important;
+}
 .histology-roi-toolbar .btn-primary {
   width: auto;
 }
@@ -167,7 +171,7 @@
   <div class="ctrl-label">Channels</div>
   <div class="param-row">
     <div class="param-label">DAPI</div>
-    <select id="dapiChannel" class="input-sm">
+    <select id="dapiChannel" class="input-sm histology-select-wide">
       <option value="dapi" selected>DAPI / Blue</option>
       <option value="blue">Blue</option>
       <option value="red">Red</option>
@@ -177,7 +181,7 @@
   </div>
   <div class="param-row">
     <div class="param-label">SMA</div>
-    <select id="smaChannel" class="input-sm">
+    <select id="smaChannel" class="input-sm histology-select-wide">
       <option value="fitc" selected>FITC / Green</option>
       <option value="green">Green</option>
       <option value="red">Red</option>
@@ -187,7 +191,7 @@
   </div>
   <div class="param-row">
     <div class="param-label">Macrophage</div>
-    <select id="macrophageChannel" class="input-sm">
+    <select id="macrophageChannel" class="input-sm histology-select-wide">
       <option value="cy5" selected>Cy5 / Red</option>
       <option value="red">Red</option>
       <option value="green">Green</option>

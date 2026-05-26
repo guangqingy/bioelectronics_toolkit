@@ -44,6 +44,7 @@ dependencies = [
     "Pillow>=10.0",
     "pyserial>=3.5",
     "tifffile>=2023.7",
+    "imagecodecs>=2024.1",
 ]
 
 [project.optional-dependencies]

@@ -22,40 +22,9 @@ except Exception:  # pragma: no cover - optional dependency
     openslide = None
 
 try:
-    import bioformats  # type: ignore
-    import javabridge  # type: ignore
-except Exception:  # pragma: no cover - optional dependency
-    bioformats = None
-    javabridge = None
-
-try:
     import pytesseract  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     pytesseract = None
-
-_VM_READY = False
-
-
-def _ensure_vm() -> bool:
-    global _VM_READY
-    if _VM_READY:
-        return True
-    if bioformats is None or javabridge is None:
-        return False
-    try:
-        env = javabridge.get_env()
-        if env is not None:
-            _VM_READY = True
-            return True
-    except Exception:
-        pass
-    try:
-        javabridge.start_vm(class_path=bioformats.JARS, run_headless=True)
-        _VM_READY = True
-        return True
-    except Exception:
-        return False
-
 
 def _array_to_uint8(arr: np.ndarray) -> np.ndarray:
     data = np.asarray(arr)
@@ -324,25 +293,6 @@ def _load_openslide_associated(path: Path) -> tuple[Image.Image | None, dict[str
             pass
 
 
-def _load_bioformats_series(path: Path, series: int) -> tuple[Image.Image | None, dict[str, Any]]:
-    if bioformats is None or javabridge is None:
-        return None, {"backend": "bioformats", "error": "bioformats unavailable"}
-    if not _ensure_vm():
-        return None, {"backend": "bioformats", "error": "bioformats JVM unavailable"}
-    try:
-        arr = bioformats.load_image(str(path), series=series, rescale=False)
-    except Exception as exc:
-        return None, {"backend": "bioformats", "error": str(exc)}
-    try:
-        return _fit_pil(_to_pil(arr), 1600), {
-            "backend": "bioformats",
-            "series": series,
-            "source": str(path),
-        }
-    except Exception as exc:
-        return None, {"backend": "bioformats", "error": str(exc)}
-
-
 def _limit_text(s: str, max_len: int = 600) -> str:
     t = str(s or "")
     t = re.sub(r"[ \t]+", " ", t)
@@ -365,6 +315,29 @@ def _ocr_pil(img: Image.Image, lang: str = "eng") -> tuple[str, str]:
         return _limit_text(text), ""
     except Exception as exc:
         return "", str(exc)
+
+
+def _load_raster_preview(path: Path) -> tuple[Image.Image | None, dict[str, Any]]:
+    suffix = path.suffix.lower()
+    if suffix in {".tif", ".tiff", ".vsi"}:
+        main_img, main_meta, label_img, label_meta = _load_tifffile_preview_pair(path)
+        if main_img is not None:
+            return main_img, main_meta
+        if label_img is not None:
+            return label_img, label_meta
+        error = main_meta.get("error") or label_meta.get("error") or "no usable raster page"
+        return None, {"backend": "tifffile", "error": error, "source": str(path)}
+    if suffix == ".ets":
+        return None, {
+            "backend": "ets",
+            "error": "raw ETS sidecars must be converted to TIFF before preview",
+            "source": str(path),
+        }
+    try:
+        with Image.open(path) as img:
+            return _fit_pil(img.convert("RGB"), 1600), {"backend": "pillow", "source": str(path)}
+    except Exception as exc:
+        return None, {"backend": "pillow", "error": str(exc), "source": str(path)}
 
 
 def load_histology_preview_pair(
@@ -407,7 +380,7 @@ def load_histology_preview_pair(
     main_errors: list[str] = []
     label_errors: list[str] = []
 
-    if path.is_file() and path.suffix.lower() == ".vsi":
+    if path.is_file() and path.suffix.lower() in {".vsi", ".tif", ".tiff"}:
         tf_main, tf_main_meta, tf_label, tf_label_meta = _load_tifffile_preview_pair(path)
         if tf_main is not None:
             main_img, main_meta = tf_main, tf_main_meta
@@ -424,36 +397,28 @@ def load_histology_preview_pair(
         if main_img is None and main_meta.get("error"):
             main_errors.append(f"openslide: {main_meta.get('error')}")
     if main_img is None:
-        main_img, main_meta = _load_bioformats_series(path, 0)
-        if main_img is None and main_meta.get("error"):
-            main_errors.append(f"bioformats: {main_meta.get('error')}")
-    if main_img is None:
         for candidate in _possible_label_paths(path):
             if candidate.exists():
-                main_img, main_meta = _load_bioformats_series(candidate, 0)
+                main_img, main_meta = _load_raster_preview(candidate)
                 if main_img is not None:
                     result["notes"].append(f"Main preview loaded from sidecar: {candidate.name}")
                     break
                 if main_meta.get("error"):
-                    main_errors.append(f"bioformats sidecar: {main_meta.get('error')}")
+                    main_errors.append(f"{main_meta.get('backend')} sidecar: {main_meta.get('error')}")
 
     if label_img is None:
         label_img, label_meta = _load_openslide_associated(path)
         if label_img is None and label_meta.get("error"):
             label_errors.append(f"openslide: {label_meta.get('error')}")
     if label_img is None:
-        label_img, label_meta = _load_bioformats_series(path, 1)
-        if label_img is None and label_meta.get("error"):
-            label_errors.append(f"bioformats: {label_meta.get('error')}")
-    if label_img is None:
         for candidate in _possible_label_paths(path):
             if candidate.exists() and candidate != path:
-                label_img, label_meta = _load_bioformats_series(candidate, 0)
+                label_img, label_meta = _load_raster_preview(candidate)
                 if label_img is not None:
                     result["notes"].append(f"Label preview loaded from sidecar: {candidate.name}")
                     break
                 if label_meta.get("error"):
-                    label_errors.append(f"bioformats sidecar: {label_meta.get('error')}")
+                    label_errors.append(f"{label_meta.get('backend')} sidecar: {label_meta.get('error')}")
 
     if rotate_deg and main_img is not None:
         main_img = _rotate_clockwise(main_img, rotate_deg)

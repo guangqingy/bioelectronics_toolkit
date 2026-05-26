@@ -72,35 +72,45 @@
 {% endblock %}
 
 {% block controls %}
-<div class="ctrl-section" id="histologyDataProjectControls">
-  <div class="ctrl-label">DataProcess Project</div>
-  <div class="input-row">
-    <input type="text" id="histologyProjectPath" class="input-path histology-grow" placeholder="/path/to/histology_project.dphistology or save folder">
-    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
+<div class="ctrl-section" id="histologyTiffProjectControls">
+  <div class="ctrl-label">1 · Exported TIFF / ETS Source</div>
+  <div class="param-row">
+    <div class="param-label">Source</div>
+    <div class="input-row histology-grow">
+      <input type="text" id="histologyExportedTiffPath" class="input-path histology-grow" placeholder="/path/to/source folder, .tif, or .ets">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">Open File</button>
+    </div>
   </div>
   <div class="btn-row histology-stack-gap">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyProjectPath')">Save Folder</button>
-    <button class="btn-primary" id="btnLoadHistologyProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load File</button>
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyExportedTiffPath','scanHistologyTiffProject')">Open Folder</button>
+    <button class="btn-primary" id="btnScanHistologyTiffProject" type="button" onclick="DP.page.scanHistologyTiffProject()">Scan Source</button>
   </div>
+  <label class="checkbox-row histology-stack-gap"><input type="checkbox" id="histologyConvertEts" checked><span>Convert ETS to TIFF in case folder</span></label>
+  <details class="ctrl-details histology-stack-gap">
+    <summary>Optional traceability paths</summary>
+    <div class="input-row histology-stack-gap">
+      <input type="text" id="histologyRawOlympusPath" class="input-path histology-grow" placeholder="/path/to/raw_olympus (optional)">
+      <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyRawOlympusPath')">Raw Olympus</button>
+    </div>
+    <div class="input-row histology-stack-gap">
+      <input type="text" id="histologyAnalysisPath" class="input-path histology-grow" placeholder="/path/to/analysis (optional)">
+      <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyAnalysisPath')">Analysis</button>
+    </div>
+  </details>
 </div>
 
-<div class="ctrl-section" id="histologyTiffProjectControls">
-  <div class="ctrl-label">Exported TIFF / Images</div>
-  <div class="input-row histology-stack-gap">
-    <input type="text" id="histologyExportedTiffPath" class="input-path histology-grow" placeholder="/path/to/exported_tiff">
-    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">File</button>
-    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyExportedTiffPath','scanHistologyTiffProject')">Folder</button>
-  </div>
-  <div class="input-row histology-stack-gap">
-    <input type="text" id="histologyRawOlympusPath" class="input-path histology-grow" placeholder="/path/to/raw_olympus (optional)">
-    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyRawOlympusPath')">Raw Olympus</button>
-  </div>
-  <div class="input-row histology-stack-gap">
-    <input type="text" id="histologyAnalysisPath" class="input-path histology-grow" placeholder="/path/to/analysis (optional)">
-    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyAnalysisPath')">Analysis</button>
+<div class="ctrl-section" id="histologyDataProjectControls">
+  <div class="ctrl-label">2 · DataProcess Project</div>
+  <div class="param-row">
+    <div class="param-label">Project</div>
+    <div class="input-row histology-grow">
+      <input type="text" id="histologyProjectPath" class="input-path histology-grow" placeholder="save folder or histology_project.dphistology">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
+    </div>
   </div>
   <div class="btn-row histology-stack-gap">
-    <button class="btn-secondary" id="btnScanHistologyTiffProject" type="button" onclick="DP.page.scanHistologyTiffProject()">Scan</button>
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyProjectPath')">Open Folder</button>
+    <button class="btn-secondary" id="btnLoadHistologyProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load Existing</button>
     <button class="btn-primary" id="btnCreateHistologyProject" type="button" onclick="DP.page.createHistologyTiffProject()">Create Analysis Project</button>
   </div>
 </div>
@@ -122,7 +132,7 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology Naming</div>
-    <div class="view-sub" id="histologyMeta">Create a local DataProcess histology project from exported 2D TIFF images; Olympus raw files are indexed only for traceability.</div>
+    <div class="view-sub" id="histologyMeta">Create a local DataProcess histology project from readable TIFF images; Olympus ETS sources are converted into case-folder TIFFs before analysis.</div>
   </div>
 
   <div class="view-results histology-naming-grid" id="histologyNamingModuleMain">

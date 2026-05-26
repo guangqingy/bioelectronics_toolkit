@@ -183,7 +183,7 @@ const SETTINGS_SCHEMAS = {
   ],
   histology_naming: [
     {section: 'Project'}, {id: 'histologyProjectPath', label: 'Histology project local file', type: 'path'}, {id: 'histologyProjectEntryName', label: 'Project display name', type: 'text'},
-    {section: 'Image Sources'}, {id: 'histologyExportedTiffPath', label: 'Exported TIFF folder', type: 'path'}, {id: 'histologyRawOlympusPath', label: 'Raw Olympus folder', type: 'path'}, {id: 'histologyAnalysisPath', label: 'Analysis output folder', type: 'path'},
+    {section: 'Image Sources'}, {id: 'histologyExportedTiffPath', label: 'TIFF or ETS source', type: 'path'}, {id: 'histologyConvertEts', label: 'Convert ETS to TIFF', type: 'checkbox'}, {id: 'histologyRawOlympusPath', label: 'Raw Olympus folder', type: 'path'}, {id: 'histologyAnalysisPath', label: 'Analysis output folder', type: 'path'},
   ],
   histology_analysis: [
     {section: 'Paths'}, {id: 'projectPath', label: 'Histology project local file', type: 'path'},

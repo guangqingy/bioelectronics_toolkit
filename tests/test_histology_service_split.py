@@ -1,17 +1,63 @@
 from __future__ import annotations
 
 import json
+import os
+import struct
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
+from unittest import mock
 
 from services import (
     histology,
     histology_analysis,
     histology_discovery,
-    histology_ets_analysis,
+    histology_project,
     histology_qupath,
 )
+from services.histology_ets_convert import read_ets_index
+
+
+def _write_fake_ets(path: Path, value: int = 180) -> None:
+    import numpy as np
+    from PIL import Image
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tile = np.zeros((16, 16, 3), dtype=np.uint8)
+    tile[..., 0] = value
+    tile[..., 1] = 80
+    tile[..., 2] = 30
+    stream = BytesIO()
+    Image.fromarray(tile, "RGB").save(stream, format="JPEG", quality=90)
+    blob = stream.getvalue()
+    tile_table_offset = 64 + 228
+    data_offset = tile_table_offset + 36
+    sis = struct.pack(
+        "<4sIIIQIIQIIIIII",
+        b"SIS\0",
+        64,
+        2,
+        4,
+        64,
+        228,
+        0,
+        tile_table_offset,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
+    ets = struct.pack("<4sIIIIIIIII", b"ETS\0", 0x30001, 2, 3, 4, 2, 90, 16, 16, 1)
+    tile_record = struct.pack("<IIIIIQII", 4, 0, 0, 0, 0, data_offset, len(blob), 0)
+    with path.open("wb") as handle:
+        handle.write(sis)
+        handle.write(ets)
+        handle.write(b"\0" * (228 - len(ets)))
+        handle.write(tile_record)
+        handle.write(blob)
 
 
 class HistologyServiceSplitTests(unittest.TestCase):
@@ -162,8 +208,8 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 }
             ]
 
-            file_preview = histology_ets_analysis.load_histology_file_image_preview(image)
-            file_result = histology_ets_analysis.analyze_histology_file_rois(
+            file_preview = histology_project.load_histology_file_image_preview(image)
+            file_result = histology_project.analyze_histology_file_rois(
                 image,
                 rois,
                 {
@@ -182,7 +228,87 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertEqual(file_result["kind"], "single_file_histology_analysis")
             self.assertGreater(file_result["results"][0]["macrophage_positive_px"], 0)
             with self.assertRaises(ValueError):
-                histology_ets_analysis.load_histology_file_image_preview(raw_ets)
+                histology_project.load_histology_file_image_preview(raw_ets)
+
+    def test_histology_scan_converts_ets_to_case_folder_tiff(self) -> None:
+        try:
+            import tifffile  # noqa: F401
+        except ImportError as exc:
+            self.skipTest(f"histology ETS conversion optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_scan_") as tmp:
+            root = Path(tmp) / "04-01-2026"
+            case = root / "5-CB"
+            (case / "Tray04_Slide01_01.vsi").parent.mkdir(parents=True)
+            (case / "Tray04_Slide01_01.vsi").write_text("vsi", encoding="utf-8")
+            _write_fake_ets(case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets")
+
+            scanned = histology.scan_exported_tiff_project(root)
+
+            converted = case / "5-CB_Brightfield.tif"
+            self.assertEqual(scanned["sample_count"], 1)
+            self.assertEqual(scanned["ets_converted_file_count"], 1)
+            self.assertTrue(converted.is_file())
+            self.assertEqual(scanned["samples"][0]["sample_id"], "5-CB")
+            self.assertEqual(scanned["samples"][0]["metadata"]["case_dir"], str(case.resolve()))
+            self.assertIn(str(converted.resolve()), scanned["samples"][0]["image_files"].values())
+
+    def test_histology_project_rename_updates_converted_tiff_and_case_folder(self) -> None:
+        try:
+            import tifffile  # noqa: F401
+        except ImportError as exc:
+            self.skipTest(f"histology ETS conversion optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_rename_") as tmp:
+            tmp_root = Path(tmp)
+            root = tmp_root / "04-01-2026"
+            case = root / "5-CB"
+            (case / "Tray04_Slide01_01.vsi").parent.mkdir(parents=True)
+            (case / "Tray04_Slide01_01.vsi").write_text("vsi", encoding="utf-8")
+            _write_fake_ets(case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets")
+
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, root)
+            entry_id = created["entries"][0]["entry_id"]
+            renamed = histology_project.rename_histology_data_project_entry(
+                project,
+                entry_id,
+                "6-CB",
+            )
+
+            new_case = root / "6-CB"
+            new_tiff = new_case / "6-CB_Brightfield.tif"
+            self.assertTrue(new_case.is_dir())
+            self.assertFalse(case.exists())
+            self.assertTrue(new_tiff.is_file())
+            self.assertEqual(renamed["renamed_entry"]["image_name"], "6-CB")
+            self.assertEqual(renamed["renamed_entry"]["sample_id"], "6-CB")
+            self.assertEqual(renamed["renamed_entry"]["image_path"], str(new_tiff.resolve()))
+            self.assertTrue(renamed["physical_rename"]["renamed"])
+
+    def test_histology_image_loading_respects_memory_guard(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology image guard optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_guard_") as tmp:
+            image = Path(tmp) / "large.tif"
+            tifffile.imwrite(image, np.zeros((12, 12), dtype=np.uint8))
+
+            with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_IMAGE_PIXELS": "10"}):
+                with self.assertRaisesRegex(ValueError, "too large to load safely"):
+                    histology.load_image_for_analysis(image)
+
+    def test_ets_index_respects_tile_memory_guard(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_guard_") as tmp:
+            ets = Path(tmp) / "5-CB" / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets"
+            _write_fake_ets(ets)
+
+            with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_ETS_TILE_PIXELS": "128"}):
+                with self.assertRaisesRegex(MemoryError, "ETS tile size"):
+                    read_ets_index(ets)
 
     def test_histology_data_project_indexes_raw_files_and_analyzes_exported_tiffs(self) -> None:
         try:
@@ -233,15 +359,15 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 raw_dir=raw_root,
                 analysis_dir=analysis_dir,
             )
-            loaded = histology_ets_analysis.load_histology_data_project(project)
+            loaded = histology_project.load_histology_data_project(project)
             entry_id = loaded["entries"][0]["entry_id"]
-            renamed = histology_ets_analysis.rename_histology_data_project_entry(
+            renamed = histology_project.rename_histology_data_project_entry(
                 project,
                 entry_id,
                 "5-CB SMA macrophage",
             )
-            preview = histology_ets_analysis.load_histology_data_project_image_preview(project, entry_id)
-            result = histology_ets_analysis.analyze_histology_data_project_rois(
+            preview = histology_project.load_histology_data_project_image_preview(project, entry_id)
+            result = histology_project.analyze_histology_data_project_rois(
                 project,
                 entry_id,
                 rois,
@@ -283,9 +409,9 @@ class HistologyServiceSplitTests(unittest.TestCase):
             project_folder = Path(tmp) / "study_project"
             project_folder.mkdir()
 
-            created = histology_ets_analysis.create_histology_data_project(project_folder)
+            created = histology_project.create_histology_data_project(project_folder)
             project_path = Path(created["project_path"])
-            loaded = histology_ets_analysis.load_histology_data_project(project_folder)
+            loaded = histology_project.load_histology_data_project(project_folder)
 
             self.assertEqual(project_path.name, "histology_project.dphistology")
             self.assertTrue(project_path.is_file())

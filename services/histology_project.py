@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 
+from services.histology_common import sanitize_name
 from services.histology_analysis import (
     ANALYSIS_VERSION,
     _clean_rois,
@@ -18,7 +19,6 @@ from services.histology_analysis import (
     _read_json,
     _write_json,
 )
-from services.histology_discovery import find_histology_cases
 from services.histology_tiff_project import (
     PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
 )
@@ -34,7 +34,6 @@ ETS_DATA_PROJECT_KIND = "dataprocess_histology_project"
 ETS_DATA_PROJECT_FILE = "histology_project.dphistology"
 PROJECT_IMAGE_SUFFIXES = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
 PROJECT_PRIMARY_SUFFIXES = PROJECT_IMAGE_SUFFIXES
-PROJECT_RELATED_SUFFIXES: tuple[str, ...] = ()
 
 
 def _has_project_image_suffix(path: Path) -> bool:
@@ -44,10 +43,6 @@ def _has_project_image_suffix(path: Path) -> bool:
 
 def _has_project_primary_suffix(path: Path) -> bool:
     return path.suffix.lower() in PROJECT_PRIMARY_SUFFIXES
-
-
-def _has_project_related_suffix(path: Path) -> bool:
-    return path.suffix.lower() in PROJECT_RELATED_SUFFIXES
 
 
 def _friendly_image_read_error(path: Path, exc: Exception) -> str:
@@ -74,66 +69,11 @@ def _read_project_image(path: str | Path, max_side: int = 1600):
     return arr, backend, warnings
 
 
-def _resolve_root(folder: str | Path) -> Path:
-    raw = str(folder or "").strip()
-    if not raw:
-        raise FileNotFoundError("Histology folder is required")
-    path = Path(raw).expanduser().resolve()
-    if path.suffix.lower() == ".qpproj":
-        raise ValueError("Select a histology case folder, not a QuPath .qpproj file")
-    if path.is_file() and path.suffix.lower() == ".ets":
-        return path.parent
-    if not path.is_dir():
-        raise FileNotFoundError(f"Histology folder not found: {path}")
-    return path
-
-
 def _safe_relative(path: Path, root: Path) -> str:
     try:
         return path.relative_to(root).as_posix()
     except ValueError:
         return path.name
-
-
-def _is_hidden_relative(path: Path, root: Path) -> bool:
-    try:
-        rel = path.relative_to(root)
-    except ValueError:
-        rel = path
-    return any(part.startswith(".") for part in rel.parts)
-
-
-def _entry_id(case_dir: Path, image_path: Path) -> str:
-    rel = _safe_relative(image_path, case_dir)
-    digest = hashlib.sha1(f"{case_dir.resolve()}::{rel}".encode("utf-8")).hexdigest()
-    return f"ets_{digest[:16]}"
-
-
-def _case_index_path(case_dir: Path) -> Path:
-    return case_dir / ETS_PROJECT_DIR / ETS_INDEX_FILE
-
-
-def _entry_dir(case_dir: Path, entry_id: str) -> Path:
-    return case_dir / ETS_PROJECT_DIR / "images" / str(entry_id)
-
-
-def _entry_analysis_path(case_dir: Path, entry_id: str) -> Path:
-    return _entry_dir(case_dir, entry_id) / "analysis.json"
-
-
-def _entry_geojson_path(case_dir: Path, entry_id: str) -> Path:
-    return _entry_dir(case_dir, entry_id) / "rois.geojson"
-
-
-def _load_entry_analysis(case_dir: Path, entry_id: str) -> dict[str, Any]:
-    path = _entry_analysis_path(case_dir, entry_id)
-    if not path.is_file():
-        return {"rois": [], "analyses": []}
-    try:
-        data = _read_json(path)
-        return data if isinstance(data, dict) else {"rois": [], "analyses": []}
-    except Exception:
-        return {"rois": [], "analyses": []}
 
 
 def _sidecar_stem_from_path(case_dir: Path, image_path: Path) -> str:
@@ -147,127 +87,11 @@ def _sidecar_stem_from_path(case_dir: Path, image_path: Path) -> str:
     return image_path.stem
 
 
-def _display_name(case_dir: Path, image_path: Path) -> str:
-    stem = _sidecar_stem_from_path(case_dir, image_path)
-    try:
-        rel = image_path.relative_to(case_dir)
-        stack = next((part for part in rel.parts if part.lower().startswith("stack")), "")
-    except ValueError:
-        stack = ""
-    if stack and stem != image_path.stem:
-        return f"{stem} · {stack}"
-    return image_path.name
-
-
 def _role_for_path(image_path: Path) -> str:
     text = image_path.as_posix().lower()
     if "overview" in text:
         return "overview"
     return "image"
-
-
-def _discover_case_roots(root: Path) -> list[Path]:
-    cases = []
-    seen: set[Path] = set()
-    for item in find_histology_cases(root):
-        raw = item.get("case_dir")
-        if not raw:
-            continue
-        case_dir = Path(str(raw)).expanduser().resolve()
-        if case_dir.is_dir() and case_dir not in seen:
-            cases.append(case_dir)
-            seen.add(case_dir)
-    if cases:
-        return cases
-    return [root]
-
-
-def _iter_ets_files(case_dir: Path) -> list[Path]:
-    files: list[Path] = []
-    for image_path in sorted(case_dir.rglob("*.ets")):
-        if not image_path.is_file() or _is_hidden_relative(image_path, case_dir):
-            continue
-        files.append(image_path.resolve())
-    return files
-
-
-def _entry_from_path(root: Path, case_dir: Path, image_path: Path) -> dict[str, Any]:
-    entry_id = _entry_id(case_dir, image_path)
-    analysis = _load_entry_analysis(case_dir, entry_id)
-    rois = analysis.get("rois") if isinstance(analysis.get("rois"), list) else []
-    analyses = analysis.get("analyses") if isinstance(analysis.get("analyses"), list) else []
-    latest = analyses[-1] if analyses else {}
-    return {
-        "entry_id": entry_id,
-        "image_name": _display_name(case_dir, image_path),
-        "case_name": case_dir.name,
-        "case_dir": str(case_dir),
-        "image_path": str(image_path),
-        "relative_path": _safe_relative(image_path, root),
-        "case_relative_path": _safe_relative(image_path, case_dir),
-        "role": _role_for_path(image_path),
-        "exists": image_path.is_file(),
-        "roi_count": len(rois),
-        "analysis_count": len(analyses),
-        "rois": rois,
-        "latest_analysis": latest,
-        "analysis_path": str(_entry_analysis_path(case_dir, entry_id)),
-        "geojson_path": str(_entry_geojson_path(case_dir, entry_id)),
-    }
-
-
-def _discover_entries(root: Path) -> list[dict[str, Any]]:
-    entries: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for case_dir in _discover_case_roots(root):
-        for image_path in _iter_ets_files(case_dir):
-            key = str(image_path)
-            if key in seen:
-                continue
-            seen.add(key)
-            entries.append(_entry_from_path(root, case_dir, image_path))
-    entries.sort(
-        key=lambda item: (
-            0 if item.get("role") == "image" else 1,
-            str(item.get("case_name") or "").lower(),
-            str(item.get("relative_path") or "").lower(),
-        )
-    )
-    return entries
-
-
-def _index_entry(entry: dict[str, Any]) -> dict[str, Any]:
-    latest = entry.get("latest_analysis") if isinstance(entry.get("latest_analysis"), dict) else {}
-    return {
-        "entry_id": entry.get("entry_id", ""),
-        "image_name": entry.get("image_name", ""),
-        "case_name": entry.get("case_name", ""),
-        "case_dir": entry.get("case_dir", ""),
-        "image_path": entry.get("image_path", ""),
-        "relative_path": entry.get("relative_path", ""),
-        "case_relative_path": entry.get("case_relative_path", ""),
-        "role": entry.get("role", "image"),
-        "roi_count": int(entry.get("roi_count") or 0),
-        "analysis_count": int(entry.get("analysis_count") or 0),
-        "analysis_path": entry.get("analysis_path", ""),
-        "geojson_path": entry.get("geojson_path", ""),
-        "latest_analysis_at": latest.get("created_at", ""),
-    }
-
-
-def _write_project_index(root: Path, entries: list[dict[str, Any]]) -> Path:
-    index_path = _case_index_path(root)
-    payload = {
-        "version": ANALYSIS_VERSION,
-        "protocol": ETS_PROTOCOL,
-        "kind": "ets_histology_project",
-        "project_root": str(root),
-        "updated_at": _now_iso(),
-        "entry_count": len(entries),
-        "images": [_index_entry(entry) for entry in entries],
-    }
-    _write_json(index_path, payload)
-    return index_path
 
 
 def _normalize_data_project_path(project_path: str | Path) -> Path:
@@ -463,8 +287,6 @@ def _record_source_path(record: dict[str, Any]) -> Path | None:
 def _primary_sources_for_project_path(path: Path) -> list[Path]:
     if _has_project_primary_suffix(path):
         return [path.resolve()]
-    if _has_project_related_suffix(path):
-        return _ets_files_for_related_path(path)
     return []
 
 
@@ -513,6 +335,12 @@ def _data_project_record_for_source(
         "image_files",
         "image_records",
         "raw_olympus_reference",
+        "case_dir",
+        "physical_rename_dir",
+        "converted_from_ets",
+        "converted_tiff_paths",
+        "conversion_roles",
+        "ets_conversion_count",
         "analysis_folder",
         "manifest_path",
         "parameters_path",
@@ -694,6 +522,12 @@ def _data_project_entry_from_record(project_path: Path, record: dict[str, Any]) 
         "image_files",
         "image_records",
         "raw_olympus_reference",
+        "case_dir",
+        "physical_rename_dir",
+        "converted_from_ets",
+        "converted_tiff_paths",
+        "conversion_roles",
+        "ets_conversion_count",
         "analysis_folder",
         "manifest_path",
         "parameters_path",
@@ -784,25 +618,6 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
     }
 
 
-def _ets_files_for_related_path(path: Path) -> list[Path]:
-    case_dir = _case_dir_for_source(path)
-    if not case_dir.exists() or not case_dir.is_dir():
-        return []
-    related_stem = _slide_stem_for_source(path) if path.suffix.lower() == ".ets" else path.stem
-    prefix = _slide_prefix(related_stem)
-    candidates: list[Path] = []
-    for item in sorted(case_dir.rglob("*.ets")):
-        if not item.is_file():
-            continue
-        text = item.as_posix().lower()
-        if "overview" in text:
-            continue
-        slide_stem = _slide_stem_for_source(item)
-        if related_stem == slide_stem or (prefix and slide_stem.startswith(prefix)):
-            candidates.append(item.resolve())
-    return candidates
-
-
 def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], list[str]]:
     files: list[Path] = []
     warnings: list[str] = []
@@ -816,7 +631,6 @@ def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], lis
         if not path.exists():
             warnings.append(f"Path not found: {path}")
             continue
-        candidates: list[Path]
         if path.is_file():
             candidates = [path]
             scan_root = path.parent
@@ -830,16 +644,9 @@ def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], lis
                 rel = item
             if any(part.startswith(".") for part in rel.parts):
                 continue
-            source_candidates: list[Path] = []
-            if _has_project_primary_suffix(item):
-                source_candidates = _primary_sources_for_project_path(item)
-                if not source_candidates and "overview" in item.as_posix().lower() and path.is_file():
-                    warnings.append(f"No matching primary ETS file found for overview ETS: {item}")
-            elif path.is_file() and _has_project_related_suffix(item):
-                source_candidates = _primary_sources_for_project_path(item)
-                if not source_candidates:
-                    warnings.append(f"No matching ETS file found for related VSI: {item}")
-            for source in source_candidates:
+            if not _has_project_primary_suffix(item):
+                continue
+            for source in _primary_sources_for_project_path(item):
                 key = str(source)
                 if key in seen:
                     continue
@@ -895,6 +702,155 @@ def add_histology_data_project_paths(
     }
 
 
+def _path_is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.resolve().relative_to(parent.resolve())
+        return True
+    except ValueError:
+        return False
+
+
+def _replace_path_text(text: str, replacements: list[tuple[str, str]]) -> str:
+    value = text
+    for old, new in sorted(replacements, key=lambda item: len(item[0]), reverse=True):
+        old_norm = old.rstrip("/")
+        if not old_norm:
+            continue
+        if value == old_norm:
+            return new
+        if value.startswith(old_norm + "/"):
+            return new.rstrip("/") + value[len(old_norm) :]
+    return value
+
+
+def _replace_paths_in_obj(value: Any, replacements: list[tuple[str, str]]) -> Any:
+    if isinstance(value, str):
+        return _replace_path_text(value, replacements)
+    if isinstance(value, list):
+        return [_replace_paths_in_obj(item, replacements) for item in value]
+    if isinstance(value, dict):
+        return {key: _replace_paths_in_obj(item, replacements) for key, item in value.items()}
+    return value
+
+
+def _record_path_values(record: dict[str, Any]) -> list[str]:
+    values: list[str] = []
+    for key in ("image_path", "source_path"):
+        text = str(record.get(key) or "").strip()
+        if text:
+            values.append(text)
+    image_files = record.get("image_files")
+    if isinstance(image_files, dict):
+        values.extend(str(path) for path in image_files.values() if str(path or "").strip())
+    converted = record.get("converted_tiff_paths")
+    if isinstance(converted, list):
+        values.extend(str(path) for path in converted if str(path or "").strip())
+    conversions = record.get("converted_from_ets")
+    if isinstance(conversions, list):
+        for item in conversions:
+            if isinstance(item, dict):
+                text = str(item.get("output_path") or "").strip()
+                if text:
+                    values.append(text)
+    return values
+
+
+def _converted_tiff_paths_for_record(record: dict[str, Any], case_dir: Path) -> list[Path]:
+    out: list[Path] = []
+    seen: set[str] = set()
+    for raw in _record_path_values(record):
+        path = Path(raw).expanduser()
+        if path.suffix.lower() not in {".tif", ".tiff"}:
+            continue
+        try:
+            resolved = path.resolve()
+        except OSError:
+            resolved = path.absolute()
+        if not _path_is_relative_to(resolved, case_dir):
+            continue
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(resolved)
+    return out
+
+
+def _rename_target_for_tiff(path: Path, old_case_name: str, new_case_name: str) -> Path:
+    if path.name.startswith(old_case_name):
+        return path.with_name(new_case_name + path.name[len(old_case_name) :])
+    return path.with_name(f"{new_case_name}{path.suffix}")
+
+
+def _rename_entry_physical_sources(
+    project_path: Path,
+    record: dict[str, Any],
+    display_name: str,
+) -> dict[str, Any]:
+    raw_dir = str(record.get("physical_rename_dir") or record.get("case_dir") or "").strip()
+    if not raw_dir:
+        return {"renamed": False, "path_replacements": [], "warnings": []}
+    old_dir = Path(raw_dir).expanduser().resolve()
+    if not old_dir.is_dir():
+        return {
+            "renamed": False,
+            "path_replacements": [],
+            "warnings": [f"Physical source folder not found: {old_dir}"],
+        }
+    if _path_is_relative_to(project_path, old_dir):
+        raise ValueError("Move the DataProcess project file outside the case folder before renaming the case folder")
+
+    new_case_name = sanitize_name(display_name, fallback=old_dir.name)
+    new_dir = old_dir.with_name(new_case_name)
+    rename_dir = old_dir != new_dir
+    if rename_dir and new_dir.exists():
+        raise FileExistsError(f"Rename target folder already exists: {new_dir}")
+
+    replacements: list[tuple[str, str]] = []
+    warnings: list[str] = []
+    old_tiffs = _converted_tiff_paths_for_record(record, old_dir)
+    actual_tiffs = [
+        Path(_replace_path_text(str(path), [(str(old_dir), str(new_dir))])) if rename_dir else path
+        for path in old_tiffs
+    ]
+    tiff_moves: list[tuple[Path, Path, Path]] = []
+    target_keys: set[str] = set()
+    for original, actual in zip(old_tiffs, actual_tiffs, strict=False):
+        target = _rename_target_for_tiff(actual, old_dir.name, new_case_name)
+        key = str(target)
+        if key in target_keys:
+            raise FileExistsError(f"Multiple converted TIFF files would rename to: {target}")
+        target_keys.add(key)
+        if target != actual and target.exists():
+            raise FileExistsError(f"Rename target TIFF already exists: {target}")
+        tiff_moves.append((original, actual, target))
+
+    if rename_dir:
+        old_dir.rename(new_dir)
+        replacements.append((str(old_dir), str(new_dir)))
+    for original, actual, target in tiff_moves:
+        if not actual.exists():
+            warnings.append(f"Converted TIFF not found during rename: {actual}")
+            continue
+        if target != actual:
+            actual.rename(target)
+            replacements.append((str(actual), str(target)))
+            replacements.append((str(original), str(target)))
+
+    return {
+        "renamed": bool(rename_dir or any(actual != target for _original, actual, target in tiff_moves)),
+        "case_dir": str(new_dir if rename_dir else old_dir),
+        "case_name": new_case_name,
+        "path_replacements": replacements,
+        "renamed_tiffs": [
+            {"from": str(original), "to": str(target)}
+            for original, _actual, target in tiff_moves
+            if original != target
+        ],
+        "warnings": warnings,
+    }
+
+
 def rename_histology_data_project_entry(
     project_path: str | Path,
     entry_id: str,
@@ -917,12 +873,32 @@ def rename_histology_data_project_entry(
         break
     if renamed is None:
         raise ValueError(f"Histology project entry not found: {entry_id}")
+    physical = _rename_entry_physical_sources(path, renamed, name)
+    replacements = physical.get("path_replacements") if isinstance(physical, dict) else []
+    if isinstance(replacements, list) and replacements:
+        data = _replace_paths_in_obj(data, [(str(old), str(new)) for old, new in replacements])
+        images = [record for record in data.get("images", []) if isinstance(record, dict)]
+        renamed = next(
+            (record for record in images if str(record.get("entry_id")) == str(entry_id)),
+            renamed,
+        )
+    if isinstance(physical, dict) and physical.get("case_name"):
+        old_sample = str(renamed.get("sample_id") or renamed.get("case_name") or "")
+        new_sample = str(physical.get("case_name") or "")
+        for record in images:
+            if str(record.get("sample_id") or "") == old_sample:
+                record["sample_id"] = new_sample
+            if str(record.get("case_name") or "") == old_sample:
+                record["case_name"] = new_sample
+        renamed["sample_id"] = new_sample
+        renamed["case_name"] = new_sample
     data["images"] = images
     _write_data_project_payload(path, data)
     loaded = load_histology_data_project(path)
     return {
         **loaded,
         "renamed_entry": _data_project_entry_from_record(path, renamed),
+        "physical_rename": physical,
     }
 
 
@@ -1018,6 +994,7 @@ def load_histology_data_project_image_preview(
     arr, backend, warnings = _read_data_project_entry_image(entry)
     analysis = _load_data_project_entry_analysis(path, str(entry_id))
     h, w = arr.shape[:2]
+    preview_max = max(256, min(int(max_side), 2400))
     return {
         **entry,
         "backend": backend,
@@ -1025,7 +1002,7 @@ def load_histology_data_project_image_preview(
         "height": int(h),
         "preview_width": int(w),
         "preview_height": int(h),
-        "img": _png_b64(arr),
+        "img": _png_b64(arr, max_side=preview_max),
         "rois": analysis.get("rois") if isinstance(analysis.get("rois"), list) else [],
         "analyses": analysis.get("analyses") if isinstance(analysis.get("analyses"), list) else [],
         "warnings": warnings,
@@ -1084,6 +1061,12 @@ def save_histology_data_project_rois(
         "image_files": entry.get("image_files", {}),
         "image_records": entry.get("image_records", []),
         "sample_id": entry.get("sample_id", ""),
+        "case_dir": entry.get("case_dir", ""),
+        "physical_rename_dir": entry.get("physical_rename_dir", ""),
+        "converted_from_ets": entry.get("converted_from_ets", []),
+        "converted_tiff_paths": entry.get("converted_tiff_paths", []),
+        "conversion_roles": entry.get("conversion_roles", {}),
+        "ets_conversion_count": entry.get("ets_conversion_count", 0),
         "analysis_folder": entry.get("analysis_folder", ""),
         "manifest_path": entry.get("manifest_path", ""),
         "parameters_path": entry.get("parameters_path", ""),
@@ -1116,116 +1099,6 @@ def save_histology_data_project_rois(
         "analysis_path": str(analysis_path),
         "geojson_path": str(geojson_path),
         "summary_path": str(path),
-        "rois": clean_rois,
-        "latest_analysis": analyses[-1] if analyses else {},
-    }
-
-
-def _find_entry(root: Path, entry_id: str) -> dict[str, Any]:
-    for entry in _discover_entries(root):
-        if str(entry.get("entry_id")) == str(entry_id):
-            return entry
-    raise ValueError(f"ETS image entry not found: {entry_id}")
-
-
-def load_ets_project(folder: str | Path) -> dict[str, Any]:
-    root = _resolve_root(folder)
-    entries = _discover_entries(root)
-    index_path = _write_project_index(root, entries)
-    return {
-        "ok": True,
-        "protocol": ETS_PROTOCOL,
-        "project_root": str(root),
-        "project_path": str(index_path),
-        "index_path": str(index_path),
-        "entry_count": len(entries),
-        "entries": entries,
-    }
-
-
-def load_ets_image_preview(
-    folder: str | Path,
-    entry_id: str,
-    max_side: int = 1600,
-) -> dict[str, Any]:
-    root = _resolve_root(folder)
-    entry = _find_entry(root, str(entry_id))
-    image_path = entry.get("image_path", "")
-    if not image_path:
-        raise ValueError("Selected ETS entry has no readable image path")
-    arr, backend, warnings = _read_project_image(
-        image_path,
-        max_side=max(256, min(int(max_side), 2400)),
-    )
-    analysis = _load_entry_analysis(Path(str(entry["case_dir"])), str(entry_id))
-    h, w = arr.shape[:2]
-    return {
-        **entry,
-        "backend": backend,
-        "width": int(w),
-        "height": int(h),
-        "preview_width": int(w),
-        "preview_height": int(h),
-        "img": _png_b64(arr),
-        "rois": analysis.get("rois") if isinstance(analysis.get("rois"), list) else [],
-        "analyses": analysis.get("analyses") if isinstance(analysis.get("analyses"), list) else [],
-        "warnings": warnings,
-    }
-
-
-def save_ets_rois(
-    folder: str | Path,
-    entry_id: str,
-    rois: list[dict[str, Any]],
-    analysis: dict[str, Any] | None = None,
-    append_analysis: bool = True,
-) -> dict[str, Any]:
-    root = _resolve_root(folder)
-    entry = _find_entry(root, str(entry_id))
-    case_dir = Path(str(entry["case_dir"]))
-    clean_rois = _clean_rois(rois)
-    existing = _load_entry_analysis(case_dir, str(entry_id))
-    analyses = existing.get("analyses") if isinstance(existing.get("analyses"), list) else []
-    if analysis:
-        analysis = dict(analysis)
-        analysis.setdefault("created_at", _now_iso())
-        analyses = [*analyses, analysis] if append_analysis else [analysis]
-    payload = {
-        "version": ANALYSIS_VERSION,
-        "protocol": ETS_PROTOCOL,
-        "project_root": str(root),
-        "case_dir": str(case_dir),
-        "case_name": entry.get("case_name", ""),
-        "entry_id": str(entry_id),
-        "image_name": entry.get("image_name", ""),
-        "image_path": entry.get("image_path", ""),
-        "relative_path": entry.get("relative_path", ""),
-        "case_relative_path": entry.get("case_relative_path", ""),
-        "updated_at": _now_iso(),
-        "rois": clean_rois,
-        "analyses": analyses,
-    }
-    analysis_path = _entry_analysis_path(case_dir, str(entry_id))
-    _write_json(analysis_path, payload)
-    latest_measurements = {}
-    if analyses and isinstance(analyses[-1], dict):
-        latest_measurements = {str(item.get("roi_id")): item for item in analyses[-1].get("results", [])}
-    geojson_path = _entry_geojson_path(case_dir, str(entry_id))
-    _write_json(geojson_path, _geojson(clean_rois, latest_measurements))
-    entries = _discover_entries(root)
-    index_path = _write_project_index(root, entries)
-    return {
-        "protocol": ETS_PROTOCOL,
-        "project_root": str(root),
-        "project_path": str(index_path),
-        "index_path": str(index_path),
-        "case_dir": str(case_dir),
-        "entry_id": str(entry_id),
-        "roi_count": len(clean_rois),
-        "analysis_count": len(analyses),
-        "analysis_path": str(analysis_path),
-        "geojson_path": str(geojson_path),
-        "summary_path": str(index_path),
         "rois": clean_rois,
         "latest_analysis": analyses[-1] if analyses else {},
     }
@@ -1315,51 +1188,6 @@ def _analyze_marker_rois(
     return h, w, results
 
 
-def analyze_ets_rois(
-    folder: str | Path,
-    entry_id: str,
-    rois: list[dict[str, Any]],
-    parameters: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    root = _resolve_root(folder)
-    entry = _find_entry(root, str(entry_id))
-    image_path = str(entry.get("image_path") or "")
-    if not image_path:
-        raise ValueError("Selected ETS entry has no readable image path")
-    arr, backend, warnings = _read_project_image(image_path, max_side=1600)
-    clean_rois = _clean_rois(rois)
-    if not clean_rois:
-        raise ValueError("Draw at least one polygon ROI before analysis")
-
-    params = _analysis_defaults(parameters)
-    h, w, results = _analyze_marker_rois(arr, clean_rois, params)
-
-    analysis = {
-        "created_at": _now_iso(),
-        "protocol": TIFF_PROJECT_PROTOCOL,
-        "image_name": entry.get("image_name", ""),
-        "image_path": image_path,
-        "case_name": entry.get("case_name", ""),
-        "case_dir": entry.get("case_dir", ""),
-        "backend": backend,
-        "width": int(w),
-        "height": int(h),
-        "parameters": params,
-        "results": results,
-        "warnings": warnings,
-    }
-    saved = save_ets_rois(root, str(entry_id), clean_rois, analysis=analysis)
-    return {
-        **saved,
-        "analysis": analysis,
-        "results": results,
-        "backend": backend,
-        "width": int(w),
-        "height": int(h),
-        "warnings": warnings,
-    }
-
-
 def analyze_histology_data_project_rois(
     project_path: str | Path,
     entry_id: str,
@@ -1392,6 +1220,12 @@ def analyze_histology_data_project_rois(
         "image_files": entry.get("image_files", {}),
         "image_records": entry.get("image_records", []),
         "sample_id": entry.get("sample_id", ""),
+        "case_dir": entry.get("case_dir", ""),
+        "physical_rename_dir": entry.get("physical_rename_dir", ""),
+        "converted_from_ets": entry.get("converted_from_ets", []),
+        "converted_tiff_paths": entry.get("converted_tiff_paths", []),
+        "conversion_roles": entry.get("conversion_roles", {}),
+        "ets_conversion_count": entry.get("ets_conversion_count", 0),
         "analysis_folder": entry.get("analysis_folder", ""),
         "manifest_path": entry.get("manifest_path", ""),
         "parameters_path": entry.get("parameters_path", ""),
@@ -1434,10 +1268,8 @@ def load_histology_file_image_preview(
     max_side: int = 1600,
 ) -> dict[str, Any]:
     path = _resolve_single_image_path(image_path)
-    arr, backend, warnings = _read_project_image(
-        path,
-        max_side=max(256, min(int(max_side), 2400)),
-    )
+    preview_max = max(256, min(int(max_side), 2400))
+    arr, backend, warnings = _read_project_image(path, max_side=preview_max)
     h, w = arr.shape[:2]
     return {
         "entry_id": _source_entry_id(path),
@@ -1451,7 +1283,7 @@ def load_histology_file_image_preview(
         "height": int(h),
         "preview_width": int(w),
         "preview_height": int(h),
-        "img": _png_b64(arr),
+        "img": _png_b64(arr, max_side=preview_max),
         "rois": [],
         "analyses": [],
         "warnings": warnings,
@@ -1511,16 +1343,12 @@ __all__ = [
     "ETS_PROJECT_DIR",
     "ETS_PROTOCOL",
     "add_histology_data_project_paths",
-    "analyze_ets_rois",
     "analyze_histology_file_rois",
     "analyze_histology_data_project_rois",
     "create_histology_data_project",
     "load_histology_data_project",
     "load_histology_data_project_image_preview",
     "load_histology_file_image_preview",
-    "load_ets_image_preview",
-    "load_ets_project",
     "rename_histology_data_project_entry",
     "save_histology_data_project_rois",
-    "save_ets_rois",
 ]
