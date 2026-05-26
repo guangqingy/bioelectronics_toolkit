@@ -127,7 +127,8 @@ function plot() {
       const ds = data.downsample && data.downsample > 1 ? ` · ${data.downsample}x downsample` : '';
       const pts = data.plotted_points ? ` · ${data.plotted_points} pts` : '';
       const merged = previewMergeEnabled() ? ' · merged preview' : '';
-      setStatus('status', `Ready${merged}${ds}${pts}`, 'ok');
+      const inverted = data.inverted_y ? ' · inverted Y' : '';
+      setStatus('status', `Ready${merged}${inverted}${ds}${pts}`, 'ok');
     })
     .catch(e => {
       if (plotSeq !== _plotSeq) return;

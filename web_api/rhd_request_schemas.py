@@ -23,6 +23,7 @@ class RhdViewRequest(RhdLoadRequest):
     x_max: Any = None
     y_min: Any = None
     y_max: Any = None
+    invert_y: Any = False
     downsample: Any = "auto"
     dsf: Any = None
     filter_type: str = "none"
@@ -78,3 +79,25 @@ class RhdExportQueueRequest(RequestModel):
     merge_pair: Any = True
     preview_merge_pair: Any = None
     wide_csv: Any = False
+
+
+class RhdRenamePreviewRequest(RequestModel):
+    root: str = Field(min_length=1)
+    find: str = ""
+    replace: str = ""
+    prefix: str = ""
+    suffix: str = ""
+    recursive: Any = True
+    include_root: Any = True
+    include_files: Any = True
+    include_dirs: Any = True
+    use_regex: Any = False
+    case_sensitive: Any = True
+    preserve_extension: Any = True
+    skip_hidden: Any = True
+    extensions: Any = ".rhd,.csv,.txt,.tsv,.json,.png,.svg"
+    max_items: int = Field(default=5000, ge=1, le=50000)
+
+
+class RhdRenameApplyRequest(RhdRenamePreviewRequest):
+    confirm: Any = False

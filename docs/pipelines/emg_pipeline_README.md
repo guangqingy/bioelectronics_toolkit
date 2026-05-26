@@ -6,7 +6,7 @@ EMG pipelines generate representative waveform figures, overlays, bar comparison
 
 ## Upstream GUI Integration
 
-1. Use RHD Viewer (`/emg/rhd`) to export channel CSV files.
+1. Use RHD Viewer (`/emg/rhd`) to inspect recordings, optionally clean up recording names, and export channel CSV files.
 2. Use RHD Peak Selector (`/emg/peaks`) to detect peaks and export grouped peak segments.
 3. Run Script Panel category `emg` (`/scripts/emg`).
 

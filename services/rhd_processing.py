@@ -192,6 +192,15 @@ def apply_filter(y: np.ndarray, fs: float, params: dict) -> np.ndarray:
         return y
 
 
+def y_inversion_enabled(params: dict) -> bool:
+    return _as_bool(params.get("invert_y"), False)
+
+
+def apply_y_polarity(y: np.ndarray, params: dict) -> np.ndarray:
+    y = np.asarray(y, dtype=float)
+    return -y if y_inversion_enabled(params) else y
+
+
 def finish_axis(
     ax, t: np.ndarray, y_min: float | None, y_max: float | None, *, grid: bool = True
 ) -> None:

@@ -10,6 +10,10 @@ function currentDownsampleValue() {
   return document.getElementById('previewDownsample')?.value || 'auto';
 }
 
+function previewInvertYEnabled() {
+  return document.getElementById('invertY')?.checked || false;
+}
+
 function updateRhdParameterGroups() {
   dpApplyParamGroups('processType', 'data-process-mode');
   dpApplyParamGroups('filterType', 'data-filter-mode');
@@ -26,6 +30,7 @@ function currentViewParams() {
     x_max: viewNumber('xMax'),
     y_min: viewNumber('yMin'),
     y_max: viewNumber('yMax'),
+    invert_y: previewInvertYEnabled(),
     downsample: currentDownsampleValue(),
     preview_merge_pair: previewMergeEnabled(),
     filter_type: document.getElementById('filterType')?.value || 'none',
@@ -245,6 +250,7 @@ function rhdExportParams(extra) {
     x_max: viewNumber('xMax'),
     y_min: viewNumber('yMin'),
     y_max: viewNumber('yMax'),
+    invert_y: previewInvertYEnabled(),
     ...currentFigureParams(),
   }, extra || {});
 }
@@ -308,6 +314,7 @@ window.DP.page = window.DP.page || {};
   'currentProcessingPayload',
   'currentViewParams',
   'exportQueue',
+  'previewInvertYEnabled',
   'previewMergeEnabled',
   'queueAddAll',
   'queueAddAllRecursive',

@@ -39,6 +39,10 @@
     <div class="param-label">Y Max</div>
     <input type="number" id="yMax" class="input-sm" step="any" onchange="plot()">
   </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="invertY" onchange="plot()">
+    <span>Invert Y polarity</span>
+  </label>
   <div class="param-row">
     <div class="param-label">Downsample</div>
     <select id="previewDownsample" style="flex:1" onchange="plot()">
@@ -237,6 +241,39 @@
 </div>
 
 <details class="ctrl-section ctrl-details">
+  <summary class="ctrl-label">Rename Recording</summary>
+  <div class="param-row">
+    <div class="param-label">Current</div>
+    <input type="text" id="renameFind" class="input-sm" placeholder="old recording name">
+  </div>
+  <div class="param-row">
+    <div class="param-label">New</div>
+    <input type="text" id="renameReplace" class="input-sm" placeholder="new recording name">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Prefix</div>
+    <input type="text" id="renamePrefix" class="input-sm">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Suffix</div>
+    <input type="text" id="renameSuffix" class="input-sm">
+  </div>
+  <label class="checkbox-row"><input type="checkbox" id="renameRoot" checked><span>Rename current folder</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="renameFiles" checked><span>Rename files</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="renameDirs" checked><span>Rename subfolders</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="renameRecursive" checked><span>Recursive</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="renameRegex"><span>Regex</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="renameCaseSensitive" checked><span>Case sensitive</span></label>
+  <div class="param-row">
+    <div class="param-label">Exts</div>
+    <input type="text" id="renameExtensions" class="input-sm" value=".rhd,.csv,.txt,.tsv,.json,.png,.svg">
+  </div>
+  <button class="btn-secondary" type="button" onclick="DP.page.useCurrentFolderName()" style="width:100%; margin-top:8px;">Use Folder Name</button>
+  <button id="btnRenamePreview" class="btn-secondary" type="button" onclick="DP.page.previewRhdRenames()" style="width:100%; margin-top:8px;">Preview Renames</button>
+  <button id="btnRenameApply" class="btn-primary" type="button" onclick="DP.page.applyRhdRenames()" style="margin-top:8px;">Apply Renames</button>
+</details>
+
+<details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Batch Export Queue</summary>
   <div id="queueList" class="file-list"></div>
   <div class="btn-row">
@@ -279,6 +316,12 @@
         <p>No file loaded</p>
       </div>
     </div>
+    <div class="result-card">
+      <div class="result-card-header">Rename Preview</div>
+      <div class="result-card-body" id="renamePreviewArea">
+        <div class="plot-placeholder">Preview RHD/EMG renames from the left panel</div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -288,4 +331,5 @@
 <script src="/static/js/pages/rhd_viewer_files_queue.js"></script>
 <script src="/static/js/pages/rhd_viewer_plot.js"></script>
 <script src="/static/js/pages/rhd_viewer_exports.js"></script>
+<script src="/static/js/pages/rhd_viewer_rename.js"></script>
 {% endblock %}

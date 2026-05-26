@@ -3,6 +3,7 @@ import traceback
 from flask import Response, jsonify, request
 from pydantic import ValidationError
 
+from services import file_renamer
 from services.rhd_viewer import RhdViewerService
 from web_api.common import as_bool, mode_is_save
 
@@ -22,6 +23,8 @@ from .rhd_request_schemas import (
     RhdExportQueueRequest,
     RhdLoadRequest,
     RhdProcessingRequest,
+    RhdRenameApplyRequest,
+    RhdRenamePreviewRequest,
     RhdViewRequest,
 )
 
@@ -64,6 +67,12 @@ def register_rhd_viewer_routes(app, ctx):
     def _job_payload(job_ctx, body: dict, message: str, handler):
         job_ctx.set_progress(0.2, message)
         return handler(body or {})
+
+    def _rename_job_payload(job_ctx, body: dict):
+        if not as_bool((body or {}).get("confirm")):
+            raise ValueError("Rename confirmation is required.")
+        job_ctx.set_progress(0.05, "Preparing RHD rename plan")
+        return file_renamer.apply_payload(body or {}, job_ctx=job_ctx)
 
     def _json_response(schema, handler):
         try:
@@ -205,4 +214,32 @@ def register_rhd_viewer_routes(app, ctx):
             "Exporting RHD queue",
             service.export_queue_payload,
             "/api/rhd/export_queue",
+        )
+
+    @app.route("/api/rhd/rename/preview", methods=["POST"])
+    @request_schema(RhdRenamePreviewRequest)
+    def api_rhd_rename_preview():
+        try:
+            return api_ok(file_renamer.preview_payload(_json(RhdRenamePreviewRequest)))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/rhd/rename/apply_job", methods=["POST"])
+    @request_schema(RhdRenameApplyRequest)
+    def api_rhd_rename_apply_job():
+        try:
+            body = _json(RhdRenameApplyRequest)
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        return submit_json_task(
+            jobs,
+            "rhd.rename",
+            "Rename RHD recording",
+            lambda job_ctx, payload: _rename_job_payload(job_ctx, payload),
+            body,
+            metadata={"endpoint": "/api/rhd/rename/apply"},
         )

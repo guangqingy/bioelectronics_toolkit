@@ -231,6 +231,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "rhd_viewer_files_queue.js",
             "rhd_viewer_plot.js",
             "rhd_viewer_exports.js",
+            "rhd_viewer_rename.js",
         )
         js_source = "\n".join(
             (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
@@ -240,11 +241,13 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertIn('id="previewDownsample"', template)
         self.assertIn('id="previewMergePair"', template)
+        self.assertIn('id="invertY"', template)
         for module in modules:
             self.assertIn(f"/static/js/pages/{module}", template)
         self.assertIn("function reloadCurrentRhdFile()", source)
         self.assertIn("function renderRhdFileList(options)", source)
         self.assertIn("Auto merge folder recording", template)
+        self.assertIn("Invert Y polarity", template)
         self.assertIn("Merge folder recording", template)
         self.assertIn("split(/[\\\\/]/)", source)
         self.assertIn('id="filterType"', template)
@@ -252,6 +255,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('data-filter-mode="notch"', template)
         self.assertIn('data-process-mode="smooth"', template)
         self.assertIn("function updateRhdParameterGroups()", source)
+        self.assertIn("function previewInvertYEnabled()", source)
         self.assertIn("dpBindParamGroups('processType', 'data-process-mode')", source)
         self.assertIn('id="envelopeSmoothMs"', template)
         self.assertIn('id="smoothMethod"', template)
@@ -264,6 +268,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="processArea"', template)
         self.assertIn("/api/rhd/process", source)
         self.assertIn("/api/rhd/export_processing_job", source)
+        self.assertIn('id="renameFind"', template)
+        self.assertIn('id="renamePreviewArea"', template)
+        self.assertIn("/api/rhd/rename/preview", source)
         self.assertIn("function currentProcessingPayload(extra)", source)
         self.assertIn("function exportProcessing(fmt)", source)
         self.assertIn("Export SVG", template)
@@ -407,6 +414,7 @@ class WebAppSmokeTests(unittest.TestCase):
                     "path": "/tmp/record_0100.rhd",
                     "channel": "A-001",
                     "merge_pair": True,
+                    "invert_y": True,
                     "downsample": 10,
                 },
             )
@@ -416,6 +424,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(plot_data["img"])
             self.assertEqual(plot_data["downsample"], 10)
             self.assertEqual(plot_data["plotted_points"], 12_000)
+            self.assertTrue(plot_data["inverted_y"])
 
             processed = self.client.post(
                 "/api/rhd/process",
@@ -544,13 +553,26 @@ class WebAppSmokeTests(unittest.TestCase):
                         "x_max": 0.25,
                     },
                 )
+                csv_response = self.client.get(
+                    "/api/rhd/export_channel",
+                    query_string={
+                        "path": str(src),
+                        "channel": "A-000",
+                        "fmt": "csv",
+                        "mode": "save",
+                        "invert_y": "1",
+                    },
+                )
 
             first_payload = first.get_json()
             second_payload = second.get_json()
+            csv_payload = csv_response.get_json()
             first_data = first_payload.get("data", first_payload)
             second_data = second_payload.get("data", second_payload)
+            csv_data = csv_payload.get("data", csv_payload)
             first_path = Path(first_data["saved_path"])
             second_path = Path(second_data["saved_path"])
+            csv_path = Path(csv_data["saved_path"])
             self.assertTrue(first_path.name.endswith("_1.svg"))
             self.assertTrue(second_path.name.endswith("_2.svg"))
             svg = first_path.read_text(encoding="utf-8")
@@ -558,6 +580,8 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertIn('height="216"', svg)
             self.assertIn('stroke="#ff0000"', svg)
             self.assertIn('stroke-width="2.5"', svg)
+            csv_lines = csv_path.read_text(encoding="utf-8").splitlines()
+            self.assertLess(float(csv_lines[2].split(",")[1]), 0)
             self.assertIn("<polyline", svg)
             self.assertNotIn("<g", svg)
             self.assertNotIn("<rect", svg)
@@ -594,6 +618,55 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertNotIn("<g", svg)
             self.assertNotIn("<rect", svg)
             self.assertNotIn("grid", svg.lower())
+
+    def test_rhd_viewer_rename_previews_and_applies_folder_and_file_names(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_rename_") as tmp:
+            root = Path(tmp) / "rough_session"
+            root.mkdir()
+            source = root / "rough_session_A-000.rhd"
+            source.write_bytes(b"placeholder")
+
+            preview = self.client.post(
+                "/api/rhd/rename/preview",
+                json={
+                    "root": str(root),
+                    "find": "rough_session",
+                    "replace": "clean_session",
+                    "include_root": True,
+                    "include_files": True,
+                    "include_dirs": True,
+                    "extensions": ".rhd,.csv",
+                },
+            )
+            preview_payload = preview.get_json()
+            self.assertEqual(preview.status_code, 200)
+            self.assertTrue(preview_payload["ok"])
+            self.assertEqual(preview_payload["data"]["ready_count"], 2)
+            self.assertEqual(preview_payload["data"]["conflict_count"], 0)
+
+            started = self.client.post(
+                "/api/rhd/rename/apply_job",
+                json={
+                    "root": str(root),
+                    "find": "rough_session",
+                    "replace": "clean_session",
+                    "include_root": True,
+                    "include_files": True,
+                    "include_dirs": True,
+                    "extensions": ".rhd,.csv",
+                    "confirm": True,
+                },
+            )
+            started_payload = started.get_json()
+            self.assertEqual(started.status_code, 200)
+            self.assertTrue(started_payload["ok"])
+            job = self._wait_for_api_job(started_payload["job_id"])
+            self.assertEqual(job["status"], "succeeded")
+
+            renamed_root = Path(tmp) / "clean_session"
+            self.assertFalse(root.exists())
+            self.assertTrue((renamed_root / "clean_session_A-000.rhd").exists())
+            self.assertEqual(job["data"]["renamed_count"], 2)
 
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")
@@ -980,6 +1053,8 @@ class WebAppSmokeTests(unittest.TestCase):
             "RhdExportAllRequest",
             "RhdExportQueueRequest",
             "RhdProcessingRequest",
+            "RhdRenameApplyRequest",
+            "RhdRenamePreviewRequest",
             "RhdViewRequest",
             "RunPackageRequest",
             "ScriptRunRequest",
@@ -1021,6 +1096,8 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/rhd/export_processing_job": "#/components/schemas/RhdProcessingRequest",
             "/api/rhd/export_all_job": "#/components/schemas/RhdExportAllRequest",
             "/api/rhd/export_queue_job": "#/components/schemas/RhdExportQueueRequest",
+            "/api/rhd/rename/preview": "#/components/schemas/RhdRenamePreviewRequest",
+            "/api/rhd/rename/apply_job": "#/components/schemas/RhdRenameApplyRequest",
             "/api/fluorescence/lif/preview": "#/components/schemas/LifPreviewRequest",
             "/api/fluorescence/lif/export_manifest": "#/components/schemas/LifExportManifestRequest",
             "/api/fluorescence/lif/export_tiff_job": "#/components/schemas/LifExportTiffRequest",

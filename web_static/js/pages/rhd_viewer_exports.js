@@ -114,6 +114,7 @@ function exportFig(fmt) {
   ['x_min', 'x_max', 'y_min', 'y_max', 'filter_low_hz', 'filter_high_hz', 'filter_notch_hz', 'filter_order', 'filter_notch_q'].forEach(key => {
     if (viewParams[key] !== null && Number.isFinite(viewParams[key])) params.set(key, String(viewParams[key]));
   });
+  params.set('invert_y', viewParams.invert_y ? '1' : '0');
   params.set('filter_type', viewParams.filter_type || 'none');
   const figureParams = currentFigureParams();
   ['fig_width_in', 'fig_height_in', 'fig_dpi', 'trace_line_width'].forEach(key => {

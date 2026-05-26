@@ -63,7 +63,12 @@ class RhdViewerService:
                 ax.set_title(f"{title_name} - Ch {ch}: {ch_label}", fontsize=10, color="#5C5E62")
             rhd_processing.finish_axis(ax, t_d, y_min, y_max, grid=fig_params["show_grid"])
             fig.tight_layout()
-            return {"img": self.fig_to_b64(fig), "downsample": dsf, "plotted_points": int(len(t_d))}
+            return {
+                "img": self.fig_to_b64(fig),
+                "downsample": dsf,
+                "plotted_points": int(len(t_d)),
+                "inverted_y": rhd_processing.y_inversion_enabled(data),
+            }
         finally:
             plt.close(fig)
 
@@ -82,6 +87,7 @@ class RhdViewerService:
         mode = data.get("mode", "download")
 
         if fmt == "csv":
+            y = rhd_processing.apply_y_polarity(y, data)
             payload = self._trace_csv_bytes(t, y)
             filename = f"{out_stem}_{ch_name}.csv"
             if self.mode_is_save(mode):
@@ -282,6 +288,7 @@ class RhdViewerService:
             t, y, self.float_or(data.get("x_min"), None), self.float_or(data.get("x_max"), None)
         )
         y = rhd_processing.apply_filter(y, fs, rhd_processing.filter_params(data))
+        y = rhd_processing.apply_y_polarity(y, data)
         return t, fs, ch_names, y, ch, ch_label, base_stem, used_pair, segment_count
 
     def _load_export_trace(self, data: dict[str, Any]):
@@ -302,6 +309,7 @@ class RhdViewerService:
             t, y, self.float_or(data.get("x_min"), None), self.float_or(data.get("x_max"), None)
         )
         y_view = rhd_processing.apply_filter(y_view, fs, rhd_processing.filter_params(data))
+        y_view = rhd_processing.apply_y_polarity(y_view, data)
         dsf = rhd_processing.downsample_factor(
             data.get("downsample", data.get("dsf", "auto")), len(t_view)
         )
@@ -313,6 +321,7 @@ class RhdViewerService:
             self._load_view_trace(data)
         )
         result = rhd_processing.process_trace(t, y, fs, data, default_line_color=self.line_color)
+        result.metadata["inverted_y"] = rhd_processing.y_inversion_enabled(data)
         return src, base_stem if used_pair else src.stem, ch_name, result
 
     def _save_all_channels(

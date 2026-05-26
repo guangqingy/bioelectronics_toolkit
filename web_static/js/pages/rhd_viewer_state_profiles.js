@@ -15,6 +15,7 @@ window.dpCollectFileProfilePayload = () => ({
   queueFiles: _queueFiles.slice(),
   queueSel: _queueSel,
   previewMergePair: document.getElementById('previewMergePair')?.checked || false,
+  invertY: document.getElementById('invertY')?.checked || false,
   previewDownsample: document.getElementById('previewDownsample')?.value || 'auto',
   filterType: document.getElementById('filterType')?.value || 'none',
   filterLowHz: document.getElementById('filterLowHz')?.value || '',
@@ -57,6 +58,10 @@ window.dpApplyFileProfilePayload = payload => {
   if (typeof payload.previewMergePair === 'boolean') {
     const el = document.getElementById('previewMergePair');
     if (el) el.checked = payload.previewMergePair;
+  }
+  if (typeof payload.invertY === 'boolean') {
+    const el = document.getElementById('invertY');
+    if (el) el.checked = payload.invertY;
   }
   if (payload.previewDownsample) {
     const el = document.getElementById('previewDownsample');
@@ -132,6 +137,7 @@ window.dpApplyRunManifest = manifest => {
   }
   if (params.channel) _currentChannel = params.channel;
   if (typeof params.preview_merge_pair === 'boolean') document.getElementById('previewMergePair').checked = params.preview_merge_pair;
+  if (typeof params.invert_y === 'boolean') document.getElementById('invertY').checked = params.invert_y;
   if (params.downsample) document.getElementById('previewDownsample').value = params.downsample;
   updateRhdParameterGroups();
   queueRender();
