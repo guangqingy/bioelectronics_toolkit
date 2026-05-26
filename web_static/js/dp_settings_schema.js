@@ -19,7 +19,8 @@ const SETTINGS_VIEW_ORDER = [
   'fluorescence_gif',
   'fluorescence_timecourse',
   'fluorescence_kymograph',
-  'histology',
+  'histology_naming',
+  'histology_analysis',
   'scripts',
   'run_history',
 ];
@@ -44,7 +45,8 @@ const SETTINGS_VIEW_LABELS = {
   fluorescence_gif: 'GIF Builder',
   fluorescence_timecourse: 'ROI Timecourse',
   fluorescence_kymograph: 'ROI Kymograph',
-  histology: 'Histology',
+  histology_naming: 'Histology Naming',
+  histology_analysis: 'Histology ROI Analysis',
   scripts: 'Pipelines',
   run_history: 'Run History',
 };
@@ -67,7 +69,8 @@ const VIEW_URLS = {
   fluorescence_gif: '/fluorescence/gif',
   fluorescence_timecourse: '/fluorescence/timecourse',
   fluorescence_kymograph: '/fluorescence/kymograph',
-  histology: '/histology',
+  histology_naming: '/histology/naming',
+  histology_analysis: '/histology/analysis',
   scripts: '/scripts',
   run_history: '/runs',
 };
@@ -178,9 +181,15 @@ const SETTINGS_SCHEMAS = {
     {section: 'ROI Time Analysis'}, {id: 'gifBgMode', label: 'Background mode', type: 'select'}, {id: 'gifRoiMetric', label: 'Metric', type: 'select'}, {id: 'gifRoiPlotMetric', label: 'Plot metric', type: 'select'}, {id: 'gifRoiRefFrame', label: 'Reference frame', type: 'number'}, {id: 'gifRoiPrefix', label: 'Output prefix', type: 'text'},
     {section: 'Kymograph'}, {id: 'gifKymoValueMode', label: 'Value mode', type: 'select'}, {id: 'gifKymoBins', label: 'Bins', type: 'number'}, {id: 'gifKymoLowPct', label: 'Low percentile', type: 'number'}, {id: 'gifKymoHighPct', label: 'High percentile', type: 'number'}, {id: 'gifKymoThresholds', label: 'Thresholds', type: 'text'}, {id: 'gifKymoPercentiles', label: 'Percentiles', type: 'text'}, {id: 'gifKymoTopMeans', label: 'Top means', type: 'text'}, {id: 'gifKymoPeakLine', label: 'Peak line', type: 'checkbox'}, {id: 'gifKymoMeanLine', label: 'Mean line', type: 'checkbox'}, {id: 'gifKymoSmoothIntensity', label: 'Intensity smoothing', type: 'number'}, {id: 'gifKymoSmoothTime', label: 'Time smoothing', type: 'number'}, {id: 'gifKymoSmoothLines', label: 'Smooth lines', type: 'checkbox'}, {id: 'gifKymoRefFrame', label: 'Reference frame', type: 'number'}, {id: 'gifKymoRefStat', label: 'Reference statistic', type: 'select'}, {id: 'gifKymoPrefix', label: 'Output prefix', type: 'text'},
   ],
-  histology: [
+  histology_naming: [
     {section: 'Paths'}, {id: 'projectPath', label: 'Histology project folder', type: 'path'}, {id: 'qupathProject', label: 'QuPath project file', type: 'path'},
     {section: 'Naming'}, {id: 'rotateDeg', label: 'Rotation', type: 'select'}, {id: 'newName', label: 'New name', type: 'text'}, {id: 'suffixList', label: 'Suffix list', type: 'textarea'}, {id: 'suffixPick', label: 'Selected suffix', type: 'select'}, {id: 'useSuffix', label: 'Append suffix', type: 'checkbox'}, {id: 'updateQuPath', label: 'Update QuPath name', type: 'checkbox'},
+  ],
+  histology_analysis: [
+    {section: 'Paths'}, {id: 'projectPath', label: 'Histology project folder', type: 'path'}, {id: 'qupathProject', label: 'QuPath project file', type: 'path'},
+    {section: 'Channels'}, {id: 'dapiChannel', label: 'DAPI channel', type: 'select'}, {id: 'smaChannel', label: 'SMA channel', type: 'select'}, {id: 'macrophageChannel', label: 'Macrophage channel', type: 'select'},
+    {section: 'Detection'}, {id: 'smaThresholdMethod', label: 'SMA threshold method', type: 'select'}, {id: 'smaThreshold', label: 'SMA threshold', type: 'number'}, {id: 'macrophageThresholdMethod', label: 'Mac threshold method', type: 'select'}, {id: 'macrophageThreshold', label: 'Mac threshold', type: 'number'}, {id: 'dapiThresholdMethod', label: 'DAPI threshold method', type: 'select'}, {id: 'dapiThreshold', label: 'DAPI threshold', type: 'number'}, {id: 'dapiMaskEnabled', label: 'Restrict to DAPI mask', type: 'checkbox'},
+    {section: 'Advanced Detection'}, {id: 'backgroundMode', label: 'Background correction', type: 'select'}, {id: 'backgroundPercentile', label: 'Background percentile', type: 'number'}, {id: 'smoothSigma', label: 'Smooth sigma', type: 'number'}, {id: 'minPositiveArea', label: 'Minimum positive area', type: 'number'}, {id: 'thresholdPercentile', label: 'Threshold percentile', type: 'number'}, {id: 'thresholdStdK', label: 'Threshold SD k', type: 'number'}, {id: 'dapiDilatePx', label: 'DAPI dilate px', type: 'number'},
   ],
   scripts: [
     {section: 'Paths'}, {id: 'dataDir', label: 'Default pipeline data folder', type: 'path'}, {id: 'outputDir', label: 'Default output folder', type: 'path'},

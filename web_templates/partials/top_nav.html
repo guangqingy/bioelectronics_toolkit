@@ -3,8 +3,7 @@
 {% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
-{% set histology_active = active in ['histology'] %}
-{% set histology_module_active = histology_module|default('naming') %}
+{% set histology_active = active in ['histology_naming', 'histology_analysis'] %}
 {% set workflow_active = active in ['scripts', 'run_history'] %}
 <nav class="top-nav">
   <div class="nav-inner">
@@ -64,9 +63,9 @@
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Histology</button>
         <div class="nav-dropdown" role="menu">
           <div class="nav-dropdown-label">Project</div>
-          <a class="nav-dropdown-item {% if active=='histology' and histology_module_active=='naming' %}active{% endif %}" href="/histology?module=naming" title="Histology folder naming and QuPath name sync">Naming</a>
+          <a class="nav-dropdown-item {% if active=='histology_naming' %}active{% endif %}" href="/histology/naming" title="Histology folder naming and QuPath name sync">Naming</a>
           <div class="nav-dropdown-label">Analysis</div>
-          <a class="nav-dropdown-item {% if active=='histology' and histology_module_active=='analysis' %}active{% endif %}" href="/histology?module=analysis" title="Draw polygon ROI and analyze SMA/macrophage markers">ROI Analysis</a>
+          <a class="nav-dropdown-item {% if active=='histology_analysis' %}active{% endif %}" href="/histology/analysis" title="Draw polygon ROI and analyze SMA/macrophage markers">ROI Analysis</a>
         </div>
       </div>
 

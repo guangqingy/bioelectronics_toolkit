@@ -10,6 +10,10 @@ function histologyQuPathProjectPath() {
   return (document.getElementById('qupathProject')?.value || '').trim();
 }
 
+function histologyProjectRoot() {
+  return (document.getElementById('projectPath')?.value || histologyQuPathProjectPath() || '').trim();
+}
+
 function histologyRoiLabelElements() {
   return ['histologyRoiLabel', 'histologyRoiLabelInline']
     .map(id => document.getElementById(id))
@@ -418,7 +422,7 @@ function analyzeHistologyRois() {
     histologySetAnalysisStatus(`Analyzed ${_histologyAnalysisRois.length} ROI; results saved to project data`, 'ok');
     toast('Histology analysis saved to QuPath project data');
     recordRunHistory({
-      view: 'histology',
+      view: 'histology_analysis',
       title: 'Histology SMA Macrophage Analysis',
       status: 'ok',
       project_root: histologyProjectRoot(),
@@ -499,6 +503,7 @@ window.DP.page = window.DP.page || {};
   'finishHistologyPolygon',
   'histologyAnalysisParameters',
   'histologyCurrentRoiLabel',
+  'histologyProjectRoot',
   'histologyQuPathProjectPath',
   'histologyRoiLabelElements',
   'loadHistologyAnalysisImage',

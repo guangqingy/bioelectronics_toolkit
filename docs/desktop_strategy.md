@@ -75,4 +75,4 @@ below it.
 | `echem_photocurrent_gui.py` | `/echem/photocurrent` plus `services/echem.py` | Replacement in place | 2026 Q3 |
 | `echem_photovoltage_gui.py` | `/echem/photovoltage` plus `services/echem.py` | Replacement in place | 2026 Q3 |
 | `csv_folder_viewer_gui.py` | `/csv` plus `services/csv_tools.py` | Replacement in place | 2026 Q3 |
-| `histology_naming_gui.py` | `/histology` | Replacement in place | 2026 Q4 |
+| `histology_naming_gui.py` | `/histology/naming` | Replacement in place | 2026 Q4 |

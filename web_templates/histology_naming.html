@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Histology Naming{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section" id="histologyProjectControls">
+  <div class="ctrl-label">Project Folder</div>
+  <div class="input-row">
+    <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/project">
+    <button class="btn-icon" onclick="DP.folder.pick('projectPath','scanProject')">Browse Folder</button>
+  </div>
+  <button class="btn-primary" id="btnScan" onclick="DP.page.scanProject()" style="margin-top:8px">Load Project</button>
+  <div class="param-row" style="margin-top:8px">
+    <div class="param-label">QuPath</div>
+    <div class="input-row" style="flex:1;min-width:0">
+      <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
+    </div>
+  </div>
+</div>
+
+<div class="ctrl-section" id="histologyCaseControls">
+  <div class="ctrl-label">Cases</div>
+  <div id="caseList" class="file-list"></div>
+</div>
+
+<div class="ctrl-section" id="histologyNamingControls">
+  <div class="ctrl-label">Rename</div>
+  <div class="param-row">
+    <div class="param-label">Rotate</div>
+    <select id="rotateDeg" class="input-sm" onchange="onRotateChange()">
+      <option value="0">0°</option>
+      <option value="90">90°</option>
+      <option value="180">180°</option>
+      <option value="270">270°</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">New name</div>
+    <input type="text" id="newName" class="input-sm">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Suffixes</div>
+    <textarea id="suffixList" placeholder="CD68+SMA\nH&E\nDAPI" style="height:70px;resize:vertical;" oninput="onSuffixListChange()"></textarea>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Use</div>
+    <select id="suffixPick" class="input-sm" onchange="onSuffixPickChange()"></select>
+  </div>
+  <label class="checkbox-row"><input type="checkbox" id="useSuffix"><span>Append selected suffix</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="updateQuPath" checked><span>Update QuPath project name</span></label>
+  <button class="btn-secondary" id="btnSyncQuPath" type="button" onclick="DP.page.syncQuPathNames()" style="width:100%; margin-top:8px;">Sync QuPath Names</button>
+  <button class="btn-primary" id="btnRename" onclick="DP.page.applyRename()" style="margin-top:8px">Rename Folder</button>
+  <button class="btn-secondary" onclick="DP.page.scanProject()" style="width:100%; margin-top:8px;">Refresh List</button>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">Histology Naming</div>
+    <div class="view-sub" id="histologyMeta">Load a histology project, preview main and label images, then rename folders and QuPath display names.</div>
+  </div>
+
+  <div class="view-results" id="histologyNamingModuleMain" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+    <div class="result-card">
+      <div class="result-card-header">
+        <span>Main / Histology</span>
+        <span id="mainSource" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)"></span>
+      </div>
+      <div class="result-card-body">
+        <div class="plot-area" id="mainPreview" style="min-height:420px;">
+          <div class="plot-placeholder">Select a case to preview the main image</div>
+        </div>
+      </div>
+    </div>
+    <div class="result-card">
+      <div class="result-card-header">
+        <span>Label / Associated image</span>
+        <span id="labelSource" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)"></span>
+      </div>
+      <div class="result-card-body">
+        <div class="plot-area" id="labelPreview" style="min-height:420px;">
+          <div class="plot-placeholder">Select a case to preview the label image</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card" id="histologyNamingNotes">
+    <div class="result-card-header">Notes</div>
+    <div class="result-card-body">
+      <div id="notesArea" style="font-size:12.5px;line-height:1.8;color:var(--graphite);white-space:pre-wrap;">No case loaded.</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/pages/histology.js"></script>
+{% endblock %}

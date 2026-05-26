@@ -141,7 +141,7 @@ const GUI_ITEMS = [
     why: 'Use this for histology folder cleanup before downstream image analysis.',
     tag: 'VSI rename',
     domain: 'Histology',
-    href: '/histology?module=naming',
+    href: '/histology/naming',
   },
   {
     id: 'histology_analysis',
@@ -150,7 +150,7 @@ const GUI_ITEMS = [
     why: 'Use this when SMA and macrophage quantification needs per-image background and threshold tuning.',
     tag: 'ROI markers',
     domain: 'Histology',
-    href: '/histology?module=analysis',
+    href: '/histology/analysis',
   },
 ];
 

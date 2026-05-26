@@ -1,73 +1,33 @@
 {% extends "base.html" %}
-{% block title %}Histology{% endblock %}
+{% block title %}Histology ROI Analysis{% endblock %}
 
 {% block controls %}
-<div class="ctrl-section" id="histologyModuleSwitch">
-  <div class="ctrl-label">Histology Modules</div>
-  <div class="button-row">
-    <a class="{% if histology_module|default('naming') == 'naming' %}btn-primary{% else %}btn-secondary{% endif %}" href="/histology?module=naming" data-histology-module-button="naming" style="text-align:center;text-decoration:none">Naming</a>
-    <a class="{% if histology_module|default('naming') == 'analysis' %}btn-primary{% else %}btn-secondary{% endif %}" href="/histology?module=analysis" data-histology-module-button="analysis" style="text-align:center;text-decoration:none">Analysis</a>
+<div class="ctrl-section" id="histologyAnalysisProjectControls">
+  <div class="ctrl-label">Project</div>
+  <div class="param-row">
+    <div class="param-label">Folder</div>
+    <div class="input-row" style="flex:1;min-width:0">
+      <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/project" style="flex:1;min-width:0">
+      <button class="btn-icon" type="button" onclick="DP.folder.pick('projectPath')">Browse</button>
+    </div>
   </div>
-</div>
-
-<div class="ctrl-section" id="histologyProjectControls">
-  <div class="ctrl-label">Project Folder</div>
-  <div class="input-row">
-    <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/project">
-    <button class="btn-icon" onclick="DP.folder.pick('projectPath','scanProject')">Browse Folder</button>
-  </div>
-  <button class="btn-primary" id="btnScan" onclick="DP.page.scanProject()" style="margin-top:8px">Load Project</button>
-  <div class="param-row" style="margin-top:8px">
+  <div class="param-row">
     <div class="param-label">QuPath</div>
     <div class="input-row" style="flex:1;min-width:0">
       <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
       <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
     </div>
   </div>
-</div>
-
-<div class="ctrl-section" id="histologyCaseControls">
-  <div class="ctrl-label">Cases</div>
-  <div id="caseList" class="file-list"></div>
-</div>
-
-<div class="ctrl-section" id="histologyNamingControls">
-  <div class="ctrl-label">Rename</div>
-  <div class="param-row">
-    <div class="param-label">Rotate</div>
-    <select id="rotateDeg" class="input-sm" onchange="onRotateChange()">
-      <option value="0">0°</option>
-      <option value="90">90°</option>
-      <option value="180">180°</option>
-      <option value="270">270°</option>
-    </select>
-  </div>
-  <div class="param-row">
-    <div class="param-label">New name</div>
-    <input type="text" id="newName" class="input-sm">
-  </div>
-  <div class="param-row">
-    <div class="param-label">Suffixes</div>
-    <textarea id="suffixList" placeholder="CD68+SMA\nH&E\nDAPI" style="height:70px;resize:vertical;" oninput="onSuffixListChange()"></textarea>
-  </div>
-  <div class="param-row">
-    <div class="param-label">Use</div>
-    <select id="suffixPick" class="input-sm" onchange="onSuffixPickChange()"></select>
-  </div>
-  <label class="checkbox-row"><input type="checkbox" id="useSuffix"><span>Append selected suffix</span></label>
-  <label class="checkbox-row"><input type="checkbox" id="updateQuPath" checked><span>Update QuPath project name</span></label>
-  <button class="btn-secondary" id="btnSyncQuPath" type="button" onclick="DP.page.syncQuPathNames()" style="width:100%; margin-top:8px;">Sync QuPath Names</button>
-  <button class="btn-primary" id="btnRename" onclick="DP.page.applyRename()" style="margin-top:8px">Rename Folder</button>
-  <button class="btn-secondary" onclick="DP.page.scanProject()" style="width:100%; margin-top:8px;">Refresh List</button>
-</div>
-
-<details class="ctrl-section ctrl-details" id="histologyAnalysisControls" open>
-  <summary>QuPath Analysis</summary>
   <button class="btn-primary btn-block" id="btnLoadQpAnalysis" type="button" onclick="DP.page.loadHistologyQuPathProject()">Load QuPath Project</button>
-  <div class="ctrl-label" style="margin-top:10px">Project Images</div>
-  <div id="histologyQpImageList" class="file-list" style="max-height:210px"></div>
+</div>
 
-  <div class="ctrl-label" style="margin-top:10px">Polygon ROI</div>
+<div class="ctrl-section" id="histologyImageControls">
+  <div class="ctrl-label">Project Images</div>
+  <div id="histologyQpImageList" class="file-list" style="max-height:260px"></div>
+</div>
+
+<div class="ctrl-section" id="histologyRoiControls">
+  <div class="ctrl-label">Polygon ROI</div>
   <div class="param-row">
     <div class="param-label">Label</div>
     <input type="text" id="histologyRoiLabel" class="input-sm" value="ROI 1">
@@ -81,8 +41,10 @@
     <button class="btn-secondary btn-danger" type="button" onclick="DP.page.clearHistologyRois()">Clear ROI</button>
   </div>
   <div id="histologyRoiList" class="file-list" style="max-height:150px;margin-top:8px"></div>
+</div>
 
-  <div class="ctrl-label" style="margin-top:10px">Channels</div>
+<div class="ctrl-section" id="histologyMarkerControls">
+  <div class="ctrl-label">Channels</div>
   <div class="param-row">
     <div class="param-label">DAPI</div>
     <select id="dapiChannel" class="input-sm">
@@ -113,8 +75,10 @@
       <option value="mean">Mean</option>
     </select>
   </div>
+</div>
 
-  <div class="ctrl-label" style="margin-top:10px">Detection</div>
+<div class="ctrl-section" id="histologyDetectionControls">
+  <div class="ctrl-label">Detection</div>
   <div class="param-row">
     <div class="param-label">SMA T</div>
     <select id="smaThresholdMethod" class="input-sm">
@@ -181,7 +145,7 @@
   </details>
   <button class="btn-secondary btn-block" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()">Save ROI To Project</button>
   <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" style="margin-top:8px">Analyze SMA + Macrophage</button>
-</details>
+</div>
 
 <div id="status" class="status-bar"></div>
 {% endblock %}
@@ -189,40 +153,8 @@
 {% block main %}
 <div class="view-main">
   <div class="view-header">
-    <div class="view-title">Histology</div>
-    <div class="view-sub" id="histologyMeta">Load a histology project or QuPath project, then preview images, draw ROI, and analyze marker thresholds.</div>
-  </div>
-
-  <div class="view-results" id="histologyNamingModuleMain" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
-    <div class="result-card">
-      <div class="result-card-header">
-        <span>Main / Histology</span>
-        <span id="mainSource" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)"></span>
-      </div>
-      <div class="result-card-body">
-        <div class="plot-area" id="mainPreview" style="min-height:420px;">
-          <div class="plot-placeholder">Select a case to preview the main image</div>
-        </div>
-      </div>
-    </div>
-    <div class="result-card">
-      <div class="result-card-header">
-        <span>Label / Associated image</span>
-        <span id="labelSource" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)"></span>
-      </div>
-      <div class="result-card-body">
-        <div class="plot-area" id="labelPreview" style="min-height:420px;">
-          <div class="plot-placeholder">Select a case to preview the label image</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="result-card" id="histologyNamingNotes">
-    <div class="result-card-header">Notes</div>
-    <div class="result-card-body">
-      <div id="notesArea" style="font-size:12.5px;line-height:1.8;color:var(--graphite);white-space:pre-wrap;">No case loaded.</div>
-    </div>
+    <div class="view-title">Histology ROI Analysis</div>
+    <div class="view-sub" id="histologyMeta">Load a QuPath project, draw polygon ROIs, tune marker detection, and save SMA/macrophage results.</div>
   </div>
 
   <div class="result-card" id="histologyAnalysisCard">
@@ -253,6 +185,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/pages/histology.js"></script>
 <script src="/static/js/pages/histology_analysis.js"></script>
 {% endblock %}

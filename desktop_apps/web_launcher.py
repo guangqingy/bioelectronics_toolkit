@@ -28,7 +28,7 @@ TOOL_ROUTES = {
     "emg_rhd": "/emg/rhd",
     "fluorescence_lut": "/fluorescence",
     "fluorescence_roi": "/fluorescence/roi",
-    "histology": "/histology",
+    "histology": "/histology/naming",
 }
 
 LEGACY_MODULES = {

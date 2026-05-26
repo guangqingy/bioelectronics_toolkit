@@ -159,6 +159,8 @@ class WebAppSmokeTests(unittest.TestCase):
         "/fluorescence/kymograph",
         "/fluorescence/lif",
         "/histology",
+        "/histology/naming",
+        "/histology/analysis",
         "/runs",
         "/scripts",
     )
@@ -220,30 +222,42 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Waveform Averager", html)
         self.assertIn("CSV Viewer", html)
         self.assertIn("Histology", html)
-        self.assertIn('href="/histology?module=naming"', html)
-        self.assertIn('href="/histology?module=analysis"', html)
+        self.assertIn('href="/histology/naming"', html)
+        self.assertIn('href="/histology/analysis"', html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
         self.assertIn('onclick="logoutServer()"', html)
         self.assertIn("v0.6.0", html)
         self.assertNotIn("unknown", html.lower())
 
-    def test_histology_page_exposes_qupath_analysis_controls(self) -> None:
-        response = self.client.get("/histology")
+    def test_histology_naming_page_exposes_naming_controls(self) -> None:
+        response = self.client.get("/histology/naming")
         html = response.data.decode("utf-8")
 
-        self.assertIn("QuPath Analysis", html)
+        self.assertIn("Histology Naming", html)
+        self.assertIn("histologyNamingControls", html)
+        self.assertIn("Sync QuPath Names", html)
+        self.assertIn("Rename Folder", html)
+        self.assertIn("histology.js", html)
+        self.assertNotIn("histologyAnalysisCanvas", html)
+
+    def test_histology_analysis_page_exposes_qupath_analysis_controls(self) -> None:
+        response = self.client.get("/histology/analysis")
+        html = response.data.decode("utf-8")
+
+        self.assertIn("Histology ROI Analysis", html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyRoiLabelInline", html)
         self.assertIn("Start ROI", html)
-        self.assertIn('href="/histology?module=naming"', html)
-        self.assertIn('href="/histology?module=analysis"', html)
+        self.assertIn('href="/histology/naming"', html)
+        self.assertIn('href="/histology/analysis"', html)
         self.assertIn("Analyze SMA + Macrophage", html)
         self.assertIn("DAPI / Blue", html)
         self.assertIn("FITC / Green", html)
         self.assertIn("Cy5 / Red", html)
         self.assertIn("Advanced Detection", html)
         self.assertIn("histology_analysis.js", html)
+        self.assertNotIn("histologyNamingControls", html)
 
     def test_histology_analysis_api_runs_on_qupath_entry(self) -> None:
         try:
