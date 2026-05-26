@@ -443,6 +443,126 @@ def _entry_associated_fields(source_path: Path, record: dict[str, Any] | None = 
     }
 
 
+def _record_source_path(record: dict[str, Any]) -> Path | None:
+    raw = str(record.get("image_path") or record.get("source_path") or "").strip()
+    if not raw:
+        return None
+    return Path(raw).expanduser()
+
+
+def _primary_sources_for_project_path(path: Path) -> list[Path]:
+    if _has_project_primary_suffix(path):
+        if "overview" in path.as_posix().lower():
+            return _ets_files_for_related_path(path)
+        return [path.resolve()]
+    if _has_project_related_suffix(path):
+        return _ets_files_for_related_path(path)
+    return []
+
+
+def _data_project_record_for_source(
+    project_path: Path,
+    source: Path,
+    record: dict[str, Any] | None = None,
+    now: str | None = None,
+    preserve_display_name: bool = True,
+) -> dict[str, Any]:
+    source = source.expanduser().resolve()
+    record = record if isinstance(record, dict) else {}
+    timestamp = now or _now_iso()
+    entry_id = _source_entry_id(source)
+    default_name = _display_name_for_source(source)
+    image_name = default_name
+    if preserve_display_name:
+        image_name = str(record.get("image_name") or record.get("display_name") or default_name).strip()
+        if not image_name:
+            image_name = default_name
+    associated = _entry_associated_fields(source, record)
+    return {
+        "entry_id": entry_id,
+        "image_name": image_name,
+        "display_name": image_name,
+        "source_name": source.name,
+        "case_name": _case_name_for_source(source),
+        "image_path": str(source),
+        "source_path": str(source),
+        "relative_path": source.name,
+        "case_relative_path": source.name,
+        "role": _role_for_path(source),
+        "format": source.suffix.lower().lstrip("."),
+        "roi_count": int(record.get("roi_count") or 0),
+        "analysis_count": int(record.get("analysis_count") or 0),
+        "analysis_path": str(_data_project_entry_analysis_path(project_path, entry_id)),
+        "geojson_path": str(_data_project_entry_geojson_path(project_path, entry_id)),
+        "latest_analysis_at": str(record.get("latest_analysis_at") or ""),
+        "added_at": str(record.get("added_at") or timestamp),
+        "updated_at": timestamp,
+        **associated,
+    }
+
+
+def _normalize_data_project_images(
+    project_path: Path,
+    records: list[Any],
+) -> tuple[list[dict[str, Any]], bool]:
+    normalized: list[dict[str, Any]] = []
+    index_by_source: dict[str, int] = {}
+    preserved_by_source: dict[str, bool] = {}
+    changed = False
+    now = _now_iso()
+    for record in records:
+        if not isinstance(record, dict):
+            changed = True
+            continue
+        source = _record_source_path(record)
+        if source is None:
+            changed = True
+            continue
+        primary_sources = _primary_sources_for_project_path(source)
+        if not primary_sources:
+            changed = True
+            continue
+        original_key = str(source.resolve())
+        for primary in primary_sources:
+            primary = primary.resolve()
+            primary_key = str(primary)
+            preserve_display_name = primary_key == original_key
+            new_record = _data_project_record_for_source(
+                project_path,
+                primary,
+                record=record if preserve_display_name else None,
+                now=now,
+                preserve_display_name=preserve_display_name,
+            )
+            if primary_key in index_by_source:
+                if preserve_display_name and not preserved_by_source.get(primary_key, False):
+                    normalized[index_by_source[primary_key]] = new_record
+                    preserved_by_source[primary_key] = True
+                changed = True
+                continue
+            index_by_source[primary_key] = len(normalized)
+            preserved_by_source[primary_key] = preserve_display_name
+            if (
+                str(record.get("entry_id") or "") != str(new_record.get("entry_id") or "")
+                or original_key != primary_key
+                or record.get("associated_files") != new_record["associated_files"]
+                or record.get("label_vsi_path", "") != new_record["label_vsi_path"]
+                or record.get("overview_vsi_path", "") != new_record["overview_vsi_path"]
+                or record.get("format") != new_record["format"]
+            ):
+                changed = True
+            normalized.append(new_record)
+    normalized.sort(
+        key=lambda item: (
+            str(item.get("image_name") or "").lower(),
+            str(item.get("image_path") or "").lower(),
+        )
+    )
+    if len(normalized) != len([r for r in records if isinstance(r, dict)]):
+        changed = True
+    return normalized, changed
+
+
 def _load_data_project_payload(project_path: Path) -> dict[str, Any]:
     if not project_path.is_file():
         raise FileNotFoundError(f"Histology project not found: {project_path}")
@@ -562,24 +682,11 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
         _write_data_project_payload(path, data)
         data = _load_data_project_payload(path)
     images = data.get("images", [])
-    migrated_associations = False
     if isinstance(images, list):
-        for record in images:
-            if not isinstance(record, dict):
-                continue
-            raw_source = str(record.get("image_path") or record.get("source_path") or "").strip()
-            if not raw_source:
-                continue
-            source = Path(raw_source).expanduser()
-            associated = _entry_associated_fields(source, record)
-            if (
-                record.get("associated_files") != associated["associated_files"]
-                or record.get("label_vsi_path", "") != associated["label_vsi_path"]
-                or record.get("overview_vsi_path", "") != associated["overview_vsi_path"]
-            ):
-                record.update(associated)
-                migrated_associations = True
-    if migrated_associations:
+        images, migrated = _normalize_data_project_images(path, images)
+    else:
+        images, migrated = [], True
+    if migrated:
         data["images"] = images
         _write_data_project_payload(path, data)
         data = _load_data_project_payload(path)
@@ -615,7 +722,8 @@ def _ets_files_for_related_path(path: Path) -> list[Path]:
     case_dir = _case_dir_for_source(path)
     if not case_dir.exists() or not case_dir.is_dir():
         return []
-    prefix = _slide_prefix(path.stem)
+    related_stem = _slide_stem_for_source(path) if path.suffix.lower() == ".ets" else path.stem
+    prefix = _slide_prefix(related_stem)
     candidates: list[Path] = []
     for item in sorted(case_dir.rglob("*.ets")):
         if not item.is_file():
@@ -624,7 +732,7 @@ def _ets_files_for_related_path(path: Path) -> list[Path]:
         if "overview" in text:
             continue
         slide_stem = _slide_stem_for_source(item)
-        if path.stem == slide_stem or (prefix and slide_stem.startswith(prefix)):
+        if related_stem == slide_stem or (prefix and slide_stem.startswith(prefix)):
             candidates.append(item.resolve())
     return candidates
 
@@ -658,11 +766,11 @@ def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], lis
                 continue
             source_candidates: list[Path] = []
             if _has_project_primary_suffix(item):
-                if path.is_dir() and "overview" in item.as_posix().lower():
-                    continue
-                source_candidates = [item.resolve()]
+                source_candidates = _primary_sources_for_project_path(item)
+                if not source_candidates and "overview" in item.as_posix().lower() and path.is_file():
+                    warnings.append(f"No matching primary ETS file found for overview ETS: {item}")
             elif path.is_file() and _has_project_related_suffix(item):
-                source_candidates = _ets_files_for_related_path(item)
+                source_candidates = _primary_sources_for_project_path(item)
                 if not source_candidates:
                     warnings.append(f"No matching ETS file found for related VSI: {item}")
             for source in source_candidates:
@@ -683,7 +791,12 @@ def add_histology_data_project_paths(
     if not path.is_file():
         create_histology_data_project(path)
     data = _load_data_project_payload(path)
-    images = [record for record in data.get("images", []) if isinstance(record, dict)]
+    images, migrated = _normalize_data_project_images(path, data.get("images", []))
+    if migrated:
+        data["images"] = images
+        _write_data_project_payload(path, data)
+        data = _load_data_project_payload(path)
+        images = [record for record in data.get("images", []) if isinstance(record, dict)]
     existing_by_id = {str(record.get("entry_id") or ""): record for record in images}
     existing_by_source = {
         str(Path(str(record.get("image_path") or record.get("source_path") or "")).expanduser().resolve()): record
@@ -700,29 +813,10 @@ def add_histology_data_project_paths(
         if entry_id in existing_by_id or source_key in existing_by_source:
             skipped += 1
             continue
-        associated = _entry_associated_fields(source)
-        entry = {
-            "entry_id": entry_id,
-            "image_name": _display_name_for_source(source),
-            "display_name": _display_name_for_source(source),
-            "source_name": source.name,
-            "case_name": _case_name_for_source(source),
-            "image_path": str(source),
-            "source_path": str(source),
-            "relative_path": source.name,
-            "case_relative_path": source.name,
-            "role": _role_for_path(source),
-            "format": source.suffix.lower().lstrip("."),
-            "roi_count": 0,
-            "analysis_count": 0,
-            "analysis_path": str(_data_project_entry_analysis_path(path, entry_id)),
-            "geojson_path": str(_data_project_entry_geojson_path(path, entry_id)),
-            "latest_analysis_at": "",
-            "added_at": now,
-            "updated_at": now,
-            **associated,
-        }
+        entry = _data_project_record_for_source(path, source, now=now)
         images.append(entry)
+        existing_by_id[entry_id] = entry
+        existing_by_source[source_key] = entry
         added += 1
     data["images"] = images
     _write_data_project_payload(path, data)

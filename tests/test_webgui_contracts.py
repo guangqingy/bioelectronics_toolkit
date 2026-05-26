@@ -233,8 +233,12 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertNotIn("unknown", html.lower())
 
     def test_histology_naming_page_exposes_naming_controls(self) -> None:
+        root = Path(__file__).resolve().parents[1]
         response = self.client.get("/histology/naming")
         html = response.data.decode("utf-8")
+        page_js = (root / "web_static" / "js" / "pages" / "histology.js").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("Histology Naming", html)
         self.assertIn("DataProcess Project", html)
@@ -252,6 +256,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("DP.page.onSuffixPickChange()", html)
         self.assertIn("histology-naming-grid", html)
         self.assertIn("histology.js", html)
+        self.assertIn("function loadHistologyProjectEntryPreview", page_js)
+        self.assertIn("histologyProjectPreviewPath", page_js)
+        self.assertIn("/api/histology/preview", page_js)
+        self.assertIn("Promise.all([mainRequest, labelRequest])", page_js)
         self.assertNotIn("histologyAnalysisCanvas", html)
 
     def test_histology_analysis_page_exposes_ets_analysis_controls(self) -> None:

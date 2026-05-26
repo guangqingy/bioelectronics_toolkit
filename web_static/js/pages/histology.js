@@ -3,6 +3,7 @@ let _selectedCase = null;
 let _histologyDataProject = null;
 let _histologyProjectEntries = [];
 let _selectedHistologyProjectEntryId = '';
+let _histologyProjectPreviewSeq = 0;
 
 function parseSuffixOptions(text) {
   const raw = String(text || '');
@@ -72,7 +73,10 @@ function getRotateDeg() {
 
 function onRotateChange() {
   localStorage.setItem('histology_rotate_deg', String(getRotateDeg()));
-  if (_selectedCase) {
+  const projectEntry = _histologyProjectEntries.find(e => String(e.entry_id) === String(_selectedHistologyProjectEntryId));
+  if (projectEntry) {
+    loadHistologyProjectEntryPreview(projectEntry);
+  } else if (_selectedCase) {
     const el = getCaseElementByPath(_selectedCase);
     if (el) selectCase(el, _selectedCase);
   }
@@ -117,7 +121,9 @@ function applyHistologyProjectPayload(d) {
     _selectedHistologyProjectEntryId = '';
   }
   renderHistologyProjectImageList();
-  if (!_selectedHistologyProjectEntryId && _histologyProjectEntries.length) {
+  if (_selectedHistologyProjectEntryId) {
+    selectHistologyProjectEntry(_selectedHistologyProjectEntryId);
+  } else if (_histologyProjectEntries.length) {
     selectHistologyProjectEntry(_histologyProjectEntries[0].entry_id);
   }
   document.getElementById('histologyMeta').textContent =
@@ -200,18 +206,118 @@ function addHistologyDataProjectPath() {
   });
 }
 
+function histologyProjectAssociatedFiles(entry) {
+  return Array.isArray(entry?.associated_files) ? entry.associated_files : [];
+}
+
+function histologyProjectAssociatedPath(entry, role) {
+  const directKey = role === 'overview_vsi' ? 'overview_vsi_path' : 'label_vsi_path';
+  const direct = String(entry?.[directKey] || '').trim();
+  if (direct) return direct;
+  const match = histologyProjectAssociatedFiles(entry).find(item => String(item?.role || '') === role);
+  return String(match?.path || '').trim();
+}
+
+function histologyProjectPreviewPath(entry) {
+  return (
+    histologyProjectAssociatedPath(entry, 'overview_vsi') ||
+    histologyProjectAssociatedPath(entry, 'label_vsi') ||
+    String(entry?.image_path || entry?.source_path || '').trim()
+  );
+}
+
+function setPreviewPlaceholder(containerId, message) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = `<div class="plot-placeholder">${escHtml(message || 'Preview not available')}</div>`;
+}
+
+function renderHistologyProjectEntryNotes(entry, extraNotes) {
+  const notesEl = document.getElementById('notesArea');
+  if (!notesEl || !entry) return;
+  const associated = histologyProjectAssociatedFiles(entry);
+  const associatedText = associated.length
+    ? `\nAssociated:\n${associated.map(item => `- ${item.role || 'file'}: ${item.path || item.name || ''}`).join('\n')}`
+    : '';
+  const previewPath = histologyProjectPreviewPath(entry);
+  const previewText = previewPath ? `\nPreview source: ${previewPath}` : '';
+  const cacheText = _histologyDataProject?.cache_dir ? `\nCache: ${_histologyDataProject.cache_dir}` : '';
+  const previewNotes = Array.isArray(extraNotes) && extraNotes.length
+    ? `\nPreview notes:\n${extraNotes.join('\n')}`
+    : '';
+  notesEl.textContent =
+    `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${associatedText}${previewText}${previewNotes}${cacheText}`;
+}
+
+function loadHistologyProjectEntryPreview(entry) {
+  const previewPath = histologyProjectPreviewPath(entry);
+  const labelPath = histologyProjectAssociatedPath(entry, 'label_vsi');
+  const overviewPath = histologyProjectAssociatedPath(entry, 'overview_vsi');
+  const seq = ++_histologyProjectPreviewSeq;
+  document.getElementById('mainSource').textContent = overviewPath ? `source: ${overviewPath}` : '';
+  document.getElementById('labelSource').textContent = labelPath ? `source: ${labelPath}` : '';
+  if (!previewPath) {
+    setPreviewPlaceholder('mainPreview', 'No preview source recorded for this project entry');
+    setPreviewPlaceholder('labelPreview', 'No associated label image recorded');
+    renderHistologyProjectEntryNotes(entry, ['No preview source recorded for this project entry.']);
+    setStatus('status', 'No preview source recorded for this project entry', 'error');
+    return;
+  }
+  setPreviewPlaceholder('mainPreview', 'Loading project preview...');
+  setPreviewPlaceholder('labelPreview', 'Loading associated preview...');
+  setStatus('status', 'Loading project entry preview...', 'loading');
+  const mainRequest = api('/api/histology/preview', {
+    case_path: previewPath,
+    rotate_deg: getRotateDeg(),
+    do_ocr: false,
+  });
+  const labelRequest = (labelPath && labelPath !== previewPath)
+    ? api('/api/histology/preview', {
+        case_path: labelPath,
+        rotate_deg: getRotateDeg(),
+        do_ocr: false,
+      }).catch(e => ({error: e.message || String(e)}))
+    : Promise.resolve(null);
+  Promise.all([mainRequest, labelRequest]).then(([d, labelD]) => {
+    if (seq !== _histologyProjectPreviewSeq) return;
+    if (d.error) throw new Error(d.error);
+    const labelB64 = d.label_b64 || labelD?.main_b64 || labelD?.label_b64 || '';
+    const hasAny = !!(d.main_b64 || labelB64);
+    const previewNotes = [];
+    if (Array.isArray(d.notes)) previewNotes.push(...d.notes);
+    if (labelD?.error) previewNotes.push(`Label preview: ${labelD.error}`);
+    if (Array.isArray(labelD?.notes)) previewNotes.push(...labelD.notes.map(note => `Label preview: ${note}`));
+    document.getElementById('mainSource').textContent =
+      d.main_source ? `source: ${d.main_source}` : (overviewPath ? `source: ${overviewPath}` : '');
+    document.getElementById('labelSource').textContent =
+      d.label_source ? `source: ${d.label_source}` : (
+        labelD?.main_source ? `source: ${labelD.main_source}` : (
+          labelD?.label_source ? `source: ${labelD.label_source}` : (labelPath ? `source: ${labelPath}` : '')
+        )
+      );
+    setPreview('mainPreview', d.main_b64);
+    setPreview('labelPreview', labelB64);
+    renderHistologyProjectEntryNotes(entry, previewNotes);
+    setStatus('status', hasAny ? 'Project entry preview loaded' : 'No preview image available (see Notes)', hasAny ? 'ok' : 'error');
+  }).catch(e => {
+    if (seq !== _histologyProjectPreviewSeq) return;
+    setPreviewPlaceholder('mainPreview', 'Preview not available');
+    setPreviewPlaceholder('labelPreview', 'Associated preview not available');
+    renderHistologyProjectEntryNotes(entry, [e.message]);
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
 function selectHistologyProjectEntry(entryId) {
   _selectedHistologyProjectEntryId = String(entryId || '');
   const entry = _histologyProjectEntries.find(e => String(e.entry_id) === _selectedHistologyProjectEntryId);
+  _selectedCase = null;
+  document.querySelectorAll('#caseList .file-item').forEach(e => e.classList.remove('active'));
   renderHistologyProjectImageList();
   document.getElementById('histologyProjectEntryName').value = entry ? (entry.image_name || '') : '';
   if (entry) {
-    const cacheText = _histologyDataProject?.cache_dir ? `\nCache: ${_histologyDataProject.cache_dir}` : '';
-    const associated = Array.isArray(entry.associated_files) && entry.associated_files.length
-      ? `\nAssociated:\n${entry.associated_files.map(item => `- ${item.role || 'file'}: ${item.path || item.name || ''}`).join('\n')}`
-      : '';
-    document.getElementById('notesArea').textContent =
-      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${associated}${cacheText}`;
+    renderHistologyProjectEntryNotes(entry);
+    loadHistologyProjectEntryPreview(entry);
   }
 }
 
@@ -300,6 +406,11 @@ function scanProject() {
 }
 
 function selectCase(el, casePath) {
+  _histologyProjectPreviewSeq += 1;
+  _selectedHistologyProjectEntryId = '';
+  renderHistologyProjectImageList();
+  const projectEntryName = document.getElementById('histologyProjectEntryName');
+  if (projectEntryName) projectEntryName.value = '';
   document.querySelectorAll('#caseList .file-item').forEach(e => e.classList.remove('active'));
   el.classList.add('active');
   _selectedCase = casePath;
@@ -509,19 +620,25 @@ window.DP.page = window.DP.page || {};
   'getCaseElementByPath',
   'getRotateDeg',
   'histologyDataProjectPath',
+  'histologyProjectAssociatedFiles',
+  'histologyProjectAssociatedPath',
+  'histologyProjectPreviewPath',
   'histologyProjectRoot',
   'loadHistologyDataProject',
+  'loadHistologyProjectEntryPreview',
   'onRotateChange',
   'onSuffixListChange',
   'onSuffixPickChange',
   'parseSuffixOptions',
   'renderCaseList',
+  'renderHistologyProjectEntryNotes',
   'renderHistologyProjectImageList',
   'renameHistologyDataProjectEntry',
   'scanProject',
   'selectCase',
   'selectHistologyProjectEntry',
   'setPreview',
+  'setPreviewPlaceholder',
   'syncQuPathNames',
   'updateSuffixPick',
 ].forEach(name => {

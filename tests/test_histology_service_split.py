@@ -10,6 +10,7 @@ from services import (
     histology_analysis,
     histology_discovery,
     histology_ets_analysis,
+    histology_preview,
     histology_qupath,
 )
 
@@ -237,8 +238,11 @@ class HistologyServiceSplitTests(unittest.TestCase):
             tifffile.imwrite(overview_ets, arr)
             label_vsi = case_dir / "Tray04_Slide01_01.vsi"
             overview_vsi = case_dir / "Tray04_Slide01_Overview.vsi"
-            label_vsi.write_bytes(b"label")
-            overview_vsi.write_bytes(b"overview")
+            preview_arr = np.zeros((40, 40, 3), dtype=np.uint8)
+            preview_arr[6:34, 6:34, 0] = 180
+            preview_arr[12:36, 12:36, 1] = 190
+            tifffile.imwrite(label_vsi, preview_arr)
+            tifffile.imwrite(overview_vsi, preview_arr)
             project = tmp_root / "project_home" / "study.dphistology"
             rois = [
                 {
@@ -260,6 +264,7 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 "5-CB SMA macrophage",
             )
             preview = histology_ets_analysis.load_histology_data_project_image_preview(project, entry_id)
+            naming_preview = histology_preview.load_histology_preview_pair(overview_vsi)
             result = histology_ets_analysis.analyze_histology_data_project_rois(
                 project,
                 entry_id,
@@ -288,6 +293,7 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertEqual(loaded["entries"][0]["overview_vsi_path"], str(overview_vsi.resolve()))
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
             self.assertEqual(preview["width"], 22)
+            self.assertTrue(naming_preview["main_b64"])
             self.assertGreater(result["results"][0]["sma_positive_px"], 0)
             self.assertTrue(Path(result["analysis_path"]).exists())
             self.assertTrue(Path(result["geojson_path"]).exists())
@@ -303,6 +309,46 @@ class HistologyServiceSplitTests(unittest.TestCase):
             )
             self.assertEqual(from_vsi["entry_count"], 1)
             self.assertEqual(from_vsi["entries"][0]["image_path"], str(image.resolve()))
+
+            dirty_project = tmp_root / "project_home" / "dirty_old_records.dphistology"
+            dirty_created = histology_ets_analysis.create_histology_data_project(dirty_project)
+            dirty_payload = json.loads(Path(dirty_created["project_path"]).read_text(encoding="utf-8"))
+            dirty_payload["images"] = [
+                {
+                    "entry_id": "old_vsi_entry",
+                    "image_name": "5-CB · Tray04_Slide01_01.vsi",
+                    "image_path": str(label_vsi),
+                    "source_path": str(label_vsi),
+                    "format": "vsi",
+                },
+                {
+                    "entry_id": "old_overview_ets_entry",
+                    "image_name": "5-CB · Tray04_Slide01_Overview · stack1",
+                    "image_path": str(overview_ets),
+                    "source_path": str(overview_ets),
+                    "format": "ets",
+                },
+                {
+                    "entry_id": "old_primary_entry",
+                    "image_name": "Custom primary display",
+                    "image_path": str(image),
+                    "source_path": str(image),
+                    "format": "ets",
+                },
+            ]
+            Path(dirty_created["project_path"]).write_text(
+                json.dumps(dirty_payload),
+                encoding="utf-8",
+            )
+            cleaned = histology_ets_analysis.load_histology_data_project(dirty_project)
+
+            self.assertEqual(cleaned["entry_count"], 1)
+            self.assertEqual(cleaned["entries"][0]["image_path"], str(image.resolve()))
+            self.assertEqual(cleaned["entries"][0]["format"], "ets")
+            self.assertEqual(cleaned["entries"][0]["image_name"], "Custom primary display")
+            self.assertNotIn(".vsi", cleaned["entries"][0]["image_name"])
+            self.assertNotIn("Overview", cleaned["entries"][0]["image_name"])
+            self.assertEqual(cleaned["entries"][0]["associated_file_count"], 2)
 
     def test_histology_data_project_folder_path_creates_reusable_local_file(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_file_") as tmp:
