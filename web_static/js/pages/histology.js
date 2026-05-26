@@ -97,12 +97,13 @@ function renderHistologyProjectImageList() {
     const active = String(entry.entry_id) === String(_selectedHistologyProjectEntryId) ? ' active' : '';
     const counts = `${entry.roi_count || 0} ROI · ${entry.analysis_count || 0} analyses`;
     const missing = entry.exists ? '' : ' · missing source';
+    const assoc = entry.associated_file_count ? ` · ${entry.associated_file_count} associated` : '';
     const detail = [entry.case_name || '', entry.source_name || entry.image_path || '']
       .filter(Boolean).join(' · ');
     return `
       <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
         <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
-        <div class="histology-file-subline">${escHtml(counts + missing)}</div>
+        <div class="histology-file-subline">${escHtml(counts + assoc + missing)}</div>
         <div class="histology-file-path">${escHtml(detail)}</div>
       </div>`;
   }).join('');
@@ -175,14 +176,15 @@ function addHistologyDataProjectPath() {
     return;
   }
   btnBusy('btnAddHistologyProjectPath', true, 'Adding…');
-  setStatus('status', 'Adding image references to project…', 'loading');
+  setStatus('status', 'Adding ETS references to project…', 'loading');
   api('/api/histology/project/add_paths', {project_path: projectPath, paths: [addPath]}).then(d => {
-    btnBusy('btnAddHistologyProjectPath', false, 'Add To Project');
+    btnBusy('btnAddHistologyProjectPath', false, 'Add ETS To Project');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
     const skipped = d.skipped_count ? ` · ${d.skipped_count} already in project` : '';
-    setStatus('status', `Added ${d.added_count || 0} image(s)${skipped}`, 'ok');
-    toast(`Added ${d.added_count || 0} image(s) to project`);
+    const warningText = Array.isArray(d.warnings) && d.warnings.length ? ` · ${d.warnings[0]}` : '';
+    setStatus('status', `Added ${d.added_count || 0} ETS image(s)${skipped}${warningText}`, 'ok');
+    toast(`Added ${d.added_count || 0} ETS image(s) to project`);
     recordRunHistory({
       view: 'histology_naming',
       title: 'Histology Project Add Images',
@@ -193,7 +195,7 @@ function addHistologyDataProjectPath() {
       metadata: {added_count: d.added_count || 0, skipped_count: d.skipped_count || 0},
     });
   }).catch(e => {
-    btnBusy('btnAddHistologyProjectPath', false, 'Add To Project');
+    btnBusy('btnAddHistologyProjectPath', false, 'Add ETS To Project');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }
@@ -205,8 +207,11 @@ function selectHistologyProjectEntry(entryId) {
   document.getElementById('histologyProjectEntryName').value = entry ? (entry.image_name || '') : '';
   if (entry) {
     const cacheText = _histologyDataProject?.cache_dir ? `\nCache: ${_histologyDataProject.cache_dir}` : '';
+    const associated = Array.isArray(entry.associated_files) && entry.associated_files.length
+      ? `\nAssociated:\n${entry.associated_files.map(item => `- ${item.role || 'file'}: ${item.path || item.name || ''}`).join('\n')}`
+      : '';
     document.getElementById('notesArea').textContent =
-      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${cacheText}`;
+      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${associated}${cacheText}`;
   }
 }
 

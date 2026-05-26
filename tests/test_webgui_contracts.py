@@ -240,7 +240,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("DataProcess Project", html)
         self.assertIn("histologyProjectPath", html)
         self.assertIn("histology_project.dphistology", html)
-        self.assertIn("Add To Project", html)
+        self.assertIn("Add ETS To Project", html)
         self.assertIn("Rename In Project", html)
         self.assertIn("Load Case Folder", html)
         self.assertIn('data-path-default="false"', html)
@@ -293,6 +293,7 @@ class WebAppSmokeTests(unittest.TestCase):
             case = root / "5-CB"
             stack = case / "_Tray04_Slide01_01_" / "stack1"
             stack.mkdir(parents=True)
+            (case / "Tray04_Slide01_01.vsi").write_bytes(b"")
             (case / "Tray04_Slide01_Overview.vsi").write_bytes(b"")
             image = stack / "frame_t_0.ets"
             arr = np.zeros((20, 20, 3), dtype=np.uint8)
@@ -314,7 +315,7 @@ class WebAppSmokeTests(unittest.TestCase):
             project_payload = project_response.get_json()
             add_response = self.client.post(
                 "/api/histology/project/add_paths",
-                json={"project_path": project_payload["project_path"], "paths": [str(image)]},
+                json={"project_path": project_payload["project_path"], "paths": [str(root)]},
             )
             add_payload = add_response.get_json()
             entry_id = add_payload["entries"][0]["entry_id"]
@@ -371,6 +372,8 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(add_response.status_code, 200)
             self.assertTrue(add_payload["ok"])
             self.assertEqual(add_payload["entry_count"], 1)
+            self.assertEqual(add_payload["entries"][0]["format"], "ets")
+            self.assertEqual(add_payload["entries"][0]["associated_file_count"], 2)
             self.assertEqual(preview_response.status_code, 200)
             self.assertTrue(preview_payload["ok"])
             self.assertEqual(preview_payload["width"], 20)

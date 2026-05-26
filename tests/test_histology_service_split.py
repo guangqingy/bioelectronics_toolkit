@@ -223,13 +223,22 @@ class HistologyServiceSplitTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_") as tmp:
             tmp_root = Path(tmp)
             source_root = tmp_root / "source"
-            stack = source_root / "5-CB" / "_Tray04_Slide01_01_" / "stack1"
+            case_dir = source_root / "5-CB"
+            stack = case_dir / "_Tray04_Slide01_01_" / "stack1"
             stack.mkdir(parents=True)
+            overview_stack = case_dir / "_Tray04_Slide01_Overview_" / "stack1"
+            overview_stack.mkdir(parents=True)
             image = stack / "frame_t_0.ets"
+            overview_ets = overview_stack / "frame_t_0.ets"
             arr = np.zeros((22, 22, 3), dtype=np.uint8)
             arr[4:16, 4:16, 0] = 220
             arr[8:20, 8:20, 1] = 210
             tifffile.imwrite(image, arr)
+            tifffile.imwrite(overview_ets, arr)
+            label_vsi = case_dir / "Tray04_Slide01_01.vsi"
+            overview_vsi = case_dir / "Tray04_Slide01_Overview.vsi"
+            label_vsi.write_bytes(b"label")
+            overview_vsi.write_bytes(b"overview")
             project = tmp_root / "project_home" / "study.dphistology"
             rois = [
                 {
@@ -273,6 +282,10 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(created["cache_layout"]["tmp"]).is_dir())
             self.assertEqual(loaded["entry_count"], 1)
             self.assertEqual(loaded["added_count"], 1)
+            self.assertEqual(loaded["entries"][0]["format"], "ets")
+            self.assertEqual(loaded["entries"][0]["associated_file_count"], 2)
+            self.assertEqual(loaded["entries"][0]["label_vsi_path"], str(label_vsi.resolve()))
+            self.assertEqual(loaded["entries"][0]["overview_vsi_path"], str(overview_vsi.resolve()))
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
             self.assertEqual(preview["width"], 22)
             self.assertGreater(result["results"][0]["sma_positive_px"], 0)
@@ -281,6 +294,15 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(result["project_path"]).exists())
             self.assertIn("project_home", result["analysis_path"])
             self.assertFalse((source_root / ".dataprocess_histology").exists())
+
+            vsi_project = tmp_root / "project_home" / "from_vsi.dphistology"
+            histology_ets_analysis.create_histology_data_project(vsi_project)
+            from_vsi = histology_ets_analysis.add_histology_data_project_paths(
+                vsi_project,
+                [overview_vsi],
+            )
+            self.assertEqual(from_vsi["entry_count"], 1)
+            self.assertEqual(from_vsi["entries"][0]["image_path"], str(image.resolve()))
 
     def test_histology_data_project_folder_path_creates_reusable_local_file(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_file_") as tmp:

@@ -27,11 +27,21 @@ ETS_INDEX_FILE = "project.json"
 ETS_DATA_PROJECT_KIND = "dataprocess_histology_project"
 ETS_DATA_PROJECT_FILE = "histology_project.dphistology"
 PROJECT_IMAGE_SUFFIXES = (".ets", ".tif", ".tiff", ".vsi")
+PROJECT_PRIMARY_SUFFIXES = (".ets",)
+PROJECT_RELATED_SUFFIXES = (".vsi",)
 
 
 def _has_project_image_suffix(path: Path) -> bool:
     name = path.name.lower()
     return name.endswith((".ome.tif", ".ome.tiff")) or path.suffix.lower() in PROJECT_IMAGE_SUFFIXES
+
+
+def _has_project_primary_suffix(path: Path) -> bool:
+    return path.suffix.lower() in PROJECT_PRIMARY_SUFFIXES
+
+
+def _has_project_related_suffix(path: Path) -> bool:
+    return path.suffix.lower() in PROJECT_RELATED_SUFFIXES
 
 
 def _friendly_image_read_error(path: Path, exc: Exception) -> str:
@@ -328,6 +338,28 @@ def _case_name_for_source(source_path: Path) -> str:
     return source_path.parent.name
 
 
+def _case_dir_for_source(source_path: Path) -> Path:
+    parts = list(source_path.parts)
+    for idx, part in enumerate(parts):
+        if part.startswith("_") and part.endswith("_") and idx > 0:
+            return Path(*parts[:idx])
+    if source_path.parent.name.lower().startswith("stack") and source_path.parent.parent.parent.exists():
+        return source_path.parent.parent.parent
+    return source_path.parent
+
+
+def _slide_stem_for_source(source_path: Path) -> str:
+    case_dir = _case_dir_for_source(source_path)
+    return _sidecar_stem_from_path(case_dir, source_path)
+
+
+def _slide_prefix(stem: str) -> str:
+    parts = stem.split("_")
+    if len(parts) > 1 and (parts[-1].isdigit() or parts[-1].lower() in {"overview", "label"}):
+        return "_".join(parts[:-1])
+    return stem
+
+
 def _display_name_for_source(source_path: Path) -> str:
     case_name = _case_name_for_source(source_path)
     slide = ""
@@ -342,6 +374,73 @@ def _display_name_for_source(source_path: Path) -> str:
     if case_name and source_path.name:
         return f"{case_name} · {source_path.name}"
     return source_path.name
+
+
+def _associated_files_for_source(source_path: Path) -> list[dict[str, str]]:
+    case_dir = _case_dir_for_source(source_path)
+    if not case_dir.exists() or not case_dir.is_dir():
+        return []
+    slide_stem = _slide_stem_for_source(source_path)
+    prefix = _slide_prefix(slide_stem)
+    related: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in sorted(case_dir.glob("*.vsi")):
+        stem = item.stem
+        stem_lower = stem.lower()
+        is_direct_label = stem == slide_stem
+        is_related_overview = bool(prefix) and stem.startswith(prefix) and "overview" in stem_lower
+        if not is_direct_label and not is_related_overview:
+            continue
+        role = "overview_vsi" if "overview" in stem_lower else "label_vsi"
+        resolved = item.resolve()
+        key = str(resolved)
+        if key in seen:
+            continue
+        seen.add(key)
+        related.append(
+            {
+                "role": role,
+                "path": key,
+                "name": item.name,
+                "relative_path": _safe_relative(resolved, case_dir),
+            }
+        )
+    return related
+
+
+def _entry_associated_fields(source_path: Path, record: dict[str, Any] | None = None) -> dict[str, Any]:
+    raw = (record or {}).get("associated_files")
+    associated: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in (raw if isinstance(raw, list) else []):
+        if not isinstance(item, dict):
+            continue
+        key = str(item.get("path") or item.get("name") or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        associated.append(item)
+    for item in _associated_files_for_source(source_path):
+        key = str(item.get("path") or item.get("name") or "")
+        if key in seen:
+            continue
+        seen.add(key)
+        associated.append(item)
+    label_vsi_path = str((record or {}).get("label_vsi_path") or "")
+    overview_vsi_path = str((record or {}).get("overview_vsi_path") or "")
+    for item in associated:
+        role = str(item.get("role") or "")
+        path = str(item.get("path") or "")
+        if role == "label_vsi" and not label_vsi_path:
+            label_vsi_path = path
+        elif role == "overview_vsi" and not overview_vsi_path:
+            overview_vsi_path = path
+    return {
+        "associated_files": associated,
+        "associated_file_count": len(associated),
+        "label_vsi_path": label_vsi_path,
+        "overview_vsi_path": overview_vsi_path,
+    }
 
 
 def _load_data_project_payload(project_path: Path) -> dict[str, Any]:
@@ -395,6 +494,12 @@ def _data_project_entry_from_record(project_path: Path, record: dict[str, Any]) 
         or record.get("display_name")
         or (_display_name_for_source(source) if str(source) else entry_id)
     )
+    associated = _entry_associated_fields(source, record) if str(source) else {
+        "associated_files": [],
+        "associated_file_count": 0,
+        "label_vsi_path": "",
+        "overview_vsi_path": "",
+    }
     return {
         "entry_id": entry_id,
         "image_name": image_name,
@@ -417,6 +522,7 @@ def _data_project_entry_from_record(project_path: Path, record: dict[str, Any]) 
         "latest_analysis_at": latest.get("created_at", "") if isinstance(latest, dict) else "",
         "added_at": str(record.get("added_at") or ""),
         "updated_at": str(record.get("updated_at") or ""),
+        **associated,
     }
 
 
@@ -455,6 +561,28 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
     if data.get("cache_dir") != expected_cache_dir or not isinstance(data.get("cache_layout"), dict):
         _write_data_project_payload(path, data)
         data = _load_data_project_payload(path)
+    images = data.get("images", [])
+    migrated_associations = False
+    if isinstance(images, list):
+        for record in images:
+            if not isinstance(record, dict):
+                continue
+            raw_source = str(record.get("image_path") or record.get("source_path") or "").strip()
+            if not raw_source:
+                continue
+            source = Path(raw_source).expanduser()
+            associated = _entry_associated_fields(source, record)
+            if (
+                record.get("associated_files") != associated["associated_files"]
+                or record.get("label_vsi_path", "") != associated["label_vsi_path"]
+                or record.get("overview_vsi_path", "") != associated["overview_vsi_path"]
+            ):
+                record.update(associated)
+                migrated_associations = True
+    if migrated_associations:
+        data["images"] = images
+        _write_data_project_payload(path, data)
+        data = _load_data_project_payload(path)
     entries = [
         _data_project_entry_from_record(path, record)
         for record in data.get("images", [])
@@ -483,6 +611,24 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
     }
 
 
+def _ets_files_for_related_path(path: Path) -> list[Path]:
+    case_dir = _case_dir_for_source(path)
+    if not case_dir.exists() or not case_dir.is_dir():
+        return []
+    prefix = _slide_prefix(path.stem)
+    candidates: list[Path] = []
+    for item in sorted(case_dir.rglob("*.ets")):
+        if not item.is_file():
+            continue
+        text = item.as_posix().lower()
+        if "overview" in text:
+            continue
+        slide_stem = _slide_stem_for_source(item)
+        if path.stem == slide_stem or (prefix and slide_stem.startswith(prefix)):
+            candidates.append(item.resolve())
+    return candidates
+
+
 def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], list[str]]:
     files: list[Path] = []
     warnings: list[str] = []
@@ -504,20 +650,27 @@ def _iter_project_source_files(paths: list[str | Path]) -> tuple[list[Path], lis
             candidates = [item for item in path.rglob("*") if item.is_file()]
             scan_root = path
         for item in candidates:
-            if not _has_project_image_suffix(item):
-                continue
             try:
                 rel = item.relative_to(scan_root)
             except ValueError:
                 rel = item
             if any(part.startswith(".") for part in rel.parts):
                 continue
-            resolved = item.resolve()
-            key = str(resolved)
-            if key in seen:
-                continue
-            seen.add(key)
-            files.append(resolved)
+            source_candidates: list[Path] = []
+            if _has_project_primary_suffix(item):
+                if path.is_dir() and "overview" in item.as_posix().lower():
+                    continue
+                source_candidates = [item.resolve()]
+            elif path.is_file() and _has_project_related_suffix(item):
+                source_candidates = _ets_files_for_related_path(item)
+                if not source_candidates:
+                    warnings.append(f"No matching ETS file found for related VSI: {item}")
+            for source in source_candidates:
+                key = str(source)
+                if key in seen:
+                    continue
+                seen.add(key)
+                files.append(source)
     files.sort(key=lambda item: str(item).lower())
     return files, warnings
 
@@ -547,6 +700,7 @@ def add_histology_data_project_paths(
         if entry_id in existing_by_id or source_key in existing_by_source:
             skipped += 1
             continue
+        associated = _entry_associated_fields(source)
         entry = {
             "entry_id": entry_id,
             "image_name": _display_name_for_source(source),
@@ -566,6 +720,7 @@ def add_histology_data_project_paths(
             "latest_analysis_at": "",
             "added_at": now,
             "updated_at": now,
+            **associated,
         }
         images.append(entry)
         added += 1
@@ -696,6 +851,9 @@ def save_histology_data_project_rois(
         "image_path": entry.get("image_path", ""),
         "source_path": entry.get("source_path", entry.get("image_path", "")),
         "case_name": entry.get("case_name", ""),
+        "associated_files": entry.get("associated_files", []),
+        "label_vsi_path": entry.get("label_vsi_path", ""),
+        "overview_vsi_path": entry.get("overview_vsi_path", ""),
         "updated_at": _now_iso(),
         "rois": clean_rois,
         "analyses": analyses,
@@ -996,6 +1154,9 @@ def analyze_histology_data_project_rois(
         "image_path": image_path,
         "source_path": entry.get("source_path", image_path),
         "case_name": entry.get("case_name", ""),
+        "associated_files": entry.get("associated_files", []),
+        "label_vsi_path": entry.get("label_vsi_path", ""),
+        "overview_vsi_path": entry.get("overview_vsi_path", ""),
         "backend": backend,
         "width": int(w),
         "height": int(h),
