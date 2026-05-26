@@ -119,6 +119,7 @@
 .histology-plot-area {
   background: var(--surface-panel);
   min-height: 500px;
+  overscroll-behavior: contain;
   overflow: hidden;
   position: relative;
   touch-action: none;
@@ -143,7 +144,7 @@
   -webkit-user-drag: none;
 }
 .histology-analysis-canvas {
-  cursor: crosshair;
+  cursor: inherit;
   left: 0;
   position: absolute;
   top: 0;
@@ -357,7 +358,7 @@
           <button class="btn-icon" id="btnHistologyActual" type="button" title="Actual preview size" onclick="DP.page.histologyActualSize()" disabled>1:1</button>
           <button class="btn-icon" id="btnHistologyRotateLeft" type="button" title="Rotate left" onclick="DP.page.histologyRotatePreview(-90)" disabled>↺</button>
           <button class="btn-icon" id="btnHistologyRotateRight" type="button" title="Rotate right" onclick="DP.page.histologyRotatePreview(90)" disabled>↻</button>
-          <button class="btn-icon" id="btnHistologyPan" type="button" title="Toggle pan mode" onclick="DP.page.histologyTogglePanMode()" disabled>Pan</button>
+          <button class="btn-icon" id="btnHistologyPan" type="button" title="Lock hand tool" aria-pressed="false" onclick="DP.page.histologyTogglePanMode()" disabled>Pan</button>
         </div>
         <div id="histologyAnalysisPlotArea" class="plot-area histology-plot-area">
           <div id="histologyAnalysisEmpty" class="plot-placeholder">Load a project image to begin ROI analysis</div>
