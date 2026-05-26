@@ -280,6 +280,27 @@ def _data_project_dir(project_path: Path) -> Path:
     return project_path.with_name(f"{project_path.stem}.dataprocess_histology")
 
 
+def _data_project_cache_dir(project_path: Path) -> Path:
+    return _data_project_dir(project_path) / "cache"
+
+
+def _data_project_cache_layout(project_path: Path) -> dict[str, str]:
+    cache_dir = _data_project_cache_dir(project_path)
+    return {
+        "root": str(cache_dir),
+        "previews": str(cache_dir / "previews"),
+        "converted": str(cache_dir / "converted"),
+        "tmp": str(cache_dir / "tmp"),
+        "metadata": str(cache_dir / "metadata"),
+    }
+
+
+def _ensure_data_project_dirs(project_path: Path) -> None:
+    _data_project_dir(project_path).mkdir(parents=True, exist_ok=True)
+    for path in _data_project_cache_layout(project_path).values():
+        Path(path).mkdir(parents=True, exist_ok=True)
+
+
 def _data_project_entry_dir(project_path: Path, entry_id: str) -> Path:
     return _data_project_dir(project_path) / "images" / str(entry_id)
 
@@ -342,10 +363,13 @@ def _write_data_project_payload(project_path: Path, data: dict[str, Any]) -> Non
     data["kind"] = ETS_DATA_PROJECT_KIND
     data["project_path"] = str(project_path)
     data["data_dir"] = str(_data_project_dir(project_path))
+    data["cache_dir"] = str(_data_project_cache_dir(project_path))
+    data["cache_layout"] = _data_project_cache_layout(project_path)
     data["updated_at"] = _now_iso()
     images = data.get("images")
     data["entry_count"] = len(images) if isinstance(images, list) else 0
     _write_json(project_path, data)
+    _ensure_data_project_dirs(project_path)
 
 
 def _load_data_project_entry_analysis(project_path: Path, entry_id: str) -> dict[str, Any]:
@@ -411,19 +435,26 @@ def create_histology_data_project(project_path: str | Path, name: str = "") -> d
         "project_name": project_name,
         "project_path": str(path),
         "data_dir": str(_data_project_dir(path)),
+        "cache_dir": str(_data_project_cache_dir(path)),
+        "cache_layout": _data_project_cache_layout(path),
         "created_at": now,
         "updated_at": now,
         "entry_count": 0,
         "images": [],
     }
     _write_json(path, payload)
-    _data_project_dir(path).mkdir(parents=True, exist_ok=True)
+    _ensure_data_project_dirs(path)
     return load_histology_data_project(path)
 
 
 def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
     path = _normalize_data_project_path(project_path)
     data = _load_data_project_payload(path)
+    _ensure_data_project_dirs(path)
+    expected_cache_dir = str(_data_project_cache_dir(path))
+    if data.get("cache_dir") != expected_cache_dir or not isinstance(data.get("cache_layout"), dict):
+        _write_data_project_payload(path, data)
+        data = _load_data_project_payload(path)
     entries = [
         _data_project_entry_from_record(path, record)
         for record in data.get("images", [])
@@ -445,6 +476,8 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
         "project_path": str(path),
         "index_path": str(path),
         "data_dir": str(_data_project_dir(path)),
+        "cache_dir": str(_data_project_cache_dir(path)),
+        "cache_layout": _data_project_cache_layout(path),
         "entry_count": len(entries),
         "entries": entries,
     }
@@ -681,6 +714,8 @@ def save_histology_data_project_rois(
         "project_path": str(path),
         "index_path": str(path),
         "data_dir": str(_data_project_dir(path)),
+        "cache_dir": str(_data_project_cache_dir(path)),
+        "cache_layout": _data_project_cache_layout(path),
         "entry_id": str(entry_id),
         "roi_count": len(clean_rois),
         "analysis_count": len(analyses),

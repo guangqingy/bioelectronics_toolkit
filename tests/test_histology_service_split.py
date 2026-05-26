@@ -267,6 +267,10 @@ class HistologyServiceSplitTests(unittest.TestCase):
             )
 
             self.assertEqual(created["entry_count"], 0)
+            self.assertTrue(Path(created["cache_dir"]).is_dir())
+            self.assertTrue(Path(created["cache_layout"]["previews"]).is_dir())
+            self.assertTrue(Path(created["cache_layout"]["converted"]).is_dir())
+            self.assertTrue(Path(created["cache_layout"]["tmp"]).is_dir())
             self.assertEqual(loaded["entry_count"], 1)
             self.assertEqual(loaded["added_count"], 1)
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
@@ -291,6 +295,10 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(project_path.is_file())
             self.assertEqual(loaded["project_path"], str(project_path))
             self.assertEqual(created["kind"], "dataprocess_histology_project")
+            self.assertEqual(Path(created["cache_dir"]).name, "cache")
+            self.assertTrue(Path(created["cache_layout"]["previews"]).is_dir())
+            self.assertTrue(Path(created["cache_layout"]["converted"]).is_dir())
+            self.assertTrue(Path(created["cache_layout"]["metadata"]).is_dir())
 
 
 if __name__ == "__main__":

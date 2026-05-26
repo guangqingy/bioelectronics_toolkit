@@ -135,7 +135,8 @@ function createHistologyDataProject() {
     btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
-    setStatus('status', `Project file ready: ${d.project_path || projectPath}`, 'ok');
+    const cacheText = d.cache_dir ? ` · cache ${d.cache_dir}` : '';
+    setStatus('status', `Project file ready: ${d.project_path || projectPath}${cacheText}`, 'ok');
     toast('Histology project file ready');
   }).catch(e => {
     btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
@@ -188,7 +189,7 @@ function addHistologyDataProjectPath() {
       status: 'ok',
       project_root: d.project_path || projectPath,
       input_files: [{path: addPath, role: 'histology_source_path'}],
-      outputs: dpAsPathRecords([d.project_path], 'histology_project'),
+      outputs: dpAsPathRecords([d.project_path, d.cache_dir], 'histology_project'),
       metadata: {added_count: d.added_count || 0, skipped_count: d.skipped_count || 0},
     });
   }).catch(e => {
@@ -203,8 +204,9 @@ function selectHistologyProjectEntry(entryId) {
   renderHistologyProjectImageList();
   document.getElementById('histologyProjectEntryName').value = entry ? (entry.image_name || '') : '';
   if (entry) {
+    const cacheText = _histologyDataProject?.cache_dir ? `\nCache: ${_histologyDataProject.cache_dir}` : '';
     document.getElementById('notesArea').textContent =
-      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}`;
+      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${cacheText}`;
   }
 }
 
@@ -244,7 +246,7 @@ function renameHistologyDataProjectEntry() {
       status: 'ok',
       project_root: d.project_path || projectPath,
       input_files: [{path: d.renamed_entry?.image_path || '', role: 'histology_project_image'}],
-      outputs: dpAsPathRecords([d.project_path], 'histology_project'),
+      outputs: dpAsPathRecords([d.project_path, d.cache_dir], 'histology_project'),
       parameters: {entry_id: entryId, display_name: displayName},
     });
   }).catch(e => {

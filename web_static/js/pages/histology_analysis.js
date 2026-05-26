@@ -516,7 +516,7 @@ function analyzeHistologyRois() {
       status: 'ok',
       project_root: histologyProjectRoot(),
       input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: 'histology_project_image'}],
-      outputs: dpAsPathRecords([d.analysis_path, d.geojson_path, d.summary_path, d.project_path], 'histology_analysis_output'),
+      outputs: dpAsPathRecords([d.analysis_path, d.geojson_path, d.summary_path, d.project_path, d.cache_dir], 'histology_analysis_output'),
       parameters: Object.assign({entry_id: _histologyEtsEntryId, rois: _histologyAnalysisRois}, histologyAnalysisParameters()),
       metadata: {roi_count: d.roi_count || _histologyAnalysisRois.length, backend: d.backend || ''},
     });
