@@ -3,20 +3,20 @@
 
 {% block controls %}
 <div class="ctrl-section" id="histologyAnalysisProjectControls">
-  <div class="ctrl-label">QuPath Project</div>
+  <div class="ctrl-label">ETS Case Folder</div>
   <div class="param-row">
-    <div class="param-label">.qpproj</div>
+    <div class="param-label">Folder</div>
     <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="qupathProject" class="input-path" data-path-default="false" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
+      <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/case-folder" style="flex:1;min-width:0">
+      <button class="btn-icon" type="button" onclick="DP.folder.pick('projectPath','loadHistologyEtsProject')">Browse Folder</button>
     </div>
   </div>
-  <button class="btn-primary btn-block" id="btnLoadQpAnalysis" type="button" onclick="DP.page.loadHistologyQuPathProject()">Load QuPath Project</button>
+  <button class="btn-primary btn-block" id="btnLoadEtsAnalysis" type="button" onclick="DP.page.loadHistologyEtsProject()">Load ETS Folder</button>
 </div>
 
 <div class="ctrl-section" id="histologyImageControls">
-  <div class="ctrl-label">Project Images</div>
-  <div id="histologyQpImageList" class="file-list" style="max-height:260px"></div>
+  <div class="ctrl-label">ETS Images</div>
+  <div id="histologyEtsImageList" class="file-list" style="max-height:260px"></div>
 </div>
 
 <div class="ctrl-section" id="histologyRoiControls">
@@ -25,11 +25,11 @@
     <div class="param-label">Label</div>
     <input type="text" id="histologyRoiLabel" class="input-sm" value="ROI 1">
   </div>
-  <div class="button-row">
+  <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="DP.page.startHistologyPolygon()">Start</button>
     <button class="btn-secondary" type="button" onclick="DP.page.finishHistologyPolygon()">Finish</button>
   </div>
-  <div class="button-row" style="margin-top:6px">
+  <div class="btn-row" style="margin-top:6px">
     <button class="btn-secondary" type="button" onclick="DP.page.undoHistologyPoint()">Undo Point</button>
     <button class="btn-secondary btn-danger" type="button" onclick="DP.page.clearHistologyRois()">Clear ROI</button>
   </div>
@@ -136,7 +136,7 @@
       <input type="number" id="dapiDilatePx" class="input-sm" min="0" max="30" step="1" value="2">
     </div>
   </details>
-  <button class="btn-secondary btn-block" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()">Save ROI To Project</button>
+  <button class="btn-secondary btn-block" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()">Save ROI</button>
   <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" style="margin-top:8px">Analyze SMA + Macrophage</button>
 </div>
 
@@ -147,13 +147,13 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology ROI Analysis</div>
-    <div class="view-sub" id="histologyMeta">Load a QuPath project, draw polygon ROIs, tune marker detection, and save SMA/macrophage results.</div>
+    <div class="view-sub" id="histologyMeta">Load a histology folder, draw polygon ROIs on ETS images, tune marker detection, and save SMA/macrophage results.</div>
   </div>
 
   <div class="result-card" id="histologyAnalysisCard">
     <div class="result-card-header">
-      <span>QuPath ROI Analysis</span>
-      <span id="histologyAnalysisMeta" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)">Load a QuPath project to begin.</span>
+      <span>ETS ROI Analysis</span>
+      <span id="histologyAnalysisMeta" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)">Load an ETS folder to begin.</span>
     </div>
     <div class="result-card-body">
       <div id="histologyRoiToolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
@@ -166,7 +166,7 @@
         <button class="btn-primary" type="button" onclick="DP.page.analyzeHistologyRois()">Analyze</button>
         <span id="histologyRoiInlineCount" style="font-size:12px;color:var(--pewter);margin-left:auto">0 ROI</span>
       </div>
-      <div id="histologyAnalysisSurface" style="position:relative;display:inline-block;max-width:100%;background:#070710;border:1px solid var(--line);border-radius:6px;overflow:hidden;">
+      <div id="histologyAnalysisSurface" style="position:relative;display:inline-block;max-width:100%;background:#070710;border:1px solid var(--border-muted);border-radius:6px;overflow:hidden;">
         <img id="histologyAnalysisImg" alt="Histology analysis preview" style="max-width:100%;display:none;user-select:none;-webkit-user-drag:none;">
         <canvas id="histologyAnalysisCanvas" style="position:absolute;left:0;top:0;display:none;cursor:crosshair;"></canvas>
       </div>

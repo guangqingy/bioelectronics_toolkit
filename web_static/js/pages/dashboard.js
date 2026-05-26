@@ -146,7 +146,7 @@ const GUI_ITEMS = [
   {
     id: 'histology_analysis',
     name: 'Histology ROI Analysis',
-    desc: 'Open a QuPath project, draw polygon ROIs, tune DAPI/FITC/Cy5 thresholds, and save marker results back to project data.',
+    desc: 'Open a histology ETS folder, draw polygon ROIs, tune DAPI/FITC/Cy5 thresholds, and save marker results to DataProcess sidecars.',
     why: 'Use this when SMA and macrophage quantification needs per-image background and threshold tuning.',
     tag: 'ROI markers',
     domain: 'Histology',

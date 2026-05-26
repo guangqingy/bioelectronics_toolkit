@@ -1,17 +1,17 @@
-let _histologyQpProject = null;
-let _histologyQpEntries = [];
-let _histologyQpEntryId = '';
+let _histologyEtsProject = null;
+let _histologyEtsEntries = [];
+let _histologyEtsEntryId = '';
 let _histologyAnalysisImage = null;
 let _histologyAnalysisRois = [];
 let _histologyActivePolygon = null;
 let _histologyPolygonCounter = 1;
 
-function histologyQuPathProjectPath() {
-  return (document.getElementById('qupathProject')?.value || '').trim();
+function histologyEtsProjectFolder() {
+  return (document.getElementById('projectPath')?.value || '').trim();
 }
 
 function histologyProjectRoot() {
-  return (document.getElementById('projectPath')?.value || histologyQuPathProjectPath() || '').trim();
+  return histologyEtsProjectFolder();
 }
 
 function histologyRoiLabelElements() {
@@ -48,65 +48,69 @@ function histologySetAnalysisStatus(message, kind) {
   if (hint && message) hint.textContent = message;
 }
 
-function loadHistologyQuPathProject() {
-  const qupathProject = histologyQuPathProjectPath();
-  if (!qupathProject) {
-    histologySetAnalysisStatus('Select a QuPath project.qpproj first', 'error');
+function loadHistologyEtsProject() {
+  const folder = histologyEtsProjectFolder();
+  if (!folder) {
+    histologySetAnalysisStatus('Select a histology folder first', 'error');
     return;
   }
-  btnBusy('btnLoadQpAnalysis', true, 'Loading...');
-  histologySetAnalysisStatus('Loading QuPath project...', 'loading');
-  api('/api/histology/qupath_project', {qupath_project: qupathProject})
+  btnBusy('btnLoadEtsAnalysis', true, 'Loading...');
+  histologySetAnalysisStatus('Scanning ETS images...', 'loading');
+  api('/api/histology/ets_project', {folder})
     .then(d => {
-      btnBusy('btnLoadQpAnalysis', false, 'Load QuPath Project');
+      btnBusy('btnLoadEtsAnalysis', false, 'Load ETS Folder');
       if (d.error) throw new Error(d.error);
-      _histologyQpProject = d;
-      _histologyQpEntries = d.entries || [];
-      renderHistologyQpImageList();
+      _histologyEtsProject = d;
+      _histologyEtsEntries = d.entries || [];
+      renderHistologyEtsImageList();
       document.getElementById('histologyAnalysisMeta').textContent =
-        `${_histologyQpEntries.length} project image(s)`;
-      histologySetAnalysisStatus(`Loaded ${_histologyQpEntries.length} QuPath image(s)`, 'ok');
-      if (_histologyQpEntries.length) selectHistologyQpImage(_histologyQpEntries[0].entry_id);
+        `${_histologyEtsEntries.length} ETS image(s)`;
+      histologySetAnalysisStatus(`Loaded ${_histologyEtsEntries.length} ETS image(s)`, 'ok');
+      if (_histologyEtsEntries.length) selectHistologyEtsImage(_histologyEtsEntries[0].entry_id);
     })
     .catch(e => {
-      btnBusy('btnLoadQpAnalysis', false, 'Load QuPath Project');
+      btnBusy('btnLoadEtsAnalysis', false, 'Load ETS Folder');
       histologySetAnalysisStatus('Error: ' + e.message, 'error');
     });
 }
 
-function renderHistologyQpImageList() {
-  const el = document.getElementById('histologyQpImageList');
+function renderHistologyEtsImageList() {
+  const el = document.getElementById('histologyEtsImageList');
   if (!el) return;
-  if (!_histologyQpEntries.length) {
-    el.innerHTML = '<div class="file-list-empty">No QuPath images loaded</div>';
+  if (!_histologyEtsEntries.length) {
+    el.innerHTML = '<div class="file-list-empty">No ETS images loaded</div>';
     return;
   }
-  el.innerHTML = _histologyQpEntries.map(entry => {
-    const active = String(entry.entry_id) === String(_histologyQpEntryId) ? ' active' : '';
+  el.innerHTML = _histologyEtsEntries.map(entry => {
+    const active = String(entry.entry_id) === String(_histologyEtsEntryId) ? ' active' : '';
     const counts = `${entry.roi_count || 0} ROI · ${entry.analysis_count || 0} analyses`;
     const missing = entry.exists ? '' : ' · missing source';
+    const role = entry.role && entry.role !== 'image' ? ` · ${entry.role}` : '';
+    const detail = [entry.case_name || '', entry.case_relative_path || entry.relative_path || '']
+      .filter(Boolean).join(' · ');
     return `
-      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyQpImage('${escHtml(entry.entry_id)}')">
+      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyEtsImage('${escHtml(entry.entry_id)}')">
         <div style="font-weight:650">${escHtml(entry.image_name || entry.entry_id)}</div>
-        <div style="font-size:11px;color:var(--pewter)">${escHtml(counts + missing)}</div>
+        <div style="font-size:11px;color:var(--pewter)">${escHtml(counts + role + missing)}</div>
+        <div style="font-size:10.5px;color:var(--pewter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(detail)}</div>
       </div>`;
   }).join('');
 }
 
-function selectHistologyQpImage(entryId) {
+function selectHistologyEtsImage(entryId) {
   if (!entryId) return;
-  const qupathProject = histologyQuPathProjectPath();
-  if (!qupathProject) {
-    histologySetAnalysisStatus('Select a QuPath project.qpproj first', 'error');
+  const folder = histologyEtsProjectFolder();
+  if (!folder) {
+    histologySetAnalysisStatus('Select a histology folder first', 'error');
     return;
   }
-  _histologyQpEntryId = String(entryId);
+  _histologyEtsEntryId = String(entryId);
   _histologyActivePolygon = null;
-  renderHistologyQpImageList();
-  histologySetAnalysisStatus('Loading project image preview...', 'loading');
-  api('/api/histology/qupath_image_preview', {
-    qupath_project: qupathProject,
-    entry_id: _histologyQpEntryId,
+  renderHistologyEtsImageList();
+  histologySetAnalysisStatus('Loading ETS image preview...', 'loading');
+  api('/api/histology/ets_image_preview', {
+    folder,
+    entry_id: _histologyEtsEntryId,
     max_side: 1600,
   }).then(d => {
     if (d.error) throw new Error(d.error);
@@ -193,7 +197,7 @@ function nextHistologyRoiColor(index) {
 
 function startHistologyPolygon() {
   if (!_histologyAnalysisImage) {
-    histologySetAnalysisStatus('Load a QuPath image first', 'error');
+    histologySetAnalysisStatus('Load an ETS image first', 'error');
     return;
   }
   const label = histologyCurrentRoiLabel();
@@ -222,7 +226,7 @@ function finishHistologyPolygon() {
   setHistologyRoiLabel(`ROI ${_histologyPolygonCounter}`);
   renderHistologyRoiList();
   drawHistologyRois();
-  histologySetAnalysisStatus('ROI added. Save or analyze to write it into the project.', 'ok');
+  histologySetAnalysisStatus('ROI added. Save or analyze to write it into the ETS project sidecar.', 'ok');
 }
 
 function undoHistologyPoint() {
@@ -366,8 +370,8 @@ function applyHistologyAnalysisParameters(params) {
 }
 
 function saveHistologyRois() {
-  if (!_histologyQpEntryId) {
-    histologySetAnalysisStatus('Select a QuPath image first', 'error');
+  if (!_histologyEtsEntryId) {
+    histologySetAnalysisStatus('Select an ETS image first', 'error');
     return;
   }
   if (!_histologyAnalysisRois.length) {
@@ -375,25 +379,25 @@ function saveHistologyRois() {
     return;
   }
   btnBusy('btnSaveHistologyRois', true, 'Saving...');
-  api('/api/histology/analysis/save_rois', {
-    qupath_project: histologyQuPathProjectPath(),
-    entry_id: _histologyQpEntryId,
+  api('/api/histology/ets_analysis/save_rois', {
+    folder: histologyEtsProjectFolder(),
+    entry_id: _histologyEtsEntryId,
     rois: _histologyAnalysisRois,
   }).then(d => {
-    btnBusy('btnSaveHistologyRois', false, 'Save ROI To Project');
+    btnBusy('btnSaveHistologyRois', false, 'Save ROI');
     if (d.error) throw new Error(d.error);
-    histologySetAnalysisStatus(`Saved ${d.roi_count || 0} ROI to project data`, 'ok');
-    toast('Histology ROI saved to QuPath project data');
-    refreshLoadedQuPathEntryCounts(d);
+    histologySetAnalysisStatus(`Saved ${d.roi_count || 0} ROI to ETS sidecar`, 'ok');
+    toast('Histology ROI saved to ETS sidecar');
+    refreshLoadedEtsEntryCounts(d);
   }).catch(e => {
-    btnBusy('btnSaveHistologyRois', false, 'Save ROI To Project');
+    btnBusy('btnSaveHistologyRois', false, 'Save ROI');
     histologySetAnalysisStatus('Error: ' + e.message, 'error');
   });
 }
 
 function analyzeHistologyRois() {
-  if (!_histologyQpEntryId) {
-    histologySetAnalysisStatus('Select a QuPath image first', 'error');
+  if (!_histologyEtsEntryId) {
+    histologySetAnalysisStatus('Select an ETS image first', 'error');
     return;
   }
   if (!_histologyAnalysisRois.length) {
@@ -402,9 +406,9 @@ function analyzeHistologyRois() {
   }
   btnBusy('btnAnalyzeHistology', true, 'Analyzing...');
   histologySetAnalysisStatus('Analyzing SMA and macrophage thresholds...', 'loading');
-  dpRunJobEndpoint('/api/histology/analysis/run_job', {
-    qupath_project: histologyQuPathProjectPath(),
-    entry_id: _histologyQpEntryId,
+  dpRunJobEndpoint('/api/histology/ets_analysis/run_job', {
+    folder: histologyEtsProjectFolder(),
+    entry_id: _histologyEtsEntryId,
     rois: _histologyAnalysisRois,
     parameters: histologyAnalysisParameters(),
   }, {
@@ -418,17 +422,17 @@ function analyzeHistologyRois() {
     btnBusy('btnAnalyzeHistology', false, 'Analyze SMA + Macrophage');
     if (d.error) throw new Error(d.error);
     renderHistologyAnalysisResults(d.analysis || d);
-    refreshLoadedQuPathEntryCounts(d);
-    histologySetAnalysisStatus(`Analyzed ${_histologyAnalysisRois.length} ROI; results saved to project data`, 'ok');
-    toast('Histology analysis saved to QuPath project data');
+    refreshLoadedEtsEntryCounts(d);
+    histologySetAnalysisStatus(`Analyzed ${_histologyAnalysisRois.length} ROI; results saved to ETS sidecar`, 'ok');
+    toast('Histology analysis saved to ETS sidecar');
     recordRunHistory({
       view: 'histology_analysis',
-      title: 'Histology SMA Macrophage Analysis',
+      title: 'Histology ETS SMA Macrophage Analysis',
       status: 'ok',
       project_root: histologyProjectRoot(),
-      input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: 'histology_image'}],
+      input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: 'histology_ets_image'}],
       outputs: dpAsPathRecords([d.analysis_path, d.geojson_path, d.summary_path, d.project_path], 'histology_analysis_output'),
-      parameters: Object.assign({entry_id: _histologyQpEntryId, rois: _histologyAnalysisRois}, histologyAnalysisParameters()),
+      parameters: Object.assign({entry_id: _histologyEtsEntryId, rois: _histologyAnalysisRois}, histologyAnalysisParameters()),
       metadata: {roi_count: d.roi_count || _histologyAnalysisRois.length, backend: d.backend || ''},
     });
   }).catch(e => {
@@ -437,13 +441,13 @@ function analyzeHistologyRois() {
   });
 }
 
-function refreshLoadedQuPathEntryCounts(payload) {
-  const entry = _histologyQpEntries.find(e => String(e.entry_id) === String(_histologyQpEntryId));
+function refreshLoadedEtsEntryCounts(payload) {
+  const entry = _histologyEtsEntries.find(e => String(e.entry_id) === String(_histologyEtsEntryId));
   if (entry) {
     entry.roi_count = payload.roi_count || _histologyAnalysisRois.length;
     entry.analysis_count = payload.analysis_count || entry.analysis_count || 0;
   }
-  renderHistologyQpImageList();
+  renderHistologyEtsImageList();
 }
 
 function renderHistologyAnalysisResults(analysis) {
@@ -485,7 +489,7 @@ function renderHistologyAnalysisResults(analysis) {
 window.addEventListener('load', () => {
   bindHistologyRoiLabels();
   setupHistologyAnalysisCanvas();
-  renderHistologyQpImageList();
+  renderHistologyEtsImageList();
   renderHistologyRoiList();
   renderHistologyAnalysisResults(null);
 });
@@ -504,18 +508,18 @@ window.DP.page = window.DP.page || {};
   'histologyAnalysisParameters',
   'histologyCurrentRoiLabel',
   'histologyProjectRoot',
-  'histologyQuPathProjectPath',
+  'histologyEtsProjectFolder',
   'histologyRoiLabelElements',
   'loadHistologyAnalysisImage',
-  'loadHistologyQuPathProject',
+  'loadHistologyEtsProject',
   'nativeToHistologyCanvas',
-  'refreshLoadedQuPathEntryCounts',
+  'refreshLoadedEtsEntryCounts',
   'renderHistologyAnalysisResults',
-  'renderHistologyQpImageList',
+  'renderHistologyEtsImageList',
   'renderHistologyRoiList',
   'resizeHistologyAnalysisCanvas',
   'saveHistologyRois',
-  'selectHistologyQpImage',
+  'selectHistologyEtsImage',
   'setHistologyRoiLabel',
   'setupHistologyAnalysisCanvas',
   'startHistologyPolygon',

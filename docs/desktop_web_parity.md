@@ -22,7 +22,7 @@ is still needed for a one-off workflow.
 | Fluorescence ROI | `bte-fl-roi` | `/fluorescence/roi`, `web_api/fluorescence.py` | Not full parity. Web adds per-file profiles, job-backed exports, radial/concentric ROI outputs, and DeltaF/F0 paths. Desktop keeps some older advanced plot options. |
 | TIFF to GIF | `bte-fl-gif` | `/fluorescence/gif`, `web_api/fluorescence.py` | Core TIFF reading, slice selection, LUT rendering, scale bar, timestamp, GIF, and preview output are service-backed. Web remains richer for queue/merge workflows, ROI overlays, crop/ROI previews, analysis CSVs, kymographs, profiles, and jobs. |
 | LIF viewer | none | `/fluorescence/lif`, `web_api/lif_viewer.py` | Web-only. This is acceptable if documented as a WebGUI-only workflow. |
-| Histology | `bte-histology` | `/histology/naming`, `/histology/analysis`, `web_api/histology.py` | Desktop entry opens WebGUI naming. Web now reads QuPath `.qpproj` entries and stores DataProcess ROI/marker-analysis sidecars per entry while retaining the existing naming workflow. Legacy Tkinter implementation remains available under `desktop_apps/legacy/`. |
+| Histology | `bte-histology` | `/histology/naming`, `/histology/analysis`, `web_api/histology.py` | Desktop entry opens WebGUI naming. Web analysis now scans histology case folders for `.ets` images and stores DataProcess ROI/marker-analysis sidecars under `.dataprocess_histology/` while retaining the existing naming workflow. Legacy Tkinter implementation remains available under `desktop_apps/legacy/`. |
 
 ## Maintenance Recommendation
 

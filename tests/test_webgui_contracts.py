@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import tempfile
 import threading
 import time
@@ -246,13 +245,14 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("histology.js", html)
         self.assertNotIn("histologyAnalysisCanvas", html)
 
-    def test_histology_analysis_page_exposes_qupath_analysis_controls(self) -> None:
+    def test_histology_analysis_page_exposes_ets_analysis_controls(self) -> None:
         response = self.client.get("/histology/analysis")
         html = response.data.decode("utf-8")
 
         self.assertIn("Histology ROI Analysis", html)
-        self.assertIn("QuPath Project", html)
-        self.assertIn('data-path-default="false"', html)
+        self.assertIn("ETS Case Folder", html)
+        self.assertIn("Load ETS Folder", html)
+        self.assertIn("DP.folder.pick('projectPath','loadHistologyEtsProject')", html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyRoiLabelInline", html)
         self.assertIn("Start ROI", html)
@@ -265,8 +265,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Advanced Detection", html)
         self.assertIn("histology_analysis.js", html)
         self.assertNotIn("histologyNamingControls", html)
+        self.assertNotIn(".qpproj", html)
 
-    def test_histology_analysis_api_runs_on_qupath_entry(self) -> None:
+    def test_histology_analysis_api_runs_on_ets_entry(self) -> None:
         try:
             import numpy as np
             import tifffile
@@ -275,26 +276,15 @@ class WebAppSmokeTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_api_") as tmp:
             root = Path(tmp)
-            image = root / "entry.tif"
+            case = root / "5-CB"
+            stack = case / "_Tray04_Slide01_01_" / "stack1"
+            stack.mkdir(parents=True)
+            (case / "Tray04_Slide01_Overview.vsi").write_bytes(b"")
+            image = stack / "frame_t_0.ets"
             arr = np.zeros((20, 20, 3), dtype=np.uint8)
             arr[3:15, 3:15, 0] = 200
             arr[7:18, 7:18, 1] = 190
             tifffile.imwrite(image, arr)
-            project = root / "project.qpproj"
-            project.write_text(
-                json.dumps(
-                    {
-                        "images": [
-                            {
-                                "entryID": 3,
-                                "imageName": "entry",
-                                "serverBuilder": {"uri": f"file:{image.as_posix()}"},
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
             rois = [
                 {
                     "id": "roi_api",
@@ -304,17 +294,19 @@ class WebAppSmokeTests(unittest.TestCase):
             ]
 
             project_response = self.client.post(
-                "/api/histology/qupath_project", json={"qupath_project": str(project)}
+                "/api/histology/ets_project", json={"folder": str(root)}
             )
+            project_payload = project_response.get_json()
+            entry_id = project_payload["entries"][0]["entry_id"]
             preview_response = self.client.post(
-                "/api/histology/qupath_image_preview",
-                json={"qupath_project": str(project), "entry_id": "3"},
+                "/api/histology/ets_image_preview",
+                json={"folder": str(root), "entry_id": entry_id},
             )
             analysis_response = self.client.post(
-                "/api/histology/analysis/run",
+                "/api/histology/ets_analysis/run",
                 json={
-                    "qupath_project": str(project),
-                    "entry_id": "3",
+                    "folder": str(root),
+                    "entry_id": entry_id,
                     "rois": rois,
                     "parameters": {
                         "sma_channel": "red",
@@ -328,7 +320,6 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
 
-            project_payload = project_response.get_json()
             preview_payload = preview_response.get_json()
             analysis_payload = analysis_response.get_json()
             self.assertEqual(project_response.status_code, 200)
@@ -342,6 +333,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertGreater(analysis_payload["results"][0]["sma_positive_px"], 0)
             self.assertGreaterEqual(analysis_payload["results"][0]["sma_object_count"], 1)
             self.assertTrue(Path(analysis_payload["analysis_path"]).exists())
+            self.assertTrue(Path(analysis_payload["project_path"]).exists())
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1201,6 +1193,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "FluorescenceStackExportRequest",
             "HistologyRenameRequest",
             "HistologyAnalyzeRoisRequest",
+            "HistologyEtsAnalyzeRoisRequest",
+            "HistologyEtsImagePreviewRequest",
+            "HistologyEtsProjectRequest",
+            "HistologyEtsSaveRoisRequest",
             "HistologyQupathImagePreviewRequest",
             "HistologyQupathProjectRequest",
             "HistologySaveRoisRequest",
@@ -1255,6 +1251,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/3d/intensity_distribution": "#/components/schemas/Fluorescence3dDistributionRequest",
             "/api/histology/rename_job": "#/components/schemas/HistologyRenameRequest",
             "/api/histology/sync_qupath_names_job": "#/components/schemas/HistologySyncQupathNamesRequest",
+            "/api/histology/ets_project": "#/components/schemas/HistologyEtsProjectRequest",
+            "/api/histology/ets_image_preview": "#/components/schemas/HistologyEtsImagePreviewRequest",
+            "/api/histology/ets_analysis/save_rois": "#/components/schemas/HistologyEtsSaveRoisRequest",
+            "/api/histology/ets_analysis/run_job": "#/components/schemas/HistologyEtsAnalyzeRoisRequest",
             "/api/histology/qupath_project": "#/components/schemas/HistologyQupathProjectRequest",
             "/api/histology/qupath_image_preview": "#/components/schemas/HistologyQupathImagePreviewRequest",
             "/api/histology/analysis/save_rois": "#/components/schemas/HistologySaveRoisRequest",

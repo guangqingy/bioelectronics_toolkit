@@ -5,7 +5,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from services import histology, histology_analysis, histology_discovery, histology_qupath
+from services import (
+    histology,
+    histology_analysis,
+    histology_discovery,
+    histology_ets_analysis,
+    histology_qupath,
+)
 
 
 class HistologyServiceSplitTests(unittest.TestCase):
@@ -131,6 +137,63 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(result["geojson_path"]).exists())
             updated = json.loads(project.read_text(encoding="utf-8"))
             self.assertIn("dataprocessHistologyAnalysis", updated)
+
+    def test_histology_ets_analysis_saves_rois_and_results_in_sidecar_project(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology ETS analysis optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_") as tmp:
+            root = Path(tmp)
+            case = root / "5-CB"
+            stack = case / "_Tray04_Slide01_01_" / "stack1"
+            stack.mkdir(parents=True)
+            (case / "Tray04_Slide01_Overview.vsi").write_bytes(b"")
+            image = stack / "frame_t_0.ets"
+            arr = np.zeros((24, 24, 3), dtype=np.uint8)
+            arr[4:18, 4:18, 0] = 220
+            arr[8:22, 8:22, 1] = 210
+            tifffile.imwrite(image, arr)
+            rois = [
+                {
+                    "id": "roi_1",
+                    "label": "Lesion",
+                    "points": [{"x": 2, "y": 2}, {"x": 21, "y": 2}, {"x": 21, "y": 21}, {"x": 2, "y": 21}],
+                }
+            ]
+
+            loaded = histology_ets_analysis.load_ets_project(root)
+            entry_id = loaded["entries"][0]["entry_id"]
+            preview = histology_ets_analysis.load_ets_image_preview(root, entry_id)
+            result = histology_ets_analysis.analyze_ets_rois(
+                root,
+                entry_id,
+                rois,
+                {
+                    "sma_channel": "red",
+                    "sma_threshold_method": "manual",
+                    "sma_threshold": 120,
+                    "macrophage_channel": "green",
+                    "macrophage_threshold_method": "manual",
+                    "macrophage_threshold": 120,
+                    "background_mode": "none",
+                },
+            )
+
+            self.assertEqual(loaded["entry_count"], 1)
+            self.assertEqual(preview["width"], 24)
+            self.assertEqual(result["roi_count"], 1)
+            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
+            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
+            self.assertTrue(Path(result["analysis_path"]).exists())
+            self.assertTrue(Path(result["geojson_path"]).exists())
+            index_path = Path(result["project_path"])
+            self.assertTrue(index_path.exists())
+            index = json.loads(index_path.read_text(encoding="utf-8"))
+            self.assertEqual(index["protocol"], "dataprocess-ets-histology")
+            self.assertEqual(index["entry_count"], 1)
 
 
 if __name__ == "__main__":
