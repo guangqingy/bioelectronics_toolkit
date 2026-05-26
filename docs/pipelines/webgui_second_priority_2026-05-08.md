@@ -136,9 +136,8 @@ The following heavier endpoints now have job-backed entry points:
 - `POST /api/abf/export_job`
 - `POST /api/abf/export_peaks_job`
 - `POST /api/histology/rename_job`
-- `POST /api/histology/sync_qupath_names_job`
 
-The original synchronous endpoints are still present for compatibility, but the Web GUI now calls job-backed endpoints for the heavier or side-effect-heavy actions: GIF generation/analysis/export, fluorescence stack/3D/ROI exports, LIF TIFF exports, ABF figure/batch/single exports, RHD exports, EMG exports, CSV merge/export, echem exports, histology rename/sync, and run-history packaging.
+The original synchronous endpoints are still present for compatibility, but the Web GUI now calls job-backed endpoints for the heavier or side-effect-heavy actions: GIF generation/analysis/export, fluorescence stack/3D/ROI exports, LIF TIFF exports, ABF figure/batch/single exports, RHD exports, EMG exports, CSV merge/export, echem exports, histology rename, and run-history packaging.
 
 The Settings modal now includes a `Background Jobs` card, which lists recent in-memory jobs and can request cancellation for pending/running jobs.
 Completed jobs also show an inferred output count and first output path when available.

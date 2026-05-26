@@ -23,6 +23,28 @@ function histologyConvertEts() {
   return !!document.getElementById('histologyConvertEts')?.checked;
 }
 
+function histologySimpleEntryName(entry) {
+  return String(entry?.sample_id || entry?.case_name || entry?.image_name || entry?.entry_id || '').trim();
+}
+
+function histologyIsNamingEntry(entry) {
+  const name = histologySimpleEntryName(entry).toLowerCase();
+  const files = histologyProjectChannelFiles(entry);
+  const channels = Object.keys(files).map(k => k.toLowerCase());
+  if (channels.length && channels.every(ch => ch.includes('overview') || ch.includes('label'))) return false;
+  if (name.includes('_overview_stack') || name.includes('_label_stack')) return false;
+  return true;
+}
+
+function histologyEntryVsiPath(entry) {
+  const direct = String(entry?.overview_vsi_path || entry?.label_vsi_path || '').trim();
+  if (direct) return direct;
+  const associated = Array.isArray(entry?.associated_files) ? entry.associated_files : [];
+  const overview = associated.find(item => String(item.role || '').toLowerCase() === 'overview_vsi');
+  const label = associated.find(item => String(item.role || '').toLowerCase() === 'label_vsi');
+  return String((overview && overview.path) || (label && label.path) || '').trim();
+}
+
 function renderHistologyProjectImageList() {
   const el = document.getElementById('histologyProjectImageList');
   if (!el) return;
@@ -32,18 +54,16 @@ function renderHistologyProjectImageList() {
   }
   el.innerHTML = _histologyProjectEntries.map(entry => {
     const active = String(entry.entry_id) === String(_selectedHistologyProjectEntryId) ? ' active' : '';
+    const title = histologySimpleEntryName(entry);
     const channelCount = entry.image_files ? Object.keys(entry.image_files).length : 0;
-    const counts = channelCount
-      ? `${channelCount} channel(s) · ${entry.roi_count || 0} ROI`
-      : `${entry.roi_count || 0} ROI · ${entry.analysis_count || 0} analyses`;
+    const counts = channelCount ? `${channelCount} file(s)` : 'case folder';
     const missing = entry.exists ? '' : ' · missing source';
-    const assoc = entry.associated_file_count ? ` · ${entry.associated_file_count} associated` : '';
-    const detail = [entry.sample_id || entry.case_name || '', entry.source_name || entry.image_path || '']
-      .filter(Boolean).join(' · ');
+    const vsi = histologyEntryVsiPath(entry);
+    const detail = vsi ? vsi.split(/[\\/]/).pop() : (entry.case_dir || entry.source_name || entry.image_path || '');
     return `
       <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
-        <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
-        <div class="histology-file-subline">${escHtml(counts + assoc + missing)}</div>
+        <div class="histology-file-title">${escHtml(title)}</div>
+        <div class="histology-file-subline">${escHtml(counts + missing)}</div>
         <div class="histology-file-path">${escHtml(detail)}</div>
       </div>`;
   }).join('');
@@ -53,6 +73,7 @@ function histologyEntriesFromScannedSamples(d) {
   return (Array.isArray(d.samples) ? d.samples : []).map(sample => {
     const imageFiles = sample.image_files || {};
     const firstPath = Object.values(imageFiles)[0] || '';
+    const metadata = sample.metadata || {};
     return {
       entry_id: `scan_${sample.sample_id}`,
       record_type: 'sample',
@@ -64,6 +85,16 @@ function histologyEntriesFromScannedSamples(d) {
       source_path: firstPath,
       image_files: imageFiles,
       image_records: sample.images || [],
+      raw_olympus_reference: sample.raw_olympus_reference || '',
+      case_dir: metadata.case_dir || '',
+      physical_rename_dir: metadata.physical_rename_dir || '',
+      converted_from_ets: metadata.converted_from_ets || [],
+      converted_tiff_paths: metadata.converted_tiff_paths || [],
+      conversion_roles: metadata.conversion_roles || {},
+      ets_conversion_count: metadata.ets_conversion_count || 0,
+      associated_files: metadata.associated_files || [],
+      label_vsi_path: metadata.label_vsi_path || '',
+      overview_vsi_path: metadata.overview_vsi_path || '',
       analysis_folder: sample.analysis_folder || '',
       warnings: sample.warnings || [],
       exists: !!firstPath,
@@ -75,7 +106,8 @@ function histologyEntriesFromScannedSamples(d) {
 
 function applyHistologyProjectPayload(d) {
   _histologyDataProject = d;
-  _histologyProjectEntries = Array.isArray(d.entries) ? d.entries : histologyEntriesFromScannedSamples(d);
+  const entries = Array.isArray(d.entries) ? d.entries : histologyEntriesFromScannedSamples(d);
+  _histologyProjectEntries = entries.filter(histologyIsNamingEntry);
   if (d.project_path) document.getElementById('histologyProjectPath').value = d.project_path;
   if (d.exported_dir) document.getElementById('histologyExportedTiffPath').value = d.exported_dir;
   if (d.raw_dir) document.getElementById('histologyRawOlympusPath').value = d.raw_dir;
@@ -90,7 +122,7 @@ function applyHistologyProjectPayload(d) {
     selectHistologyProjectEntry(_histologyProjectEntries[0].entry_id);
   }
   document.getElementById('histologyMeta').textContent =
-    `Project ${d.project_name || ''} · ${_histologyProjectEntries.length} image(s)`;
+    `Project ${d.project_name || ''} · ${_histologyProjectEntries.length} case(s)`;
 }
 
 function scanHistologyTiffProject() {
@@ -119,7 +151,7 @@ function scanHistologyTiffProject() {
     applyHistologyProjectPayload(d);
     const warnText = Array.isArray(d.warnings) && d.warnings.length ? ` · ${d.warnings[0]}` : '';
     const converted = d.ets_converted_file_count ? ` · ${d.ets_converted_file_count} ETS TIFF(s)` : '';
-    setStatus('status', `Scanned ${d.sample_count || 0} sample(s), ${d.image_count || 0} image(s)${converted}${warnText}`, 'ok');
+    setStatus('status', `Scanned ${d.sample_count || 0} case(s), ${d.image_count || 0} analysis image(s)${converted}${warnText}`, 'ok');
   }).catch(e => {
     btnBusy('btnScanHistologyTiffProject', false, 'Scan Source');
     setStatus('status', 'Error: ' + e.message, 'error');
@@ -158,7 +190,7 @@ function createHistologyTiffProject() {
     applyHistologyProjectPayload(d);
     const rawText = d.raw_olympus_index_path ? ` · raw index ${d.raw_olympus_index_path}` : '';
     const converted = d.ets_converted_file_count ? ` · ${d.ets_converted_file_count} ETS TIFF(s)` : '';
-    setStatus('status', `Created project (${d.entry_count || 0} sample(s))${converted}${rawText}`, 'ok');
+    setStatus('status', `Created project (${d.entry_count || 0} case(s))${converted}${rawText}`, 'ok');
     toast('Histology analysis project created');
   }).catch(e => {
     btnBusy('btnCreateHistologyProject', false, 'Create Analysis Project');
@@ -178,7 +210,7 @@ function loadHistologyDataProject() {
     btnBusy('btnLoadHistologyProject', false, 'Load Existing');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
-    setStatus('status', `Loaded project (${d.entry_count || 0} image(s))`, 'ok');
+    setStatus('status', `Loaded project (${d.entry_count || 0} case(s))`, 'ok');
   }).catch(e => {
     btnBusy('btnLoadHistologyProject', false, 'Load Existing');
     setStatus('status', 'Error: ' + e.message, 'error');
@@ -213,21 +245,28 @@ function renderHistologyProjectChannelPanel(entry) {
   const panel = document.getElementById('labelPreview');
   if (!panel || !entry) return;
   const channels = histologyProjectChannelFiles(entry);
-  const warnings = Array.isArray(entry.warnings) ? entry.warnings : [];
-  const channelRows = Object.entries(channels).map(([channel, path]) => `
+  const converted = Array.isArray(entry.converted_from_ets) ? entry.converted_from_ets : [];
+  const associated = Array.isArray(entry.associated_files) ? entry.associated_files : [];
+  const vsiRows = associated.map(item => `
+    <div class="file-item">
+      <div class="histology-file-title">${escHtml(item.role || 'vsi')}</div>
+      <div class="histology-file-path">${escHtml(item.path || item.name || '')}</div>
+    </div>`).join('');
+  const convertedRows = converted.length ? converted.map(item => `
+    <div class="file-item">
+      <div class="histology-file-title">${escHtml(item.role || 'image')}</div>
+      <div class="histology-file-path">${escHtml(item.output_path || '')}</div>
+    </div>`).join('') : Object.entries(channels).map(([channel, path]) => `
     <div class="file-item">
       <div class="histology-file-title">${escHtml(channel)}</div>
       <div class="histology-file-path">${escHtml(path)}</div>
     </div>`).join('');
-  const warningRows = warnings.length
-    ? `<div class="histology-warning-list">${warnings.map(item => `<div>${escHtml(item)}</div>`).join('')}</div>`
-    : '<div class="histology-card-meta">No channel warnings recorded.</div>';
   panel.innerHTML = `
     <div class="histology-channel-panel">
-      <div class="histology-card-meta">Exported image channels</div>
-      <div class="file-list">${channelRows || '<div class="file-list-empty">No channel files recorded</div>'}</div>
-      <div class="histology-card-meta histology-stack-gap">Warnings</div>
-      ${warningRows}
+      <div class="histology-card-meta">VSI label files</div>
+      <div class="file-list">${vsiRows || '<div class="file-list-empty">No VSI label file recorded</div>'}</div>
+      <div class="histology-card-meta histology-stack-gap">Converted TIFF files</div>
+      <div class="file-list">${convertedRows || '<div class="file-list-empty">No converted TIFF recorded</div>'}</div>
     </div>`;
 }
 
@@ -238,8 +277,8 @@ function renderHistologyProjectEntryNotes(entry, extraNotes) {
   const channelText = Object.keys(channels).length
     ? `\nChannels:\n${Object.entries(channels).map(([channel, path]) => `- ${channel}: ${path}`).join('\n')}`
     : '';
-  const previewPath = histologyProjectPrimaryImagePath(entry);
-  const previewText = previewPath ? `\nPreview source: ${previewPath}` : '';
+  const vsiPath = histologyEntryVsiPath(entry);
+  const vsiText = vsiPath ? `\nLabel VSI: ${vsiPath}` : '';
   const rawText = entry.raw_olympus_reference ? `\nRaw Olympus reference: ${entry.raw_olympus_reference}` : '';
   const converted = Array.isArray(entry.converted_from_ets) ? entry.converted_from_ets : [];
   const convertedText = converted.length
@@ -255,56 +294,41 @@ function renderHistologyProjectEntryNotes(entry, extraNotes) {
     ? `\nPreview notes:\n${extraNotes.join('\n')}`
     : '';
   notesEl.textContent =
-    `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}${channelText}${previewText}${rawText}${convertedText}${analysisText}${manifestText}${warnings}${previewNotes}${cacheText}`;
+    `Case: ${histologySimpleEntryName(entry)}${vsiText}${channelText}${rawText}${convertedText}${analysisText}${manifestText}${warnings}${previewNotes}${cacheText}`;
 }
 
 function loadHistologyProjectEntryPreview(entry) {
-  const previewPath = histologyProjectPrimaryImagePath(entry);
-  const projectPath = histologyDataProjectPath();
-  const isScanOnly = String(entry?.entry_id || '').startsWith('scan_');
+  const vsiPath = histologyEntryVsiPath(entry);
   const seq = ++_histologyProjectPreviewSeq;
-  document.getElementById('mainSource').textContent = previewPath ? `source: ${previewPath}` : '';
-  document.getElementById('labelSource').textContent = entry.raw_olympus_reference
-    ? `raw index: ${entry.raw_olympus_reference}`
-    : '';
+  document.getElementById('mainSource').textContent = vsiPath ? `label: ${vsiPath}` : '';
+  document.getElementById('labelSource').textContent = '';
   renderHistologyProjectChannelPanel(entry);
-  if (!previewPath) {
-    setPreviewPlaceholder('mainPreview', 'No preview source recorded for this project entry');
-    renderHistologyProjectEntryNotes(entry, ['No preview source recorded for this project entry.']);
-    setStatus('status', 'No preview source recorded for this project entry', 'error');
+  if (!vsiPath) {
+    setPreviewPlaceholder('mainPreview', 'No VSI label preview recorded for this case');
+    renderHistologyProjectEntryNotes(entry, ['No VSI label preview recorded for this case.']);
+    setStatus('status', 'No VSI label preview recorded for this case', 'error');
     return;
   }
-  setPreviewPlaceholder('mainPreview', 'Loading image preview...');
-  setStatus('status', 'Loading project entry preview...', 'loading');
+  setPreviewPlaceholder('mainPreview', 'Loading label preview...');
+  setStatus('status', 'Loading VSI label preview...', 'loading');
 
-  const request = (projectPath && !isScanOnly)
-    ? api('/api/histology/project/image_preview', {
-        project_path: projectPath,
-        entry_id: entry.entry_id,
-        max_side: 1600,
-      })
-    : api('/api/histology/file/image_preview', {
-        image_path: previewPath,
-        max_side: 1600,
-      });
-
-  request.then(d => {
+  api('/api/histology/label_preview', {
+    overview_path: vsiPath,
+    rotate_deg: 0,
+    do_ocr: true,
+    ocr_lang: 'eng',
+  }).then(d => {
     if (seq !== _histologyProjectPreviewSeq) return;
     if (d.error) throw new Error(d.error);
-    const hasAny = !!d.img;
-    const previewNotes = Array.isArray(d.warnings) ? d.warnings : [];
-    document.getElementById('mainSource').textContent =
-      d.image_path ? `source: ${d.image_path}` : (previewPath ? `source: ${previewPath}` : '');
-    if (!isScanOnly && Array.isArray(d.warnings) && d.warnings.length) {
-      entry.warnings = Array.from(new Set([...(entry.warnings || []), ...d.warnings]));
-      renderHistologyProjectChannelPanel(entry);
-    }
-    setPreview('mainPreview', d.img);
+    const img = d.label_b64 || '';
+    const previewNotes = Array.isArray(d.notes) ? d.notes : [];
+    document.getElementById('mainSource').textContent = d.label_source ? `label: ${d.label_source}` : `label: ${vsiPath}`;
+    setPreview('mainPreview', img);
     renderHistologyProjectEntryNotes(entry, previewNotes);
-    setStatus('status', hasAny ? 'Project entry preview loaded' : 'No preview image available (see Notes)', hasAny ? 'ok' : 'error');
+    setStatus('status', img ? 'VSI label preview loaded' : 'No label preview available (see Notes)', img ? 'ok' : 'error');
   }).catch(e => {
     if (seq !== _histologyProjectPreviewSeq) return;
-    setPreviewPlaceholder('mainPreview', 'Preview not available');
+    setPreviewPlaceholder('mainPreview', 'Label preview not available');
     renderHistologyProjectEntryNotes(entry, [e.message]);
     setStatus('status', 'Error: ' + e.message, 'error');
   });
@@ -314,7 +338,7 @@ function selectHistologyProjectEntry(entryId) {
   _selectedHistologyProjectEntryId = String(entryId || '');
   const entry = _histologyProjectEntries.find(e => String(e.entry_id) === _selectedHistologyProjectEntryId);
   renderHistologyProjectImageList();
-  document.getElementById('histologyProjectEntryName').value = entry ? (entry.image_name || '') : '';
+  document.getElementById('histologyProjectEntryName').value = entry ? histologySimpleEntryName(entry) : '';
   if (entry) {
     renderHistologyProjectEntryNotes(entry);
     loadHistologyProjectEntryPreview(entry);
@@ -334,27 +358,27 @@ function renameHistologyDataProjectEntry() {
     return;
   }
   if (!displayName) {
-    setStatus('status', 'Enter a project display name', 'error');
+    setStatus('status', 'Enter a case name', 'error');
     return;
   }
-  btnBusy('btnRenameHistologyProjectEntry', true, 'Renaming…');
-  setStatus('status', 'Renaming project entry…', 'loading');
+  btnBusy('btnRenameHistologyProjectEntry', true, 'Renaming...');
+  setStatus('status', 'Renaming case...', 'loading');
   api('/api/histology/project/rename_entry', {
     project_path: projectPath,
     entry_id: entryId,
     display_name: displayName,
   }).then(d => {
-    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename In Project');
+    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename Case');
     if (d.error) throw new Error(d.error);
     applyHistologyProjectPayload(d);
     _selectedHistologyProjectEntryId = entryId;
     selectHistologyProjectEntry(entryId);
     const physical = d.physical_rename && d.physical_rename.renamed ? ' · TIFF/folder renamed' : '';
-    setStatus('status', `Project entry renamed to ${displayName}${physical}`, 'ok');
-    toast('Project entry renamed');
+    setStatus('status', `Case renamed to ${displayName}${physical}`, 'ok');
+    toast('Case renamed');
     recordRunHistory({
       view: 'histology_naming',
-      title: 'Histology Project Entry Rename',
+      title: 'Histology Case Rename',
       status: 'ok',
       project_root: d.project_path || projectPath,
       input_files: [{path: d.renamed_entry?.image_path || '', role: 'histology_project_image'}],
@@ -362,7 +386,7 @@ function renameHistologyDataProjectEntry() {
       parameters: {entry_id: entryId, display_name: displayName},
     });
   }).catch(e => {
-    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename In Project');
+    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename Case');
     setStatus('status', 'Error: ' + e.message, 'error');
   });
 }

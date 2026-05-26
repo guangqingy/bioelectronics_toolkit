@@ -87,6 +87,6 @@ Initial wiring covers:
 - GIF ROI preview exports
 - GIF ROI time-analysis exports
 - GIF kymograph exports
-- Histology rename and QuPath-name sync metadata updates
+- Histology rename metadata updates
 
 Current rerun behavior is intentionally manual-safe: a manifest can open the originating interface, restore parameters and page state, and then the user explicitly runs the export/analysis again. Full one-click rerun should only be added per interface where overwriting and missing-input behavior are unambiguous.

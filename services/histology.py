@@ -5,10 +5,9 @@ Histology service facade.
 
 Functional implementation lives in smaller modules:
 - histology_common: small parsing and naming helpers
-- histology_discovery: case discovery and QuPath display-name reads
+- histology_discovery: case discovery helpers
 - histology_preview: image preview, label preview, and OCR
-- histology_qupath: case renaming and QuPath project synchronization
-- histology_analysis: legacy QuPath project ROI analysis helpers
+- histology_analysis: ROI analysis helpers
 - histology_tiff_project: exported TIFF project discovery and manifests
 - histology_project: DataProcess histology project store and single-file ROI analysis
 """
@@ -26,7 +25,6 @@ from services.histology_discovery import (
     _candidate_overview_files,
     candidate_overview_files,
     find_histology_cases,
-    read_qupath_display_name,
 )
 from services.histology_project import (
     add_histology_data_project_paths,
@@ -40,7 +38,6 @@ from services.histology_project import (
     save_histology_data_project_rois,
 )
 from services.histology_preview import image_to_b64, load_histology_preview_pair
-from services.histology_qupath import rename_histology_case, sync_qupath_names_from_histology_cases
 from services.histology_tiff_project import (
     ImageRecord,
     SampleRecord,
@@ -92,13 +89,10 @@ __all__ = [
     "normalize_rotate_deg",
     "parse_bool",
     "parse_int",
-    "read_qupath_display_name",
     "rename_histology_data_project_entry",
-    "rename_histology_case",
     "save_histology_data_project_rois",
     "save_project_config",
     "sanitize_name",
     "scan_exported_tiff_project",
     "scan_raw_olympus_folder",
-    "sync_qupath_names_from_histology_cases",
 ]

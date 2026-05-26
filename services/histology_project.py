@@ -5,10 +5,12 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+from PIL import Image
 
 from services.histology_common import sanitize_name
 from services.histology_analysis import (
     ANALYSIS_VERSION,
+    _array_to_rgb,
     _clean_rois,
     _dapi_analysis_mask,
     _geojson,
@@ -26,6 +28,11 @@ from services.histology_tiff_project import (
     TIFF_SUFFIXES,
     load_image_for_analysis,
 )
+
+try:
+    import tifffile  # type: ignore
+except Exception:  # pragma: no cover - declared project dependency, kept defensive
+    tifffile = None
 
 ETS_PROTOCOL = "dataprocess-ets-histology"
 ETS_PROJECT_DIR = ".dataprocess_histology"
@@ -67,6 +74,78 @@ def _read_project_image(path: str | Path, max_side: int = 1600):
     if image_path.suffix.lower() not in TIFF_SUFFIXES:
         warnings.append("Non-TIFF image loaded; TIFF is recommended for quantitative analysis.")
     return arr, backend, warnings
+
+
+def _preview_array_from_tiled_tiff(path: Path, max_side: int) -> tuple[np.ndarray, int, int]:
+    if tifffile is None:
+        raise RuntimeError("tifffile is required to preview tiled TIFF images")
+    with tifffile.TiffFile(str(path)) as tf:
+        series = tf.series[0] if getattr(tf, "series", None) else None
+        page = series.pages[0] if series is not None and getattr(series, "pages", None) else tf.pages[0]
+        shape = tuple(int(x) for x in (series.shape if series is not None else page.shape))
+        if len(shape) == 2:
+            height, width = shape
+        elif len(shape) == 3 and shape[-1] in {1, 3, 4}:
+            height, width = shape[:2]
+        else:
+            raise ValueError(f"Unsupported TIFF preview shape: {shape}")
+        if not getattr(page, "is_tiled", False):
+            raise ValueError("Large non-tiled TIFF cannot be previewed safely; export a tiled/pyramidal TIFF or ROI TIFF.")
+
+        preview_max = max(256, min(int(max_side), 2400))
+        scale = min(1.0, float(preview_max) / max(1, max(width, height)))
+        preview_w = max(1, int(round(width * scale)))
+        preview_h = max(1, int(round(height * scale)))
+        canvas = Image.new("RGB", (preview_w, preview_h), "white")
+
+        for tile_data, tile_index, _tile_shape in page.segments():
+            tile = _array_to_rgb(np.asarray(tile_data).squeeze())
+            if tile.ndim != 3:
+                continue
+            if len(tile_index) >= 4:
+                y0 = int(tile_index[-3])
+                x0 = int(tile_index[-2])
+            else:
+                continue
+            if y0 >= height or x0 >= width:
+                continue
+            tile_h = min(int(tile.shape[0]), height - y0)
+            tile_w = min(int(tile.shape[1]), width - x0)
+            if tile_h <= 0 or tile_w <= 0:
+                continue
+            x1 = x0 + tile_w
+            y1 = y0 + tile_h
+            px0 = int(round(x0 * scale))
+            py0 = int(round(y0 * scale))
+            px1 = int(round(x1 * scale))
+            py1 = int(round(y1 * scale))
+            if px1 <= px0 or py1 <= py0:
+                continue
+            tile_img = Image.fromarray(tile[:tile_h, :tile_w, :3], mode="RGB")
+            tile_img = tile_img.resize((px1 - px0, py1 - py0), Image.Resampling.BOX)
+            canvas.paste(tile_img, (px0, py0))
+        return np.asarray(canvas, dtype=np.uint8), width, height
+
+
+def _read_project_image_preview(path: str | Path, max_side: int = 1600):
+    image_path = Path(str(path)).expanduser()
+    warnings: list[str] = []
+    if image_path.suffix.lower() in TIFF_SUFFIXES and tifffile is not None:
+        try:
+            arr, width, height = _preview_array_from_tiled_tiff(image_path, max_side)
+            return arr, "tifffile_tiled_preview", warnings, width, height
+        except ValueError:
+            pass
+        except Exception as exc:
+            warnings.append(f"Tiled preview fallback failed: {exc}")
+    arr, backend, read_warnings = _read_project_image(image_path)
+    preview_max = max(256, min(int(max_side), 2400))
+    h, w = arr.shape[:2]
+    if max(h, w) > preview_max:
+        img = Image.fromarray(_array_to_rgb(arr), mode="RGB")
+        img.thumbnail((preview_max, preview_max), Image.Resampling.LANCZOS)
+        arr = np.asarray(img.convert("RGB"), dtype=np.uint8)
+    return arr, backend, [*warnings, *read_warnings], w, h
 
 
 def _safe_relative(path: Path, root: Path) -> str:
@@ -984,6 +1063,17 @@ def _read_data_project_entry_image(entry: dict[str, Any]) -> tuple[np.ndarray, s
     return _read_project_image(image_path)
 
 
+def _entry_preview_image_path(entry: dict[str, Any]) -> str:
+    direct = str(entry.get("image_path") or entry.get("source_path") or "").strip()
+    if direct:
+        return direct
+    image_files = _entry_image_files(entry)
+    for preferred in ("Brightfield", "Hoechst", "Mito", "Overview"):
+        if preferred in image_files:
+            return image_files[preferred]
+    return next(iter(image_files.values()), "")
+
+
 def load_histology_data_project_image_preview(
     project_path: str | Path,
     entry_id: str,
@@ -991,17 +1081,19 @@ def load_histology_data_project_image_preview(
 ) -> dict[str, Any]:
     path = _normalize_data_project_path(project_path)
     entry = _find_data_project_entry(path, str(entry_id))
-    arr, backend, warnings = _read_data_project_entry_image(entry)
     analysis = _load_data_project_entry_analysis(path, str(entry_id))
-    h, w = arr.shape[:2]
     preview_max = max(256, min(int(max_side), 2400))
+    preview_path = _entry_preview_image_path(entry)
+    if not preview_path:
+        raise ValueError("Selected project entry has no image path")
+    arr, backend, warnings, w, h = _read_project_image_preview(preview_path, max_side=preview_max)
     return {
         **entry,
         "backend": backend,
         "width": int(w),
         "height": int(h),
-        "preview_width": int(w),
-        "preview_height": int(h),
+        "preview_width": int(arr.shape[1]),
+        "preview_height": int(arr.shape[0]),
         "img": _png_b64(arr, max_side=preview_max),
         "rois": analysis.get("rois") if isinstance(analysis.get("rois"), list) else [],
         "analyses": analysis.get("analyses") if isinstance(analysis.get("analyses"), list) else [],
@@ -1269,8 +1361,7 @@ def load_histology_file_image_preview(
 ) -> dict[str, Any]:
     path = _resolve_single_image_path(image_path)
     preview_max = max(256, min(int(max_side), 2400))
-    arr, backend, warnings = _read_project_image(path, max_side=preview_max)
-    h, w = arr.shape[:2]
+    arr, backend, warnings, w, h = _read_project_image_preview(path, max_side=preview_max)
     return {
         "entry_id": _source_entry_id(path),
         "image_name": path.name,
@@ -1281,8 +1372,8 @@ def load_histology_file_image_preview(
         "backend": backend,
         "width": int(w),
         "height": int(h),
-        "preview_width": int(w),
-        "preview_height": int(h),
+        "preview_width": int(arr.shape[1]),
+        "preview_height": int(arr.shape[0]),
         "img": _png_b64(arr, max_side=preview_max),
         "rois": [],
         "analyses": [],

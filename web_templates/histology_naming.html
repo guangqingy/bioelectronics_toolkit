@@ -31,7 +31,7 @@
   object-fit: contain;
 }
 .histology-project-list {
-  max-height: 220px;
+  max-height: 260px;
 }
 .histology-file-title {
   font-weight: 650;
@@ -116,13 +116,13 @@
 </div>
 
 <div class="ctrl-section" id="histologyProjectEntryControls">
-  <div class="ctrl-label">Project Entries</div>
+  <div class="ctrl-label">Cases</div>
   <div id="histologyProjectImageList" class="file-list histology-project-list"></div>
   <div class="param-row histology-stack-gap">
-    <div class="param-label">Display</div>
-    <input type="text" id="histologyProjectEntryName" class="input-sm" placeholder="Project display name">
+    <div class="param-label">Name</div>
+    <input type="text" id="histologyProjectEntryName" class="input-sm" placeholder="Sample / case name">
   </div>
-  <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" onclick="DP.page.renameHistologyDataProjectEntry()">Rename In Project</button>
+  <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" onclick="DP.page.renameHistologyDataProjectEntry()">Rename Case</button>
 </div>
 
 <div id="status" class="status-bar"></div>
@@ -132,29 +132,29 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology Naming</div>
-    <div class="view-sub" id="histologyMeta">Create a local DataProcess histology project from readable TIFF images; Olympus ETS sources are converted into case-folder TIFFs before analysis.</div>
+    <div class="view-sub" id="histologyMeta">Name cases from the VSI label preview; ETS sources are converted into simple case-folder TIFFs for downstream analysis.</div>
   </div>
 
   <div class="view-results histology-naming-grid" id="histologyNamingModuleMain">
     <div class="result-card">
       <div class="result-card-header">
-        <span>Image Preview</span>
+        <span>VSI Label Preview</span>
         <span id="mainSource" class="histology-card-meta"></span>
       </div>
       <div class="result-card-body">
         <div class="plot-area histology-preview-area" id="mainPreview">
-          <div class="plot-placeholder">Select a project entry to preview the main image</div>
+          <div class="plot-placeholder">Select a case to preview the VSI label image</div>
         </div>
       </div>
     </div>
     <div class="result-card">
       <div class="result-card-header">
-        <span>Channels / Traceability</span>
+        <span>Corresponding Files</span>
         <span id="labelSource" class="histology-card-meta"></span>
       </div>
       <div class="result-card-body">
         <div class="plot-area histology-preview-area" id="labelPreview">
-          <div class="plot-placeholder">Select a project entry to inspect channels and raw-file references</div>
+          <div class="plot-placeholder">Select a case to inspect VSI and converted TIFF files</div>
         </div>
       </div>
     </div>
@@ -163,7 +163,7 @@
   <div class="result-card" id="histologyNamingNotes">
     <div class="result-card-header">Notes</div>
     <div class="result-card-body">
-      <div id="notesArea" class="histology-notes">No project entry loaded.</div>
+      <div id="notesArea" class="histology-notes">No case loaded.</div>
     </div>
   </div>
 </div>

@@ -174,6 +174,27 @@ def _conversion_warnings(conversions: list[EtsConversionResult]) -> list[str]:
     return warnings
 
 
+def _conversion_analysis_outputs(conversions: list[EtsConversionResult]) -> list[Path]:
+    role_by_output = {
+        str(Path(item.output_path).expanduser().resolve()): item.role
+        for item in conversions
+    }
+    return [
+        path
+        for path in _successful_conversion_outputs(conversions)
+        if role_by_output.get(str(path), "") not in {"overview", "label"}
+    ]
+
+
+def _analysis_image_paths(image_files: list[Path]) -> list[Path]:
+    return [
+        path
+        for path in image_files
+        if str(detect_channel_from_filename(path.name).get("detected_channel") or "")
+        not in {"Overview", "Label"}
+    ]
+
+
 def _prepare_image_sources(
     source_dir: str | Path,
     *,
@@ -190,10 +211,10 @@ def _prepare_image_sources(
     if convert_ets and (source_root.suffix.lower() == ".ets" or ets_files):
         conversions = convert_ets_folder_to_tiff(source_root, progress=progress)
     if source_root.is_file() and source_root.suffix.lower() == ".ets":
-        image_files = _successful_conversion_outputs(conversions)
+        image_files = _conversion_analysis_outputs(conversions)
     else:
-        image_files = discover_image_files(source_root)
-        converted = _successful_conversion_outputs(conversions)
+        image_files = _analysis_image_paths(discover_image_files(source_root))
+        converted = _conversion_analysis_outputs(conversions)
         seen = {str(path.resolve()) for path in image_files}
         for path in converted:
             key = str(path.resolve())
@@ -204,6 +225,28 @@ def _prepare_image_sources(
     return source_root, image_files, conversions
 
 
+def _vsi_metadata_for_case(case_dir: str | Path) -> dict[str, Any]:
+    case = Path(case_dir).expanduser()
+    if not case.is_dir():
+        return {"associated_files": [], "label_vsi_path": "", "overview_vsi_path": ""}
+    associated: list[dict[str, str]] = []
+    label_vsi_path = ""
+    overview_vsi_path = ""
+    for vsi in sorted(case.glob("*.vsi")):
+        role = "overview_vsi" if "overview" in vsi.stem.lower() else "label_vsi"
+        payload = {"role": role, "path": str(vsi.resolve()), "name": vsi.name}
+        associated.append(payload)
+        if role == "overview_vsi" and not overview_vsi_path:
+            overview_vsi_path = str(vsi.resolve())
+        elif role == "label_vsi" and not label_vsi_path:
+            label_vsi_path = str(vsi.resolve())
+    return {
+        "associated_files": associated,
+        "label_vsi_path": label_vsi_path,
+        "overview_vsi_path": overview_vsi_path,
+    }
+
+
 def _attach_conversion_metadata(
     samples: dict[str, SampleRecord],
     conversions: list[EtsConversionResult],
@@ -212,7 +255,7 @@ def _attach_conversion_metadata(
     for item in conversions:
         if item.status not in {"converted", "skipped_existing"}:
             continue
-        sample_id = infer_sample_id(Path(item.output_path).name)
+        sample_id = Path(item.case_dir).name
         by_sample.setdefault(sample_id, []).append(item)
     for sample_id, items in by_sample.items():
         sample = samples.get(sample_id)
@@ -226,11 +269,14 @@ def _attach_conversion_metadata(
         sample.metadata["converted_tiff_paths"] = [item.output_path for item in items]
         sample.metadata["conversion_roles"] = {item.role: item.output_path for item in items}
         sample.metadata["ets_conversion_count"] = len(items)
+        sample.metadata.update(_vsi_metadata_for_case(primary.case_dir))
 
 
 def detect_channel_from_filename(filename: str) -> dict[str, Any]:
     stem = Path(filename).stem.lower()
     patterns: list[tuple[str, tuple[str, ...], float]] = [
+        ("Overview", ("overview",), 0.98),
+        ("Label", ("label", "barcode"), 0.98),
         ("Hoechst", ("hoechst", "dapi", "blue"), 0.95),
         ("FITC", ("fitc", "sma", "green"), 0.95),
         ("Cy5", ("cy5", "cd68", "macrophage", "macro", "red"), 0.95),
@@ -478,6 +524,8 @@ def group_images_by_sample(image_files: list[str | Path]) -> dict[str, SampleRec
             continue
         sample_id = infer_sample_id(path.name)
         record = _record_for_image(path)
+        if record.detected_channel in {"Overview", "Label"}:
+            continue
         sample = grouped.setdefault(sample_id, SampleRecord(sample_id=sample_id))
         channel = record.channel_name
         if channel in sample.image_files:
@@ -719,6 +767,9 @@ def _project_entry(sample: SampleRecord, project_path: Path) -> dict[str, Any]:
         "converted_tiff_paths": paths.get("converted_tiff_paths", []),
         "conversion_roles": paths.get("conversion_roles", {}),
         "ets_conversion_count": paths.get("ets_conversion_count", 0),
+        "associated_files": paths.get("associated_files", []),
+        "label_vsi_path": paths.get("label_vsi_path", ""),
+        "overview_vsi_path": paths.get("overview_vsi_path", ""),
         "analysis_folder": sample.analysis_folder,
         "manifest_path": paths.get("manifest_path", ""),
         "parameters_path": paths.get("parameters_path", ""),

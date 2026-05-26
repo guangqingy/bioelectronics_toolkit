@@ -11,12 +11,10 @@ from unittest import mock
 
 from services import (
     histology,
-    histology_analysis,
     histology_discovery,
     histology_project,
-    histology_qupath,
 )
-from services.histology_ets_convert import read_ets_index
+from services.histology_ets_convert import CONVERTER_VERSION, convert_ets_to_tiff, read_ets_index
 
 
 def _write_fake_ets(path: Path, value: int = 180) -> None:
@@ -60,6 +58,62 @@ def _write_fake_ets(path: Path, value: int = 180) -> None:
         handle.write(blob)
 
 
+def _write_fake_multiz_ets(path: Path) -> None:
+    import numpy as np
+    from PIL import Image
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    yy, xx = np.indices((16, 16))
+    planes = [
+        np.full((16, 16), 255, dtype=np.uint8),
+        np.where((xx + yy) % 2 == 0, 20, 220).astype(np.uint8),
+        np.full((16, 16), 120, dtype=np.uint8),
+    ]
+    blobs: list[bytes] = []
+    for plane in planes:
+        stream = BytesIO()
+        Image.fromarray(np.stack([plane, plane, plane], axis=-1), "RGB").save(
+            stream,
+            format="JPEG",
+            quality=90,
+        )
+        blobs.append(stream.getvalue())
+
+    tile_table_offset = 64 + 228
+    data_offset = tile_table_offset + 36 * len(blobs)
+    sis = struct.pack(
+        "<4sIIIQIIQIIIIII",
+        b"SIS\0",
+        64,
+        2,
+        4,
+        64,
+        228,
+        0,
+        tile_table_offset,
+        len(blobs),
+        0,
+        0,
+        0,
+        0,
+        0,
+    )
+    ets = struct.pack("<4sIIIIIIIII", b"ETS\0", 0x30001, 2, 3, 4, 2, 90, 16, 16, 1)
+    records = []
+    offset = data_offset
+    for z, blob in enumerate(blobs):
+        records.append(struct.pack("<IIIIIQII", 4, 0, 0, z, 0, offset, len(blob), 0))
+        offset += len(blob)
+    with path.open("wb") as handle:
+        handle.write(sis)
+        handle.write(ets)
+        handle.write(b"\0" * (228 - len(ets)))
+        for record in records:
+            handle.write(record)
+        for blob in blobs:
+            handle.write(blob)
+
+
 class HistologyServiceSplitTests(unittest.TestCase):
     def test_facade_exports_core_histology_functions(self) -> None:
         self.assertEqual(histology.sanitize_name(" Case 01 / A "), "Case_01_A")
@@ -67,122 +121,19 @@ class HistologyServiceSplitTests(unittest.TestCase):
         self.assertEqual(histology.normalize_rotate_deg("90"), 90)
         self.assertEqual(histology.normalize_rotate_deg("45"), 0)
 
-    def test_discovery_finds_overview_and_qupath_display_name(self) -> None:
+    def test_discovery_finds_overview_cases(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_discovery_") as tmp:
             root = Path(tmp)
             case = root / "Case_A"
             case.mkdir()
             overview = case / "Sample_Overview.vsi"
             overview.write_bytes(b"")
-            server_dir = case / "qupath" / "data" / "1"
-            server_dir.mkdir(parents=True)
-            (server_dir / "server.json").write_text(
-                json.dumps({"metadata": {"name": "QuPath Case A"}}),
-                encoding="utf-8",
-            )
 
             cases = histology_discovery.find_histology_cases(root)
 
             self.assertEqual(len(cases), 1)
             self.assertEqual(cases[0]["case_name"], "Case_A")
             self.assertEqual(cases[0]["overview_path"], str(overview.resolve()))
-            self.assertEqual(cases[0]["qupath_name"], "QuPath Case A")
-
-    def test_qupath_sync_updates_image_names_from_case_dirs(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_qupath_") as tmp:
-            root = Path(tmp)
-            case = (root / "Case_B").resolve()
-            case.mkdir()
-            project = root / "project.qpproj"
-            project.write_text(
-                json.dumps(
-                    {
-                        "images": [
-                            {
-                                "entryID": 1,
-                                "imageName": "old",
-                                "serverBuilder": {"uri": f"file:{case.as_posix()}/scan.vsi"},
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-
-            result = histology_qupath.sync_qupath_names_from_histology_cases(
-                [{"case_dir": str(case), "case_name": "Case_B"}],
-                str(project),
-                update_server_json=False,
-            )
-
-            self.assertEqual(result["updated_images"], 1)
-            updated = json.loads(project.read_text(encoding="utf-8"))
-            self.assertEqual(updated["images"][0]["imageName"], "Case_B")
-
-    def test_histology_analysis_saves_rois_and_results_in_project_data(self) -> None:
-        try:
-            import numpy as np
-            import tifffile
-        except ImportError as exc:
-            self.skipTest(f"histology analysis optional dependency missing: {exc}")
-
-        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_analysis_") as tmp:
-            root = Path(tmp)
-            image = root / "sample.tif"
-            arr = np.zeros((24, 24, 3), dtype=np.uint8)
-            arr[4:18, 4:18, 0] = 220
-            arr[8:22, 8:22, 1] = 210
-            tifffile.imwrite(image, arr)
-            project = root / "project.qpproj"
-            project.write_text(
-                json.dumps(
-                    {
-                        "images": [
-                            {
-                                "entryID": 7,
-                                "imageName": "sample",
-                                "serverBuilder": {"uri": f"file:{image.as_posix()}"},
-                            }
-                        ]
-                    }
-                ),
-                encoding="utf-8",
-            )
-            rois = [
-                {
-                    "id": "roi_1",
-                    "label": "Lesion",
-                    "points": [{"x": 2, "y": 2}, {"x": 21, "y": 2}, {"x": 21, "y": 21}, {"x": 2, "y": 21}],
-                }
-            ]
-
-            loaded = histology_analysis.load_qupath_project(project)
-            preview = histology_analysis.load_project_image_preview(project, "7")
-            result = histology_analysis.analyze_project_rois(
-                project,
-                "7",
-                rois,
-                {
-                    "sma_channel": "green",
-                    "sma_threshold_method": "manual",
-                    "sma_threshold": 120,
-                    "macrophage_channel": "red",
-                    "macrophage_threshold_method": "manual",
-                    "macrophage_threshold": 120,
-                    "background_mode": "none",
-                },
-            )
-
-            self.assertEqual(loaded["entry_count"], 1)
-            self.assertEqual(preview["width"], 24)
-            self.assertEqual(result["roi_count"], 1)
-            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
-            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
-            self.assertGreaterEqual(result["results"][0]["sma_object_count"], 1)
-            self.assertTrue(Path(result["analysis_path"]).exists())
-            self.assertTrue(Path(result["geojson_path"]).exists())
-            updated = json.loads(project.read_text(encoding="utf-8"))
-            self.assertIn("dataprocessHistologyAnalysis", updated)
 
     def test_histology_file_analysis_runs_on_exported_tiff_and_rejects_raw_ets(self) -> None:
         try:
@@ -241,17 +192,35 @@ class HistologyServiceSplitTests(unittest.TestCase):
             case = root / "5-CB"
             (case / "Tray04_Slide01_01.vsi").parent.mkdir(parents=True)
             (case / "Tray04_Slide01_01.vsi").write_text("vsi", encoding="utf-8")
+            (case / "Tray04_Slide01_Overview.vsi").write_text("overview-vsi", encoding="utf-8")
             _write_fake_ets(case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets")
+            _write_fake_ets(case / "_Tray04_Slide01_Overview_" / "stack1" / "frame_t.ets", value=90)
+            _write_fake_ets(case / "_Tray04_Slide01_Overview_" / "stack10000" / "frame_t.ets", value=70)
 
             scanned = histology.scan_exported_tiff_project(root)
 
             converted = case / "5-CB_Brightfield.tif"
+            overview = case / "5-CB_Overview.tif"
             self.assertEqual(scanned["sample_count"], 1)
-            self.assertEqual(scanned["ets_converted_file_count"], 1)
+            self.assertEqual(scanned["image_count"], 1)
+            self.assertEqual(scanned["ets_converted_file_count"], 2)
             self.assertTrue(converted.is_file())
+            self.assertTrue(overview.is_file())
+            self.assertFalse(list(case.glob("*stack10000*.tif")))
             self.assertEqual(scanned["samples"][0]["sample_id"], "5-CB")
             self.assertEqual(scanned["samples"][0]["metadata"]["case_dir"], str(case.resolve()))
-            self.assertIn(str(converted.resolve()), scanned["samples"][0]["image_files"].values())
+            self.assertEqual(
+                scanned["samples"][0]["image_files"],
+                {"Brightfield": str(converted.resolve())},
+            )
+            self.assertEqual(
+                scanned["samples"][0]["metadata"]["overview_vsi_path"],
+                str((case / "Tray04_Slide01_Overview.vsi").resolve()),
+            )
+            self.assertIn(
+                "skipped_duplicate_role",
+                {item["status"] for item in scanned["ets_conversions"]},
+            )
 
     def test_histology_project_rename_updates_converted_tiff_and_case_folder(self) -> None:
         try:
@@ -301,6 +270,31 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "too large to load safely"):
                     histology.load_image_for_analysis(image)
 
+    def test_histology_preview_streams_tiled_tiff_when_full_load_guard_would_fail(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology preview optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_preview_guard_") as tmp:
+            image = Path(tmp) / "preview.tif"
+            arr = np.zeros((512, 512, 3), dtype=np.uint8)
+            ramp = np.arange(512, dtype=np.uint16)
+            arr[..., 0] = (ramp[None, :] // 2).astype(np.uint8)
+            arr[..., 1] = (ramp[:, None] // 2).astype(np.uint8)
+            tifffile.imwrite(image, arr, tile=(16, 16), compression="deflate")
+
+            with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_IMAGE_PIXELS": "10"}):
+                preview = histology_project.load_histology_file_image_preview(image, max_side=32)
+
+            self.assertEqual(preview["backend"], "tifffile_tiled_preview")
+            self.assertEqual(preview["width"], 512)
+            self.assertEqual(preview["height"], 512)
+            self.assertEqual(preview["preview_width"], 256)
+            self.assertEqual(preview["preview_height"], 256)
+            self.assertTrue(preview["img"])
+
     def test_ets_index_respects_tile_memory_guard(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_guard_") as tmp:
             ets = Path(tmp) / "5-CB" / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets"
@@ -309,6 +303,29 @@ class HistologyServiceSplitTests(unittest.TestCase):
             with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_ETS_TILE_PIXELS": "128"}):
                 with self.assertRaisesRegex(MemoryError, "ETS tile size"):
                     read_ets_index(ets)
+
+    def test_ets_conversion_selects_textured_plane_for_multiz_ets(self) -> None:
+        try:
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology ETS conversion optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_multiz_") as tmp:
+            root = Path(tmp)
+            ets = root / "5-CB" / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets"
+            output = root / "5-CB" / "5-CB_Brightfield.tif"
+            _write_fake_multiz_ets(ets)
+
+            result = convert_ets_to_tiff(ets, output)
+            arr = tifffile.imread(output)
+            sidecar = output.with_suffix(output.suffix + ".dataprocess_ets.json")
+            payload = json.loads(sidecar.read_text(encoding="utf-8"))
+
+            self.assertEqual(result.z_plane_count, 3)
+            self.assertEqual(result.selected_z, 1)
+            self.assertGreater(float(arr.std()), 40.0)
+            self.assertEqual(payload["converter_version"], CONVERTER_VERSION)
+            self.assertEqual(payload["index"]["selected_z"], 1)
 
     def test_histology_data_project_indexes_raw_files_and_analyzes_exported_tiffs(self) -> None:
         try:

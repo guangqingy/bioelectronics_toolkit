@@ -247,7 +247,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Exported TIFF", html)
         self.assertIn("Raw Olympus", html)
         self.assertIn("Create Analysis Project", html)
-        self.assertIn("Rename In Project", html)
+        self.assertIn("Rename Case", html)
+        self.assertIn("VSI Label Preview", html)
+        self.assertIn("Corresponding Files", html)
         self.assertIn("histology-naming-grid", html)
         self.assertIn("histology.js", html)
         self.assertIn("function loadHistologyProjectEntryPreview", page_js)
@@ -255,19 +257,17 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function createHistologyTiffProject", page_js)
         self.assertIn("/api/histology/project/scan_tiff", page_js)
         self.assertIn("/api/histology/project/create_from_tiff", page_js)
-        self.assertIn("/api/histology/project/image_preview", page_js)
-        self.assertIn("/api/histology/file/image_preview", page_js)
+        self.assertIn("/api/histology/label_preview", page_js)
+        self.assertIn("histologyEntryVsiPath", page_js)
         self.assertNotIn("Load Case Folder", html)
         self.assertNotIn("Add ETS To Project", html)
-        self.assertNotIn("Sync QuPath Names", html)
         self.assertNotIn("Rename Folder", html)
         self.assertNotIn("histologyNamingControls", html)
-        self.assertNotIn(".qpproj", html)
-        self.assertNotIn("QuPath", html)
         self.assertNotIn("histologyProjectPreviewPath", page_js)
+        self.assertNotIn("api('/api/histology/project/image_preview'", page_js)
+        self.assertNotIn("api('/api/histology/file/image_preview'", page_js)
         self.assertNotIn("/api/histology/preview", page_js)
         self.assertNotIn("Promise.all([mainRequest, labelRequest])", page_js)
-        self.assertNotIn("syncQuPathNames", page_js)
         self.assertNotIn("applyRename", page_js)
         self.assertNotIn("histologyAnalysisCanvas", html)
 
@@ -294,7 +294,6 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("histology_analysis.js", html)
         self.assertNotIn("histologyRoiControls", html)
         self.assertNotIn("histologyNamingControls", html)
-        self.assertNotIn(".qpproj", html)
         self.assertNotIn("button-row", html)
         self.assertNotIn("var(--line)", html)
 
@@ -1291,6 +1290,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "HistologyDataProjectSaveRoisRequest",
             "HistologyFileAnalyzeRoisRequest",
             "HistologyFileImagePreviewRequest",
+            "HistologyLabelPreviewRequest",
             "HistologyTiffProjectCreateRequest",
             "HistologyTiffProjectScanRequest",
             "LifExportManifestRequest",
@@ -1349,6 +1349,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/project/analysis/save_rois": "#/components/schemas/HistologyDataProjectSaveRoisRequest",
             "/api/histology/project/analysis/run_job": "#/components/schemas/HistologyDataProjectAnalyzeRoisRequest",
             "/api/histology/file/image_preview": "#/components/schemas/HistologyFileImagePreviewRequest",
+            "/api/histology/label_preview": "#/components/schemas/HistologyLabelPreviewRequest",
             "/api/histology/file/analysis/run_job": "#/components/schemas/HistologyFileAnalyzeRoisRequest",
             "/api/rhd/plot": "#/components/schemas/RhdViewRequest",
             "/api/rhd/process": "#/components/schemas/RhdProcessingRequest",
@@ -1377,10 +1378,6 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/ets_analysis/save_rois",
             "/api/histology/ets_analysis/run",
             "/api/histology/ets_analysis/run_job",
-            "/api/histology/qupath_project",
-            "/api/histology/qupath_image_preview",
-            "/api/histology/sync_qupath_names",
-            "/api/histology/sync_qupath_names_job",
             "/api/histology/browse",
             "/api/histology/preview",
             "/api/histology/rename",

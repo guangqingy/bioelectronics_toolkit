@@ -25,6 +25,7 @@ from services.histology_common import sanitize_name
 
 ETS_SUFFIX = ".ets"
 CONVERTED_MARKER_SUFFIX = ".dataprocess_ets.json"
+CONVERTER_VERSION = 2
 DEFAULT_MAX_ETS_TILE_PIXELS = 4096 * 4096
 DEFAULT_MAX_ETS_TILES = 2_000_000
 
@@ -54,6 +55,9 @@ class EtsImageIndex:
     tiles_down: int
     width: int
     height: int
+    z_plane_count: int = 1
+    selected_z: int = 0
+    z_values: list[int] = field(default_factory=list)
     tiles: list[EtsTile] = field(default_factory=list)
 
 
@@ -71,6 +75,8 @@ class EtsConversionResult:
     tile_height: int = 0
     tile_count: int = 0
     compression: str = ""
+    z_plane_count: int = 1
+    selected_z: int = 0
     warning_messages: list[str] = field(default_factory=list)
 
 
@@ -200,6 +206,7 @@ def read_ets_index(source_path: str | Path) -> EtsImageIndex:
         raise ValueError("ETS file has no level-0 tiles")
     tiles_across = max(tile.x for tile in level0) + 1
     tiles_down = max(tile.y for tile in level0) + 1
+    z_values = sorted({int(tile.z) for tile in level0})
     return EtsImageIndex(
         source_path=str(path),
         compression_code=int(compression_code),
@@ -212,6 +219,9 @@ def read_ets_index(source_path: str | Path) -> EtsImageIndex:
         tiles_down=int(tiles_down),
         width=int(tiles_across * tile_width),
         height=int(tiles_down * tile_height),
+        z_plane_count=len(z_values),
+        selected_z=z_values[0] if z_values else 0,
+        z_values=z_values,
         tiles=level0,
     )
 
@@ -262,8 +272,76 @@ def _decode_tile_rgb(blob: bytes, tile_width: int, tile_height: int) -> np.ndarr
     return padded
 
 
+def _gray_tile_stats(arr: np.ndarray) -> tuple[float, float, float, float]:
+    gray = np.asarray(arr[..., 0], dtype=np.float32)
+    return (
+        float(np.mean(gray)),
+        float(np.std(gray)),
+        float(np.mean(gray >= 250)),
+        float(np.mean(gray <= 5)),
+    )
+
+
+def _select_output_z(
+    source: Path,
+    index: EtsImageIndex,
+    *,
+    sample_limit: int = 96,
+) -> int:
+    z_values = sorted(index.z_values or {int(tile.z) for tile in index.tiles})
+    if not z_values:
+        index.selected_z = 0
+        index.z_plane_count = 1
+        index.z_values = [0]
+        return 0
+    index.z_plane_count = len(z_values)
+    index.z_values = z_values
+    if len(z_values) == 1:
+        index.selected_z = int(z_values[0])
+        return index.selected_z
+
+    by_z_coord = {(tile.z, tile.x, tile.y): tile for tile in index.tiles}
+    coords = sorted({(tile.x, tile.y) for tile in index.tiles})
+    if len(coords) > sample_limit:
+        step = max(1, len(coords) // sample_limit)
+        coords = coords[::step][:sample_limit]
+
+    stats: dict[int, list[tuple[float, float, float, float]]] = {z: [] for z in z_values}
+    with source.open("rb") as handle:
+        for x, y in coords:
+            for z in z_values:
+                tile = by_z_coord.get((z, x, y))
+                if tile is None:
+                    continue
+                handle.seek(tile.offset)
+                arr = _decode_tile_rgb(
+                    _read_exact(handle, tile.byte_count),
+                    index.tile_width,
+                    index.tile_height,
+                )
+                stats[z].append(_gray_tile_stats(arr))
+
+    best_z = z_values[0]
+    best_score = float("-inf")
+    for z in z_values:
+        values = stats.get(z) or []
+        if not values:
+            continue
+        data = np.asarray(values, dtype=np.float32)
+        std_mean = float(data[:, 1].mean())
+        white_frac = float(data[:, 2].mean())
+        black_frac = float(data[:, 3].mean())
+        texture_score = std_mean * (1.0 - min(0.9, white_frac * 0.85 + black_frac * 0.25))
+        if texture_score > best_score:
+            best_score = texture_score
+            best_z = z
+    index.selected_z = int(best_z)
+    return index.selected_z
+
+
 def _tile_iterator(source: Path, index: EtsImageIndex, progress: ProgressCallback | None = None):
-    by_coord = {(tile.x, tile.y): tile for tile in index.tiles if tile.z == 0}
+    selected_z = int(index.selected_z)
+    by_coord = {(tile.x, tile.y): tile for tile in index.tiles if tile.z == selected_z}
     blank = np.zeros((index.tile_height, index.tile_width, 3), dtype=np.uint8)
     total = max(1, index.tiles_across * index.tiles_down)
     done = 0
@@ -286,6 +364,25 @@ def _tile_iterator(source: Path, index: EtsImageIndex, progress: ProgressCallbac
                 yield arr
 
 
+def _read_conversion_sidecar(output: Path) -> dict[str, object]:
+    sidecar = output.with_suffix(output.suffix + CONVERTED_MARKER_SUFFIX)
+    if not sidecar.is_file():
+        return {}
+    try:
+        data = json.loads(sidecar.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _existing_conversion_is_current(output: Path) -> bool:
+    data = _read_conversion_sidecar(output)
+    try:
+        return int(data.get("converter_version") or 0) >= CONVERTER_VERSION
+    except Exception:
+        return False
+
+
 def convert_ets_to_tiff(
     source_path: str | Path,
     output_path: str | Path,
@@ -299,8 +396,18 @@ def convert_ets_to_tiff(
     output = Path(output_path).expanduser().resolve()
     if source.suffix.lower() != ETS_SUFFIX:
         raise ValueError(f"Expected an .ets file, got {source.suffix}")
-    if output.exists() and not overwrite and output.stat().st_mtime >= source.stat().st_mtime:
-        index = read_ets_index(source)
+    index = read_ets_index(source)
+    if (
+        output.exists()
+        and not overwrite
+        and output.stat().st_mtime >= source.stat().st_mtime
+        and _existing_conversion_is_current(output)
+    ):
+        existing = _read_conversion_sidecar(output)
+        existing_index = existing.get("index") if isinstance(existing.get("index"), dict) else {}
+        if isinstance(existing_index, dict):
+            index.selected_z = int(existing_index.get("selected_z") or index.selected_z)
+            index.z_plane_count = int(existing_index.get("z_plane_count") or index.z_plane_count)
         return EtsConversionResult(
             source_path=str(source),
             output_path=str(output),
@@ -314,18 +421,25 @@ def convert_ets_to_tiff(
             tile_height=index.tile_height,
             tile_count=index.level0_tile_count,
             compression=index.compression_name,
+            z_plane_count=index.z_plane_count,
+            selected_z=index.selected_z,
         )
 
-    index = read_ets_index(source)
     if index.tile_width % 16 or index.tile_height % 16:
         raise ValueError("ETS tile dimensions must be multiples of 16 for tiled TIFF output")
+    selected_z = _select_output_z(source, index)
 
     output.parent.mkdir(parents=True, exist_ok=True)
     tmp_output = output.with_name(f".{output.name}.tmp")
     if tmp_output.exists():
         tmp_output.unlink()
     if progress:
-        progress(0.0, f"Reading ETS tile index for {source.name}")
+        z_note = (
+            f"; selected z-plane {selected_z} of {index.z_plane_count}"
+            if index.z_plane_count > 1
+            else ""
+        )
+        progress(0.0, f"Reading ETS tile index for {source.name}{z_note}")
     with tifffile.TiffWriter(str(tmp_output), bigtiff=True) as writer:
         writer.write(
             data=_tile_iterator(source, index, progress=progress),
@@ -334,7 +448,12 @@ def convert_ets_to_tiff(
             photometric="rgb",
             tile=(index.tile_height, index.tile_width),
             compression="deflate",
-            metadata={"axes": "YXS", "source_format": "Olympus ETS"},
+            metadata={
+                "axes": "YXS",
+                "source_format": "Olympus ETS",
+                "selected_z": int(index.selected_z),
+                "z_plane_count": int(index.z_plane_count),
+            },
             software="DataProcess ETS converter (tifffile/Pillow/imagecodecs)",
         )
     tmp_output.replace(output)
@@ -354,6 +473,8 @@ def convert_ets_to_tiff(
         tile_height=index.tile_height,
         tile_count=index.level0_tile_count,
         compression=index.compression_name,
+        z_plane_count=index.z_plane_count,
+        selected_z=index.selected_z,
     )
 
 
@@ -361,6 +482,7 @@ def _write_conversion_sidecar(output: Path, source: Path, index: EtsImageIndex) 
     sidecar = output.with_suffix(output.suffix + CONVERTED_MARKER_SUFFIX)
     payload = {
         "kind": "dataprocess_ets_conversion",
+        "converter_version": CONVERTER_VERSION,
         "source_path": str(source),
         "output_path": str(output),
         "index": asdict(index),
@@ -464,9 +586,28 @@ def convert_ets_folder_to_tiff(
     ets_files = iter_ets_files(root)
     results: list[EtsConversionResult] = []
     used_outputs: set[str] = set()
+    used_aux_roles: set[tuple[str, str]] = set()
     total = max(1, len(ets_files))
     for idx, ets_path in enumerate(ets_files, start=1):
         output, case_dir, role = _output_path_for_ets(scan_root, ets_path, used_outputs)
+        role_key = (case_dir, role)
+        if role in {"overview", "label"} and role_key in used_aux_roles:
+            results.append(
+                EtsConversionResult(
+                    source_path=str(ets_path),
+                    output_path=str(output),
+                    case_dir=case_dir,
+                    sample_id=Path(case_dir).name,
+                    role=role,
+                    status="skipped_duplicate_role",
+                    warning_messages=[
+                        f"Duplicate {role} ETS skipped; the first {role} file is used for naming traceability."
+                    ],
+                )
+            )
+            continue
+        if role in {"overview", "label"}:
+            used_aux_roles.add(role_key)
 
         def item_progress(fraction: float, message: str, idx: int = idx) -> None:
             if progress:
@@ -503,6 +644,7 @@ def convert_ets_folder_to_tiff(
 
 __all__ = [
     "CONVERTED_MARKER_SUFFIX",
+    "CONVERTER_VERSION",
     "ETS_SUFFIX",
     "EtsConversionResult",
     "EtsImageIndex",

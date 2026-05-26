@@ -25,6 +25,7 @@ load_histology_file_image_preview = histology_service.load_histology_file_image_
 analyze_histology_file_rois = histology_service.analyze_histology_file_rois
 scan_exported_tiff_project = histology_service.scan_exported_tiff_project
 create_project_from_exported_tiff = histology_service.create_project_from_exported_tiff
+load_histology_preview_pair = histology_service.load_histology_preview_pair
 
 
 class HistologyTiffProjectScanRequest(RequestModel):
@@ -75,6 +76,13 @@ class HistologyDataProjectAnalyzeRoisRequest(RequestModel):
 class HistologyFileImagePreviewRequest(RequestModel):
     image_path: str = Field(min_length=1)
     max_side: int = Field(default=1600, ge=256, le=2400)
+
+
+class HistologyLabelPreviewRequest(RequestModel):
+    overview_path: str = Field(min_length=1)
+    rotate_deg: int = Field(default=0, ge=0, le=270)
+    do_ocr: bool = True
+    ocr_lang: str = "eng"
 
 
 class HistologyFileAnalyzeRoisRequest(RequestModel):
@@ -322,6 +330,25 @@ def register_histology_routes(app, ctx):
                 max_side=payload.max_side,
             )
             return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except (FileNotFoundError, ValueError) as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/label_preview", methods=["POST"])
+    @request_schema(HistologyLabelPreviewRequest)
+    def api_histology_label_preview():
+        try:
+            payload = parse_json_payload(HistologyLabelPreviewRequest)
+            result = load_histology_preview_pair(
+                payload.overview_path,
+                rotate_deg=payload.rotate_deg,
+                do_ocr=payload.do_ocr,
+                ocr_lang=payload.ocr_lang,
+            )
+            return jsonify({"ok": not bool(result.get("error")), **result})
         except ValidationError as exc:
             return validation_error_response(exc)
         except (FileNotFoundError, ValueError) as exc:

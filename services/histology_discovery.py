@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -17,24 +16,6 @@ def candidate_overview_files(case_dir: Path) -> list[Path]:
             unique.append(path)
             seen.add(path)
     return unique
-
-
-def read_qupath_display_name(case_dir: str | Path) -> str:
-    case = Path(case_dir).expanduser().resolve()
-    search_roots = [case]
-    if case.parent != case:
-        search_roots.append(case.parent)
-    for root in search_roots:
-        for json_path in root.rglob("server.json"):
-            try:
-                data = json.loads(json_path.read_text(encoding="utf-8"))
-                metadata = data.get("metadata", {}) if isinstance(data, dict) else {}
-                name = str(metadata.get("name", "")).strip()
-                if name:
-                    return name
-            except Exception:
-                continue
-    return ""
 
 
 def find_histology_cases(project_root: str | Path) -> list[dict[str, Any]]:
@@ -55,7 +36,6 @@ def find_histology_cases(project_root: str | Path) -> list[dict[str, Any]]:
                 "case_name": case_dir.name,
                 "overview_path": str(vsi),
                 "overview_name": vsi.name,
-                "qupath_name": read_qupath_display_name(case_dir) or "",
             }
         )
 

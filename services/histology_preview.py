@@ -9,7 +9,7 @@ import numpy as np
 from PIL import Image, ImageOps
 
 from services.histology_common import normalize_rotate_deg
-from services.histology_discovery import candidate_overview_files, read_qupath_display_name
+from services.histology_discovery import candidate_overview_files
 
 try:
     import tifffile  # type: ignore
@@ -361,7 +361,6 @@ def load_histology_preview_pair(
         "case_dir": str(case_dir),
         "overview_path": str(path),
         "case_name": case_dir.name,
-        "qupath_name": read_qupath_display_name(case_dir) or "",
         "rotate_deg": rotate_deg,
         "backend_main": "",
         "backend_label": "",
