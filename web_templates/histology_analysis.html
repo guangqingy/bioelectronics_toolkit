@@ -162,6 +162,18 @@
   </div>
 </div>
 
+<div class="ctrl-section" id="histologySingleFileControls">
+  <div class="ctrl-label">Test Image</div>
+  <div class="param-row">
+    <div class="param-label">Image</div>
+    <div class="input-row histology-grow">
+      <input type="text" id="histologyImagePath" class="input-path histology-grow" placeholder="/path/to/exported TIFF for quick testing">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyImagePath','loadHistologyFileImage')">Open File</button>
+    </div>
+  </div>
+  <button class="btn-secondary btn-block histology-stack-gap" id="btnLoadHistologyFileImage" type="button" onclick="DP.page.loadHistologyFileImage()">Load Image</button>
+</div>
+
 <div class="ctrl-section" id="histologyImageControls">
   <div class="ctrl-label">Project Images</div>
   <div id="histologyProjectAnalysisImageList" class="file-list histology-image-list"></div>
@@ -276,13 +288,13 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology ROI Analysis</div>
-    <div class="view-sub" id="histologyMeta">Load a DataProcess histology project, draw polygon ROIs, tune marker detection, and save SMA/macrophage results.</div>
+    <div class="view-sub" id="histologyMeta">Load a DataProcess project for saved analysis, or open a single exported TIFF for quick ROI testing.</div>
   </div>
 
   <div class="histology-analysis-workbench">
     <div class="result-card histology-panel" id="histologyAnalysisCard">
       <div class="result-card-header">
-        <span>Project Image</span>
+        <span>Analysis Image</span>
         <span id="histologyAnalysisMeta" class="histology-card-meta">Load a histology project to begin.</span>
       </div>
       <div class="result-card-body">
