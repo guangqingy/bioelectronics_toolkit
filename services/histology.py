@@ -9,6 +9,7 @@ Functional implementation lives in smaller modules:
 - histology_preview: image preview, label preview, and OCR
 - histology_qupath: case renaming and QuPath project synchronization
 - histology_analysis: legacy QuPath project ROI analysis helpers
+- histology_tiff_project: exported TIFF project discovery and manifests
 - histology_ets_analysis: DataProcess histology project and single-file ROI analysis
 """
 
@@ -40,23 +41,52 @@ from services.histology_ets_analysis import (
 )
 from services.histology_preview import image_to_b64, load_histology_preview_pair
 from services.histology_qupath import rename_histology_case, sync_qupath_names_from_histology_cases
+from services.histology_tiff_project import (
+    ImageRecord,
+    SampleRecord,
+    create_analysis_folders,
+    create_project_from_exported_tiff,
+    detect_channel_from_filename,
+    discover_image_files,
+    export_file_manifest,
+    group_images_by_sample,
+    infer_sample_id,
+    load_image_for_analysis,
+    load_image_for_display,
+    load_project_config,
+    save_project_config,
+    scan_exported_tiff_project,
+    scan_raw_olympus_folder,
+)
 
 __all__ = [
     "_bool",
     "_candidate_overview_files",
     "_int",
     "_normalize_rotate_deg",
+    "ImageRecord",
+    "SampleRecord",
     "add_histology_data_project_paths",
     "analyze_histology_file_rois",
     "analyze_histology_data_project_rois",
     "candidate_overview_files",
     "create_histology_data_project",
+    "create_analysis_folders",
+    "create_project_from_exported_tiff",
+    "detect_channel_from_filename",
+    "discover_image_files",
+    "export_file_manifest",
     "find_histology_cases",
+    "group_images_by_sample",
     "image_to_b64",
+    "infer_sample_id",
     "load_histology_data_project",
     "load_histology_data_project_image_preview",
     "load_histology_file_image_preview",
+    "load_image_for_analysis",
+    "load_image_for_display",
     "load_histology_preview_pair",
+    "load_project_config",
     "normalize_rotate_deg",
     "parse_bool",
     "parse_int",
@@ -64,6 +94,9 @@ __all__ = [
     "rename_histology_data_project_entry",
     "rename_histology_case",
     "save_histology_data_project_rois",
+    "save_project_config",
     "sanitize_name",
+    "scan_exported_tiff_project",
+    "scan_raw_olympus_folder",
     "sync_qupath_names_from_histology_cases",
 ]

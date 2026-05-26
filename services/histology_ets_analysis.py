@@ -15,20 +15,26 @@ from services.histology_analysis import (
     _mask_for_roi,
     _now_iso,
     _png_b64,
-    _read_image,
     _read_json,
     _write_json,
 )
 from services.histology_discovery import find_histology_cases
+from services.histology_tiff_project import (
+    PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
+)
+from services.histology_tiff_project import (
+    TIFF_SUFFIXES,
+    load_image_for_analysis,
+)
 
 ETS_PROTOCOL = "dataprocess-ets-histology"
 ETS_PROJECT_DIR = ".dataprocess_histology"
 ETS_INDEX_FILE = "project.json"
 ETS_DATA_PROJECT_KIND = "dataprocess_histology_project"
 ETS_DATA_PROJECT_FILE = "histology_project.dphistology"
-PROJECT_IMAGE_SUFFIXES = (".ets", ".tif", ".tiff", ".vsi")
-PROJECT_PRIMARY_SUFFIXES = (".ets",)
-PROJECT_RELATED_SUFFIXES = (".vsi",)
+PROJECT_IMAGE_SUFFIXES = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
+PROJECT_PRIMARY_SUFFIXES = PROJECT_IMAGE_SUFFIXES
+PROJECT_RELATED_SUFFIXES: tuple[str, ...] = ()
 
 
 def _has_project_image_suffix(path: Path) -> bool:
@@ -48,10 +54,9 @@ def _friendly_image_read_error(path: Path, exc: Exception) -> str:
     message = str(exc)
     if path.suffix.lower() == ".ets" and ("SIS" in message or "not a TIFF" in message):
         return (
-            "This Olympus/SIS .ets file is indexed in the DataProcess project, but this "
-            "Python environment cannot decode it directly. Install Bio-Formats support "
-            "or add a converted TIFF/OME-TIFF copy for analysis. The project entry and "
-            "its display name are still saved without modifying the original ETS folder."
+            "Olympus/SIS .ets files are traceability-only in the current histology "
+            "pipeline. Export 2D TIFF images from Olympus software and use those TIFFs "
+            "for preview and analysis."
         )
     return message or f"Could not read image: {path}"
 
@@ -59,9 +64,14 @@ def _friendly_image_read_error(path: Path, exc: Exception) -> str:
 def _read_project_image(path: str | Path, max_side: int = 1600):
     image_path = Path(str(path)).expanduser()
     try:
-        return _read_image(image_path, max_side=max(256, min(int(max_side), 2400)))
-    except RuntimeError as exc:
+        arr = load_image_for_analysis(image_path)
+    except Exception as exc:
         raise ValueError(_friendly_image_read_error(image_path, exc)) from exc
+    backend = "tifffile" if image_path.suffix.lower() in TIFF_SUFFIXES else "pillow"
+    warnings: list[str] = []
+    if image_path.suffix.lower() not in TIFF_SUFFIXES:
+        warnings.append("Non-TIFF image loaded; TIFF is recommended for quantitative analysis.")
+    return arr, backend, warnings
 
 
 def _resolve_root(folder: str | Path) -> Path:
@@ -452,8 +462,6 @@ def _record_source_path(record: dict[str, Any]) -> Path | None:
 
 def _primary_sources_for_project_path(path: Path) -> list[Path]:
     if _has_project_primary_suffix(path):
-        if "overview" in path.as_posix().lower():
-            return _ets_files_for_related_path(path)
         return [path.resolve()]
     if _has_project_related_suffix(path):
         return _ets_files_for_related_path(path)
@@ -478,7 +486,7 @@ def _data_project_record_for_source(
         if not image_name:
             image_name = default_name
     associated = _entry_associated_fields(source, record)
-    return {
+    entry = {
         "entry_id": entry_id,
         "image_name": image_name,
         "display_name": image_name,
@@ -499,6 +507,25 @@ def _data_project_record_for_source(
         "updated_at": timestamp,
         **associated,
     }
+    for key in (
+        "record_type",
+        "sample_id",
+        "image_files",
+        "image_records",
+        "raw_olympus_reference",
+        "analysis_folder",
+        "manifest_path",
+        "parameters_path",
+        "roi_measurements_path",
+        "rois_path",
+        "qc_overlay_path",
+        "warnings",
+    ):
+        if key in record:
+            entry[key] = record[key]
+    if entry.get("record_type") == "sample":
+        entry["role"] = "sample"
+    return entry
 
 
 def _normalize_data_project_images(
@@ -517,6 +544,23 @@ def _normalize_data_project_images(
         source = _record_source_path(record)
         if source is None:
             changed = True
+            continue
+        if str(record.get("record_type") or "") == "sample":
+            if not _has_project_primary_suffix(source):
+                changed = True
+                continue
+            sample_record = dict(record)
+            sample_record.setdefault("entry_id", _source_entry_id(source))
+            sample_record.setdefault("role", "sample")
+            sample_record.setdefault("format", source.suffix.lower().lstrip("."))
+            sample_record.setdefault("image_path", str(source.resolve()))
+            sample_record.setdefault("source_path", str(source.resolve()))
+            entry_key = f"entry::{sample_record['entry_id']}"
+            if entry_key in index_by_source:
+                changed = True
+                continue
+            index_by_source[entry_key] = len(normalized)
+            normalized.append(sample_record)
             continue
         primary_sources = _primary_sources_for_project_path(source)
         if not primary_sources:
@@ -578,7 +622,7 @@ def _load_data_project_payload(project_path: Path) -> dict[str, Any]:
 def _write_data_project_payload(project_path: Path, data: dict[str, Any]) -> None:
     data = dict(data)
     data["version"] = ANALYSIS_VERSION
-    data["protocol"] = ETS_PROTOCOL
+    data["protocol"] = str(data.get("protocol") or TIFF_PROJECT_PROTOCOL)
     data["kind"] = ETS_DATA_PROJECT_KIND
     data["project_path"] = str(project_path)
     data["data_dir"] = str(_data_project_dir(project_path))
@@ -620,7 +664,7 @@ def _data_project_entry_from_record(project_path: Path, record: dict[str, Any]) 
         "label_vsi_path": "",
         "overview_vsi_path": "",
     }
-    return {
+    entry = {
         "entry_id": entry_id,
         "image_name": image_name,
         "display_name": image_name,
@@ -644,6 +688,23 @@ def _data_project_entry_from_record(project_path: Path, record: dict[str, Any]) 
         "updated_at": str(record.get("updated_at") or ""),
         **associated,
     }
+    for key in (
+        "record_type",
+        "sample_id",
+        "image_files",
+        "image_records",
+        "raw_olympus_reference",
+        "analysis_folder",
+        "manifest_path",
+        "parameters_path",
+        "roi_measurements_path",
+        "rois_path",
+        "qc_overlay_path",
+        "warnings",
+    ):
+        if key in record:
+            entry[key] = record[key]
+    return entry
 
 
 def create_histology_data_project(project_path: str | Path, name: str = "") -> dict[str, Any]:
@@ -656,7 +717,7 @@ def create_histology_data_project(project_path: str | Path, name: str = "") -> d
         project_name = path.parent.parent.name if path.parent.name == ETS_PROJECT_DIR else path.stem
     payload = {
         "version": ANALYSIS_VERSION,
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "kind": ETS_DATA_PROJECT_KIND,
         "project_name": project_name,
         "project_path": str(path),
@@ -704,17 +765,22 @@ def load_histology_data_project(project_path: str | Path) -> dict[str, Any]:
     )
     return {
         "ok": True,
-        "protocol": ETS_PROTOCOL,
+        "protocol": data.get("protocol") or TIFF_PROJECT_PROTOCOL,
         "kind": ETS_DATA_PROJECT_KIND,
         "project_name": data.get("project_name") or path.stem,
         "project_root": str(path.parent.parent if path.parent.name == ETS_PROJECT_DIR else path.parent),
         "project_path": str(path),
         "index_path": str(path),
+        "exported_dir": str(data.get("exported_dir") or ""),
+        "raw_dir": str(data.get("raw_dir") or ""),
+        "analysis_dir": str(data.get("analysis_dir") or ""),
+        "raw_olympus_index_path": str(data.get("raw_olympus_index_path") or ""),
         "data_dir": str(_data_project_dir(path)),
         "cache_dir": str(_data_project_cache_dir(path)),
         "cache_layout": _data_project_cache_layout(path),
         "entry_count": len(entries),
         "entries": entries,
+        "warnings": data.get("warnings") if isinstance(data.get("warnings"), list) else [],
     }
 
 
@@ -867,6 +933,81 @@ def _find_data_project_entry(project_path: Path, entry_id: str) -> dict[str, Any
     raise ValueError(f"Histology project entry not found: {entry_id}")
 
 
+def _entry_image_files(entry: dict[str, Any]) -> dict[str, str]:
+    raw = entry.get("image_files")
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, str] = {}
+    for channel, path in raw.items():
+        text = str(path or "").strip()
+        if text:
+            out[str(channel)] = text
+    return out
+
+
+def _channel_rgb_slot(channel: str) -> int | None:
+    key = channel.strip().lower()
+    if key in {"cy5", "red", "macrophage", "cd68"}:
+        return 0
+    if key in {"fitc", "green", "sma", "mito", "mitotracker", "tmrm"}:
+        return 1
+    if key in {"hoechst", "dapi", "blue"}:
+        return 2
+    return None
+
+
+def _as_2d_channel(arr: np.ndarray) -> np.ndarray:
+    data = np.asarray(arr)
+    if data.ndim == 2:
+        return data
+    if data.ndim == 3 and data.shape[-1] <= 4:
+        return data[..., :3].mean(axis=-1).astype(data.dtype, copy=False)
+    while data.ndim > 2:
+        data = np.max(data, axis=0)
+    return data
+
+
+def _composite_from_image_files(image_files: dict[str, str]) -> tuple[np.ndarray, str, list[str]]:
+    planes: list[tuple[str, np.ndarray]] = []
+    warnings: list[str] = []
+    dtype = np.uint16
+    shape: tuple[int, int] | None = None
+    for channel, path in image_files.items():
+        try:
+            plane = _as_2d_channel(load_image_for_analysis(path))
+        except Exception as exc:
+            warnings.append(f"{channel}: {exc}")
+            continue
+        if shape is None:
+            shape = tuple(int(x) for x in plane.shape[:2])
+            dtype = plane.dtype
+        elif tuple(plane.shape[:2]) != shape:
+            warnings.append(f"{channel}: skipped mismatched shape {tuple(plane.shape[:2])}, expected {shape}")
+            continue
+        planes.append((channel, plane))
+    if not planes or shape is None:
+        raise ValueError("No readable exported image channels found for this sample")
+    composite = np.zeros(shape + (3,), dtype=dtype)
+    fallback_slot = 0
+    for channel, plane in planes:
+        slot = _channel_rgb_slot(channel)
+        if slot is None:
+            slot = fallback_slot % 3
+            fallback_slot += 1
+        composite[..., slot] = plane.astype(dtype, copy=False)
+    return composite, "exported_tiff_channels", warnings
+
+
+def _read_data_project_entry_image(entry: dict[str, Any]) -> tuple[np.ndarray, str, list[str]]:
+    image_files = _entry_image_files(entry)
+    if image_files:
+        return _composite_from_image_files(image_files)
+    image_path = entry.get("image_path", "")
+    if not image_path:
+        raise ValueError("Selected project entry has no image path")
+    return _read_project_image(image_path)
+
+
 def load_histology_data_project_image_preview(
     project_path: str | Path,
     entry_id: str,
@@ -874,13 +1015,7 @@ def load_histology_data_project_image_preview(
 ) -> dict[str, Any]:
     path = _normalize_data_project_path(project_path)
     entry = _find_data_project_entry(path, str(entry_id))
-    image_path = entry.get("image_path", "")
-    if not image_path:
-        raise ValueError("Selected project entry has no image path")
-    arr, backend, warnings = _read_project_image(
-        image_path,
-        max_side=max(256, min(int(max_side), 2400)),
-    )
+    arr, backend, warnings = _read_data_project_entry_image(entry)
     analysis = _load_data_project_entry_analysis(path, str(entry_id))
     h, w = arr.shape[:2]
     return {
@@ -936,7 +1071,7 @@ def save_histology_data_project_rois(
         analyses = [*analyses, analysis] if append_analysis else [analysis]
     payload = {
         "version": ANALYSIS_VERSION,
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "kind": ETS_DATA_PROJECT_KIND,
         "project_path": str(path),
         "entry_id": str(entry_id),
@@ -946,6 +1081,13 @@ def save_histology_data_project_rois(
         "source_path": entry.get("source_path", entry.get("image_path", "")),
         "case_name": entry.get("case_name", ""),
         "associated_files": entry.get("associated_files", []),
+        "image_files": entry.get("image_files", {}),
+        "image_records": entry.get("image_records", []),
+        "sample_id": entry.get("sample_id", ""),
+        "analysis_folder": entry.get("analysis_folder", ""),
+        "manifest_path": entry.get("manifest_path", ""),
+        "parameters_path": entry.get("parameters_path", ""),
+        "roi_measurements_path": entry.get("roi_measurements_path", ""),
         "label_vsi_path": entry.get("label_vsi_path", ""),
         "overview_vsi_path": entry.get("overview_vsi_path", ""),
         "updated_at": _now_iso(),
@@ -961,7 +1103,7 @@ def save_histology_data_project_rois(
     _write_json(geojson_path, _geojson(clean_rois, latest_measurements))
     _update_data_project_entry_counts(path, str(entry_id))
     return {
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "kind": ETS_DATA_PROJECT_KIND,
         "project_path": str(path),
         "index_path": str(path),
@@ -1194,7 +1336,7 @@ def analyze_ets_rois(
 
     analysis = {
         "created_at": _now_iso(),
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "image_name": entry.get("image_name", ""),
         "image_path": image_path,
         "case_name": entry.get("case_name", ""),
@@ -1227,9 +1369,7 @@ def analyze_histology_data_project_rois(
     path = _normalize_data_project_path(project_path)
     entry = _find_data_project_entry(path, str(entry_id))
     image_path = str(entry.get("image_path") or "")
-    if not image_path:
-        raise ValueError("Selected project entry has no image path")
-    arr, backend, warnings = _read_project_image(image_path, max_side=1600)
+    arr, backend, warnings = _read_data_project_entry_image(entry)
     clean_rois = _clean_rois(rois)
     if not clean_rois:
         raise ValueError("Draw at least one polygon ROI before analysis")
@@ -1249,6 +1389,13 @@ def analyze_histology_data_project_rois(
         "source_path": entry.get("source_path", image_path),
         "case_name": entry.get("case_name", ""),
         "associated_files": entry.get("associated_files", []),
+        "image_files": entry.get("image_files", {}),
+        "image_records": entry.get("image_records", []),
+        "sample_id": entry.get("sample_id", ""),
+        "analysis_folder": entry.get("analysis_folder", ""),
+        "manifest_path": entry.get("manifest_path", ""),
+        "parameters_path": entry.get("parameters_path", ""),
+        "roi_measurements_path": entry.get("roi_measurements_path", ""),
         "label_vsi_path": entry.get("label_vsi_path", ""),
         "overview_vsi_path": entry.get("overview_vsi_path", ""),
         "backend": backend,
@@ -1278,7 +1425,7 @@ def _resolve_single_image_path(image_path: str | Path) -> Path:
     if not path.is_file():
         raise FileNotFoundError(f"Histology image not found: {path}")
     if not _has_project_image_suffix(path):
-        raise ValueError("Select an ETS, TIFF, OME-TIFF, or VSI image file")
+        raise ValueError("Select an exported TIFF, PNG, or JPG image file")
     return path
 
 
@@ -1325,7 +1472,7 @@ def analyze_histology_file_rois(
     h, w, results = _analyze_marker_rois(arr, clean_rois, params)
     analysis = {
         "created_at": _now_iso(),
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "kind": "single_file_histology_analysis",
         "entry_id": _source_entry_id(path),
         "image_name": path.name,
@@ -1341,7 +1488,7 @@ def analyze_histology_file_rois(
         "warnings": warnings,
     }
     return {
-        "protocol": ETS_PROTOCOL,
+        "protocol": TIFF_PROJECT_PROTOCOL,
         "kind": "single_file_histology_analysis",
         "entry_id": _source_entry_id(path),
         "image_name": path.name,

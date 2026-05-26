@@ -137,8 +137,8 @@ const GUI_ITEMS = [
   {
     id: 'histology_naming',
     name: 'Histology Naming',
-    desc: 'Create a DataProcess histology project, add external ETS/TIFF files, and rename project entries without touching source folders.',
-    why: 'Use this when source ETS folder architecture should stay fixed but labels need cleanup before analysis.',
+    desc: 'Create a DataProcess histology project from exported 2D TIFF images and keep raw Olympus files indexed for traceability.',
+    why: 'Use this when Olympus raw folders should stay untouched but sample labels and analysis manifests need cleanup.',
     tag: 'Project names',
     domain: 'Histology',
     href: '/histology/naming',

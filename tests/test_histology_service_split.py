@@ -10,7 +10,6 @@ from services import (
     histology_analysis,
     histology_discovery,
     histology_ets_analysis,
-    histology_preview,
     histology_qupath,
 )
 
@@ -118,10 +117,10 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 "7",
                 rois,
                 {
-                    "sma_channel": "red",
+                    "sma_channel": "green",
                     "sma_threshold_method": "manual",
                     "sma_threshold": 120,
-                    "macrophage_channel": "green",
+                    "macrophage_channel": "red",
                     "macrophage_threshold_method": "manual",
                     "macrophage_threshold": 120,
                     "background_mode": "none",
@@ -139,24 +138,22 @@ class HistologyServiceSplitTests(unittest.TestCase):
             updated = json.loads(project.read_text(encoding="utf-8"))
             self.assertIn("dataprocessHistologyAnalysis", updated)
 
-    def test_histology_ets_analysis_saves_rois_and_results_in_sidecar_project(self) -> None:
+    def test_histology_file_analysis_runs_on_exported_tiff_and_rejects_raw_ets(self) -> None:
         try:
             import numpy as np
             import tifffile
         except ImportError as exc:
-            self.skipTest(f"histology ETS analysis optional dependency missing: {exc}")
+            self.skipTest(f"histology file analysis optional dependency missing: {exc}")
 
-        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_file_") as tmp:
             root = Path(tmp)
-            case = root / "5-CB"
-            stack = case / "_Tray04_Slide01_01_" / "stack1"
-            stack.mkdir(parents=True)
-            (case / "Tray04_Slide01_Overview.vsi").write_bytes(b"")
-            image = stack / "frame_t_0.ets"
+            image = root / "5-CB_channels.tif"
             arr = np.zeros((24, 24, 3), dtype=np.uint8)
             arr[4:18, 4:18, 0] = 220
             arr[8:22, 8:22, 1] = 210
             tifffile.imwrite(image, arr)
+            raw_ets = root / "frame_t_0.ets"
+            raw_ets.write_bytes(b"SIS\x00")
             rois = [
                 {
                     "id": "roi_1",
@@ -165,56 +162,29 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 }
             ]
 
-            loaded = histology_ets_analysis.load_ets_project(root)
-            entry_id = loaded["entries"][0]["entry_id"]
-            preview = histology_ets_analysis.load_ets_image_preview(root, entry_id)
-            result = histology_ets_analysis.analyze_ets_rois(
-                root,
-                entry_id,
-                rois,
-                {
-                    "sma_channel": "red",
-                    "sma_threshold_method": "manual",
-                    "sma_threshold": 120,
-                    "macrophage_channel": "green",
-                    "macrophage_threshold_method": "manual",
-                    "macrophage_threshold": 120,
-                    "background_mode": "none",
-                },
-            )
             file_preview = histology_ets_analysis.load_histology_file_image_preview(image)
             file_result = histology_ets_analysis.analyze_histology_file_rois(
                 image,
                 rois,
                 {
-                    "sma_channel": "red",
+                    "sma_channel": "green",
                     "sma_threshold_method": "manual",
                     "sma_threshold": 120,
-                    "macrophage_channel": "green",
+                    "macrophage_channel": "red",
                     "macrophage_threshold_method": "manual",
                     "macrophage_threshold": 120,
                     "background_mode": "none",
                 },
             )
 
-            self.assertEqual(loaded["entry_count"], 1)
-            self.assertEqual(preview["width"], 24)
-            self.assertEqual(result["roi_count"], 1)
-            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
-            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
-            self.assertTrue(Path(result["analysis_path"]).exists())
-            self.assertTrue(Path(result["geojson_path"]).exists())
-            index_path = Path(result["project_path"])
-            self.assertTrue(index_path.exists())
-            index = json.loads(index_path.read_text(encoding="utf-8"))
-            self.assertEqual(index["protocol"], "dataprocess-ets-histology")
-            self.assertEqual(index["entry_count"], 1)
             self.assertEqual(file_preview["width"], 24)
             self.assertEqual(file_result["roi_count"], 1)
             self.assertEqual(file_result["kind"], "single_file_histology_analysis")
             self.assertGreater(file_result["results"][0]["macrophage_positive_px"], 0)
+            with self.assertRaises(ValueError):
+                histology_ets_analysis.load_histology_file_image_preview(raw_ets)
 
-    def test_histology_data_project_references_external_images_and_renames_entries(self) -> None:
+    def test_histology_data_project_indexes_raw_files_and_analyzes_exported_tiffs(self) -> None:
         try:
             import numpy as np
             import tifffile
@@ -223,27 +193,31 @@ class HistologyServiceSplitTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_") as tmp:
             tmp_root = Path(tmp)
-            source_root = tmp_root / "source"
-            case_dir = source_root / "5-CB"
-            stack = case_dir / "_Tray04_Slide01_01_" / "stack1"
-            stack.mkdir(parents=True)
-            overview_stack = case_dir / "_Tray04_Slide01_Overview_" / "stack1"
-            overview_stack.mkdir(parents=True)
-            image = stack / "frame_t_0.ets"
-            overview_ets = overview_stack / "frame_t_0.ets"
-            arr = np.zeros((22, 22, 3), dtype=np.uint8)
-            arr[4:16, 4:16, 0] = 220
-            arr[8:20, 8:20, 1] = 210
-            tifffile.imwrite(image, arr)
-            tifffile.imwrite(overview_ets, arr)
-            label_vsi = case_dir / "Tray04_Slide01_01.vsi"
-            overview_vsi = case_dir / "Tray04_Slide01_Overview.vsi"
-            preview_arr = np.zeros((40, 40, 3), dtype=np.uint8)
-            preview_arr[6:34, 6:34, 0] = 180
-            preview_arr[12:36, 12:36, 1] = 190
-            tifffile.imwrite(label_vsi, preview_arr)
-            tifffile.imwrite(overview_vsi, preview_arr)
+            raw_root = tmp_root / "raw_olympus"
+            raw_case = raw_root / "5-CB"
+            (raw_case / "_Tray04_Slide01_01_" / "stack1").mkdir(parents=True)
+            (raw_case / "_Tray04_Slide01_Overview_" / "stack1").mkdir(parents=True)
+            (raw_case / "Tray04_Slide01_01.vsi").write_bytes(b"raw-vsi")
+            (raw_case / "Tray04_Slide01_Overview.vsi").write_bytes(b"overview-vsi")
+            (raw_case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets").write_bytes(b"SIS\x00")
+            (raw_case / "_Tray04_Slide01_Overview_" / "stack1" / "frame_t.ets").write_bytes(b"SIS\x00")
+
+            exported = tmp_root / "exported_tiff"
+            exported.mkdir()
+            hoechst = np.zeros((22, 22), dtype=np.uint16)
+            fitc = np.zeros((22, 22), dtype=np.uint16)
+            cy5 = np.zeros((22, 22), dtype=np.uint16)
+            bf = np.full((22, 22), 150, dtype=np.uint16)
+            hoechst[2:20, 2:20] = 1200
+            fitc[4:16, 4:16] = 50000
+            cy5[8:20, 8:20] = 45000
+            tifffile.imwrite(exported / "5-CB_Hoechst.tif", hoechst)
+            tifffile.imwrite(exported / "5-CB_FITC.tif", fitc)
+            tifffile.imwrite(exported / "5-CB_Cy5.tif", cy5)
+            tifffile.imwrite(exported / "5-CB_BF.tif", bf)
+
             project = tmp_root / "project_home" / "study.dphistology"
+            analysis_dir = tmp_root / "project_home" / "analysis"
             rois = [
                 {
                     "id": "roi_external",
@@ -252,11 +226,14 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 }
             ]
 
-            created = histology_ets_analysis.create_histology_data_project(project)
-            loaded = histology_ets_analysis.add_histology_data_project_paths(
-                created["project_path"],
-                [source_root],
+            scanned = histology.scan_exported_tiff_project(exported, raw_dir=raw_root, analysis_dir=analysis_dir)
+            created = histology.create_project_from_exported_tiff(
+                project,
+                exported,
+                raw_dir=raw_root,
+                analysis_dir=analysis_dir,
             )
+            loaded = histology_ets_analysis.load_histology_data_project(project)
             entry_id = loaded["entries"][0]["entry_id"]
             renamed = histology_ets_analysis.rename_histology_data_project_entry(
                 project,
@@ -264,91 +241,42 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 "5-CB SMA macrophage",
             )
             preview = histology_ets_analysis.load_histology_data_project_image_preview(project, entry_id)
-            naming_preview = histology_preview.load_histology_preview_pair(overview_vsi)
             result = histology_ets_analysis.analyze_histology_data_project_rois(
                 project,
                 entry_id,
                 rois,
                 {
-                    "sma_channel": "red",
+                    "sma_channel": "green",
                     "sma_threshold_method": "manual",
                     "sma_threshold": 120,
-                    "macrophage_channel": "green",
+                    "macrophage_channel": "red",
                     "macrophage_threshold_method": "manual",
                     "macrophage_threshold": 120,
                     "background_mode": "none",
                 },
             )
 
-            self.assertEqual(created["entry_count"], 0)
-            self.assertTrue(Path(created["cache_dir"]).is_dir())
-            self.assertTrue(Path(created["cache_layout"]["previews"]).is_dir())
-            self.assertTrue(Path(created["cache_layout"]["converted"]).is_dir())
-            self.assertTrue(Path(created["cache_layout"]["tmp"]).is_dir())
+            self.assertEqual(scanned["sample_count"], 1)
+            self.assertEqual(scanned["raw_olympus_file_count"], 4)
+            self.assertEqual(created["protocol"], "dataprocess-tiff-histology")
+            self.assertEqual(created["entry_count"], 1)
+            self.assertTrue(Path(created["project_path"]).is_file())
+            self.assertTrue(Path(created["raw_olympus_index_path"]).is_file())
             self.assertEqual(loaded["entry_count"], 1)
-            self.assertEqual(loaded["added_count"], 1)
-            self.assertEqual(loaded["entries"][0]["format"], "ets")
-            self.assertEqual(loaded["entries"][0]["associated_file_count"], 2)
-            self.assertEqual(loaded["entries"][0]["label_vsi_path"], str(label_vsi.resolve()))
-            self.assertEqual(loaded["entries"][0]["overview_vsi_path"], str(overview_vsi.resolve()))
+            self.assertIn("Hoechst", loaded["entries"][0]["image_files"])
+            self.assertIn("FITC", loaded["entries"][0]["image_files"])
+            self.assertIn("Cy5", loaded["entries"][0]["image_files"])
+            self.assertTrue(Path(loaded["entries"][0]["manifest_path"]).is_file())
+            self.assertTrue(Path(loaded["entries"][0]["parameters_path"]).is_file())
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
             self.assertEqual(preview["width"], 22)
-            self.assertTrue(naming_preview["main_b64"])
             self.assertGreater(result["results"][0]["sma_positive_px"], 0)
+            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
             self.assertTrue(Path(result["analysis_path"]).exists())
             self.assertTrue(Path(result["geojson_path"]).exists())
             self.assertTrue(Path(result["project_path"]).exists())
             self.assertIn("project_home", result["analysis_path"])
-            self.assertFalse((source_root / ".dataprocess_histology").exists())
-
-            vsi_project = tmp_root / "project_home" / "from_vsi.dphistology"
-            histology_ets_analysis.create_histology_data_project(vsi_project)
-            from_vsi = histology_ets_analysis.add_histology_data_project_paths(
-                vsi_project,
-                [overview_vsi],
-            )
-            self.assertEqual(from_vsi["entry_count"], 1)
-            self.assertEqual(from_vsi["entries"][0]["image_path"], str(image.resolve()))
-
-            dirty_project = tmp_root / "project_home" / "dirty_old_records.dphistology"
-            dirty_created = histology_ets_analysis.create_histology_data_project(dirty_project)
-            dirty_payload = json.loads(Path(dirty_created["project_path"]).read_text(encoding="utf-8"))
-            dirty_payload["images"] = [
-                {
-                    "entry_id": "old_vsi_entry",
-                    "image_name": "5-CB · Tray04_Slide01_01.vsi",
-                    "image_path": str(label_vsi),
-                    "source_path": str(label_vsi),
-                    "format": "vsi",
-                },
-                {
-                    "entry_id": "old_overview_ets_entry",
-                    "image_name": "5-CB · Tray04_Slide01_Overview · stack1",
-                    "image_path": str(overview_ets),
-                    "source_path": str(overview_ets),
-                    "format": "ets",
-                },
-                {
-                    "entry_id": "old_primary_entry",
-                    "image_name": "Custom primary display",
-                    "image_path": str(image),
-                    "source_path": str(image),
-                    "format": "ets",
-                },
-            ]
-            Path(dirty_created["project_path"]).write_text(
-                json.dumps(dirty_payload),
-                encoding="utf-8",
-            )
-            cleaned = histology_ets_analysis.load_histology_data_project(dirty_project)
-
-            self.assertEqual(cleaned["entry_count"], 1)
-            self.assertEqual(cleaned["entries"][0]["image_path"], str(image.resolve()))
-            self.assertEqual(cleaned["entries"][0]["format"], "ets")
-            self.assertEqual(cleaned["entries"][0]["image_name"], "Custom primary display")
-            self.assertNotIn(".vsi", cleaned["entries"][0]["image_name"])
-            self.assertNotIn("Overview", cleaned["entries"][0]["image_name"])
-            self.assertEqual(cleaned["entries"][0]["associated_file_count"], 2)
+            self.assertFalse((raw_root / ".dataprocess_histology").exists())
 
     def test_histology_data_project_folder_path_creates_reusable_local_file(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_file_") as tmp:

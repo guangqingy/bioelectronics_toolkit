@@ -10,10 +10,6 @@
 .histology-stack-gap {
   margin-top: 8px;
 }
-.histology-suffix-box {
-  height: 70px;
-  resize: vertical;
-}
 .histology-naming-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -57,6 +53,16 @@
   line-height: 1.8;
   white-space: pre-wrap;
 }
+.histology-channel-panel {
+  align-self: stretch;
+  padding: 12px;
+  width: 100%;
+}
+.histology-warning-list {
+  color: var(--warning-text, var(--graphite));
+  font-size: 12px;
+  line-height: 1.6;
+}
 @media (max-width: 1100px) {
   .histology-naming-grid {
     grid-template-columns: 1fr;
@@ -73,15 +79,30 @@
     <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
   </div>
   <div class="btn-row histology-stack-gap">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyProjectPath','createHistologyDataProject')">Save Folder</button>
-    <button class="btn-primary" id="btnCreateHistologyProject" type="button" onclick="DP.page.createHistologyDataProject()">Create / Load File</button>
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyProjectPath')">Save Folder</button>
+    <button class="btn-primary" id="btnLoadHistologyProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load File</button>
+  </div>
+</div>
+
+<div class="ctrl-section" id="histologyTiffProjectControls">
+  <div class="ctrl-label">Exported TIFF / Images</div>
+  <div class="input-row histology-stack-gap">
+    <input type="text" id="histologyExportedTiffPath" class="input-path histology-grow" placeholder="/path/to/exported_tiff">
+    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">File</button>
+    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyExportedTiffPath','scanHistologyTiffProject')">Folder</button>
   </div>
   <div class="input-row histology-stack-gap">
-    <input type="text" id="histologyProjectAddPath" class="input-path histology-grow" placeholder="/path/to/ETS file or folder">
-    <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyProjectAddPath','addHistologyDataProjectPath')">ETS File</button>
-    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyProjectAddPath','addHistologyDataProjectPath')">Folder</button>
+    <input type="text" id="histologyRawOlympusPath" class="input-path histology-grow" placeholder="/path/to/raw_olympus (optional)">
+    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyRawOlympusPath')">Raw Olympus</button>
   </div>
-  <button class="btn-secondary btn-block histology-stack-gap" id="btnAddHistologyProjectPath" type="button" onclick="DP.page.addHistologyDataProjectPath()">Add ETS To Project</button>
+  <div class="input-row histology-stack-gap">
+    <input type="text" id="histologyAnalysisPath" class="input-path histology-grow" placeholder="/path/to/analysis (optional)">
+    <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyAnalysisPath')">Analysis</button>
+  </div>
+  <div class="btn-row histology-stack-gap">
+    <button class="btn-secondary" id="btnScanHistologyTiffProject" type="button" onclick="DP.page.scanHistologyTiffProject()">Scan</button>
+    <button class="btn-primary" id="btnCreateHistologyProject" type="button" onclick="DP.page.createHistologyTiffProject()">Create Analysis Project</button>
+  </div>
 </div>
 
 <div class="ctrl-section" id="histologyProjectEntryControls">
@@ -94,57 +115,6 @@
   <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" onclick="DP.page.renameHistologyDataProjectEntry()">Rename In Project</button>
 </div>
 
-<div class="ctrl-section" id="histologyCaseFolderControls">
-  <div class="ctrl-label">Case Folder</div>
-  <div class="input-row">
-    <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/case-folder">
-    <button class="btn-icon" onclick="DP.folder.pick('projectPath','scanProject')">Browse Folder</button>
-  </div>
-  <button class="btn-primary histology-stack-gap" id="btnScan" onclick="DP.page.scanProject()">Load Case Folder</button>
-  <div class="param-row histology-stack-gap">
-    <div class="param-label">Optional .qpproj</div>
-    <div class="input-row histology-grow">
-      <input type="text" id="qupathProject" class="input-path histology-grow" data-path-default="false" placeholder="/path/to/project.qpproj">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
-    </div>
-  </div>
-</div>
-
-<div class="ctrl-section" id="histologyCaseControls">
-  <div class="ctrl-label">Cases</div>
-  <div id="caseList" class="file-list"></div>
-</div>
-
-<div class="ctrl-section" id="histologyNamingControls">
-  <div class="ctrl-label">Rename</div>
-  <div class="param-row">
-    <div class="param-label">Rotate</div>
-    <select id="rotateDeg" class="input-sm" onchange="DP.page.onRotateChange()">
-      <option value="0">0°</option>
-      <option value="90">90°</option>
-      <option value="180">180°</option>
-      <option value="270">270°</option>
-    </select>
-  </div>
-  <div class="param-row">
-    <div class="param-label">New name</div>
-    <input type="text" id="newName" class="input-sm">
-  </div>
-  <div class="param-row">
-    <div class="param-label">Suffixes</div>
-    <textarea id="suffixList" class="histology-suffix-box" placeholder="CD68+SMA\nH&E\nDAPI" oninput="DP.page.onSuffixListChange()"></textarea>
-  </div>
-  <div class="param-row">
-    <div class="param-label">Use</div>
-    <select id="suffixPick" class="input-sm" onchange="DP.page.onSuffixPickChange()"></select>
-  </div>
-  <label class="checkbox-row"><input type="checkbox" id="useSuffix"><span>Append selected suffix</span></label>
-  <label class="checkbox-row"><input type="checkbox" id="updateQuPath" checked><span>Also update QuPath display names</span></label>
-  <button class="btn-secondary btn-block histology-stack-gap" id="btnSyncQuPath" type="button" onclick="DP.page.syncQuPathNames()">Sync QuPath Names</button>
-  <button class="btn-primary histology-stack-gap" id="btnRename" onclick="DP.page.applyRename()">Rename Folder</button>
-  <button class="btn-secondary btn-block histology-stack-gap" onclick="DP.page.scanProject()">Refresh List</button>
-</div>
-
 <div id="status" class="status-bar"></div>
 {% endblock %}
 
@@ -152,29 +122,29 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology Naming</div>
-    <div class="view-sub" id="histologyMeta">Create a DataProcess histology project, add external ETS/TIFF files, rename project entries, or preview and rename physical case folders.</div>
+    <div class="view-sub" id="histologyMeta">Create a local DataProcess histology project from exported 2D TIFF images; Olympus raw files are indexed only for traceability.</div>
   </div>
 
   <div class="view-results histology-naming-grid" id="histologyNamingModuleMain">
     <div class="result-card">
       <div class="result-card-header">
-        <span>Main / Histology</span>
+        <span>Image Preview</span>
         <span id="mainSource" class="histology-card-meta"></span>
       </div>
       <div class="result-card-body">
         <div class="plot-area histology-preview-area" id="mainPreview">
-          <div class="plot-placeholder">Select a case to preview the main image</div>
+          <div class="plot-placeholder">Select a project entry to preview the main image</div>
         </div>
       </div>
     </div>
     <div class="result-card">
       <div class="result-card-header">
-        <span>Label / Associated image</span>
+        <span>Channels / Traceability</span>
         <span id="labelSource" class="histology-card-meta"></span>
       </div>
       <div class="result-card-body">
         <div class="plot-area histology-preview-area" id="labelPreview">
-          <div class="plot-placeholder">Select a case to preview the label image</div>
+          <div class="plot-placeholder">Select a project entry to inspect channels and raw-file references</div>
         </div>
       </div>
     </div>
@@ -183,7 +153,7 @@
   <div class="result-card" id="histologyNamingNotes">
     <div class="result-card-header">Notes</div>
     <div class="result-card-body">
-      <div id="notesArea" class="histology-notes">No case loaded.</div>
+      <div id="notesArea" class="histology-notes">No project entry loaded.</div>
     </div>
   </div>
 </div>
