@@ -237,11 +237,20 @@ class WebAppSmokeTests(unittest.TestCase):
         html = response.data.decode("utf-8")
 
         self.assertIn("Histology Naming", html)
+        self.assertIn("DataProcess Project", html)
+        self.assertIn("histologyProjectPath", html)
+        self.assertIn("histology_project.dphistology", html)
+        self.assertIn("Add To Project", html)
+        self.assertIn("Rename In Project", html)
         self.assertIn("Load Case Folder", html)
         self.assertIn('data-path-default="false"', html)
         self.assertIn("histologyNamingControls", html)
         self.assertIn("Sync QuPath Names", html)
         self.assertIn("Rename Folder", html)
+        self.assertIn("DP.page.onRotateChange()", html)
+        self.assertIn("DP.page.onSuffixListChange()", html)
+        self.assertIn("DP.page.onSuffixPickChange()", html)
+        self.assertIn("histology-naming-grid", html)
         self.assertIn("histology.js", html)
         self.assertNotIn("histologyAnalysisCanvas", html)
 
@@ -250,9 +259,11 @@ class WebAppSmokeTests(unittest.TestCase):
         html = response.data.decode("utf-8")
 
         self.assertIn("Histology ROI Analysis", html)
-        self.assertIn("ETS Case Folder", html)
-        self.assertIn("Load ETS Folder", html)
-        self.assertIn("DP.folder.pick('projectPath','loadHistologyEtsProject')", html)
+        self.assertIn("DataProcess Project", html)
+        self.assertIn("histology_project.dphistology", html)
+        self.assertIn("Load Project", html)
+        self.assertIn("DP.folder.pickFile('projectPath','loadHistologyDataProject')", html)
+        self.assertIn("histology-analysis-workbench", html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyRoiLabelInline", html)
         self.assertIn("Start ROI", html)
@@ -264,8 +275,11 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Cy5 / Red", html)
         self.assertIn("Advanced Detection", html)
         self.assertIn("histology_analysis.js", html)
+        self.assertNotIn("histologyRoiControls", html)
         self.assertNotIn("histologyNamingControls", html)
         self.assertNotIn(".qpproj", html)
+        self.assertNotIn("button-row", html)
+        self.assertNotIn("var(--line)", html)
 
     def test_histology_analysis_api_runs_on_ets_entry(self) -> None:
         try:
@@ -292,21 +306,47 @@ class WebAppSmokeTests(unittest.TestCase):
                     "points": [{"x": 1, "y": 1}, {"x": 18, "y": 1}, {"x": 18, "y": 18}, {"x": 1, "y": 18}],
                 }
             ]
+            project = root / "study.dphistology"
 
             project_response = self.client.post(
-                "/api/histology/ets_project", json={"folder": str(root)}
+                "/api/histology/project/create", json={"project_path": str(project)}
             )
             project_payload = project_response.get_json()
-            entry_id = project_payload["entries"][0]["entry_id"]
+            add_response = self.client.post(
+                "/api/histology/project/add_paths",
+                json={"project_path": project_payload["project_path"], "paths": [str(image)]},
+            )
+            add_payload = add_response.get_json()
+            entry_id = add_payload["entries"][0]["entry_id"]
             preview_response = self.client.post(
-                "/api/histology/ets_image_preview",
-                json={"folder": str(root), "entry_id": entry_id},
+                "/api/histology/project/image_preview",
+                json={"project_path": project_payload["project_path"], "entry_id": entry_id},
             )
             analysis_response = self.client.post(
-                "/api/histology/ets_analysis/run",
+                "/api/histology/project/analysis/run",
                 json={
-                    "folder": str(root),
+                    "project_path": project_payload["project_path"],
                     "entry_id": entry_id,
+                    "rois": rois,
+                    "parameters": {
+                        "sma_channel": "red",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 100,
+                        "macrophage_channel": "green",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 100,
+                        "background_mode": "none",
+                    },
+                },
+            )
+            file_preview_response = self.client.post(
+                "/api/histology/file/image_preview",
+                json={"image_path": str(image)},
+            )
+            file_analysis_response = self.client.post(
+                "/api/histology/file/analysis/run",
+                json={
+                    "image_path": str(image),
                     "rois": rois,
                     "parameters": {
                         "sma_channel": "red",
@@ -322,9 +362,13 @@ class WebAppSmokeTests(unittest.TestCase):
 
             preview_payload = preview_response.get_json()
             analysis_payload = analysis_response.get_json()
+            file_preview_payload = file_preview_response.get_json()
+            file_analysis_payload = file_analysis_response.get_json()
             self.assertEqual(project_response.status_code, 200)
             self.assertTrue(project_payload["ok"])
-            self.assertEqual(project_payload["entry_count"], 1)
+            self.assertEqual(add_response.status_code, 200)
+            self.assertTrue(add_payload["ok"])
+            self.assertEqual(add_payload["entry_count"], 1)
             self.assertEqual(preview_response.status_code, 200)
             self.assertTrue(preview_payload["ok"])
             self.assertEqual(preview_payload["width"], 20)
@@ -334,6 +378,13 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertGreaterEqual(analysis_payload["results"][0]["sma_object_count"], 1)
             self.assertTrue(Path(analysis_payload["analysis_path"]).exists())
             self.assertTrue(Path(analysis_payload["project_path"]).exists())
+            self.assertEqual(file_preview_response.status_code, 200)
+            self.assertTrue(file_preview_payload["ok"])
+            self.assertEqual(file_preview_payload["width"], 20)
+            self.assertEqual(file_analysis_response.status_code, 200)
+            self.assertTrue(file_analysis_payload["ok"])
+            self.assertEqual(file_analysis_payload["kind"], "single_file_histology_analysis")
+            self.assertGreater(file_analysis_payload["results"][0]["macrophage_positive_px"], 0)
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1192,14 +1243,15 @@ class WebAppSmokeTests(unittest.TestCase):
             "FluorescenceStackExportBatchRequest",
             "FluorescenceStackExportRequest",
             "HistologyRenameRequest",
-            "HistologyAnalyzeRoisRequest",
-            "HistologyEtsAnalyzeRoisRequest",
-            "HistologyEtsImagePreviewRequest",
-            "HistologyEtsProjectRequest",
-            "HistologyEtsSaveRoisRequest",
-            "HistologyQupathImagePreviewRequest",
-            "HistologyQupathProjectRequest",
-            "HistologySaveRoisRequest",
+            "HistologyDataProjectAddPathsRequest",
+            "HistologyDataProjectAnalyzeRoisRequest",
+            "HistologyDataProjectCreateRequest",
+            "HistologyDataProjectImagePreviewRequest",
+            "HistologyDataProjectLoadRequest",
+            "HistologyDataProjectRenameEntryRequest",
+            "HistologyDataProjectSaveRoisRequest",
+            "HistologyFileAnalyzeRoisRequest",
+            "HistologyFileImagePreviewRequest",
             "HistologySyncQupathNamesRequest",
             "LifExportManifestRequest",
             "LifExportTiffBatchRequest",
@@ -1251,14 +1303,15 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/3d/intensity_distribution": "#/components/schemas/Fluorescence3dDistributionRequest",
             "/api/histology/rename_job": "#/components/schemas/HistologyRenameRequest",
             "/api/histology/sync_qupath_names_job": "#/components/schemas/HistologySyncQupathNamesRequest",
-            "/api/histology/ets_project": "#/components/schemas/HistologyEtsProjectRequest",
-            "/api/histology/ets_image_preview": "#/components/schemas/HistologyEtsImagePreviewRequest",
-            "/api/histology/ets_analysis/save_rois": "#/components/schemas/HistologyEtsSaveRoisRequest",
-            "/api/histology/ets_analysis/run_job": "#/components/schemas/HistologyEtsAnalyzeRoisRequest",
-            "/api/histology/qupath_project": "#/components/schemas/HistologyQupathProjectRequest",
-            "/api/histology/qupath_image_preview": "#/components/schemas/HistologyQupathImagePreviewRequest",
-            "/api/histology/analysis/save_rois": "#/components/schemas/HistologySaveRoisRequest",
-            "/api/histology/analysis/run_job": "#/components/schemas/HistologyAnalyzeRoisRequest",
+            "/api/histology/project/create": "#/components/schemas/HistologyDataProjectCreateRequest",
+            "/api/histology/project/load": "#/components/schemas/HistologyDataProjectLoadRequest",
+            "/api/histology/project/add_paths": "#/components/schemas/HistologyDataProjectAddPathsRequest",
+            "/api/histology/project/rename_entry": "#/components/schemas/HistologyDataProjectRenameEntryRequest",
+            "/api/histology/project/image_preview": "#/components/schemas/HistologyDataProjectImagePreviewRequest",
+            "/api/histology/project/analysis/save_rois": "#/components/schemas/HistologyDataProjectSaveRoisRequest",
+            "/api/histology/project/analysis/run_job": "#/components/schemas/HistologyDataProjectAnalyzeRoisRequest",
+            "/api/histology/file/image_preview": "#/components/schemas/HistologyFileImagePreviewRequest",
+            "/api/histology/file/analysis/run_job": "#/components/schemas/HistologyFileAnalyzeRoisRequest",
             "/api/rhd/plot": "#/components/schemas/RhdViewRequest",
             "/api/rhd/process": "#/components/schemas/RhdProcessingRequest",
             "/api/rhd/export_processing_job": "#/components/schemas/RhdProcessingRequest",
@@ -1280,6 +1333,19 @@ class WebAppSmokeTests(unittest.TestCase):
             operation = payload["paths"][path]["post"]
             schema_ref = operation["requestBody"]["content"]["application/json"]["schema"]["$ref"]
             self.assertEqual(schema_ref, expected_ref)
+        for removed_path in [
+            "/api/histology/ets_project",
+            "/api/histology/ets_image_preview",
+            "/api/histology/ets_analysis/save_rois",
+            "/api/histology/ets_analysis/run",
+            "/api/histology/ets_analysis/run_job",
+            "/api/histology/qupath_project",
+            "/api/histology/qupath_image_preview",
+            "/api/histology/analysis/save_rois",
+            "/api/histology/analysis/run",
+            "/api/histology/analysis/run_job",
+        ]:
+            self.assertNotIn(removed_path, payload["paths"])
 
     def test_schema_validation_returns_422(self) -> None:
         response = self.client.post("/api/jobs/list", json={"limit": 9999})

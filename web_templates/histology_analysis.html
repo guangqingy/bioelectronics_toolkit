@@ -1,39 +1,166 @@
 {% extends "base.html" %}
 {% block title %}Histology ROI Analysis{% endblock %}
 
+{% block head %}
+<style>
+.histology-grow {
+  flex: 1;
+  min-width: 0;
+}
+.histology-stack-gap {
+  margin-top: 8px;
+}
+.histology-image-list {
+  max-height: 260px;
+}
+.histology-analysis-workbench {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.25fr) minmax(300px, .75fr);
+  gap: 12px;
+  align-items: start;
+}
+.histology-panel {
+  min-height: 480px;
+}
+.histology-card-meta {
+  color: var(--silver);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.histology-roi-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.histology-roi-toolbar .input-sm {
+  width: 120px;
+}
+.histology-roi-toolbar .btn-primary {
+  width: auto;
+}
+.histology-roi-count {
+  color: var(--silver);
+  font-size: 12px;
+  margin-left: auto;
+}
+.histology-roi-list {
+  max-height: 180px;
+  margin-bottom: 12px;
+}
+.histology-roi-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.histology-roi-dot {
+  background: var(--roi-color, var(--blue));
+  border-radius: 50%;
+  height: 10px;
+  width: 10px;
+  flex: 0 0 auto;
+}
+.histology-roi-name {
+  flex: 1;
+  min-width: 0;
+}
+.histology-roi-delete {
+  font-size: 11px;
+  min-height: 22px;
+  padding: 1px 7px;
+}
+.histology-file-title {
+  font-weight: 650;
+}
+.histology-file-subline {
+  color: var(--silver);
+  font-size: 11px;
+}
+.histology-file-path {
+  color: var(--silver);
+  font-size: 10.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.histology-plot-area {
+  background: var(--surface-panel);
+  min-height: 500px;
+}
+.histology-canvas-surface {
+  background: var(--code-bg);
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+.histology-analysis-img {
+  display: block;
+  max-width: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.histology-analysis-canvas {
+  cursor: crosshair;
+  left: 0;
+  position: absolute;
+  top: 0;
+}
+.histology-hint {
+  color: var(--silver);
+  font-size: 12px;
+  margin-top: 8px;
+}
+.histology-results {
+  color: var(--graphite);
+  font-size: 12.5px;
+}
+.histology-result-empty {
+  min-height: 70px;
+}
+.histology-results-meta {
+  color: var(--silver);
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.histology-scroll {
+  overflow: auto;
+}
+.histology-roi-toolbar .btn-secondary:disabled,
+.histology-roi-toolbar .btn-primary:disabled {
+  opacity: .62;
+}
+@media (max-width: 1100px) {
+  .histology-analysis-workbench {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
 {% block controls %}
 <div class="ctrl-section" id="histologyAnalysisProjectControls">
-  <div class="ctrl-label">ETS Case Folder</div>
+  <div class="ctrl-label">DataProcess Project</div>
   <div class="param-row">
-    <div class="param-label">Folder</div>
-    <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="projectPath" class="input-path" placeholder="/path/to/histology/case-folder" style="flex:1;min-width:0">
-      <button class="btn-icon" type="button" onclick="DP.folder.pick('projectPath','loadHistologyEtsProject')">Browse Folder</button>
+    <div class="param-label">Project</div>
+    <div class="input-row histology-grow">
+      <input type="text" id="projectPath" class="input-path histology-grow" placeholder="/path/to/histology_project.dphistology or containing folder">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('projectPath','loadHistologyDataProject')">Open File</button>
     </div>
   </div>
-  <button class="btn-primary btn-block" id="btnLoadEtsAnalysis" type="button" onclick="DP.page.loadHistologyEtsProject()">Load ETS Folder</button>
+  <div class="btn-row histology-stack-gap">
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('projectPath','loadHistologyDataProject')">Open Folder</button>
+    <button class="btn-primary" id="btnLoadEtsAnalysis" type="button" onclick="DP.page.loadHistologyDataProject()">Load Project</button>
+  </div>
 </div>
 
 <div class="ctrl-section" id="histologyImageControls">
-  <div class="ctrl-label">ETS Images</div>
-  <div id="histologyEtsImageList" class="file-list" style="max-height:260px"></div>
-</div>
-
-<div class="ctrl-section" id="histologyRoiControls">
-  <div class="ctrl-label">Polygon ROI</div>
-  <div class="param-row">
-    <div class="param-label">Label</div>
-    <input type="text" id="histologyRoiLabel" class="input-sm" value="ROI 1">
-  </div>
-  <div class="btn-row">
-    <button class="btn-secondary" type="button" onclick="DP.page.startHistologyPolygon()">Start</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.finishHistologyPolygon()">Finish</button>
-  </div>
-  <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.page.undoHistologyPoint()">Undo Point</button>
-    <button class="btn-secondary btn-danger" type="button" onclick="DP.page.clearHistologyRois()">Clear ROI</button>
-  </div>
-  <div id="histologyRoiList" class="file-list" style="max-height:150px;margin-top:8px"></div>
+  <div class="ctrl-label">Project Images</div>
+  <div id="histologyEtsImageList" class="file-list histology-image-list"></div>
 </div>
 
 <div class="ctrl-section" id="histologyMarkerControls">
@@ -104,7 +231,7 @@
   </div>
   <label class="checkbox-row"><input type="checkbox" id="dapiMaskEnabled"><span>Restrict analysis to DAPI mask</span></label>
 
-  <details class="ctrl-details" style="margin-top:8px">
+  <details class="ctrl-details">
     <summary>Advanced Detection</summary>
     <div class="param-row">
       <div class="param-label">BC</div>
@@ -136,8 +263,6 @@
       <input type="number" id="dapiDilatePx" class="input-sm" min="0" max="30" step="1" value="2">
     </div>
   </details>
-  <button class="btn-secondary btn-block" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()">Save ROI</button>
-  <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" style="margin-top:8px">Analyze SMA + Macrophage</button>
 </div>
 
 <div id="status" class="status-bar"></div>
@@ -147,31 +272,45 @@
 <div class="view-main">
   <div class="view-header">
     <div class="view-title">Histology ROI Analysis</div>
-    <div class="view-sub" id="histologyMeta">Load a histology folder, draw polygon ROIs on ETS images, tune marker detection, and save SMA/macrophage results.</div>
+    <div class="view-sub" id="histologyMeta">Load a DataProcess histology project, draw polygon ROIs, tune marker detection, and save SMA/macrophage results.</div>
   </div>
 
-  <div class="result-card" id="histologyAnalysisCard">
-    <div class="result-card-header">
-      <span>ETS ROI Analysis</span>
-      <span id="histologyAnalysisMeta" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)">Load an ETS folder to begin.</span>
+  <div class="histology-analysis-workbench">
+    <div class="result-card histology-panel" id="histologyAnalysisCard">
+      <div class="result-card-header">
+        <span>Project Image</span>
+        <span id="histologyAnalysisMeta" class="histology-card-meta">Load a histology project to begin.</span>
+      </div>
+      <div class="result-card-body">
+        <div id="histologyRoiToolbar" class="histology-roi-toolbar">
+          <input type="text" id="histologyRoiLabelInline" class="input-sm" value="ROI 1">
+          <button class="btn-secondary" id="btnStartHistologyRoi" type="button" onclick="DP.page.startHistologyPolygon()" disabled>Start ROI</button>
+          <button class="btn-secondary" id="btnFinishHistologyRoi" type="button" onclick="DP.page.finishHistologyPolygon()" disabled>Finish</button>
+          <button class="btn-secondary" id="btnUndoHistologyRoi" type="button" onclick="DP.page.undoHistologyPoint()" disabled>Undo</button>
+          <button class="btn-secondary btn-danger" id="btnClearHistologyRois" type="button" onclick="DP.page.clearHistologyRois()" disabled>Clear</button>
+          <button class="btn-secondary" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()" disabled>Save ROI</button>
+          <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" disabled>Analyze SMA + Macrophage</button>
+          <span id="histologyRoiInlineCount" class="histology-roi-count">0 ROI</span>
+        </div>
+        <div id="histologyAnalysisPlotArea" class="plot-area histology-plot-area">
+          <div id="histologyAnalysisEmpty" class="plot-placeholder">Load a project image to begin ROI analysis</div>
+          <div id="histologyAnalysisSurface" class="histology-canvas-surface" hidden>
+            <img id="histologyAnalysisImg" class="histology-analysis-img" alt="Histology analysis preview" hidden>
+            <canvas id="histologyAnalysisCanvas" class="histology-analysis-canvas" hidden></canvas>
+          </div>
+        </div>
+        <div id="histologyAnalysisHint" class="histology-hint">Load a project image, then click Start ROI to draw a polygon.</div>
+      </div>
     </div>
-    <div class="result-card-body">
-      <div id="histologyRoiToolbar" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <input type="text" id="histologyRoiLabelInline" class="input-sm" value="ROI 1" style="width:120px">
-        <button class="btn-secondary" type="button" onclick="DP.page.startHistologyPolygon()">Start ROI</button>
-        <button class="btn-secondary" type="button" onclick="DP.page.finishHistologyPolygon()">Finish</button>
-        <button class="btn-secondary" type="button" onclick="DP.page.undoHistologyPoint()">Undo</button>
-        <button class="btn-secondary btn-danger" type="button" onclick="DP.page.clearHistologyRois()">Clear</button>
-        <button class="btn-secondary" type="button" onclick="DP.page.saveHistologyRois()">Save ROI</button>
-        <button class="btn-primary" type="button" onclick="DP.page.analyzeHistologyRois()">Analyze</button>
-        <span id="histologyRoiInlineCount" style="font-size:12px;color:var(--pewter);margin-left:auto">0 ROI</span>
+
+    <div class="result-card histology-panel">
+      <div class="result-card-header">
+        <span>ROI & Results</span>
       </div>
-      <div id="histologyAnalysisSurface" style="position:relative;display:inline-block;max-width:100%;background:#070710;border:1px solid var(--border-muted);border-radius:6px;overflow:hidden;">
-        <img id="histologyAnalysisImg" alt="Histology analysis preview" style="max-width:100%;display:none;user-select:none;-webkit-user-drag:none;">
-        <canvas id="histologyAnalysisCanvas" style="position:absolute;left:0;top:0;display:none;cursor:crosshair;"></canvas>
+      <div class="result-card-body">
+        <div id="histologyRoiList" class="file-list histology-roi-list"></div>
+        <div id="histologyAnalysisResults" class="histology-results"></div>
       </div>
-      <div id="histologyAnalysisHint" style="margin-top:8px;font-size:12px;color:var(--pewter);">Click Start, then click the image to add polygon vertices. Finish closes the ROI.</div>
-      <div id="histologyAnalysisResults" style="margin-top:12px;font-size:12.5px;color:var(--graphite);"></div>
     </div>
   </div>
 </div>

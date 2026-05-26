@@ -6,16 +6,50 @@ let _histologyAnalysisRois = [];
 let _histologyActivePolygon = null;
 let _histologyPolygonCounter = 1;
 
+const HISTOLOGY_ROI_COLOR_TOKENS = ['--blue', '--success', '--error', '--warning', '--blue-hover', '--error-text-strong'];
+
+function histologyThemeColor(token, fallback) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  return value || fallback || '#3E6AE1';
+}
+
+function histologyRoiFallbackColor() {
+  return histologyThemeColor('--blue', '#3E6AE1');
+}
+
+function histologySetButtonDisabled(id, disabled) {
+  const el = document.getElementById(id);
+  if (el) el.disabled = !!disabled;
+}
+
+function updateHistologyActionState() {
+  const hasFolder = !!histologyDataProjectPath();
+  const hasImage = !!_histologyAnalysisImage;
+  const drawing = !!_histologyActivePolygon;
+  const hasRois = _histologyAnalysisRois.length > 0;
+  histologySetButtonDisabled('btnLoadEtsAnalysis', !hasFolder);
+  histologySetButtonDisabled('btnStartHistologyRoi', !hasImage || drawing);
+  histologySetButtonDisabled('btnFinishHistologyRoi', !drawing);
+  histologySetButtonDisabled('btnUndoHistologyRoi', !hasImage || (!drawing && !hasRois));
+  histologySetButtonDisabled('btnClearHistologyRois', !hasImage || (!drawing && !hasRois));
+  histologySetButtonDisabled('btnSaveHistologyRois', !hasImage || drawing || !hasRois);
+  histologySetButtonDisabled('btnAnalyzeHistology', !hasImage || drawing || !hasRois);
+}
+
 function histologyEtsProjectFolder() {
   return (document.getElementById('projectPath')?.value || '').trim();
 }
 
-function histologyProjectRoot() {
+function histologyDataProjectPath() {
   return histologyEtsProjectFolder();
 }
 
+function histologyProjectRoot() {
+  return histologyDataProjectPath();
+}
+
 function histologyRoiLabelElements() {
-  return ['histologyRoiLabel', 'histologyRoiLabelInline']
+  return ['histologyRoiLabelInline']
     .map(id => document.getElementById(id))
     .filter(el => !!el);
 }
@@ -48,37 +82,51 @@ function histologySetAnalysisStatus(message, kind) {
   if (hint && message) hint.textContent = message;
 }
 
-function loadHistologyEtsProject() {
-  const folder = histologyEtsProjectFolder();
-  if (!folder) {
-    histologySetAnalysisStatus('Select a histology folder first', 'error');
+function loadHistologyDataProject() {
+  const projectPath = histologyDataProjectPath();
+  if (!projectPath) {
+    histologySetAnalysisStatus('Select a histology project first', 'error');
     return;
   }
+  _histologyAnalysisImage = null;
+  _histologyAnalysisRois = [];
+  _histologyActivePolygon = null;
+  renderHistologyRoiList();
+  clearHistologyAnalysisImage('Select a project image to preview it here');
   btnBusy('btnLoadEtsAnalysis', true, 'Loading...');
-  histologySetAnalysisStatus('Scanning ETS images...', 'loading');
-  api('/api/histology/ets_project', {folder})
+  histologySetAnalysisStatus('Loading histology project...', 'loading');
+  api('/api/histology/project/load', {project_path: projectPath})
     .then(d => {
-      btnBusy('btnLoadEtsAnalysis', false, 'Load ETS Folder');
+      btnBusy('btnLoadEtsAnalysis', false, 'Load Project');
       if (d.error) throw new Error(d.error);
       _histologyEtsProject = d;
       _histologyEtsEntries = d.entries || [];
       renderHistologyEtsImageList();
       document.getElementById('histologyAnalysisMeta').textContent =
-        `${_histologyEtsEntries.length} ETS image(s)`;
-      histologySetAnalysisStatus(`Loaded ${_histologyEtsEntries.length} ETS image(s)`, 'ok');
+        `${_histologyEtsEntries.length} project image(s)`;
+      if (d.project_path && d.project_path !== projectPath) {
+        document.getElementById('projectPath').value = d.project_path;
+      }
+      histologySetAnalysisStatus(`Loaded ${_histologyEtsEntries.length} project image(s)`, 'ok');
       if (_histologyEtsEntries.length) selectHistologyEtsImage(_histologyEtsEntries[0].entry_id);
+      else updateHistologyActionState();
     })
     .catch(e => {
-      btnBusy('btnLoadEtsAnalysis', false, 'Load ETS Folder');
+      btnBusy('btnLoadEtsAnalysis', false, 'Load Project');
       histologySetAnalysisStatus('Error: ' + e.message, 'error');
+      updateHistologyActionState();
     });
+}
+
+function loadHistologyEtsProject() {
+  return loadHistologyDataProject();
 }
 
 function renderHistologyEtsImageList() {
   const el = document.getElementById('histologyEtsImageList');
   if (!el) return;
   if (!_histologyEtsEntries.length) {
-    el.innerHTML = '<div class="file-list-empty">No ETS images loaded</div>';
+    el.innerHTML = '<div class="file-list-empty">No project images loaded</div>';
     return;
   }
   el.innerHTML = _histologyEtsEntries.map(entry => {
@@ -86,30 +134,34 @@ function renderHistologyEtsImageList() {
     const counts = `${entry.roi_count || 0} ROI · ${entry.analysis_count || 0} analyses`;
     const missing = entry.exists ? '' : ' · missing source';
     const role = entry.role && entry.role !== 'image' ? ` · ${entry.role}` : '';
-    const detail = [entry.case_name || '', entry.case_relative_path || entry.relative_path || '']
+    const detail = [entry.case_name || '', entry.case_relative_path || entry.relative_path || entry.source_path || '']
       .filter(Boolean).join(' · ');
     return `
       <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyEtsImage('${escHtml(entry.entry_id)}')">
-        <div style="font-weight:650">${escHtml(entry.image_name || entry.entry_id)}</div>
-        <div style="font-size:11px;color:var(--pewter)">${escHtml(counts + role + missing)}</div>
-        <div style="font-size:10.5px;color:var(--pewter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(detail)}</div>
+        <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
+        <div class="histology-file-subline">${escHtml(counts + role + missing)}</div>
+        <div class="histology-file-path">${escHtml(detail)}</div>
       </div>`;
   }).join('');
 }
 
 function selectHistologyEtsImage(entryId) {
   if (!entryId) return;
-  const folder = histologyEtsProjectFolder();
-  if (!folder) {
-    histologySetAnalysisStatus('Select a histology folder first', 'error');
+  const projectPath = histologyDataProjectPath();
+  if (!projectPath) {
+    histologySetAnalysisStatus('Select a histology project first', 'error');
     return;
   }
   _histologyEtsEntryId = String(entryId);
   _histologyActivePolygon = null;
+  _histologyAnalysisImage = null;
+  _histologyAnalysisRois = [];
   renderHistologyEtsImageList();
-  histologySetAnalysisStatus('Loading ETS image preview...', 'loading');
-  api('/api/histology/ets_image_preview', {
-    folder,
+  renderHistologyRoiList();
+  clearHistologyAnalysisImage('Loading project image preview...');
+  histologySetAnalysisStatus('Loading project image preview...', 'loading');
+  api('/api/histology/project/image_preview', {
+    project_path: projectPath,
     entry_id: _histologyEtsEntryId,
     max_side: 1600,
   }).then(d => {
@@ -125,16 +177,40 @@ function selectHistologyEtsImage(entryId) {
     document.getElementById('histologyAnalysisMeta').textContent =
       `${d.image_name || entryId} · ${d.preview_width}x${d.preview_height} · ${d.backend}`;
     histologySetAnalysisStatus('Image preview loaded', 'ok');
+    updateHistologyActionState();
   }).catch(e => {
     histologySetAnalysisStatus('Error: ' + e.message, 'error');
+    clearHistologyAnalysisImage('Preview failed');
+    updateHistologyActionState();
   });
+}
+
+function clearHistologyAnalysisImage(message) {
+  const surface = document.getElementById('histologyAnalysisSurface');
+  const empty = document.getElementById('histologyAnalysisEmpty');
+  const img = document.getElementById('histologyAnalysisImg');
+  const canvas = document.getElementById('histologyAnalysisCanvas');
+  if (surface) surface.hidden = true;
+  if (empty) {
+    empty.hidden = false;
+    if (message) empty.textContent = message;
+  }
+  if (img) {
+    img.hidden = true;
+    img.removeAttribute('src');
+  }
+  if (canvas) canvas.hidden = true;
 }
 
 function loadHistologyAnalysisImage(payload) {
   const img = document.getElementById('histologyAnalysisImg');
   if (!img || !payload.img) return;
+  const surface = document.getElementById('histologyAnalysisSurface');
+  const empty = document.getElementById('histologyAnalysisEmpty');
+  if (surface) surface.hidden = false;
+  if (empty) empty.hidden = true;
   img.onload = () => resizeHistologyAnalysisCanvas();
-  img.style.display = '';
+  img.hidden = false;
   img.src = 'data:image/png;base64,' + payload.img;
 }
 
@@ -146,7 +222,7 @@ function resizeHistologyAnalysisCanvas() {
   canvas.height = img.clientHeight;
   canvas.style.width = img.clientWidth + 'px';
   canvas.style.height = img.clientHeight + 'px';
-  canvas.style.display = '';
+  canvas.hidden = false;
   drawHistologyRois();
 }
 
@@ -191,13 +267,13 @@ function setupHistologyAnalysisCanvas() {
 }
 
 function nextHistologyRoiColor(index) {
-  const colors = ['#22c55e', '#ef4444', '#38bdf8', '#f59e0b', '#a855f7', '#14b8a6'];
-  return colors[index % colors.length];
+  const token = HISTOLOGY_ROI_COLOR_TOKENS[index % HISTOLOGY_ROI_COLOR_TOKENS.length];
+  return histologyThemeColor(token, histologyRoiFallbackColor());
 }
 
 function startHistologyPolygon() {
   if (!_histologyAnalysisImage) {
-    histologySetAnalysisStatus('Load an ETS image first', 'error');
+    histologySetAnalysisStatus('Load a project image first', 'error');
     return;
   }
   const label = histologyCurrentRoiLabel();
@@ -212,6 +288,7 @@ function startHistologyPolygon() {
   renderHistologyRoiList();
   drawHistologyRois();
   histologySetAnalysisStatus('Click the image to add polygon vertices. Double-click or Finish to close.', 'ok');
+  updateHistologyActionState();
 }
 
 function finishHistologyPolygon() {
@@ -226,7 +303,8 @@ function finishHistologyPolygon() {
   setHistologyRoiLabel(`ROI ${_histologyPolygonCounter}`);
   renderHistologyRoiList();
   drawHistologyRois();
-  histologySetAnalysisStatus('ROI added. Save or analyze to write it into the ETS project sidecar.', 'ok');
+  histologySetAnalysisStatus('ROI added. Save or analyze to write it into the DataProcess project.', 'ok');
+  updateHistologyActionState();
 }
 
 function undoHistologyPoint() {
@@ -240,6 +318,7 @@ function undoHistologyPoint() {
     renderHistologyRoiList();
   }
   drawHistologyRois();
+  updateHistologyActionState();
 }
 
 function clearHistologyRois() {
@@ -249,6 +328,7 @@ function clearHistologyRois() {
   drawHistologyRois();
   renderHistologyAnalysisResults(null);
   histologySetAnalysisStatus('ROI cleared for the current image', 'ok');
+  updateHistologyActionState();
 }
 
 function deleteHistologyRoi(index) {
@@ -256,6 +336,7 @@ function deleteHistologyRoi(index) {
   _histologyAnalysisRois.splice(index, 1);
   renderHistologyRoiList();
   drawHistologyRois();
+  updateHistologyActionState();
 }
 
 function renderHistologyRoiList() {
@@ -268,18 +349,20 @@ function renderHistologyRoiList() {
   if (!el) return;
   if (!_histologyAnalysisRois.length && !_histologyActivePolygon) {
     el.innerHTML = '<div class="file-list-empty">No ROI for current image</div>';
+    updateHistologyActionState();
     return;
   }
   const saved = _histologyAnalysisRois.map((roi, i) => `
-    <div class="file-item" style="display:flex;align-items:center;gap:6px">
-      <span style="width:10px;height:10px;background:${escHtml(roi.color || '#2F80ED')};border-radius:50%"></span>
-      <span style="flex:1;min-width:0">${escHtml(roi.label || ('ROI ' + (i + 1)))} · ${(roi.points || []).length} pt</span>
-      <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" onclick="DP.page.deleteHistologyRoi(${i})">X</button>
+    <div class="file-item histology-roi-item">
+      <span class="histology-roi-dot" style="--roi-color:${escHtml(roi.color || histologyRoiFallbackColor())}"></span>
+      <span class="histology-roi-name">${escHtml(roi.label || ('ROI ' + (i + 1)))} · ${(roi.points || []).length} pt</span>
+      <button class="btn-secondary histology-roi-delete" type="button" onclick="DP.page.deleteHistologyRoi(${i})">X</button>
     </div>`);
   if (_histologyActivePolygon) {
     saved.push(`<div class="file-item active">${escHtml(_histologyActivePolygon.label)} · drawing ${_histologyActivePolygon.points.length} pt</div>`);
   }
   el.innerHTML = saved.join('');
+  updateHistologyActionState();
 }
 
 function drawHistologyRois() {
@@ -379,19 +462,21 @@ function saveHistologyRois() {
     return;
   }
   btnBusy('btnSaveHistologyRois', true, 'Saving...');
-  api('/api/histology/ets_analysis/save_rois', {
-    folder: histologyEtsProjectFolder(),
+  api('/api/histology/project/analysis/save_rois', {
+    project_path: histologyDataProjectPath(),
     entry_id: _histologyEtsEntryId,
     rois: _histologyAnalysisRois,
   }).then(d => {
     btnBusy('btnSaveHistologyRois', false, 'Save ROI');
     if (d.error) throw new Error(d.error);
-    histologySetAnalysisStatus(`Saved ${d.roi_count || 0} ROI to ETS sidecar`, 'ok');
-    toast('Histology ROI saved to ETS sidecar');
+    histologySetAnalysisStatus(`Saved ${d.roi_count || 0} ROI to the DataProcess project`, 'ok');
+    toast('Histology ROI saved to project');
     refreshLoadedEtsEntryCounts(d);
+    updateHistologyActionState();
   }).catch(e => {
     btnBusy('btnSaveHistologyRois', false, 'Save ROI');
     histologySetAnalysisStatus('Error: ' + e.message, 'error');
+    updateHistologyActionState();
   });
 }
 
@@ -406,8 +491,8 @@ function analyzeHistologyRois() {
   }
   btnBusy('btnAnalyzeHistology', true, 'Analyzing...');
   histologySetAnalysisStatus('Analyzing SMA and macrophage thresholds...', 'loading');
-  dpRunJobEndpoint('/api/histology/ets_analysis/run_job', {
-    folder: histologyEtsProjectFolder(),
+  dpRunJobEndpoint('/api/histology/project/analysis/run_job', {
+    project_path: histologyDataProjectPath(),
     entry_id: _histologyEtsEntryId,
     rois: _histologyAnalysisRois,
     parameters: histologyAnalysisParameters(),
@@ -423,21 +508,23 @@ function analyzeHistologyRois() {
     if (d.error) throw new Error(d.error);
     renderHistologyAnalysisResults(d.analysis || d);
     refreshLoadedEtsEntryCounts(d);
-    histologySetAnalysisStatus(`Analyzed ${_histologyAnalysisRois.length} ROI; results saved to ETS sidecar`, 'ok');
-    toast('Histology analysis saved to ETS sidecar');
+    histologySetAnalysisStatus(`Analyzed ${_histologyAnalysisRois.length} ROI; results saved to the DataProcess project`, 'ok');
+    toast('Histology analysis saved to project');
     recordRunHistory({
       view: 'histology_analysis',
-      title: 'Histology ETS SMA Macrophage Analysis',
+      title: 'Histology Project SMA Macrophage Analysis',
       status: 'ok',
       project_root: histologyProjectRoot(),
-      input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: 'histology_ets_image'}],
+      input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: 'histology_project_image'}],
       outputs: dpAsPathRecords([d.analysis_path, d.geojson_path, d.summary_path, d.project_path], 'histology_analysis_output'),
       parameters: Object.assign({entry_id: _histologyEtsEntryId, rois: _histologyAnalysisRois}, histologyAnalysisParameters()),
       metadata: {roi_count: d.roi_count || _histologyAnalysisRois.length, backend: d.backend || ''},
     });
+    updateHistologyActionState();
   }).catch(e => {
     btnBusy('btnAnalyzeHistology', false, 'Analyze SMA + Macrophage');
     histologySetAnalysisStatus('Error: ' + e.message, 'error');
+    updateHistologyActionState();
   });
 }
 
@@ -455,7 +542,7 @@ function renderHistologyAnalysisResults(analysis) {
   if (!el) return;
   const results = analysis && Array.isArray(analysis.results) ? analysis.results : [];
   if (!results.length) {
-    el.innerHTML = '<div class="plot-placeholder" style="min-height:70px">No SMA/macrophage analysis for this image yet.</div>';
+    el.innerHTML = '<div class="plot-placeholder histology-result-empty">No SMA/macrophage analysis for this image yet.</div>';
     return;
   }
   const rows = results.map(row => `
@@ -475,10 +562,10 @@ function renderHistologyAnalysisResults(analysis) {
     `BC ${analysis.parameters?.background_mode || ''}`,
   ].join(' · ');
   el.innerHTML = `
-    <div style="font-size:12px;color:var(--pewter);margin-bottom:6px">
+    <div class="histology-results-meta">
       ${escHtml(analysis.created_at || '')} · ${escHtml(paramText)}
     </div>
-    <div style="overflow:auto">
+    <div class="histology-scroll">
       <table class="data-table">
         <thead><tr><th>ROI</th><th>Area px</th><th>SMA+</th><th>Macrophage+</th><th>Double+</th><th>SMA obj</th><th>Mac obj</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -492,6 +579,9 @@ window.addEventListener('load', () => {
   renderHistologyEtsImageList();
   renderHistologyRoiList();
   renderHistologyAnalysisResults(null);
+  document.getElementById('projectPath')?.addEventListener('input', updateHistologyActionState);
+  updateHistologyActionState();
+  setTimeout(updateHistologyActionState, 180);
 });
 
 // DP.page exports for template event handlers.
@@ -502,15 +592,18 @@ window.DP.page = window.DP.page || {};
   'applyHistologyAnalysisParameters',
   'bindHistologyRoiLabels',
   'clearHistologyRois',
+  'clearHistologyAnalysisImage',
   'deleteHistologyRoi',
   'drawHistologyRois',
   'finishHistologyPolygon',
   'histologyAnalysisParameters',
   'histologyCurrentRoiLabel',
+  'histologyDataProjectPath',
   'histologyProjectRoot',
   'histologyEtsProjectFolder',
   'histologyRoiLabelElements',
   'loadHistologyAnalysisImage',
+  'loadHistologyDataProject',
   'loadHistologyEtsProject',
   'nativeToHistologyCanvas',
   'refreshLoadedEtsEntryCounts',
@@ -524,6 +617,7 @@ window.DP.page = window.DP.page || {};
   'setupHistologyAnalysisCanvas',
   'startHistologyPolygon',
   'undoHistologyPoint',
+  'updateHistologyActionState',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

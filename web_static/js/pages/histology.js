@@ -1,5 +1,8 @@
 let _histologyCases = [];
 let _selectedCase = null;
+let _histologyDataProject = null;
+let _histologyProjectEntries = [];
+let _selectedHistologyProjectEntryId = '';
 
 function parseSuffixOptions(text) {
   const raw = String(text || '');
@@ -79,6 +82,177 @@ function getCaseElementByPath(path) {
   return Array.from(document.querySelectorAll('#caseList .file-item')).find(e => e.dataset.path === path) || null;
 }
 
+function histologyDataProjectPath() {
+  return (document.getElementById('histologyProjectPath')?.value || '').trim();
+}
+
+function renderHistologyProjectImageList() {
+  const el = document.getElementById('histologyProjectImageList');
+  if (!el) return;
+  if (!_histologyProjectEntries.length) {
+    el.innerHTML = '<div class="file-list-empty">No project entries yet</div>';
+    return;
+  }
+  el.innerHTML = _histologyProjectEntries.map(entry => {
+    const active = String(entry.entry_id) === String(_selectedHistologyProjectEntryId) ? ' active' : '';
+    const counts = `${entry.roi_count || 0} ROI · ${entry.analysis_count || 0} analyses`;
+    const missing = entry.exists ? '' : ' · missing source';
+    const detail = [entry.case_name || '', entry.source_name || entry.image_path || '']
+      .filter(Boolean).join(' · ');
+    return `
+      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
+        <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
+        <div class="histology-file-subline">${escHtml(counts + missing)}</div>
+        <div class="histology-file-path">${escHtml(detail)}</div>
+      </div>`;
+  }).join('');
+}
+
+function applyHistologyProjectPayload(d) {
+  _histologyDataProject = d;
+  _histologyProjectEntries = Array.isArray(d.entries) ? d.entries : [];
+  if (d.project_path) document.getElementById('histologyProjectPath').value = d.project_path;
+  if (_selectedHistologyProjectEntryId && !_histologyProjectEntries.some(e => String(e.entry_id) === String(_selectedHistologyProjectEntryId))) {
+    _selectedHistologyProjectEntryId = '';
+  }
+  renderHistologyProjectImageList();
+  if (!_selectedHistologyProjectEntryId && _histologyProjectEntries.length) {
+    selectHistologyProjectEntry(_histologyProjectEntries[0].entry_id);
+  }
+  document.getElementById('histologyMeta').textContent =
+    `Project ${d.project_name || ''} · ${_histologyProjectEntries.length} image(s)`;
+}
+
+function createHistologyDataProject() {
+  const projectPath = histologyDataProjectPath();
+  if (!projectPath) {
+    setStatus('status', 'Choose a project file or folder first', 'error');
+    return;
+  }
+  btnBusy('btnCreateHistologyProject', true, 'Loading…');
+  setStatus('status', 'Creating/loading histology project…', 'loading');
+  api('/api/histology/project/create', {project_path: projectPath}).then(d => {
+    btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
+    if (d.error) throw new Error(d.error);
+    applyHistologyProjectPayload(d);
+    setStatus('status', `Project file ready: ${d.project_path || projectPath}`, 'ok');
+    toast('Histology project file ready');
+  }).catch(e => {
+    btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
+function loadHistologyDataProject() {
+  const projectPath = histologyDataProjectPath();
+  if (!projectPath) {
+    setStatus('status', 'Choose a histology project first', 'error');
+    return;
+  }
+  btnBusy('btnCreateHistologyProject', true, 'Loading…');
+  setStatus('status', 'Loading histology project…', 'loading');
+  api('/api/histology/project/load', {project_path: projectPath}).then(d => {
+    btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
+    if (d.error) throw new Error(d.error);
+    applyHistologyProjectPayload(d);
+    setStatus('status', `Loaded project (${d.entry_count || 0} image(s))`, 'ok');
+  }).catch(e => {
+    btnBusy('btnCreateHistologyProject', false, 'Create / Load File');
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
+function addHistologyDataProjectPath() {
+  const projectPath = histologyDataProjectPath();
+  const addPath = (document.getElementById('histologyProjectAddPath')?.value || '').trim();
+  if (!projectPath) {
+    setStatus('status', 'Create or choose a histology project first', 'error');
+    return;
+  }
+  if (!addPath) {
+    setStatus('status', 'Choose an ETS/TIFF file or folder to add', 'error');
+    return;
+  }
+  btnBusy('btnAddHistologyProjectPath', true, 'Adding…');
+  setStatus('status', 'Adding image references to project…', 'loading');
+  api('/api/histology/project/add_paths', {project_path: projectPath, paths: [addPath]}).then(d => {
+    btnBusy('btnAddHistologyProjectPath', false, 'Add To Project');
+    if (d.error) throw new Error(d.error);
+    applyHistologyProjectPayload(d);
+    const skipped = d.skipped_count ? ` · ${d.skipped_count} already in project` : '';
+    setStatus('status', `Added ${d.added_count || 0} image(s)${skipped}`, 'ok');
+    toast(`Added ${d.added_count || 0} image(s) to project`);
+    recordRunHistory({
+      view: 'histology_naming',
+      title: 'Histology Project Add Images',
+      status: 'ok',
+      project_root: d.project_path || projectPath,
+      input_files: [{path: addPath, role: 'histology_source_path'}],
+      outputs: dpAsPathRecords([d.project_path], 'histology_project'),
+      metadata: {added_count: d.added_count || 0, skipped_count: d.skipped_count || 0},
+    });
+  }).catch(e => {
+    btnBusy('btnAddHistologyProjectPath', false, 'Add To Project');
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
+function selectHistologyProjectEntry(entryId) {
+  _selectedHistologyProjectEntryId = String(entryId || '');
+  const entry = _histologyProjectEntries.find(e => String(e.entry_id) === _selectedHistologyProjectEntryId);
+  renderHistologyProjectImageList();
+  document.getElementById('histologyProjectEntryName').value = entry ? (entry.image_name || '') : '';
+  if (entry) {
+    document.getElementById('notesArea').textContent =
+      `Project entry: ${entry.image_name || entry.entry_id}\nSource: ${entry.image_path || ''}\nROI: ${entry.roi_count || 0}\nAnalyses: ${entry.analysis_count || 0}`;
+  }
+}
+
+function renameHistologyDataProjectEntry() {
+  const projectPath = histologyDataProjectPath();
+  const entryId = _selectedHistologyProjectEntryId;
+  const displayName = (document.getElementById('histologyProjectEntryName')?.value || '').trim();
+  if (!projectPath) {
+    setStatus('status', 'Choose a histology project first', 'error');
+    return;
+  }
+  if (!entryId) {
+    setStatus('status', 'Select a project entry first', 'error');
+    return;
+  }
+  if (!displayName) {
+    setStatus('status', 'Enter a project display name', 'error');
+    return;
+  }
+  btnBusy('btnRenameHistologyProjectEntry', true, 'Renaming…');
+  setStatus('status', 'Renaming project entry…', 'loading');
+  api('/api/histology/project/rename_entry', {
+    project_path: projectPath,
+    entry_id: entryId,
+    display_name: displayName,
+  }).then(d => {
+    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename In Project');
+    if (d.error) throw new Error(d.error);
+    applyHistologyProjectPayload(d);
+    _selectedHistologyProjectEntryId = entryId;
+    selectHistologyProjectEntry(entryId);
+    setStatus('status', `Project entry renamed to ${displayName}`, 'ok');
+    toast('Project entry renamed');
+    recordRunHistory({
+      view: 'histology_naming',
+      title: 'Histology Project Entry Rename',
+      status: 'ok',
+      project_root: d.project_path || projectPath,
+      input_files: [{path: d.renamed_entry?.image_path || '', role: 'histology_project_image'}],
+      outputs: dpAsPathRecords([d.project_path], 'histology_project'),
+      parameters: {entry_id: entryId, display_name: displayName},
+    });
+  }).catch(e => {
+    btnBusy('btnRenameHistologyProjectEntry', false, 'Rename In Project');
+    setStatus('status', 'Error: ' + e.message, 'error');
+  });
+}
+
 function renderCaseList() {
   const items = (_histologyCases || []).map(c => ({
     path: c.case_dir,
@@ -98,12 +272,12 @@ function scanProject() {
     return;
   }
   if (folder.toLowerCase().endsWith('.qpproj')) {
-    setStatus('status', 'The case folder field needs a folder; choose .qpproj in the QuPath field', 'error');
+    setStatus('status', 'The case folder field needs a folder; choose .qpproj in the optional QuPath field', 'error');
     return;
   }
   _selectedCase = null;
   document.getElementById('newName').value = '';
-  setStatus('status', 'Scanning project…', 'loading');
+  setStatus('status', 'Scanning case folder…', 'loading');
   btnBusy('btnScan', true, 'Loading…');
   api('/api/histology/browse', {folder}).then(d => {
     btnBusy('btnScan', false, 'Load Case Folder');
@@ -126,7 +300,7 @@ function selectCase(el, casePath) {
   api('/api/histology/preview', {case_path: casePath, rotate_deg: getRotateDeg(), do_ocr: true}).then(d => {
     if (d.error) throw new Error(d.error);
     document.getElementById('newName').value = '';
-    document.getElementById('histologyMeta').textContent = `${d.case_name} · ${d.qupath_name || 'no QuPath name found'}`;
+    document.getElementById('histologyMeta').textContent = `${d.case_name} · ${d.qupath_name || 'optional QuPath name not found'}`;
     document.getElementById('mainSource').textContent = d.main_source ? `source: ${d.main_source}` : '';
     document.getElementById('labelSource').textContent = d.label_source ? `source: ${d.label_source}` : '';
     setPreview('mainPreview', d.main_b64);
@@ -146,20 +320,20 @@ function setPreview(containerId, b64) {
     el.innerHTML = '<div class="plot-placeholder">Preview not available</div>';
     return;
   }
-  el.innerHTML = `<img src="data:image/png;base64,${b64}" alt="preview" style="max-width:100%;max-height:100%;object-fit:contain;display:block;"/>`;
+  el.innerHTML = `<img src="data:image/png;base64,${b64}" alt="preview" class="histology-preview-img"/>`;
 }
 
 function histologyProjectRoot() {
-  return document.getElementById('projectPath').value.trim();
+  return histologyDataProjectPath() || document.getElementById('projectPath').value.trim();
 }
 
 function syncQuPathNames() {
   if (!_histologyCases || !_histologyCases.length) {
-    setStatus('status', 'Load a project first', 'error');
+    setStatus('status', 'Load a case folder first', 'error');
     return;
   }
   if (!document.getElementById('updateQuPath').checked) {
-    setStatus('status', 'Enable “Update QuPath project name” first', 'error');
+    setStatus('status', 'Enable “Also update QuPath display names” first', 'error');
     return;
   }
   const qp = (document.getElementById('qupathProject').value || '').trim();
@@ -311,6 +485,7 @@ window.addEventListener('load', () => {
   document.getElementById('suffixList').value = suffixList;
   updateSuffixPick(localStorage.getItem('histology_suffix_pick') || '');
   document.getElementById('useSuffix').checked = _readBool('histology_use_suffix', false);
+  renderHistologyProjectImageList();
   setStatus('status', 'Ready', 'ok');
 });
 
@@ -320,17 +495,25 @@ window.DP.page = window.DP.page || {};
 [
   '_readBool',
   '_writeBool',
+  'addHistologyDataProjectPath',
   'applyRename',
+  'applyHistologyProjectPayload',
+  'createHistologyDataProject',
   'getCaseElementByPath',
   'getRotateDeg',
+  'histologyDataProjectPath',
   'histologyProjectRoot',
+  'loadHistologyDataProject',
   'onRotateChange',
   'onSuffixListChange',
   'onSuffixPickChange',
   'parseSuffixOptions',
   'renderCaseList',
+  'renderHistologyProjectImageList',
+  'renameHistologyDataProjectEntry',
   'scanProject',
   'selectCase',
+  'selectHistologyProjectEntry',
   'setPreview',
   'syncQuPathNames',
   'updateSuffixPick',

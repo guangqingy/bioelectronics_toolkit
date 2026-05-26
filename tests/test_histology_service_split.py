@@ -181,6 +181,20 @@ class HistologyServiceSplitTests(unittest.TestCase):
                     "background_mode": "none",
                 },
             )
+            file_preview = histology_ets_analysis.load_histology_file_image_preview(image)
+            file_result = histology_ets_analysis.analyze_histology_file_rois(
+                image,
+                rois,
+                {
+                    "sma_channel": "red",
+                    "sma_threshold_method": "manual",
+                    "sma_threshold": 120,
+                    "macrophage_channel": "green",
+                    "macrophage_threshold_method": "manual",
+                    "macrophage_threshold": 120,
+                    "background_mode": "none",
+                },
+            )
 
             self.assertEqual(loaded["entry_count"], 1)
             self.assertEqual(preview["width"], 24)
@@ -194,6 +208,89 @@ class HistologyServiceSplitTests(unittest.TestCase):
             index = json.loads(index_path.read_text(encoding="utf-8"))
             self.assertEqual(index["protocol"], "dataprocess-ets-histology")
             self.assertEqual(index["entry_count"], 1)
+            self.assertEqual(file_preview["width"], 24)
+            self.assertEqual(file_result["roi_count"], 1)
+            self.assertEqual(file_result["kind"], "single_file_histology_analysis")
+            self.assertGreater(file_result["results"][0]["macrophage_positive_px"], 0)
+
+    def test_histology_data_project_references_external_images_and_renames_entries(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology data project optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_") as tmp:
+            tmp_root = Path(tmp)
+            source_root = tmp_root / "source"
+            stack = source_root / "5-CB" / "_Tray04_Slide01_01_" / "stack1"
+            stack.mkdir(parents=True)
+            image = stack / "frame_t_0.ets"
+            arr = np.zeros((22, 22, 3), dtype=np.uint8)
+            arr[4:16, 4:16, 0] = 220
+            arr[8:20, 8:20, 1] = 210
+            tifffile.imwrite(image, arr)
+            project = tmp_root / "project_home" / "study.dphistology"
+            rois = [
+                {
+                    "id": "roi_external",
+                    "label": "External ROI",
+                    "points": [{"x": 2, "y": 2}, {"x": 19, "y": 2}, {"x": 19, "y": 19}, {"x": 2, "y": 19}],
+                }
+            ]
+
+            created = histology_ets_analysis.create_histology_data_project(project)
+            loaded = histology_ets_analysis.add_histology_data_project_paths(
+                created["project_path"],
+                [source_root],
+            )
+            entry_id = loaded["entries"][0]["entry_id"]
+            renamed = histology_ets_analysis.rename_histology_data_project_entry(
+                project,
+                entry_id,
+                "5-CB SMA macrophage",
+            )
+            preview = histology_ets_analysis.load_histology_data_project_image_preview(project, entry_id)
+            result = histology_ets_analysis.analyze_histology_data_project_rois(
+                project,
+                entry_id,
+                rois,
+                {
+                    "sma_channel": "red",
+                    "sma_threshold_method": "manual",
+                    "sma_threshold": 120,
+                    "macrophage_channel": "green",
+                    "macrophage_threshold_method": "manual",
+                    "macrophage_threshold": 120,
+                    "background_mode": "none",
+                },
+            )
+
+            self.assertEqual(created["entry_count"], 0)
+            self.assertEqual(loaded["entry_count"], 1)
+            self.assertEqual(loaded["added_count"], 1)
+            self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
+            self.assertEqual(preview["width"], 22)
+            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
+            self.assertTrue(Path(result["analysis_path"]).exists())
+            self.assertTrue(Path(result["geojson_path"]).exists())
+            self.assertTrue(Path(result["project_path"]).exists())
+            self.assertIn("project_home", result["analysis_path"])
+            self.assertFalse((source_root / ".dataprocess_histology").exists())
+
+    def test_histology_data_project_folder_path_creates_reusable_local_file(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_file_") as tmp:
+            project_folder = Path(tmp) / "study_project"
+            project_folder.mkdir()
+
+            created = histology_ets_analysis.create_histology_data_project(project_folder)
+            project_path = Path(created["project_path"])
+            loaded = histology_ets_analysis.load_histology_data_project(project_folder)
+
+            self.assertEqual(project_path.name, "histology_project.dphistology")
+            self.assertTrue(project_path.is_file())
+            self.assertEqual(loaded["project_path"], str(project_path))
+            self.assertEqual(created["kind"], "dataprocess_histology_project")
 
 
 if __name__ == "__main__":
