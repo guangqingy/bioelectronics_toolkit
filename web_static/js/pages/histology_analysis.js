@@ -44,6 +44,17 @@ function histologyDataProjectPath() {
   return histologyAnalysisProjectPath();
 }
 
+function histologyAnalysisProjectPathError(projectPath) {
+  const text = String(projectPath || '').trim();
+  const leaf = text.split(/[\\/]/).pop().toLowerCase();
+  if (!leaf) return '';
+  if (leaf === 'project.json' || leaf.endsWith('.dphistology') || leaf.endsWith('.json')) return '';
+  if (/\.(tif|tiff|png|jpg|jpeg|vsi|ets)$/.test(leaf)) {
+    return 'That file is an image/raw microscopy file, not a DataProcess project. Load histology_project.dphistology or its containing folder; create it from Histology Naming first.';
+  }
+  return '';
+}
+
 function histologyProjectRoot() {
   return histologyDataProjectPath();
 }
@@ -86,6 +97,22 @@ function loadHistologyDataProject() {
   const projectPath = histologyDataProjectPath();
   if (!projectPath) {
     histologySetAnalysisStatus('Select a histology project first', 'error');
+    return;
+  }
+  const pathError = histologyAnalysisProjectPathError(projectPath);
+  if (pathError) {
+    _histologyProject = null;
+    _histologyProjectEntries = [];
+    _histologyProjectEntryId = '';
+    _histologyAnalysisImage = null;
+    _histologyAnalysisRois = [];
+    _histologyActivePolygon = null;
+    renderHistologyAnalysisProjectImageList();
+    renderHistologyRoiList();
+    renderHistologyAnalysisResults(null);
+    clearHistologyAnalysisImage('Load a DataProcess histology project to begin');
+    histologySetAnalysisStatus(pathError, 'error');
+    updateHistologyActionState();
     return;
   }
   _histologyAnalysisImage = null;

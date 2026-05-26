@@ -272,14 +272,19 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertNotIn("histologyAnalysisCanvas", html)
 
     def test_histology_analysis_page_exposes_project_analysis_controls(self) -> None:
+        root = Path(__file__).resolve().parents[1]
         response = self.client.get("/histology/analysis")
         html = response.data.decode("utf-8")
+        page_js = (root / "web_static" / "js" / "pages" / "histology_analysis.js").read_text(
+            encoding="utf-8"
+        )
 
         self.assertIn("Histology ROI Analysis", html)
         self.assertIn("DataProcess Project", html)
         self.assertIn("histology_project.dphistology", html)
         self.assertIn("Load Project", html)
         self.assertIn("DP.folder.pickFile('projectPath','loadHistologyDataProject')", html)
+        self.assertIn("Open Project", html)
         self.assertIn("histology-analysis-workbench", html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyRoiLabelInline", html)
@@ -292,6 +297,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Cy5 / Red", html)
         self.assertIn("Advanced Detection", html)
         self.assertIn("histology_analysis.js", html)
+        self.assertIn("function histologyAnalysisProjectPathError", page_js)
+        self.assertIn("not a DataProcess project", page_js)
         self.assertNotIn("histologyRoiControls", html)
         self.assertNotIn("histologyNamingControls", html)
         self.assertNotIn("button-row", html)

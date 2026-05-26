@@ -439,6 +439,19 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(created["cache_layout"]["converted"]).is_dir())
             self.assertTrue(Path(created["cache_layout"]["metadata"]).is_dir())
 
+    def test_histology_data_project_rejects_image_or_binary_project_path_cleanly(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_bad_project_") as tmp:
+            root = Path(tmp)
+            image = root / "1-CB_Brightfield.tif"
+            image.write_bytes(b"\xee\x00not-json")
+            broken_project = root / "broken.dphistology"
+            broken_project.write_bytes(b"\xee\x00not-json")
+
+            with self.assertRaisesRegex(ValueError, "not a DataProcess histology project"):
+                histology_project.load_histology_data_project(image)
+            with self.assertRaisesRegex(ValueError, "not valid UTF-8 JSON"):
+                histology_project.load_histology_data_project(broken_project)
+
 
 if __name__ == "__main__":
     unittest.main()

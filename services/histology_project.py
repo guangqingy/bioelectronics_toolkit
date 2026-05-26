@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import hashlib
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,7 @@ ETS_DATA_PROJECT_KIND = "dataprocess_histology_project"
 ETS_DATA_PROJECT_FILE = "histology_project.dphistology"
 PROJECT_IMAGE_SUFFIXES = (".tif", ".tiff", ".png", ".jpg", ".jpeg")
 PROJECT_PRIMARY_SUFFIXES = PROJECT_IMAGE_SUFFIXES
+PROJECT_CONFIG_SUFFIXES = {".dphistology", ".json"}
 
 
 def _has_project_image_suffix(path: Path) -> bool:
@@ -188,13 +190,30 @@ def _normalize_data_project_path(project_path: str | Path) -> Path:
         if legacy_project.exists():
             return legacy_project.resolve()
         return default_project.resolve()
+    if path.exists() and path.is_file():
+        if path.name == ETS_INDEX_FILE and path.parent.name == ETS_PROJECT_DIR:
+            return path.resolve()
+        if path.suffix.lower() in PROJECT_CONFIG_SUFFIXES:
+            return path.resolve()
+        if _has_project_image_suffix(path) or path.suffix.lower() in {".vsi", ".ets"}:
+            raise ValueError(
+                f"Selected file is an image/raw microscopy file, not a DataProcess histology project: {path.name}. "
+                "Load histology_project.dphistology or its containing folder. Create that project from Histology Naming first."
+            )
+        raise ValueError(
+            f"Unsupported histology project file type: {path.name}. "
+            "Load histology_project.dphistology or its containing folder."
+        )
     if path.name == ETS_INDEX_FILE and path.parent.name == ETS_PROJECT_DIR:
         return path.resolve()
-    if path.suffix.lower() in {".dphistology", ".json"}:
+    if path.suffix.lower() in PROJECT_CONFIG_SUFFIXES:
         return path.resolve()
     if not path.suffix:
         return (path / ETS_DATA_PROJECT_FILE).resolve()
-    return path.resolve()
+    raise ValueError(
+        f"Unsupported histology project file type: {path.name}. "
+        "Load histology_project.dphistology or its containing folder."
+    )
 
 
 def _data_project_dir(project_path: Path) -> Path:
@@ -517,7 +536,18 @@ def _normalize_data_project_images(
 def _load_data_project_payload(project_path: Path) -> dict[str, Any]:
     if not project_path.is_file():
         raise FileNotFoundError(f"Histology project not found: {project_path}")
-    data = _read_json(project_path)
+    try:
+        data = _read_json(project_path)
+    except UnicodeDecodeError as exc:
+        raise ValueError(
+            f"Histology project is not valid UTF-8 JSON: {project_path}. "
+            "Load histology_project.dphistology or its containing folder, not a TIFF/VSI/ETS image file."
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Histology project is not valid JSON: {project_path}. "
+            "Load histology_project.dphistology or its containing folder."
+        ) from exc
     if not isinstance(data, dict):
         raise ValueError(f"Invalid histology project file: {project_path}")
     images = data.get("images")
