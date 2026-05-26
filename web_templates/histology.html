@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Histology Naming{% endblock %}
+{% block title %}Histology{% endblock %}
 
 {% block controls %}
 <div class="ctrl-section">
@@ -9,6 +9,13 @@
     <button class="btn-icon" onclick="DP.folder.pick('projectPath','scanProject')">Browse Folder</button>
   </div>
   <button class="btn-primary" id="btnScan" onclick="DP.page.scanProject()" style="margin-top:8px">Load Project</button>
+  <div class="param-row" style="margin-top:8px">
+    <div class="param-label">QuPath</div>
+    <div class="input-row" style="flex:1;min-width:0">
+      <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
+      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
+    </div>
+  </div>
 </div>
 
 <div class="ctrl-section">
@@ -41,17 +48,132 @@
   </div>
   <label class="checkbox-row"><input type="checkbox" id="useSuffix"><span>Append selected suffix</span></label>
   <label class="checkbox-row"><input type="checkbox" id="updateQuPath" checked><span>Update QuPath project name</span></label>
-  <div class="param-row" style="margin-top:6px">
-    <div class="param-label">QuPath</div>
-    <div class="input-row" style="flex:1;min-width:0">
-      <input type="text" id="qupathProject" class="input-path" placeholder="/path/to/project.qpproj" style="flex:1;min-width:0">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('qupathProject')">Browse QuPath</button>
-    </div>
-  </div>
   <button class="btn-secondary" id="btnSyncQuPath" type="button" onclick="DP.page.syncQuPathNames()" style="width:100%; margin-top:8px;">Sync QuPath Names</button>
   <button class="btn-primary" id="btnRename" onclick="DP.page.applyRename()" style="margin-top:8px">Rename Folder</button>
   <button class="btn-secondary" onclick="DP.page.scanProject()" style="width:100%; margin-top:8px;">Refresh List</button>
 </div>
+
+<details class="ctrl-section ctrl-details" open>
+  <summary>QuPath Analysis</summary>
+  <button class="btn-primary btn-block" id="btnLoadQpAnalysis" type="button" onclick="DP.page.loadHistologyQuPathProject()">Load QuPath Project</button>
+  <div class="ctrl-label" style="margin-top:10px">Project Images</div>
+  <div id="histologyQpImageList" class="file-list" style="max-height:210px"></div>
+
+  <div class="ctrl-label" style="margin-top:10px">Polygon ROI</div>
+  <div class="param-row">
+    <div class="param-label">Label</div>
+    <input type="text" id="histologyRoiLabel" class="input-sm" value="ROI 1">
+  </div>
+  <div class="button-row">
+    <button class="btn-secondary" type="button" onclick="DP.page.startHistologyPolygon()">Start</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.finishHistologyPolygon()">Finish</button>
+  </div>
+  <div class="button-row" style="margin-top:6px">
+    <button class="btn-secondary" type="button" onclick="DP.page.undoHistologyPoint()">Undo Point</button>
+    <button class="btn-secondary btn-danger" type="button" onclick="DP.page.clearHistologyRois()">Clear ROI</button>
+  </div>
+  <div id="histologyRoiList" class="file-list" style="max-height:150px;margin-top:8px"></div>
+
+  <div class="ctrl-label" style="margin-top:10px">Channels</div>
+  <div class="param-row">
+    <div class="param-label">DAPI</div>
+    <select id="dapiChannel" class="input-sm">
+      <option value="dapi" selected>DAPI / Blue</option>
+      <option value="blue">Blue</option>
+      <option value="red">Red</option>
+      <option value="green">Green</option>
+      <option value="mean">Mean</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">SMA</div>
+    <select id="smaChannel" class="input-sm">
+      <option value="fitc" selected>FITC / Green</option>
+      <option value="green">Green</option>
+      <option value="red">Red</option>
+      <option value="blue">Blue</option>
+      <option value="mean">Mean</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">Macrophage</div>
+    <select id="macrophageChannel" class="input-sm">
+      <option value="cy5" selected>Cy5 / Red</option>
+      <option value="red">Red</option>
+      <option value="green">Green</option>
+      <option value="blue">Blue</option>
+      <option value="mean">Mean</option>
+    </select>
+  </div>
+
+  <div class="ctrl-label" style="margin-top:10px">Detection</div>
+  <div class="param-row">
+    <div class="param-label">SMA T</div>
+    <select id="smaThresholdMethod" class="input-sm">
+      <option value="otsu" selected>Otsu</option>
+      <option value="manual">Manual</option>
+      <option value="percentile">Percentile</option>
+      <option value="mean_std">Mean + SD</option>
+    </select>
+    <input type="number" id="smaThreshold" class="input-sm" min="0" max="255" step="1" value="120">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Mac T</div>
+    <select id="macrophageThresholdMethod" class="input-sm">
+      <option value="otsu" selected>Otsu</option>
+      <option value="manual">Manual</option>
+      <option value="percentile">Percentile</option>
+      <option value="mean_std">Mean + SD</option>
+    </select>
+    <input type="number" id="macrophageThreshold" class="input-sm" min="0" max="255" step="1" value="120">
+  </div>
+  <div class="param-row">
+    <div class="param-label">DAPI T</div>
+    <select id="dapiThresholdMethod" class="input-sm">
+      <option value="otsu" selected>Otsu</option>
+      <option value="manual">Manual</option>
+      <option value="percentile">Percentile</option>
+      <option value="mean_std">Mean + SD</option>
+    </select>
+    <input type="number" id="dapiThreshold" class="input-sm" min="0" max="255" step="1" value="80">
+  </div>
+  <label class="checkbox-row"><input type="checkbox" id="dapiMaskEnabled"><span>Restrict analysis to DAPI mask</span></label>
+
+  <details class="ctrl-details" style="margin-top:8px">
+    <summary>Advanced Detection</summary>
+    <div class="param-row">
+      <div class="param-label">BC</div>
+      <select id="backgroundMode" class="input-sm">
+        <option value="percentile" selected>Percentile</option>
+        <option value="rolling">Rolling</option>
+        <option value="none">None</option>
+      </select>
+      <input type="number" id="backgroundPercentile" class="input-sm" min="0" max="50" step="1" value="10">
+    </div>
+    <div class="param-row">
+      <div class="param-label">Smooth</div>
+      <input type="number" id="smoothSigma" class="input-sm" min="0" max="10" step="0.25" value="1">
+    </div>
+    <div class="param-row">
+      <div class="param-label">Min area</div>
+      <input type="number" id="minPositiveArea" class="input-sm" min="1" max="10000" step="1" value="12">
+    </div>
+    <div class="param-row">
+      <div class="param-label">Pct T</div>
+      <input type="number" id="thresholdPercentile" class="input-sm" min="50" max="100" step="0.1" value="97.5">
+    </div>
+    <div class="param-row">
+      <div class="param-label">SD k</div>
+      <input type="number" id="thresholdStdK" class="input-sm" min="0" max="10" step="0.25" value="2">
+    </div>
+    <div class="param-row">
+      <div class="param-label">DAPI dilate</div>
+      <input type="number" id="dapiDilatePx" class="input-sm" min="0" max="30" step="1" value="2">
+    </div>
+  </details>
+  <button class="btn-secondary btn-block" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()">Save ROI To Project</button>
+  <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" style="margin-top:8px">Analyze SMA + Macrophage</button>
+</details>
 
 <div id="status" class="status-bar"></div>
 {% endblock %}
@@ -59,8 +181,8 @@
 {% block main %}
 <div class="view-main">
   <div class="view-header">
-    <div class="view-title">Histology Naming</div>
-    <div class="view-sub" id="histologyMeta">Load a histology project, then preview overview and label images before renaming the folder.</div>
+    <div class="view-title">Histology</div>
+    <div class="view-sub" id="histologyMeta">Load a histology project or QuPath project, then preview images, draw ROI, and analyze marker thresholds.</div>
   </div>
 
   <div class="view-results" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -94,9 +216,25 @@
       <div id="notesArea" style="font-size:12.5px;line-height:1.8;color:var(--graphite);white-space:pre-wrap;">No case loaded.</div>
     </div>
   </div>
+
+  <div class="result-card">
+    <div class="result-card-header">
+      <span>QuPath ROI Analysis</span>
+      <span id="histologyAnalysisMeta" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--pewter)">Load a QuPath project to begin.</span>
+    </div>
+    <div class="result-card-body">
+      <div id="histologyAnalysisSurface" style="position:relative;display:inline-block;max-width:100%;background:#070710;border:1px solid var(--line);border-radius:6px;overflow:hidden;">
+        <img id="histologyAnalysisImg" alt="Histology analysis preview" style="max-width:100%;display:none;user-select:none;-webkit-user-drag:none;">
+        <canvas id="histologyAnalysisCanvas" style="position:absolute;left:0;top:0;display:none;cursor:crosshair;"></canvas>
+      </div>
+      <div id="histologyAnalysisHint" style="margin-top:8px;font-size:12px;color:var(--pewter);">Click Start, then click the image to add polygon vertices. Finish closes the ROI.</div>
+      <div id="histologyAnalysisResults" style="margin-top:12px;font-size:12.5px;color:var(--graphite);"></div>
+    </div>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="/static/js/pages/histology.js"></script>
+<script src="/static/js/pages/histology_analysis.js"></script>
 {% endblock %}

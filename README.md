@@ -71,7 +71,7 @@ Intan `.rhd` parsing is provided by the vendored reference parser under
 | Command | What it does |
 | --- | --- |
 | `bte-csv-viewer` | Browse and overlay CSV traces in a folder. |
-| `bte-histology` | Standardize histology file naming. |
+| `bte-histology` | Standardize histology naming and run QuPath-project ROI marker analysis. |
 
 ### Web app
 

@@ -21,6 +21,10 @@ find_histology_cases = histology_service.find_histology_cases
 load_histology_preview_pair = histology_service.load_histology_preview_pair
 rename_histology_case = histology_service.rename_histology_case
 sync_qupath_names_from_histology_cases = histology_service.sync_qupath_names_from_histology_cases
+load_qupath_project = histology_service.load_qupath_project
+load_project_image_preview = histology_service.load_project_image_preview
+save_project_rois = histology_service.save_project_rois
+analyze_project_rois = histology_service.analyze_project_rois
 parse_bool = histology_service.parse_bool
 normalize_rotate_deg = histology_service.normalize_rotate_deg
 
@@ -48,6 +52,29 @@ class HistologySyncQupathNamesRequest(RequestModel):
     update_server_json: Any = True
     cases: list[Any] | None = None
     folder: str = ""
+
+
+class HistologyQupathProjectRequest(RequestModel):
+    qupath_project: str = Field(min_length=1)
+
+
+class HistologyQupathImagePreviewRequest(RequestModel):
+    qupath_project: str = Field(min_length=1)
+    entry_id: str = Field(min_length=1)
+    max_side: int = Field(default=1600, ge=256, le=2400)
+
+
+class HistologySaveRoisRequest(RequestModel):
+    qupath_project: str = Field(min_length=1)
+    entry_id: str = Field(min_length=1)
+    rois: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class HistologyAnalyzeRoisRequest(RequestModel):
+    qupath_project: str = Field(min_length=1)
+    entry_id: str = Field(min_length=1)
+    rois: list[dict[str, Any]] = Field(default_factory=list)
+    parameters: dict[str, Any] = Field(default_factory=dict)
 
 
 def register_histology_routes(app, ctx):
@@ -178,4 +205,88 @@ def register_histology_routes(app, ctx):
             ),
             body,
             metadata={"endpoint": "/api/histology/sync_qupath_names"},
+        )
+
+    @app.route("/api/histology/qupath_project", methods=["POST"])
+    @request_schema(HistologyQupathProjectRequest)
+    def api_histology_qupath_project():
+        try:
+            payload = parse_json_payload(HistologyQupathProjectRequest)
+            return jsonify({"ok": True, **load_qupath_project(payload.qupath_project)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/qupath_image_preview", methods=["POST"])
+    @request_schema(HistologyQupathImagePreviewRequest)
+    def api_histology_qupath_image_preview():
+        try:
+            payload = parse_json_payload(HistologyQupathImagePreviewRequest)
+            result = load_project_image_preview(
+                payload.qupath_project,
+                payload.entry_id,
+                max_side=payload.max_side,
+            )
+            return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/analysis/save_rois", methods=["POST"])
+    @request_schema(HistologySaveRoisRequest)
+    def api_histology_analysis_save_rois(payload=None):
+        try:
+            if payload is None:
+                body = parse_json_payload(HistologySaveRoisRequest).model_dump()
+            else:
+                body = HistologySaveRoisRequest.model_validate(payload).model_dump()
+            result = save_project_rois(
+                body["qupath_project"],
+                body["entry_id"],
+                body.get("rois", []),
+            )
+            return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/analysis/run", methods=["POST"])
+    @request_schema(HistologyAnalyzeRoisRequest)
+    def api_histology_analysis_run(payload=None):
+        try:
+            if payload is None:
+                body = parse_json_payload(HistologyAnalyzeRoisRequest).model_dump()
+            else:
+                body = HistologyAnalyzeRoisRequest.model_validate(payload).model_dump()
+            result = analyze_project_rois(
+                body["qupath_project"],
+                body["entry_id"],
+                body.get("rois", []),
+                parameters=body.get("parameters", {}),
+            )
+            return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/analysis/run_job", methods=["POST"])
+    @request_schema(HistologyAnalyzeRoisRequest)
+    def api_histology_analysis_run_job():
+        try:
+            body = parse_json_payload(HistologyAnalyzeRoisRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        return submit_json_task(
+            jobs,
+            "histology.analysis",
+            "Analyze histology ROIs",
+            lambda job_ctx, body: _response_task(
+                job_ctx, body, api_histology_analysis_run, "Analyzing histology ROIs"
+            ),
+            body,
+            metadata={"endpoint": "/api/histology/analysis/run"},
         )

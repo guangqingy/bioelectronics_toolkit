@@ -8,8 +8,15 @@ Functional implementation lives in smaller modules:
 - histology_discovery: case discovery and QuPath display-name reads
 - histology_preview: image preview, label preview, and OCR
 - histology_qupath: case renaming and QuPath project synchronization
+- histology_analysis: QuPath project ROI analysis sidecars
 """
 
+from services.histology_analysis import (
+    analyze_project_rois,
+    load_project_image_preview,
+    load_qupath_project,
+    save_project_rois,
+)
 from services.histology_common import (
     _bool,
     _int,
@@ -35,13 +42,17 @@ __all__ = [
     "_normalize_rotate_deg",
     "candidate_overview_files",
     "find_histology_cases",
+    "analyze_project_rois",
     "image_to_b64",
+    "load_project_image_preview",
     "load_histology_preview_pair",
+    "load_qupath_project",
     "normalize_rotate_deg",
     "parse_bool",
     "parse_int",
     "read_qupath_display_name",
     "rename_histology_case",
+    "save_project_rois",
     "sanitize_name",
     "sync_qupath_names_from_histology_cases",
 ]

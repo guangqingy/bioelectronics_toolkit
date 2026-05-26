@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import threading
 import time
@@ -224,6 +225,96 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('onclick="logoutServer()"', html)
         self.assertIn("v0.6.0", html)
         self.assertNotIn("unknown", html.lower())
+
+    def test_histology_page_exposes_qupath_analysis_controls(self) -> None:
+        response = self.client.get("/histology")
+        html = response.data.decode("utf-8")
+
+        self.assertIn("QuPath Analysis", html)
+        self.assertIn("histologyAnalysisCanvas", html)
+        self.assertIn("Analyze SMA + Macrophage", html)
+        self.assertIn("DAPI / Blue", html)
+        self.assertIn("FITC / Green", html)
+        self.assertIn("Cy5 / Red", html)
+        self.assertIn("Advanced Detection", html)
+        self.assertIn("histology_analysis.js", html)
+
+    def test_histology_analysis_api_runs_on_qupath_entry(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology analysis optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_api_") as tmp:
+            root = Path(tmp)
+            image = root / "entry.tif"
+            arr = np.zeros((20, 20, 3), dtype=np.uint8)
+            arr[3:15, 3:15, 0] = 200
+            arr[7:18, 7:18, 1] = 190
+            tifffile.imwrite(image, arr)
+            project = root / "project.qpproj"
+            project.write_text(
+                json.dumps(
+                    {
+                        "images": [
+                            {
+                                "entryID": 3,
+                                "imageName": "entry",
+                                "serverBuilder": {"uri": f"file:{image.as_posix()}"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            rois = [
+                {
+                    "id": "roi_api",
+                    "label": "ROI API",
+                    "points": [{"x": 1, "y": 1}, {"x": 18, "y": 1}, {"x": 18, "y": 18}, {"x": 1, "y": 18}],
+                }
+            ]
+
+            project_response = self.client.post(
+                "/api/histology/qupath_project", json={"qupath_project": str(project)}
+            )
+            preview_response = self.client.post(
+                "/api/histology/qupath_image_preview",
+                json={"qupath_project": str(project), "entry_id": "3"},
+            )
+            analysis_response = self.client.post(
+                "/api/histology/analysis/run",
+                json={
+                    "qupath_project": str(project),
+                    "entry_id": "3",
+                    "rois": rois,
+                    "parameters": {
+                        "sma_channel": "red",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 100,
+                        "macrophage_channel": "green",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 100,
+                        "background_mode": "none",
+                    },
+                },
+            )
+
+            project_payload = project_response.get_json()
+            preview_payload = preview_response.get_json()
+            analysis_payload = analysis_response.get_json()
+            self.assertEqual(project_response.status_code, 200)
+            self.assertTrue(project_payload["ok"])
+            self.assertEqual(project_payload["entry_count"], 1)
+            self.assertEqual(preview_response.status_code, 200)
+            self.assertTrue(preview_payload["ok"])
+            self.assertEqual(preview_payload["width"], 20)
+            self.assertEqual(analysis_response.status_code, 200)
+            self.assertTrue(analysis_payload["ok"])
+            self.assertGreater(analysis_payload["results"][0]["sma_positive_px"], 0)
+            self.assertGreaterEqual(analysis_payload["results"][0]["sma_object_count"], 1)
+            self.assertTrue(Path(analysis_payload["analysis_path"]).exists())
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1082,6 +1173,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "FluorescenceStackExportBatchRequest",
             "FluorescenceStackExportRequest",
             "HistologyRenameRequest",
+            "HistologyAnalyzeRoisRequest",
+            "HistologyQupathImagePreviewRequest",
+            "HistologyQupathProjectRequest",
+            "HistologySaveRoisRequest",
             "HistologySyncQupathNamesRequest",
             "LifExportManifestRequest",
             "LifExportTiffBatchRequest",
@@ -1133,6 +1228,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/3d/intensity_distribution": "#/components/schemas/Fluorescence3dDistributionRequest",
             "/api/histology/rename_job": "#/components/schemas/HistologyRenameRequest",
             "/api/histology/sync_qupath_names_job": "#/components/schemas/HistologySyncQupathNamesRequest",
+            "/api/histology/qupath_project": "#/components/schemas/HistologyQupathProjectRequest",
+            "/api/histology/qupath_image_preview": "#/components/schemas/HistologyQupathImagePreviewRequest",
+            "/api/histology/analysis/save_rois": "#/components/schemas/HistologySaveRoisRequest",
+            "/api/histology/analysis/run_job": "#/components/schemas/HistologyAnalyzeRoisRequest",
             "/api/rhd/plot": "#/components/schemas/RhdViewRequest",
             "/api/rhd/process": "#/components/schemas/RhdProcessingRequest",
             "/api/rhd/export_processing_job": "#/components/schemas/RhdProcessingRequest",

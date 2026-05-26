@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from services import histology, histology_discovery, histology_qupath
+from services import histology, histology_analysis, histology_discovery, histology_qupath
 
 
 class HistologyServiceSplitTests(unittest.TestCase):
@@ -66,6 +66,71 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertEqual(result["updated_images"], 1)
             updated = json.loads(project.read_text(encoding="utf-8"))
             self.assertEqual(updated["images"][0]["imageName"], "Case_B")
+
+    def test_histology_analysis_saves_rois_and_results_in_project_data(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology analysis optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_analysis_") as tmp:
+            root = Path(tmp)
+            image = root / "sample.tif"
+            arr = np.zeros((24, 24, 3), dtype=np.uint8)
+            arr[4:18, 4:18, 0] = 220
+            arr[8:22, 8:22, 1] = 210
+            tifffile.imwrite(image, arr)
+            project = root / "project.qpproj"
+            project.write_text(
+                json.dumps(
+                    {
+                        "images": [
+                            {
+                                "entryID": 7,
+                                "imageName": "sample",
+                                "serverBuilder": {"uri": f"file:{image.as_posix()}"},
+                            }
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+            rois = [
+                {
+                    "id": "roi_1",
+                    "label": "Lesion",
+                    "points": [{"x": 2, "y": 2}, {"x": 21, "y": 2}, {"x": 21, "y": 21}, {"x": 2, "y": 21}],
+                }
+            ]
+
+            loaded = histology_analysis.load_qupath_project(project)
+            preview = histology_analysis.load_project_image_preview(project, "7")
+            result = histology_analysis.analyze_project_rois(
+                project,
+                "7",
+                rois,
+                {
+                    "sma_channel": "red",
+                    "sma_threshold_method": "manual",
+                    "sma_threshold": 120,
+                    "macrophage_channel": "green",
+                    "macrophage_threshold_method": "manual",
+                    "macrophage_threshold": 120,
+                    "background_mode": "none",
+                },
+            )
+
+            self.assertEqual(loaded["entry_count"], 1)
+            self.assertEqual(preview["width"], 24)
+            self.assertEqual(result["roi_count"], 1)
+            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
+            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
+            self.assertGreaterEqual(result["results"][0]["sma_object_count"], 1)
+            self.assertTrue(Path(result["analysis_path"]).exists())
+            self.assertTrue(Path(result["geojson_path"]).exists())
+            updated = json.loads(project.read_text(encoding="utf-8"))
+            self.assertIn("dataprocessHistologyAnalysis", updated)
 
 
 if __name__ == "__main__":
