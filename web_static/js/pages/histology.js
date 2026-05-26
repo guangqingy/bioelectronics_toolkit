@@ -149,6 +149,31 @@ function histologyProjectRoot() {
   return document.getElementById('projectPath').value.trim();
 }
 
+function histologyModuleFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const module = (params.get('module') || '').toLowerCase();
+  if (module === 'analysis' || module === 'naming') return module;
+  if (window.location.hash === '#analysis') return 'analysis';
+  return 'naming';
+}
+
+function applyHistologyModuleFromUrl() {
+  const module = histologyModuleFromUrl();
+  document.querySelectorAll('[data-histology-module-button]').forEach(link => {
+    const active = link.dataset.histologyModuleButton === module;
+    link.classList.toggle('btn-primary', active);
+    link.classList.toggle('btn-secondary', !active);
+  });
+
+  const analysisControls = document.getElementById('histologyAnalysisControls');
+  if (analysisControls && module === 'analysis') analysisControls.open = true;
+
+  if (module === 'analysis' && new URLSearchParams(window.location.search).has('module')) {
+    const target = document.getElementById('histologyAnalysisCard');
+    if (target) setTimeout(() => target.scrollIntoView({block: 'start'}), 0);
+  }
+}
+
 function syncQuPathNames() {
   if (!_histologyCases || !_histologyCases.length) {
     setStatus('status', 'Load a project first', 'error');
@@ -297,6 +322,7 @@ function applyRename() {
 }
 
 window.addEventListener('load', () => {
+  applyHistologyModuleFromUrl();
   const rot = parseInt(localStorage.getItem('histology_rotate_deg') || '0', 10);
   document.getElementById('rotateDeg').value = [0,90,180,270].includes(rot) ? String(rot) : '0';
   let suffixList = localStorage.getItem('histology_suffix_list') || '';
@@ -317,8 +343,10 @@ window.DP.page = window.DP.page || {};
   '_readBool',
   '_writeBool',
   'applyRename',
+  'applyHistologyModuleFromUrl',
   'getCaseElementByPath',
   'getRotateDeg',
+  'histologyModuleFromUrl',
   'histologyProjectRoot',
   'onRotateChange',
   'onSuffixListChange',

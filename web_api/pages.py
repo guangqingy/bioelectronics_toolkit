@@ -105,7 +105,10 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/histology")
     def histology():
-        return render_template("histology.html", active="histology")
+        module = str(request.args.get("module") or "naming").strip().lower()
+        if module not in {"naming", "analysis"}:
+            module = "naming"
+        return render_template("histology.html", active="histology", histology_module=module)
 
     @app.route("/fluorescence/gif")
     def fluorescence_gif():

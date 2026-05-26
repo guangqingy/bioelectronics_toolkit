@@ -10,6 +10,34 @@ function histologyQuPathProjectPath() {
   return (document.getElementById('qupathProject')?.value || '').trim();
 }
 
+function histologyRoiLabelElements() {
+  return ['histologyRoiLabel', 'histologyRoiLabelInline']
+    .map(id => document.getElementById(id))
+    .filter(el => !!el);
+}
+
+function histologyCurrentRoiLabel() {
+  for (const el of histologyRoiLabelElements()) {
+    const value = (el.value || '').trim();
+    if (value) return value;
+  }
+  return `ROI ${_histologyPolygonCounter}`;
+}
+
+function setHistologyRoiLabel(value) {
+  histologyRoiLabelElements().forEach(el => {
+    el.value = value;
+  });
+}
+
+function bindHistologyRoiLabels() {
+  histologyRoiLabelElements().forEach(el => {
+    if (el.dataset.bound === '1') return;
+    el.dataset.bound = '1';
+    el.addEventListener('input', () => setHistologyRoiLabel(el.value || ''));
+  });
+}
+
 function histologySetAnalysisStatus(message, kind) {
   setStatus('status', message, kind || 'ok');
   const hint = document.getElementById('histologyAnalysisHint');
@@ -164,8 +192,8 @@ function startHistologyPolygon() {
     histologySetAnalysisStatus('Load a QuPath image first', 'error');
     return;
   }
-  const labelEl = document.getElementById('histologyRoiLabel');
-  const label = (labelEl?.value || `ROI ${_histologyPolygonCounter}`).trim() || `ROI ${_histologyPolygonCounter}`;
+  const label = histologyCurrentRoiLabel();
+  setHistologyRoiLabel(label);
   _histologyActivePolygon = {
     id: `roi_${Date.now()}`,
     label,
@@ -173,6 +201,8 @@ function startHistologyPolygon() {
     color: nextHistologyRoiColor(_histologyAnalysisRois.length),
     points: [],
   };
+  renderHistologyRoiList();
+  drawHistologyRois();
   histologySetAnalysisStatus('Click the image to add polygon vertices. Double-click or Finish to close.', 'ok');
 }
 
@@ -185,8 +215,7 @@ function finishHistologyPolygon() {
   _histologyAnalysisRois.push(_histologyActivePolygon);
   _histologyActivePolygon = null;
   _histologyPolygonCounter += 1;
-  const labelEl = document.getElementById('histologyRoiLabel');
-  if (labelEl) labelEl.value = `ROI ${_histologyPolygonCounter}`;
+  setHistologyRoiLabel(`ROI ${_histologyPolygonCounter}`);
   renderHistologyRoiList();
   drawHistologyRois();
   histologySetAnalysisStatus('ROI added. Save or analyze to write it into the project.', 'ok');
@@ -223,6 +252,11 @@ function deleteHistologyRoi(index) {
 
 function renderHistologyRoiList() {
   const el = document.getElementById('histologyRoiList');
+  const countEl = document.getElementById('histologyRoiInlineCount');
+  if (countEl) {
+    const drawing = _histologyActivePolygon ? ' · drawing' : '';
+    countEl.textContent = `${_histologyAnalysisRois.length} ROI${drawing}`;
+  }
   if (!el) return;
   if (!_histologyAnalysisRois.length && !_histologyActivePolygon) {
     el.innerHTML = '<div class="file-list-empty">No ROI for current image</div>';
@@ -445,6 +479,7 @@ function renderHistologyAnalysisResults(analysis) {
 }
 
 window.addEventListener('load', () => {
+  bindHistologyRoiLabels();
   setupHistologyAnalysisCanvas();
   renderHistologyQpImageList();
   renderHistologyRoiList();
@@ -457,12 +492,15 @@ window.DP.page = window.DP.page || {};
 [
   'analyzeHistologyRois',
   'applyHistologyAnalysisParameters',
+  'bindHistologyRoiLabels',
   'clearHistologyRois',
   'deleteHistologyRoi',
   'drawHistologyRois',
   'finishHistologyPolygon',
   'histologyAnalysisParameters',
+  'histologyCurrentRoiLabel',
   'histologyQuPathProjectPath',
+  'histologyRoiLabelElements',
   'loadHistologyAnalysisImage',
   'loadHistologyQuPathProject',
   'nativeToHistologyCanvas',
@@ -473,6 +511,7 @@ window.DP.page = window.DP.page || {};
   'resizeHistologyAnalysisCanvas',
   'saveHistologyRois',
   'selectHistologyQpImage',
+  'setHistologyRoiLabel',
   'setupHistologyAnalysisCanvas',
   'startHistologyPolygon',
   'undoHistologyPoint',

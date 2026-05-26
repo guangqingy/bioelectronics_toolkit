@@ -3,7 +3,9 @@
 {% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
-{% set workflow_active = active in ['scripts', 'run_history', 'histology'] %}
+{% set histology_active = active in ['histology'] %}
+{% set histology_module_active = histology_module|default('naming') %}
+{% set workflow_active = active in ['scripts', 'run_history'] %}
 <nav class="top-nav">
   <div class="nav-inner">
     <a class="nav-brand" href="{% if standalone_lif %}/fluorescence/lif{% else %}/{% endif %}">{% if standalone_lif %}Leica LIF Browser{% else %}DataProcess{% endif %}</a>
@@ -58,6 +60,16 @@
         </div>
       </div>
 
+      <div class="nav-menu {% if histology_active %}active{% endif %}">
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Histology</button>
+        <div class="nav-dropdown" role="menu">
+          <div class="nav-dropdown-label">Project</div>
+          <a class="nav-dropdown-item {% if active=='histology' and histology_module_active=='naming' %}active{% endif %}" href="/histology?module=naming" title="Histology folder naming and QuPath name sync">Naming</a>
+          <div class="nav-dropdown-label">Analysis</div>
+          <a class="nav-dropdown-item {% if active=='histology' and histology_module_active=='analysis' %}active{% endif %}" href="/histology?module=analysis" title="Draw polygon ROI and analyze SMA/macrophage markers">ROI Analysis</a>
+        </div>
+      </div>
+
       <div class="nav-menu {% if workflow_active %}active{% endif %}">
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Workflows</button>
         <div class="nav-dropdown nav-dropdown-right" role="menu">
@@ -65,8 +77,6 @@
           <a class="nav-dropdown-item {% if active=='scripts' %}active{% endif %}" href="/scripts" title="General Script Pipelines">Pipelines</a>
           <div class="nav-dropdown-label">Review</div>
           <a class="nav-dropdown-item {% if active=='run_history' %}active{% endif %}" href="/runs" title="Run History and Manifests">Run History</a>
-          <div class="nav-dropdown-label">Utilities</div>
-          <a class="nav-dropdown-item {% if active=='histology' %}active{% endif %}" href="/histology" title="Histology Folder Namer">Histology Namer</a>
         </div>
       </div>
       {% endif %}

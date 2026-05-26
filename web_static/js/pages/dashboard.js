@@ -135,13 +135,22 @@ const GUI_ITEMS = [
     href: '/fluorescence/3d-stacking',
   },
   {
-    id: 'histology',
-    name: 'Histology Namer',
+    id: 'histology_naming',
+    name: 'Histology Naming',
     desc: 'Preview Overview.vsi main and label images, then manually rename folders and QuPath display names.',
     why: 'Use this for histology folder cleanup before downstream image analysis.',
     tag: 'VSI rename',
-    domain: 'Utilities',
-    href: '/histology',
+    domain: 'Histology',
+    href: '/histology?module=naming',
+  },
+  {
+    id: 'histology_analysis',
+    name: 'Histology ROI Analysis',
+    desc: 'Open a QuPath project, draw polygon ROIs, tune DAPI/FITC/Cy5 thresholds, and save marker results back to project data.',
+    why: 'Use this when SMA and macrophage quantification needs per-image background and threshold tuning.',
+    tag: 'ROI markers',
+    domain: 'Histology',
+    href: '/histology?module=analysis',
   },
 ];
 
