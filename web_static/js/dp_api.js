@@ -185,6 +185,20 @@ function showLogoutScreen(message) {
   `;
 }
 
+function isLogoutDisconnectMessage(message) {
+  const networkClosePattern = [
+    'failed to fetch',
+    'load failed',
+    'networkerror',
+    'network request failed',
+    'connection (ended|closed|reset|lost)',
+    'server disconnected',
+    'cancelled',
+    'aborted',
+  ].join('|');
+  return new RegExp(networkClosePattern, 'i').test(message || '');
+}
+
 async function logoutServer() {
   if (!confirm(`Close ${APP_LABEL} and stop the Python server?`)) return;
 
@@ -210,7 +224,7 @@ async function logoutServer() {
   } catch (e) {
     clearTimeout(fallbackTimer);
     const msg = (e && e.message) || '';
-    if (/failed to fetch|networkerror/i.test(msg)) {
+    if (isLogoutDisconnectMessage(msg)) {
       if (!screenShown) showClosed('Connection ended. DataProcess Web is closed.', 150);
       return;
     }
