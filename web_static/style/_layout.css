@@ -42,8 +42,13 @@
 }
 
 .ctrl-details > summary {
+  color: var(--silver);
   cursor: pointer;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
   list-style: none;
+  text-transform: uppercase;
 }
 .ctrl-details > summary::-webkit-details-marker { display: none; }
 .ctrl-details > summary::after {
@@ -64,4 +69,3 @@
   color: var(--silver);
   margin-bottom: 7px;
 }
-
