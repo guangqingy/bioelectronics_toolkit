@@ -158,7 +158,7 @@ def _conversion_dicts(conversions: list[EtsConversionResult]) -> list[dict[str, 
 def _successful_conversion_outputs(conversions: list[EtsConversionResult]) -> list[Path]:
     outputs: list[Path] = []
     for item in conversions:
-        if item.status not in {"converted", "skipped_existing"}:
+        if item.status not in {"converted", "skipped_existing", "skipped_existing_tiff"}:
             continue
         output = Path(item.output_path).expanduser()
         if output.is_file():
@@ -190,6 +190,7 @@ def _analysis_image_paths(image_files: list[Path]) -> list[Path]:
     return [
         path
         for path in image_files
+        if not _looks_like_stack_derivative(path)
         if str(detect_channel_from_filename(path.name).get("detected_channel") or "")
         not in {"Overview", "Label"}
     ]
@@ -253,7 +254,7 @@ def _attach_conversion_metadata(
 ) -> None:
     by_sample: dict[str, list[EtsConversionResult]] = {}
     for item in conversions:
-        if item.status not in {"converted", "skipped_existing"}:
+        if item.status not in {"converted", "skipped_existing", "skipped_existing_tiff"}:
             continue
         sample_id = Path(item.case_dir).name
         by_sample.setdefault(sample_id, []).append(item)
@@ -319,6 +320,13 @@ def infer_sample_id(filename: str) -> str:
             if sample:
                 return sample
     return stem
+
+
+def _looks_like_stack_derivative(path: str | Path) -> bool:
+    stem = Path(path).stem.lower()
+    return bool(
+        re.search(r"(?:^|[_\-\s])tray\d+[_\-\s]*slide.*[_\-\s]stack\d+(?:$|[_\-\s])", stem)
+    )
 
 
 def _positive_int_env(name: str, default: int) -> int:
@@ -521,6 +529,8 @@ def group_images_by_sample(image_files: list[str | Path]) -> dict[str, SampleRec
     for raw_path in image_files:
         path = Path(raw_path).expanduser().resolve()
         if path.suffix.lower() not in SUPPORTED_IMAGE_SUFFIXES:
+            continue
+        if _looks_like_stack_derivative(path):
             continue
         sample_id = infer_sample_id(path.name)
         record = _record_for_image(path)

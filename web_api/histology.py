@@ -19,9 +19,13 @@ from .request_validation import (
 load_histology_data_project = histology_service.load_histology_data_project
 rename_histology_data_project_entry = histology_service.rename_histology_data_project_entry
 load_histology_data_project_image_preview = histology_service.load_histology_data_project_image_preview
+load_histology_data_project_image_region_preview = (
+    histology_service.load_histology_data_project_image_region_preview
+)
 save_histology_data_project_rois = histology_service.save_histology_data_project_rois
 analyze_histology_data_project_rois = histology_service.analyze_histology_data_project_rois
 load_histology_file_image_preview = histology_service.load_histology_file_image_preview
+load_histology_file_image_region_preview = histology_service.load_histology_file_image_region_preview
 analyze_histology_file_rois = histology_service.analyze_histology_file_rois
 scan_exported_tiff_project = histology_service.scan_exported_tiff_project
 create_project_from_exported_tiff = histology_service.create_project_from_exported_tiff
@@ -60,6 +64,16 @@ class HistologyDataProjectImagePreviewRequest(RequestModel):
     max_side: int = Field(default=1600, ge=256, le=2400)
 
 
+class HistologyDataProjectImageRegionPreviewRequest(RequestModel):
+    project_path: str = Field(min_length=1)
+    entry_id: str = Field(min_length=1)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+    max_side: int = Field(default=1800, ge=256, le=2600)
+
+
 class HistologyDataProjectSaveRoisRequest(RequestModel):
     project_path: str = Field(min_length=1)
     entry_id: str = Field(min_length=1)
@@ -76,6 +90,15 @@ class HistologyDataProjectAnalyzeRoisRequest(RequestModel):
 class HistologyFileImagePreviewRequest(RequestModel):
     image_path: str = Field(min_length=1)
     max_side: int = Field(default=1600, ge=256, le=2400)
+
+
+class HistologyFileImageRegionPreviewRequest(RequestModel):
+    image_path: str = Field(min_length=1)
+    x: float = Field(ge=0)
+    y: float = Field(ge=0)
+    width: float = Field(gt=0)
+    height: float = Field(gt=0)
+    max_side: int = Field(default=1800, ge=256, le=2600)
 
 
 class HistologyLabelPreviewRequest(RequestModel):
@@ -256,6 +279,28 @@ def register_histology_routes(app, ctx):
         except Exception:
             return err(traceback.format_exc())
 
+    @app.route("/api/histology/project/image_region_preview", methods=["POST"])
+    @request_schema(HistologyDataProjectImageRegionPreviewRequest)
+    def api_histology_project_image_region_preview():
+        try:
+            payload = parse_json_payload(HistologyDataProjectImageRegionPreviewRequest)
+            result = load_histology_data_project_image_region_preview(
+                payload.project_path,
+                payload.entry_id,
+                payload.x,
+                payload.y,
+                payload.width,
+                payload.height,
+                max_side=payload.max_side,
+            )
+            return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except (FileNotFoundError, ValueError) as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
     @app.route("/api/histology/project/analysis/save_rois", methods=["POST"])
     @request_schema(HistologyDataProjectSaveRoisRequest)
     def api_histology_project_analysis_save_rois(payload=None):
@@ -327,6 +372,27 @@ def register_histology_routes(app, ctx):
             payload = parse_json_payload(HistologyFileImagePreviewRequest)
             result = load_histology_file_image_preview(
                 payload.image_path,
+                max_side=payload.max_side,
+            )
+            return jsonify({"ok": True, **result})
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except (FileNotFoundError, ValueError) as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/histology/file/image_region_preview", methods=["POST"])
+    @request_schema(HistologyFileImageRegionPreviewRequest)
+    def api_histology_file_image_region_preview():
+        try:
+            payload = parse_json_payload(HistologyFileImageRegionPreviewRequest)
+            result = load_histology_file_image_region_preview(
+                payload.image_path,
+                payload.x,
+                payload.y,
+                payload.width,
+                payload.height,
                 max_side=payload.max_side,
             )
             return jsonify({"ok": True, **result})

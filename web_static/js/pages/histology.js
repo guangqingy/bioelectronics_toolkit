@@ -33,6 +33,7 @@ function histologyIsNamingEntry(entry) {
   const channels = Object.keys(files).map(k => k.toLowerCase());
   if (channels.length && channels.every(ch => ch.includes('overview') || ch.includes('label'))) return false;
   if (name.includes('_overview_stack') || name.includes('_label_stack')) return false;
+  if (/(^|[_\-\s])tray\d+[_\-\s]*slide.*[_\-\s]stack\d+($|[_\-\s])/.test(name)) return false;
   return true;
 }
 

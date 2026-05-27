@@ -5,6 +5,7 @@ import os
 import struct
 import tempfile
 import unittest
+import base64
 from io import BytesIO
 from pathlib import Path
 from unittest import mock
@@ -222,6 +223,32 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 {item["status"] for item in scanned["ets_conversions"]},
             )
 
+    def test_histology_scan_reuses_existing_case_tiff_and_ignores_stack_derivatives(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology TIFF optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_existing_tif_") as tmp:
+            root = Path(tmp) / "04-01-2026"
+            case = root / "2-Hy"
+            case.mkdir(parents=True)
+            (case / "Tray04_Slide02_01.vsi").write_text("vsi", encoding="utf-8")
+            _write_fake_ets(case / "_Tray04_Slide02_01_" / "stack1" / "frame_t_0.ets")
+            existing = case / "2-Hy_Brightfield.tif"
+            derivative = case / "2-Hy_Tray04_Slide02_02_stack1_Brightfield.tif"
+            tifffile.imwrite(existing, np.ones((12, 12), dtype=np.uint8) * 33)
+            tifffile.imwrite(derivative, np.ones((12, 12), dtype=np.uint8) * 99)
+
+            scanned = histology.scan_exported_tiff_project(root)
+
+            self.assertEqual(scanned["sample_count"], 1)
+            self.assertEqual(scanned["image_count"], 1)
+            self.assertEqual(scanned["samples"][0]["sample_id"], "2-Hy")
+            self.assertEqual(scanned["samples"][0]["image_files"], {"Brightfield": str(existing.resolve())})
+            self.assertIn("skipped_existing_tiff", {item["status"] for item in scanned["ets_conversions"]})
+
     def test_histology_project_rename_updates_converted_tiff_and_case_folder(self) -> None:
         try:
             import tifffile  # noqa: F401
@@ -331,6 +358,7 @@ class HistologyServiceSplitTests(unittest.TestCase):
         try:
             import numpy as np
             import tifffile
+            from PIL import Image
         except ImportError as exc:
             self.skipTest(f"histology data project optional dependency missing: {exc}")
 
@@ -413,6 +441,10 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(loaded["entries"][0]["parameters_path"]).is_file())
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
             self.assertEqual(preview["width"], 22)
+            self.assertIn("FITC", preview["preview_channels"])
+            with Image.open(BytesIO(base64.b64decode(preview["img"]))) as preview_img:
+                preview_arr = np.asarray(preview_img.convert("RGB"))
+            self.assertTrue(np.any(preview_arr[..., 0] != preview_arr[..., 1]))
             self.assertGreater(result["results"][0]["sma_positive_px"], 0)
             self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
             self.assertTrue(Path(result["analysis_path"]).exists())

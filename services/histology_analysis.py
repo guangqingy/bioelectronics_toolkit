@@ -123,6 +123,7 @@ def _clean_rois(rois: Any) -> list[dict[str, Any]]:
                 "id": str(roi.get("id") or f"roi_{idx}"),
                 "label": label,
                 "classification": str(roi.get("classification") or "Annotation"),
+                "coordinate_space": str(roi.get("coordinate_space") or roi.get("coordinateSpace") or "native"),
                 "color": str(roi.get("color") or "#2F80ED"),
                 "points": points,
             }

@@ -23,12 +23,19 @@ let _histologyView = {
   pinchStartZoom: 0,
   pinchAnchor: null,
 };
+let _histologyDetailPreview = {
+  seq: 0,
+  timer: null,
+  loading: false,
+  key: '',
+};
 
 const HISTOLOGY_ROI_COLOR_TOKENS = ['--blue', '--success', '--error', '--warning', '--blue-hover', '--error-text-strong'];
 const HISTOLOGY_ZOOM_MIN = 0.05;
 const HISTOLOGY_ZOOM_MAX = 8;
 const HISTOLOGY_DRAG_THRESHOLD_PX = 3;
 const HISTOLOGY_WHEEL_ZOOM_SENSITIVITY = 0.003;
+const HISTOLOGY_DETAIL_ZOOM_MIN = 1.35;
 
 function histologyThemeColor(token, fallback) {
   const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
@@ -157,6 +164,74 @@ function histologyPreviewSize() {
   return {width, height};
 }
 
+function histologyNativeSize() {
+  return {
+    width: Math.max(1, Number(_histologyAnalysisImage?.width || _histologyAnalysisImage?.preview_width || 1)),
+    height: Math.max(1, Number(_histologyAnalysisImage?.height || _histologyAnalysisImage?.preview_height || 1)),
+  };
+}
+
+function histologyPreviewToNative(point) {
+  const preview = histologyPreviewSize();
+  const native = histologyNativeSize();
+  return {
+    x: histologyClamp(Number(point?.x || 0) * native.width / Math.max(1, preview.width), 0, native.width),
+    y: histologyClamp(Number(point?.y || 0) * native.height / Math.max(1, preview.height), 0, native.height),
+  };
+}
+
+function histologyNativeToPreview(point) {
+  const preview = histologyPreviewSize();
+  const native = histologyNativeSize();
+  return {
+    x: histologyClamp(Number(point?.x || 0) * preview.width / Math.max(1, native.width), 0, preview.width),
+    y: histologyClamp(Number(point?.y || 0) * preview.height / Math.max(1, native.height), 0, preview.height),
+  };
+}
+
+function histologyPreviewScale() {
+  const preview = histologyPreviewSize();
+  const native = histologyNativeSize();
+  return {
+    x: native.width / Math.max(1, preview.width),
+    y: native.height / Math.max(1, preview.height),
+  };
+}
+
+function histologyNormalizeIncomingRois(rois) {
+  const items = Array.isArray(rois) ? rois : [];
+  const preview = histologyPreviewSize();
+  const native = histologyNativeSize();
+  const downsampled = native.width > preview.width + 1 || native.height > preview.height + 1;
+  return items.map(roi => {
+    const copy = Object.assign({}, roi || {});
+    const points = Array.isArray(copy.points) ? copy.points : [];
+    const maxX = points.reduce((m, p) => Math.max(m, Number(p?.x || 0)), 0);
+    const maxY = points.reduce((m, p) => Math.max(m, Number(p?.y || 0)), 0);
+    const space = String(copy.coordinate_space || copy.coordinateSpace || '').toLowerCase();
+    const shouldScale = downsampled && (space === 'preview' || (!space && maxX <= preview.width + 1 && maxY <= preview.height + 1));
+    copy.coordinate_space = 'native';
+    copy.points = points.map(point => {
+      const p = {x: Number(point?.x || 0), y: Number(point?.y || 0)};
+      return shouldScale ? histologyPreviewToNative(p) : {
+        x: histologyClamp(p.x, 0, native.width),
+        y: histologyClamp(p.y, 0, native.height),
+      };
+    });
+    return copy;
+  });
+}
+
+function histologyRoisForApi() {
+  return _histologyAnalysisRois.map(roi => Object.assign({}, roi, {
+    coordinate_space: 'native',
+    points: (Array.isArray(roi.points) ? roi.points : []).map(point => ({
+      x: Number(point.x || 0),
+      y: Number(point.y || 0),
+    })),
+  }));
+}
+
 function histologyRotatedBounds(zoom, rotation) {
   const size = histologyPreviewSize();
   const rad = (Number(rotation || 0) % 360) * Math.PI / 180;
@@ -277,6 +352,7 @@ function histologyApplyViewTransform() {
   canvas.hidden = false;
   drawHistologyRois();
   updateHistologyViewControls();
+  histologyScheduleDetailPreview(_histologyView.dragging ? 360 : 220);
 }
 
 function updateHistologyViewControls() {
@@ -353,6 +429,7 @@ function histologyTogglePanMode() {
 }
 
 function histologyResetView(fit) {
+  histologyClearDetailPreview();
   _histologyView.zoom = fit ? histologyFitScale() : 1;
   _histologyView.rotation = 0;
   _histologyView.panMode = false;
@@ -507,7 +584,7 @@ function selectHistologyProjectImage(entryId) {
   }).then(d => {
     if (d.error) throw new Error(d.error);
     _histologyAnalysisImage = Object.assign({}, d, {source_mode: 'project'});
-    _histologyAnalysisRois = Array.isArray(d.rois) ? d.rois : [];
+    _histologyAnalysisRois = histologyNormalizeIncomingRois(d.rois);
     _histologyPolygonCounter = Math.max(1, _histologyAnalysisRois.length + 1);
     renderHistologyRoiList();
     const latestAnalysis = (d.analyses || []).slice(-1)[0] || null;
@@ -539,6 +616,7 @@ function clearHistologyAnalysisImage(message) {
   _histologyView.rotation = 0;
   _histologyView.panX = 0;
   _histologyView.panY = 0;
+  histologyClearDetailPreview();
   if (surface) surface.hidden = true;
   if (empty) {
     empty.hidden = false;
@@ -574,7 +652,8 @@ function histologyCanvasPoint(event) {
   const area = document.getElementById('histologyAnalysisPlotArea');
   if (!area) return null;
   const rect = area.getBoundingClientRect();
-  return histologyViewportToLocal(event.clientX - rect.left, event.clientY - rect.top, false);
+  const local = histologyViewportToLocal(event.clientX - rect.left, event.clientY - rect.top, false);
+  return local ? histologyPreviewToNative(local) : null;
 }
 
 function histologyAreaPointFromEvent(event) {
@@ -698,12 +777,125 @@ function histologyHandleGestureEnd(event) {
   _histologyView.pinchAnchor = null;
 }
 
-function nativeToHistologyCanvas(point) {
-  const size = histologyPreviewSize();
+function histologyClearDetailPreview() {
+  _histologyDetailPreview.seq += 1;
+  _histologyDetailPreview.loading = false;
+  _histologyDetailPreview.key = '';
+  if (_histologyDetailPreview.timer) {
+    clearTimeout(_histologyDetailPreview.timer);
+    _histologyDetailPreview.timer = null;
+  }
+  const detail = document.getElementById('histologyAnalysisDetailImg');
+  if (detail) {
+    detail.hidden = true;
+    detail.removeAttribute('src');
+  }
+}
+
+function histologyVisibleNativeRegion() {
+  const area = document.getElementById('histologyAnalysisPlotArea');
+  if (!area || !_histologyAnalysisImage) return null;
+  const corners = [
+    {x: 0, y: 0},
+    {x: area.clientWidth, y: 0},
+    {x: area.clientWidth, y: area.clientHeight},
+    {x: 0, y: area.clientHeight},
+  ].map(point => histologyViewportToLocal(point.x, point.y, true)).filter(Boolean);
+  if (!corners.length) return null;
+  const nativeCorners = corners.map(histologyPreviewToNative);
+  const native = histologyNativeSize();
+  let x0 = Math.min(...nativeCorners.map(point => point.x));
+  let y0 = Math.min(...nativeCorners.map(point => point.y));
+  let x1 = Math.max(...nativeCorners.map(point => point.x));
+  let y1 = Math.max(...nativeCorners.map(point => point.y));
+  const padX = Math.max(32, (x1 - x0) * 0.18);
+  const padY = Math.max(32, (y1 - y0) * 0.18);
+  x0 = histologyClamp(x0 - padX, 0, native.width - 1);
+  y0 = histologyClamp(y0 - padY, 0, native.height - 1);
+  x1 = histologyClamp(x1 + padX, x0 + 1, native.width);
+  y1 = histologyClamp(y1 + padY, y0 + 1, native.height);
   return {
-    x: histologyClamp(Number(point.x || 0), 0, size.width),
-    y: histologyClamp(Number(point.y || 0), 0, size.height),
+    x: Math.floor(x0),
+    y: Math.floor(y0),
+    width: Math.max(1, Math.ceil(x1 - x0)),
+    height: Math.max(1, Math.ceil(y1 - y0)),
   };
+}
+
+function histologyDetailPreviewNeeded() {
+  if (!_histologyAnalysisImage || _histologyView.dragging) return false;
+  const scale = histologyPreviewScale();
+  return _histologyView.zoom >= HISTOLOGY_DETAIL_ZOOM_MIN && Math.max(scale.x, scale.y) > 1.08;
+}
+
+function histologyApplyDetailPreview(payload) {
+  const detail = document.getElementById('histologyAnalysisDetailImg');
+  if (!detail || !payload?.img) return;
+  const preview = histologyPreviewSize();
+  const native = histologyNativeSize();
+  const x = Number(payload.region_x || 0);
+  const y = Number(payload.region_y || 0);
+  const width = Number(payload.region_width || 1);
+  const height = Number(payload.region_height || 1);
+  detail.style.left = `${x * preview.width / Math.max(1, native.width)}px`;
+  detail.style.top = `${y * preview.height / Math.max(1, native.height)}px`;
+  detail.style.width = `${width * preview.width / Math.max(1, native.width)}px`;
+  detail.style.height = `${height * preview.height / Math.max(1, native.height)}px`;
+  detail.hidden = false;
+  detail.src = 'data:image/png;base64,' + payload.img;
+}
+
+function histologyScheduleDetailPreview(delayMs) {
+  if (_histologyDetailPreview.timer) {
+    clearTimeout(_histologyDetailPreview.timer);
+    _histologyDetailPreview.timer = null;
+  }
+  if (!histologyDetailPreviewNeeded()) {
+    const detail = document.getElementById('histologyAnalysisDetailImg');
+    if (detail) detail.hidden = true;
+    return;
+  }
+  _histologyDetailPreview.timer = setTimeout(() => {
+    const region = histologyVisibleNativeRegion();
+    if (!region) return;
+    const key = [
+      _histologyAnalysisImage?.source_mode || '',
+      _histologyProjectEntryId || _histologyAnalysisImage?.image_path || '',
+      Math.round(region.x / 8),
+      Math.round(region.y / 8),
+      Math.round(region.width / 8),
+      Math.round(region.height / 8),
+      Math.round(_histologyView.rotation),
+    ].join(':');
+    if (_histologyDetailPreview.key === key) return;
+    const seq = ++_histologyDetailPreview.seq;
+    _histologyDetailPreview.loading = true;
+    const isFileMode = _histologyAnalysisImage?.source_mode === 'file';
+    const endpoint = isFileMode
+      ? '/api/histology/file/image_region_preview'
+      : '/api/histology/project/image_region_preview';
+    const body = Object.assign({}, region, {max_side: 2200});
+    if (isFileMode) {
+      body.image_path = _histologyAnalysisImage?.image_path || histologyAnalysisImagePath();
+    } else {
+      body.project_path = histologyDataProjectPath();
+      body.entry_id = _histologyProjectEntryId;
+    }
+    api(endpoint, body).then(d => {
+      if (seq !== _histologyDetailPreview.seq) return;
+      _histologyDetailPreview.loading = false;
+      if (d.error) throw new Error(d.error);
+      _histologyDetailPreview.key = key;
+      histologyApplyDetailPreview(d);
+    }).catch(() => {
+      if (seq !== _histologyDetailPreview.seq) return;
+      _histologyDetailPreview.loading = false;
+    });
+  }, Math.max(80, Number(delayMs || 220)));
+}
+
+function nativeToHistologyCanvas(point) {
+  return histologyNativeToPreview(point);
 }
 
 function setupHistologyAnalysisCanvas() {
@@ -783,6 +975,7 @@ function startHistologyPolygon() {
     id: `roi_${Date.now()}`,
     label,
     classification: 'Annotation',
+    coordinate_space: 'native',
     color: nextHistologyRoiColor(_histologyAnalysisRois.length),
     points: [],
   };
@@ -971,10 +1164,11 @@ function saveHistologyRois() {
     return;
   }
   btnBusy('btnSaveHistologyRois', true, 'Saving...');
+  const rois = histologyRoisForApi();
   api('/api/histology/project/analysis/save_rois', {
     project_path: histologyDataProjectPath(),
     entry_id: _histologyProjectEntryId,
-    rois: _histologyAnalysisRois,
+    rois,
   }).then(d => {
     btnBusy('btnSaveHistologyRois', false, 'Save ROI');
     if (d.error) throw new Error(d.error);
@@ -1004,14 +1198,15 @@ function analyzeHistologyRois() {
   const endpoint = isFileMode
     ? '/api/histology/file/analysis/run_job'
     : '/api/histology/project/analysis/run_job';
+  const rois = histologyRoisForApi();
   const body = isFileMode ? {
     image_path: _histologyAnalysisImage?.image_path || histologyAnalysisImagePath(),
-    rois: _histologyAnalysisRois,
+    rois,
     parameters: histologyAnalysisParameters(),
   } : {
     project_path: histologyDataProjectPath(),
     entry_id: _histologyProjectEntryId,
-    rois: _histologyAnalysisRois,
+    rois,
     parameters: histologyAnalysisParameters(),
   };
   dpRunJobEndpoint(endpoint, body, {
@@ -1038,7 +1233,7 @@ function analyzeHistologyRois() {
       project_root: histologyProjectRoot(),
       input_files: [{path: d.analysis?.image_path || _histologyAnalysisImage?.image_path || '', role: isFileMode ? 'histology_file_image' : 'histology_project_image'}],
       outputs: dpAsPathRecords([d.analysis_path, d.geojson_path, d.summary_path, d.project_path, d.cache_dir], 'histology_analysis_output'),
-      parameters: Object.assign({entry_id: _histologyProjectEntryId, image_path: _histologyAnalysisImage?.image_path || '', rois: _histologyAnalysisRois}, histologyAnalysisParameters()),
+      parameters: Object.assign({entry_id: _histologyProjectEntryId, image_path: _histologyAnalysisImage?.image_path || '', rois}, histologyAnalysisParameters()),
       metadata: {roi_count: d.roi_count || _histologyAnalysisRois.length, backend: d.backend || ''},
     });
     updateHistologyActionState();

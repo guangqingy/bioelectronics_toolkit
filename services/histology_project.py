@@ -20,6 +20,7 @@ from services.histology_analysis import (
     _now_iso,
     _png_b64,
     _read_json,
+    _scale_to_uint8,
     _write_json,
 )
 from services.histology_tiff_project import (
@@ -148,6 +149,134 @@ def _read_project_image_preview(path: str | Path, max_side: int = 1600):
         img.thumbnail((preview_max, preview_max), Image.Resampling.LANCZOS)
         arr = np.asarray(img.convert("RGB"), dtype=np.uint8)
     return arr, backend, [*warnings, *read_warnings], w, h
+
+
+def _resize_rgb_for_preview(arr: np.ndarray, max_side: int) -> np.ndarray:
+    rgb = _array_to_rgb(arr)
+    limit = max(128, min(int(max_side), 2400))
+    if max(rgb.shape[:2]) <= limit:
+        return np.ascontiguousarray(rgb)
+    img = Image.fromarray(rgb, mode="RGB")
+    img.thumbnail((limit, limit), Image.Resampling.LANCZOS)
+    return np.asarray(img.convert("RGB"), dtype=np.uint8)
+
+
+def _normalize_region_box(
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    image_width: int,
+    image_height: int,
+) -> tuple[int, int, int, int]:
+    x0 = max(0, min(int(np.floor(float(x))), max(0, image_width - 1)))
+    y0 = max(0, min(int(np.floor(float(y))), max(0, image_height - 1)))
+    x1 = max(x0 + 1, min(int(np.ceil(float(x) + float(width))), image_width))
+    y1 = max(y0 + 1, min(int(np.ceil(float(y) + float(height))), image_height))
+    return x0, y0, x1, y1
+
+
+def _region_output_size(region_w: int, region_h: int, max_side: int) -> tuple[int, int, float]:
+    limit = max(256, min(int(max_side), 2600))
+    scale = min(1.0, float(limit) / max(1, int(region_w), int(region_h)))
+    out_w = max(1, int(round(int(region_w) * scale)))
+    out_h = max(1, int(round(int(region_h) * scale)))
+    return out_w, out_h, scale
+
+
+def _tiff_series_xy_shape(tf) -> tuple[Any, Any, tuple[int, ...], int, int]:
+    series = tf.series[0] if getattr(tf, "series", None) else None
+    page = series.pages[0] if series is not None and getattr(series, "pages", None) else tf.pages[0]
+    shape = tuple(int(x) for x in (series.shape if series is not None else page.shape))
+    if len(shape) == 2:
+        height, width = shape
+    elif len(shape) == 3 and shape[-1] in {1, 3, 4}:
+        height, width = shape[:2]
+    else:
+        raise ValueError(f"Unsupported TIFF preview shape: {shape}")
+    return series, page, shape, int(width), int(height)
+
+
+def _preview_array_from_tiled_tiff_region(
+    path: Path,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_side: int,
+) -> tuple[np.ndarray, int, int, tuple[int, int, int, int]]:
+    if tifffile is None:
+        raise RuntimeError("tifffile is required to preview tiled TIFF images")
+    with tifffile.TiffFile(str(path)) as tf:
+        _series, page, _shape, image_w, image_h = _tiff_series_xy_shape(tf)
+        if not getattr(page, "is_tiled", False):
+            raise ValueError("TIFF is not tiled")
+        x0, y0, x1, y1 = _normalize_region_box(x, y, width, height, image_w, image_h)
+        region_w = max(1, x1 - x0)
+        region_h = max(1, y1 - y0)
+        out_w, out_h, scale = _region_output_size(region_w, region_h, max_side)
+        canvas = Image.new("RGB", (out_w, out_h), "black")
+        for tile_data, tile_index, _tile_shape in page.segments():
+            if len(tile_index) < 4:
+                continue
+            tile_y = int(tile_index[-3])
+            tile_x = int(tile_index[-2])
+            tile = _array_to_rgb(np.asarray(tile_data).squeeze())
+            tile_h = int(tile.shape[0])
+            tile_w = int(tile.shape[1])
+            ix0 = max(x0, tile_x)
+            iy0 = max(y0, tile_y)
+            ix1 = min(x1, tile_x + tile_w)
+            iy1 = min(y1, tile_y + tile_h)
+            if ix1 <= ix0 or iy1 <= iy0:
+                continue
+            sx0 = ix0 - tile_x
+            sy0 = iy0 - tile_y
+            sx1 = sx0 + (ix1 - ix0)
+            sy1 = sy0 + (iy1 - iy0)
+            dx0 = int(round((ix0 - x0) * scale))
+            dy0 = int(round((iy0 - y0) * scale))
+            dx1 = int(round((ix1 - x0) * scale))
+            dy1 = int(round((iy1 - y0) * scale))
+            if dx1 <= dx0 or dy1 <= dy0:
+                continue
+            tile_img = Image.fromarray(tile[sy0:sy1, sx0:sx1, :3], mode="RGB")
+            tile_img = tile_img.resize((dx1 - dx0, dy1 - dy0), Image.Resampling.LANCZOS)
+            canvas.paste(tile_img, (dx0, dy0))
+        return np.asarray(canvas, dtype=np.uint8), image_w, image_h, (x0, y0, x1, y1)
+
+
+def _read_project_image_region_preview(
+    path: str | Path,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_side: int = 1800,
+):
+    image_path = Path(str(path)).expanduser()
+    warnings: list[str] = []
+    if image_path.suffix.lower() in TIFF_SUFFIXES and tifffile is not None:
+        try:
+            arr, image_w, image_h, box = _preview_array_from_tiled_tiff_region(
+                image_path,
+                x,
+                y,
+                width,
+                height,
+                max_side,
+            )
+            return arr, "tifffile_tiled_region", warnings, image_w, image_h, box
+        except ValueError:
+            pass
+        except Exception as exc:
+            warnings.append(f"Tiled region preview fallback failed: {exc}")
+    arr, backend, read_warnings = _read_project_image(image_path)
+    rgb = _array_to_rgb(arr)
+    image_h, image_w = rgb.shape[:2]
+    x0, y0, x1, y1 = _normalize_region_box(x, y, width, height, image_w, image_h)
+    crop = rgb[y0:y1, x0:x1]
+    return _resize_rgb_for_preview(crop, max_side), backend, [*warnings, *read_warnings], image_w, image_h, (x0, y0, x1, y1)
 
 
 def _safe_relative(path: Path, root: Path) -> str:
@@ -1052,6 +1181,115 @@ def _as_2d_channel(arr: np.ndarray) -> np.ndarray:
     return data
 
 
+def _planes_to_preview_rgb(planes: list[tuple[str, np.ndarray]]) -> np.ndarray:
+    if not planes:
+        raise ValueError("No readable image planes found for preview")
+    first = _scale_to_uint8(_as_2d_channel(planes[0][1]))
+    shape = first.shape[:2]
+    recognized = [(_channel_rgb_slot(channel), channel, plane) for channel, plane in planes]
+    if len(planes) == 1 and recognized[0][0] is None:
+        return np.stack([first, first, first], axis=-1)
+    rgb = np.zeros(shape + (3,), dtype=np.uint8)
+    fallback_slot = 0
+    for slot, channel, plane in recognized:
+        plane_u8 = _scale_to_uint8(_as_2d_channel(plane))
+        if plane_u8.shape[:2] != shape:
+            img = Image.fromarray(plane_u8, mode="L").resize((shape[1], shape[0]), Image.Resampling.BILINEAR)
+            plane_u8 = np.asarray(img, dtype=np.uint8)
+        if slot is None:
+            if str(channel).strip().lower() in {"brightfield", "bf", "transmitted"} and len(planes) > 1:
+                continue
+            slot = fallback_slot % 3
+            fallback_slot += 1
+        rgb[..., slot] = np.maximum(rgb[..., slot], plane_u8)
+    if not np.any(rgb):
+        return np.stack([first, first, first], axis=-1)
+    return rgb
+
+
+def _preview_composite_from_image_files(
+    image_files: dict[str, str],
+    max_side: int,
+) -> tuple[np.ndarray, str, list[str], int, int, list[str]]:
+    planes: list[tuple[str, np.ndarray]] = []
+    warnings: list[str] = []
+    backends: list[str] = []
+    channels: list[str] = []
+    image_w = 0
+    image_h = 0
+    preview_shape: tuple[int, int] | None = None
+    for channel, raw_path in image_files.items():
+        try:
+            arr, backend, read_warnings, w, h = _read_project_image_preview(raw_path, max_side=max_side)
+        except Exception as exc:
+            warnings.append(f"{channel}: {exc}")
+            continue
+        plane = _as_2d_channel(arr)
+        if preview_shape is None:
+            preview_shape = tuple(int(x) for x in plane.shape[:2])
+            image_w = int(w)
+            image_h = int(h)
+        elif tuple(plane.shape[:2]) != preview_shape:
+            img = Image.fromarray(_scale_to_uint8(plane), mode="L")
+            img = img.resize((preview_shape[1], preview_shape[0]), Image.Resampling.BILINEAR)
+            plane = np.asarray(img, dtype=np.uint8)
+        planes.append((channel, plane))
+        channels.append(str(channel))
+        backends.append(str(backend))
+        warnings.extend(f"{channel}: {message}" for message in read_warnings)
+    if not planes:
+        raise ValueError("No readable exported image channels found for this sample")
+    return _planes_to_preview_rgb(planes), "composite_preview:" + "+".join(sorted(set(backends))), warnings, image_w, image_h, channels
+
+
+def _region_composite_from_image_files(
+    image_files: dict[str, str],
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_side: int,
+) -> tuple[np.ndarray, str, list[str], int, int, tuple[int, int, int, int], list[str]]:
+    planes: list[tuple[str, np.ndarray]] = []
+    warnings: list[str] = []
+    backends: list[str] = []
+    channels: list[str] = []
+    image_w = 0
+    image_h = 0
+    box: tuple[int, int, int, int] | None = None
+    region_shape: tuple[int, int] | None = None
+    for channel, raw_path in image_files.items():
+        try:
+            arr, backend, read_warnings, w, h, item_box = _read_project_image_region_preview(
+                raw_path,
+                x,
+                y,
+                width,
+                height,
+                max_side=max_side,
+            )
+        except Exception as exc:
+            warnings.append(f"{channel}: {exc}")
+            continue
+        plane = _as_2d_channel(arr)
+        if box is None:
+            box = item_box
+            image_w = int(w)
+            image_h = int(h)
+            region_shape = tuple(int(v) for v in plane.shape[:2])
+        elif tuple(plane.shape[:2]) != region_shape:
+            img = Image.fromarray(_scale_to_uint8(plane), mode="L")
+            img = img.resize((region_shape[1], region_shape[0]), Image.Resampling.BILINEAR)
+            plane = np.asarray(img, dtype=np.uint8)
+        planes.append((channel, plane))
+        channels.append(str(channel))
+        backends.append(str(backend))
+        warnings.extend(f"{channel}: {message}" for message in read_warnings)
+    if not planes or box is None:
+        raise ValueError("No readable exported image channels found for this sample")
+    return _planes_to_preview_rgb(planes), "composite_region:" + "+".join(sorted(set(backends))), warnings, image_w, image_h, box, channels
+
+
 def _composite_from_image_files(image_files: dict[str, str]) -> tuple[np.ndarray, str, list[str]]:
     planes: list[tuple[str, np.ndarray]] = []
     warnings: list[str] = []
@@ -1113,13 +1351,24 @@ def load_histology_data_project_image_preview(
     entry = _find_data_project_entry(path, str(entry_id))
     analysis = _load_data_project_entry_analysis(path, str(entry_id))
     preview_max = max(256, min(int(max_side), 2400))
-    preview_path = _entry_preview_image_path(entry)
-    if not preview_path:
+    image_files = _entry_image_files(entry)
+    channels: list[str] = []
+    if image_files:
+        arr, backend, warnings, w, h, channels = _preview_composite_from_image_files(
+            image_files,
+            preview_max,
+        )
+    else:
+        preview_path = _entry_preview_image_path(entry)
+        if not preview_path:
+            raise ValueError("Selected project entry has no image path")
+        arr, backend, warnings, w, h = _read_project_image_preview(preview_path, max_side=preview_max)
+    if not arr.size:
         raise ValueError("Selected project entry has no image path")
-    arr, backend, warnings, w, h = _read_project_image_preview(preview_path, max_side=preview_max)
     return {
         **entry,
         "backend": backend,
+        "preview_channels": channels,
         "width": int(w),
         "height": int(h),
         "preview_width": int(arr.shape[1]),
@@ -1127,6 +1376,59 @@ def load_histology_data_project_image_preview(
         "img": _png_b64(arr, max_side=preview_max),
         "rois": analysis.get("rois") if isinstance(analysis.get("rois"), list) else [],
         "analyses": analysis.get("analyses") if isinstance(analysis.get("analyses"), list) else [],
+        "warnings": warnings,
+    }
+
+
+def load_histology_data_project_image_region_preview(
+    project_path: str | Path,
+    entry_id: str,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_side: int = 1800,
+) -> dict[str, Any]:
+    path = _normalize_data_project_path(project_path)
+    entry = _find_data_project_entry(path, str(entry_id))
+    preview_max = max(256, min(int(max_side), 2600))
+    image_files = _entry_image_files(entry)
+    channels: list[str] = []
+    if image_files:
+        arr, backend, warnings, w, h, box, channels = _region_composite_from_image_files(
+            image_files,
+            x,
+            y,
+            width,
+            height,
+            preview_max,
+        )
+    else:
+        preview_path = _entry_preview_image_path(entry)
+        if not preview_path:
+            raise ValueError("Selected project entry has no image path")
+        arr, backend, warnings, w, h, box = _read_project_image_region_preview(
+            preview_path,
+            x,
+            y,
+            width,
+            height,
+            max_side=preview_max,
+        )
+    x0, y0, x1, y1 = box
+    return {
+        "entry_id": str(entry_id),
+        "backend": backend,
+        "preview_channels": channels,
+        "width": int(w),
+        "height": int(h),
+        "region_x": int(x0),
+        "region_y": int(y0),
+        "region_width": int(x1 - x0),
+        "region_height": int(y1 - y0),
+        "preview_width": int(arr.shape[1]),
+        "preview_height": int(arr.shape[0]),
+        "img": _png_b64(arr, max_side=preview_max),
         "warnings": warnings,
     }
 
@@ -1411,6 +1713,46 @@ def load_histology_file_image_preview(
     }
 
 
+def load_histology_file_image_region_preview(
+    image_path: str | Path,
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+    max_side: int = 1800,
+) -> dict[str, Any]:
+    path = _resolve_single_image_path(image_path)
+    preview_max = max(256, min(int(max_side), 2600))
+    arr, backend, warnings, w, h, box = _read_project_image_region_preview(
+        path,
+        x,
+        y,
+        width,
+        height,
+        max_side=preview_max,
+    )
+    x0, y0, x1, y1 = box
+    return {
+        "entry_id": _source_entry_id(path),
+        "image_name": path.name,
+        "display_name": path.name,
+        "image_path": str(path),
+        "source_path": str(path),
+        "case_name": _case_name_for_source(path),
+        "backend": backend,
+        "width": int(w),
+        "height": int(h),
+        "region_x": int(x0),
+        "region_y": int(y0),
+        "region_width": int(x1 - x0),
+        "region_height": int(y1 - y0),
+        "preview_width": int(arr.shape[1]),
+        "preview_height": int(arr.shape[0]),
+        "img": _png_b64(arr, max_side=preview_max),
+        "warnings": warnings,
+    }
+
+
 def analyze_histology_file_rois(
     image_path: str | Path,
     rois: list[dict[str, Any]],
@@ -1469,7 +1811,9 @@ __all__ = [
     "create_histology_data_project",
     "load_histology_data_project",
     "load_histology_data_project_image_preview",
+    "load_histology_data_project_image_region_preview",
     "load_histology_file_image_preview",
+    "load_histology_file_image_region_preview",
     "rename_histology_data_project_entry",
     "save_histology_data_project_rois",
 ]

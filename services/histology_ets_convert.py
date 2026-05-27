@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import struct
 from dataclasses import asdict, dataclass, field
 from io import BytesIO
@@ -383,6 +384,21 @@ def _existing_conversion_is_current(output: Path) -> bool:
         return False
 
 
+def _existing_tiff_is_usable(output: Path) -> bool:
+    if output.suffix.lower() not in {".tif", ".tiff"} or not output.is_file():
+        return False
+    try:
+        if tifffile is not None:
+            with tifffile.TiffFile(str(output)) as tf:
+                source = tf.series[0] if getattr(tf, "series", None) else tf.pages[0]
+                shape = tuple(int(x) for x in source.shape)
+            return len(shape) >= 2 and min(shape[:2]) > 0
+        with Image.open(output) as img:
+            return img.size[0] > 0 and img.size[1] > 0
+    except Exception:
+        return False
+
+
 def convert_ets_to_tiff(
     source_path: str | Path,
     output_path: str | Path,
@@ -397,24 +413,23 @@ def convert_ets_to_tiff(
     if source.suffix.lower() != ETS_SUFFIX:
         raise ValueError(f"Expected an .ets file, got {source.suffix}")
     index = read_ets_index(source)
-    if (
-        output.exists()
-        and not overwrite
-        and output.stat().st_mtime >= source.stat().st_mtime
-        and _existing_conversion_is_current(output)
-    ):
+    if output.exists() and not overwrite and _existing_tiff_is_usable(output):
         existing = _read_conversion_sidecar(output)
         existing_index = existing.get("index") if isinstance(existing.get("index"), dict) else {}
         if isinstance(existing_index, dict):
             index.selected_z = int(existing_index.get("selected_z") or index.selected_z)
             index.z_plane_count = int(existing_index.get("z_plane_count") or index.z_plane_count)
+        is_current = (
+            output.stat().st_mtime >= source.stat().st_mtime
+            and _existing_conversion_is_current(output)
+        )
         return EtsConversionResult(
             source_path=str(source),
             output_path=str(output),
             case_dir=str(output.parent),
             sample_id=output.parent.name,
             role=_role_for_ets_path(source),
-            status="skipped_existing",
+            status="skipped_existing" if is_current else "skipped_existing_tiff",
             width=index.width,
             height=index.height,
             tile_width=index.tile_width,
@@ -535,6 +550,47 @@ def _slide_token_for_ets(case_dir: Path, ets_path: Path) -> str:
     return sanitize_name("_".join(tokens), fallback=ets_path.stem)
 
 
+def _looks_like_stack_derivative(path: Path) -> bool:
+    return bool(
+        re.search(
+            r"(?:^|[_\-\s])tray\d+[_\-\s]*slide.*[_\-\s]stack\d+(?:$|[_\-\s])",
+            path.stem.lower(),
+        )
+    )
+
+
+def _existing_tiff_for_role(
+    case_dir: Path,
+    role: str,
+    role_suffix: str,
+    used_outputs: set[str],
+) -> Path | None:
+    exact = [
+        case_dir / f"{sanitize_name(case_dir.name, fallback='sample')}_{role_suffix}.tif",
+        case_dir / f"{sanitize_name(case_dir.name, fallback='sample')}_{role_suffix}.tiff",
+    ]
+    candidates = [path for path in exact if path.is_file()]
+    role_key = str(role_suffix).lower()
+    for path in sorted([*case_dir.glob("*.tif"), *case_dir.glob("*.tiff")]):
+        if path in candidates or _looks_like_stack_derivative(path):
+            continue
+        stem = path.stem.lower()
+        if role in {"overview", "label"}:
+            if role_key not in stem:
+                continue
+        elif role == "brightfield":
+            if not ("brightfield" in stem or stem.endswith("_bf") or "_bf_" in stem):
+                continue
+        candidates.append(path)
+    for candidate in candidates:
+        key = str(candidate.resolve())
+        if key in used_outputs:
+            continue
+        if _existing_tiff_is_usable(candidate):
+            return candidate
+    return None
+
+
 def _output_path_for_ets(
     root: Path,
     ets_path: Path,
@@ -548,6 +604,10 @@ def _output_path_for_ets(
         "overview": "Overview",
         "label": "Label",
     }.get(role, sanitize_name(role).title())
+    existing = _existing_tiff_for_role(case_dir, role, role_suffix, used_outputs)
+    if existing is not None:
+        used_outputs.add(str(existing.resolve()))
+        return existing, str(case_dir.resolve()), role
     candidates = [case_dir / f"{sample_id}_{role_suffix}.tif"]
     token = _slide_token_for_ets(case_dir, ets_path)
     if token:
@@ -586,12 +646,12 @@ def convert_ets_folder_to_tiff(
     ets_files = iter_ets_files(root)
     results: list[EtsConversionResult] = []
     used_outputs: set[str] = set()
-    used_aux_roles: set[tuple[str, str]] = set()
+    used_roles: set[tuple[str, str]] = set()
     total = max(1, len(ets_files))
     for idx, ets_path in enumerate(ets_files, start=1):
         output, case_dir, role = _output_path_for_ets(scan_root, ets_path, used_outputs)
         role_key = (case_dir, role)
-        if role in {"overview", "label"} and role_key in used_aux_roles:
+        if role_key in used_roles:
             results.append(
                 EtsConversionResult(
                     source_path=str(ets_path),
@@ -601,13 +661,11 @@ def convert_ets_folder_to_tiff(
                     role=role,
                     status="skipped_duplicate_role",
                     warning_messages=[
-                        f"Duplicate {role} ETS skipped; the first {role} file is used for naming traceability."
+                        f"Duplicate {role} ETS skipped; the first {role} TIFF is used for this case."
                     ],
                 )
             )
             continue
-        if role in {"overview", "label"}:
-            used_aux_roles.add(role_key)
 
         def item_progress(fraction: float, message: str, idx: int = idx) -> None:
             if progress:
@@ -625,6 +683,7 @@ def convert_ets_folder_to_tiff(
             result.sample_id = Path(case_dir).name
             result.role = role
             results.append(result)
+            used_roles.add(role_key)
         except Exception as exc:
             results.append(
                 EtsConversionResult(

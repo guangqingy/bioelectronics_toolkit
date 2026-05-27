@@ -143,6 +143,16 @@
   user-select: none;
   -webkit-user-drag: none;
 }
+.histology-analysis-detail-img {
+  image-rendering: auto;
+  left: 0;
+  max-width: none;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 .histology-analysis-canvas {
   cursor: inherit;
   left: 0;
@@ -364,6 +374,7 @@
           <div id="histologyAnalysisEmpty" class="plot-placeholder">Load a project image to begin ROI analysis</div>
           <div id="histologyAnalysisSurface" class="histology-canvas-surface" hidden>
             <img id="histologyAnalysisImg" class="histology-analysis-img" alt="Histology analysis preview" hidden>
+            <img id="histologyAnalysisDetailImg" class="histology-analysis-detail-img" alt="" hidden>
             <canvas id="histologyAnalysisCanvas" class="histology-analysis-canvas" hidden></canvas>
           </div>
         </div>

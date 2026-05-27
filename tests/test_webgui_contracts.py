@@ -308,10 +308,14 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function histologyAnalysisProjectPathError", page_js)
         self.assertIn("function loadHistologyFileImage", page_js)
         self.assertIn("/api/histology/file/image_preview", page_js)
+        self.assertIn("/api/histology/file/image_region_preview", page_js)
+        self.assertIn("/api/histology/project/image_region_preview", page_js)
         self.assertIn("/api/histology/file/analysis/run_job", page_js)
         self.assertIn("function histologyRotatePreview", page_js)
         self.assertIn("function histologyFitPreview", page_js)
         self.assertIn("function histologyViewportToLocal", page_js)
+        self.assertIn("function histologyRoisForApi", page_js)
+        self.assertIn("function histologyScheduleDetailPreview", page_js)
         self.assertIn("function histologyHandleWheel", page_js)
         self.assertIn("function histologyPointerShouldPan", page_js)
         self.assertIn("gesturechange", page_js)
@@ -381,6 +385,18 @@ class WebAppSmokeTests(unittest.TestCase):
                 "/api/histology/project/image_preview",
                 json={"project_path": project_payload["project_path"], "entry_id": entry_id},
             )
+            project_region_response = self.client.post(
+                "/api/histology/project/image_region_preview",
+                json={
+                    "project_path": project_payload["project_path"],
+                    "entry_id": entry_id,
+                    "x": 2,
+                    "y": 2,
+                    "width": 10,
+                    "height": 10,
+                    "max_side": 512,
+                },
+            )
             analysis_response = self.client.post(
                 "/api/histology/project/analysis/run",
                 json={
@@ -402,6 +418,10 @@ class WebAppSmokeTests(unittest.TestCase):
                 "/api/histology/file/image_preview",
                 json={"image_path": str(image)},
             )
+            file_region_response = self.client.post(
+                "/api/histology/file/image_region_preview",
+                json={"image_path": str(image), "x": 2, "y": 2, "width": 8, "height": 8},
+            )
             file_analysis_response = self.client.post(
                 "/api/histology/file/analysis/run",
                 json={
@@ -421,8 +441,10 @@ class WebAppSmokeTests(unittest.TestCase):
 
             scan_payload = scan_response.get_json()
             preview_payload = preview_response.get_json()
+            project_region_payload = project_region_response.get_json()
             analysis_payload = analysis_response.get_json()
             file_preview_payload = file_preview_response.get_json()
+            file_region_payload = file_region_response.get_json()
             file_analysis_payload = file_analysis_response.get_json()
             self.assertEqual(scan_response.status_code, 200)
             self.assertTrue(scan_payload["ok"])
@@ -437,6 +459,11 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(preview_response.status_code, 200)
             self.assertTrue(preview_payload["ok"])
             self.assertEqual(preview_payload["width"], 20)
+            self.assertIn("FITC", preview_payload["preview_channels"])
+            self.assertEqual(project_region_response.status_code, 200)
+            self.assertTrue(project_region_payload["ok"])
+            self.assertEqual(project_region_payload["region_width"], 10)
+            self.assertTrue(project_region_payload["img"])
             self.assertEqual(analysis_response.status_code, 200)
             self.assertTrue(analysis_payload["ok"])
             self.assertGreater(analysis_payload["results"][0]["sma_positive_px"], 0)
@@ -447,6 +474,9 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(file_preview_response.status_code, 200)
             self.assertTrue(file_preview_payload["ok"])
             self.assertEqual(file_preview_payload["width"], 20)
+            self.assertEqual(file_region_response.status_code, 200)
+            self.assertTrue(file_region_payload["ok"])
+            self.assertEqual(file_region_payload["region_width"], 8)
             self.assertEqual(file_analysis_response.status_code, 200)
             self.assertTrue(file_analysis_payload["ok"])
             self.assertEqual(file_analysis_payload["kind"], "single_file_histology_analysis")
@@ -1310,11 +1340,13 @@ class WebAppSmokeTests(unittest.TestCase):
             "FluorescenceStackExportRequest",
             "HistologyDataProjectAnalyzeRoisRequest",
             "HistologyDataProjectImagePreviewRequest",
+            "HistologyDataProjectImageRegionPreviewRequest",
             "HistologyDataProjectLoadRequest",
             "HistologyDataProjectRenameEntryRequest",
             "HistologyDataProjectSaveRoisRequest",
             "HistologyFileAnalyzeRoisRequest",
             "HistologyFileImagePreviewRequest",
+            "HistologyFileImageRegionPreviewRequest",
             "HistologyLabelPreviewRequest",
             "HistologyTiffProjectCreateRequest",
             "HistologyTiffProjectScanRequest",
@@ -1374,6 +1406,8 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/project/analysis/save_rois": "#/components/schemas/HistologyDataProjectSaveRoisRequest",
             "/api/histology/project/analysis/run_job": "#/components/schemas/HistologyDataProjectAnalyzeRoisRequest",
             "/api/histology/file/image_preview": "#/components/schemas/HistologyFileImagePreviewRequest",
+            "/api/histology/project/image_region_preview": "#/components/schemas/HistologyDataProjectImageRegionPreviewRequest",
+            "/api/histology/file/image_region_preview": "#/components/schemas/HistologyFileImageRegionPreviewRequest",
             "/api/histology/label_preview": "#/components/schemas/HistologyLabelPreviewRequest",
             "/api/histology/file/analysis/run_job": "#/components/schemas/HistologyFileAnalyzeRoisRequest",
             "/api/rhd/plot": "#/components/schemas/RhdViewRequest",
