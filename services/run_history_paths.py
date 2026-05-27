@@ -13,6 +13,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from services.provenance import runtime_provenance
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -121,6 +123,7 @@ def server_context(base_dir: Path) -> dict[str, Any]:
         "platform": platform.platform(),
         "hostname": socket.gethostname(),
         "user": getpass.getuser(),
+        "tool": runtime_provenance(base_dir),
     }
 
 

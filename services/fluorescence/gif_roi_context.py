@@ -4,13 +4,13 @@ import base64
 import io
 import re as _re2
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Rectangle
 
 from services.fluorescence import gif as fl_gif
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
+from services.matplotlib_utils import new_subplots
 
 
 def build_gif_roi_context(
@@ -534,7 +534,7 @@ def build_gif_roi_context(
 
         fig_w = max(4.8, min(10.0, w / 180.0))
         fig_h = max(4.0, fig_w * (h / max(w, 1)))
-        fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=150)
+        fig, ax = new_subplots(figsize=(fig_w, fig_h), dpi=150)
         ax.set_axis_off()
         ax.imshow(rgb, interpolation="nearest")
 

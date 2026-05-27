@@ -27,4 +27,4 @@ When adding a pipeline:
 2. Update the matching file under `docs/pipelines/`.
 3. Keep script paths relative to the repository root unless there is a strong
    reason to use an absolute path.
-4. Run `python -m unittest discover -s tests` and `ruff check .`.
+4. Run `python -m pytest tests --ignore=tests/e2e` and `ruff check .`.

@@ -3,9 +3,10 @@
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+
+from services.matplotlib_utils import close_figure
 
 from .constants import DEFAULT_OUT_NAME, DPI, INT_COLS_CANDIDATES, PEAK_COLS_CANDIDATES
 from .plots import (
@@ -223,7 +224,7 @@ def _save_fig(generated, out_path, fig):
     if fig is None:
         return
     fig.savefig(out_path, dpi=DPI, bbox_inches="tight")
-    plt.close(fig)
+    close_figure(fig)
     generated.append(str(out_path))
 
 

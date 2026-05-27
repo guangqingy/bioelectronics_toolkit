@@ -250,7 +250,7 @@ def photovoltage_export_payload(
             pulse_path = output_folder / f"{src.stem}_pulse_{export_idx:03d}.csv"
             with pulse_path.open("w", encoding="utf-8") as f:
                 f.write("time_s,voltage_V\n")
-                for t_val, v_val in zip(t[mask], e_det[mask]):
+                for t_val, v_val in zip(t[mask], e_det[mask], strict=True):
                     f.write(f"{float(t_val):.9g},{float(v_val):.9g}\n")
             saved_count += 1
             saved_paths.append(str(pulse_path))
@@ -421,7 +421,7 @@ def detect_positive_pulses(
     widths, _, _, _ = peak_widths_func(yy, locs, rel_height=0.5)
     min_width_pts = max(1, int((float(min_width_ms) / 1000.0) * fs))
     out: list[dict] = []
-    for loc, width in zip(locs, widths):
+    for loc, width in zip(locs, widths, strict=True):
         if width >= min_width_pts:
             gi = start + int(loc)
             out.append(

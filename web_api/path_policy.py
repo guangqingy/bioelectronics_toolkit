@@ -30,7 +30,7 @@ def ensure_output_parent(path: Path) -> Path:
     return path
 
 
-def unique_path(path: Path, overwrite: bool = True) -> Path:
+def unique_path(path: Path, overwrite: bool = False) -> Path:
     if overwrite or not path.exists():
         return path
     stem = path.stem

@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from services.provenance import runtime_provenance
 from services.run_history_checks import check_manifest_files, manifest_markdown
 from services.run_history_package import (
     package_run_manifest,  # noqa: F401 - public facade re-export
@@ -61,6 +62,7 @@ def record_run(body: dict[str, Any], base_dir: Path) -> dict[str, Any]:
         "errors": as_string_list(body.get("errors")),
         "metadata": metadata,
         "source": body.get("source") if isinstance(body.get("source"), dict) else {},
+        "tool": runtime_provenance(base_dir),
         "recorded_by": server_context(base_dir),
     }
     manifest["hashes"] = {

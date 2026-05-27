@@ -1,5 +1,8 @@
 # Pre-commit hooks — https://pre-commit.com
-# Install once:  pip install pre-commit && pre-commit install
+# Install once:
+#   pip install pre-commit
+#   pre-commit install
+#   pre-commit install --hook-type commit-msg
 # Run on demand: pre-commit run --all-files
 
 repos:
@@ -22,3 +25,11 @@ repos:
     hooks:
       - id: ruff
         args: ["--fix"]
+
+  - repo: local
+    hooks:
+      - id: conventional-commit-message
+        name: conventional commit message
+        entry: python dev_scripts/check_commit_message.py
+        language: system
+        stages: [commit-msg]

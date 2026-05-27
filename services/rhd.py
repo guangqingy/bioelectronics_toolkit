@@ -318,7 +318,11 @@ def load_merged_if_pair(path: Path, rhd_module):
 
     t1, fs1, ch1, amp1, _ = load_rhd_arrays(earlier, rhd_module)
     t2, fs2, ch2, amp2, _ = load_rhd_arrays(later, rhd_module)
-    if abs(fs1 - fs2) > 1e-9 or len(ch1) != len(ch2) or any(x != y for x, y in zip(ch1, ch2)):
+    if (
+        abs(fs1 - fs2) > 1e-9
+        or len(ch1) != len(ch2)
+        or any(x != y for x, y in zip(ch1, ch2, strict=True))
+    ):
         t, fs, ch, amp, _ = load_rhd_arrays(path, rhd_module)
         return t, fs, ch, amp, path.stem, False
 

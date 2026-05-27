@@ -7,11 +7,12 @@ import io
 import traceback
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from flask import jsonify
 from pydantic import ValidationError
+
+from services.matplotlib_utils import new_subplots
 
 from .fluorescence_request_schemas import (
     FluorescenceGifRoiAnalyzeRequest,
@@ -133,7 +134,9 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
                 selected_total += len(selected_indices)
                 planes = _fl_read_selected_gif_planes(tiff_path, selected_indices)
 
-                for order_idx, (source_idx, plane) in enumerate(zip(selected_indices, planes)):
+                for order_idx, (source_idx, plane) in enumerate(
+                    zip(selected_indices, planes, strict=True)
+                ):
                     img2d = np.asarray(plane, dtype=np.float64)
                     if img2d.ndim != 2:
                         img2d = np.squeeze(img2d)
@@ -205,7 +208,7 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             }
             y_label = f"{presentation_labels.get(plot_metric, plot_metric)} ({metric_labels.get(metric, metric)})"
 
-            fig, ax = plt.subplots(figsize=(9.5, 4.6), dpi=130)
+            fig, ax = new_subplots(figsize=(9.5, 4.6), dpi=130)
             x = pd.to_numeric(df_out["time_s"], errors="coerce").to_numpy(dtype=float)
             for roi in roi_specs:
                 col = f"{roi['key']}_value"

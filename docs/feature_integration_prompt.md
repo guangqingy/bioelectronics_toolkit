@@ -96,8 +96,8 @@ rules:
    - python -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
    - python -m ruff check web_api --select F --ignore E402
    - python -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
-   - python -m unittest discover -s tests -v
-   - coverage run --source=services -m unittest discover -s tests && coverage report
+   - python -m pytest tests --ignore=tests/e2e -v
+   - coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report
    - python dev_scripts/check_services_ratio.py --warn-only
    - python dev_scripts/check_analysis_scripts.py when pipeline/script safety is touched
 

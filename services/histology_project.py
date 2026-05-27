@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from PIL import Image
 
-from services.histology_common import sanitize_name
 from services.histology_analysis import (
     ANALYSIS_VERSION,
     _array_to_rgb,
@@ -23,6 +22,7 @@ from services.histology_analysis import (
     _scale_to_uint8,
     _write_json,
 )
+from services.histology_common import sanitize_name
 from services.histology_tiff_project import (
     PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
 )

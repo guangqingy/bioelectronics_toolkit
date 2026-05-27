@@ -7,6 +7,7 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
+from services.io_guards import assert_tiff_within_limits
 from services.fluorescence.roi_primitives import (
     apply_metric_mode,  # noqa: F401 - public facade re-export
     background_mean,  # noqa: F401 - public facade re-export
@@ -65,6 +66,7 @@ def collect_pairs(folder: Path, include_unpaired: bool = True) -> list[dict]:
 def read_first_page(stack_path: str, tifflib_module: Any = None) -> np.ndarray:
     """Read only the first page of a TIFF for sequence-style analysis."""
     tifflib = import_tifffile(tifflib_module)
+    assert_tiff_within_limits(stack_path, tifflib)
     with tifflib.TiffFile(stack_path) as tif:
         arr = tif.pages[0].asarray()
     arr = np.asarray(arr)
@@ -88,14 +90,22 @@ def compute_stack_roi(
     into RAM for large multi-frame stacks.
     """
     tifflib = import_tifffile(tifflib_module)
+    assert_tiff_within_limits(stack_path, tifflib)
     results = {roi["label"]: [] for roi in rois}
     with tifflib.TiffFile(stack_path) as tif:
         pages = tif.pages
-        n_frames = len(pages)
-        for page in pages:
-            frame = page.asarray().astype(np.float64)
+        if len(pages) == 1:
+            first = np.asarray(pages[0].asarray())
+            frames = [first] if first.ndim == 2 else [np.asarray(first[i]) for i in range(first.shape[0])]
+        else:
+            frames = [page.asarray() for page in pages]
+        n_frames = len(frames)
+        for raw_frame in frames:
+            frame = np.asarray(raw_frame, dtype=np.float64)
             if frame.ndim != 2:
                 frame = np.squeeze(frame)
+            if frame.ndim != 2:
+                raise ValueError(f"Unsupported TIFF frame shape: {frame.shape}")
             for roi in rois:
                 metrics = metrics_2d(frame, roi)
                 val = float(metrics.get(metric, np.nan))

@@ -7,11 +7,13 @@ import traceback
 import io
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from flask import jsonify
 from pydantic import ValidationError
+
+from services.fluorescence import stack as fl_stack
+from services.matplotlib_utils import new_subplots
 
 from .fluorescence_request_schemas import (
     FluorescenceRoiAnalyzeRequest,
@@ -88,19 +90,16 @@ def register_fluorescence_roi_basic_routes(app, fl):
             stack_path = payload.stack_path
             frame_idx = int_or(payload.frame, 0)
             lut = payload.lut
-            stack = tifflib.imread(stack_path)
-            if stack.ndim == 2:
-                stack = stack[np.newaxis, ...]
-            n_frames, h, w = stack.shape[0], stack.shape[-2], stack.shape[-1]
-            frame_idx = max(0, min(frame_idx, n_frames - 1))
-            b64 = _fl_frame_to_b64(stack[frame_idx], lut, 1.0, 99.5)
+            frame, frame_idx, n_frames = fl_stack.read_tiff_page(stack_path, frame_idx, tifflib)
+            h, w = frame.shape[-2], frame.shape[-1]
+            b64 = _fl_frame_to_b64(frame, lut, 1.0, 99.5)
             return jsonify(
                 {
                     "img": b64,
                     "n_frames": n_frames,
                     "height": h,
                     "width": w,
-                    "dtype": str(stack.dtype),
+                    "dtype": str(frame.dtype),
                     "frame": frame_idx,
                 }
             )
@@ -183,11 +182,13 @@ def register_fluorescence_roi_basic_routes(app, fl):
                     for k in list(results_all.keys()):
                         if "(S1)" in k:
                             if plot_metric == "bg_subtracted":
-                                results_all[k] = [a - b for a, b in zip(results_all[k], bg1_vals)]
+                                results_all[k] = [
+                                    a - b for a, b in zip(results_all[k], bg1_vals, strict=True)
+                                ]
                             else:
                                 results_all[k] = [
                                     a / b if b and b != 0 else float("nan")
-                                    for a, b in zip(results_all[k], bg1_vals)
+                                    for a, b in zip(results_all[k], bg1_vals, strict=True)
                                 ]
                 if stack2_path and Path(stack2_path).exists():
                     bg2, _ = _fl_roi_compute(stack2_path, bg_rois, metric)
@@ -195,11 +196,13 @@ def register_fluorescence_roi_basic_routes(app, fl):
                     for k in list(results_all.keys()):
                         if "(S2)" in k:
                             if plot_metric == "bg_subtracted":
-                                results_all[k] = [a - b for a, b in zip(results_all[k], bg2_vals)]
+                                results_all[k] = [
+                                    a - b for a, b in zip(results_all[k], bg2_vals, strict=True)
+                                ]
                             else:
                                 results_all[k] = [
                                     a / b if b and b != 0 else float("nan")
-                                    for a, b in zip(results_all[k], bg2_vals)
+                                    for a, b in zip(results_all[k], bg2_vals, strict=True)
                                 ]
 
             t_axis = np.arange(n_frames) * frame_interval_s
@@ -231,7 +234,7 @@ def register_fluorescence_roi_basic_routes(app, fl):
                 "#bcbd22",
                 "#7f7f7f",
             ]
-            fig, ax = plt.subplots(figsize=(9, 4))
+            fig, ax = new_subplots(figsize=(9, 4))
             for i, (label, vals) in enumerate(results_all.items()):
                 base_label = label.replace(" (S1)", "").replace(" (S2)", "")
                 color = roi_colors.get(base_label, fallback_colors[i % len(fallback_colors)])

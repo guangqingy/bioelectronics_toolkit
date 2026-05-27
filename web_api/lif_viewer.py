@@ -67,7 +67,7 @@ class LifExportVolume3dRequest(LifVolume3dRequest):
     threshold_percentile: Any = 98.6
     output_name: str = ""
     output_dir: str = ""
-    overwrite: Any = True
+    overwrite: Any = False
 
 
 class LifExportManifestRequest(RequestModel):
@@ -81,7 +81,7 @@ class LifExportTiffRequest(RequestModel):
     image_index: Any = 0
     output_name: str = ""
     output_dir: str = ""
-    overwrite: Any = True
+    overwrite: Any = False
 
 
 class LifExportTiffBatchRequest(RequestModel):
@@ -89,7 +89,7 @@ class LifExportTiffBatchRequest(RequestModel):
     order_indices: list[Any] = Field(default_factory=list)
     rename_map: Any = Field(default_factory=dict)
     output_dir: str = ""
-    overwrite: Any = True
+    overwrite: Any = False
 
 
 def register_lif_viewer_routes(app, ctx):
@@ -203,7 +203,7 @@ def register_lif_viewer_routes(app, ctx):
         )
 
     def _lif_export_image_as_tiff(
-        lif, record: dict, output_dir: Path, output_name: str, overwrite: bool = True
+        lif, record: dict, output_dir: Path, output_name: str, overwrite: bool = False
     ) -> dict:
         if not has_tiff or tifflib is None:
             raise RuntimeError(
@@ -380,7 +380,7 @@ def register_lif_viewer_routes(app, ctx):
             image_index = int_or(d.get("image_index", 0), 0)
             output_name = str(d.get("output_name", "") or "").strip()
             output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", True))
+            overwrite = bool(d.get("overwrite", False))
             t = int_or(d.get("t", 0), 0)
             c = int_or(d.get("c", 0), 0)
             m = int_or(d.get("m", 0), 0)
@@ -524,7 +524,7 @@ def register_lif_viewer_routes(app, ctx):
             image_index = int_or(d.get("image_index", 0), 0)
             output_name = str(d.get("output_name", "") or "").strip()
             output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", True))
+            overwrite = bool(d.get("overwrite", False))
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -580,7 +580,7 @@ def register_lif_viewer_routes(app, ctx):
             order_indices_raw = d.get("order_indices") or []
             rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
             output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", True))
+            overwrite = bool(d.get("overwrite", False))
 
             order_indices = []
             if isinstance(order_indices_raw, list):

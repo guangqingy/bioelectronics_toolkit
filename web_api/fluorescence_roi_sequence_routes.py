@@ -8,11 +8,12 @@ import re as _re2
 import traceback
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from flask import jsonify
 from pydantic import ValidationError
+
+from services.matplotlib_utils import new_subplots
 
 from .fluorescence_request_schemas import FluorescenceRoiAnalyzeSequenceRequest
 from .jobs import route_response_to_payload
@@ -276,7 +277,9 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                     if c1 in df_out.columns and c2 in df_out.columns:
                         y1n = pd.to_numeric(df_out[c1], errors="coerce").to_numpy(dtype=float)
                         y2n = pd.to_numeric(df_out[c2], errors="coerce").to_numpy(dtype=float)
-                        df_out[cr] = [_fl_roi_safe_ratio(a, b) for a, b in zip(y1n, y2n)]
+                        df_out[cr] = [
+                            _fl_roi_safe_ratio(a, b) for a, b in zip(y1n, y2n, strict=True)
+                        ]
 
             if plot_metric != "delta_f_over_f0" and ref_idx is not None:
                 for roi in roi_specs:
@@ -371,11 +374,11 @@ def register_fluorescence_roi_sequence_routes(app, fl):
                         radial_df.loc[idxs, "stack2_value"], errors="coerce"
                     ).to_numpy(dtype=float)
                     radial_df.loc[idxs, "ratio"] = [
-                        _fl_roi_safe_ratio(a, b) for a, b in zip(y1r, y2r)
+                        _fl_roi_safe_ratio(a, b) for a, b in zip(y1r, y2r, strict=True)
                     ]
                     radial_df.loc[idxs, "difference"] = [
                         a - b if np.isfinite(a) and np.isfinite(b) else np.nan
-                        for a, b in zip(y1r, y2r)
+                        for a, b in zip(y1r, y2r, strict=True)
                     ]
                 radial_df = radial_df.drop(
                     columns=["_sort_idx", "_ring_inner_key", "_ring_outer_key"]
@@ -412,7 +415,7 @@ def register_fluorescence_roi_sequence_routes(app, fl):
             if ref_idx is not None:
                 signal_ylabel += " (Ref=1)"
 
-            fig, axes = plt.subplots(2, 2, figsize=(11.0, 7.4), dpi=120)
+            fig, axes = new_subplots(2, 2, figsize=(11.0, 7.4), dpi=120)
             ax1, ax2, ax3, ax4 = axes.ravel()
             stack1_plot_values = []
             stack2_plot_values = []

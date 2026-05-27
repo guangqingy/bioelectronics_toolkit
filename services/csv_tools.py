@@ -6,8 +6,11 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from services.io_guards import assert_file_size_within_limit
+
 
 def read_columns(path: str | Path, nrows: int = 2) -> list[str]:
+    assert_file_size_within_limit(path, label="CSV")
     return list(pd.read_csv(path, nrows=nrows).columns)
 
 
@@ -47,7 +50,8 @@ def load_xy(
     x_max: float | None = None,
     downsample: int = 1,
 ) -> tuple[np.ndarray, np.ndarray]:
-    df = pd.read_csv(path)
+    assert_file_size_within_limit(path, label="CSV")
+    df = pd.read_csv(path, usecols=[x_col, y_col])
     x, y = _numeric_pair(df, x_col, y_col)
     return window_xy(x, y, x_min=x_min, x_max=x_max, downsample=downsample)
 

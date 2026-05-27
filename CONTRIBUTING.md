@@ -15,6 +15,7 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
 pip install -e ".[dev]"            # installs runtime dependencies + ruff
 pre-commit install                 # auto-format on each commit
+pre-commit install --hook-type commit-msg
 cp config.example.json config.json # optional: customize default paths
 ```
 
@@ -40,20 +41,22 @@ ruff check .
 ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
 ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
-python3 -m unittest discover -s tests -v
-coverage run --source=services -m unittest discover -s tests && coverage report
+bte-web --self-check
+python3 -m pytest tests --ignore=tests/e2e -v
+coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=58
 python3 dev_scripts/check_services_ratio.py
 python3 dev_scripts/check_services_ratio.py --check-loc-budget --warn-only
 python3 dev_scripts/check_private_service_usage.py
 ```
 
-CI runs tests across Python 3.10 - 3.12. Lint has two levels: `ruff check .`
-keeps a whole-repository correctness baseline, while the stricter command is
-the maintained-code gate for `services/`, `tests/`, and desktop launcher code.
-Web API modules also run an all-module unused-name/import gate. Historical
-Tkinter files under `desktop_apps/legacy/` are intentionally outside that strict
-style gate until a workflow is migrated or retired. Green CI is required to
-merge.
+CI runs tests across Python 3.10 - 3.12, checks the Python 3.12 lock-file
+install path, and enforces Conventional Commit subjects on pull requests. Lint
+has two levels: `ruff check .` keeps a whole-repository correctness baseline,
+while the stricter command is the maintained-code gate for `services/`, `tests/`,
+and desktop launcher code. Web API modules also run an all-module
+unused-name/import gate. Historical Tkinter files under `desktop_apps/legacy/`
+are intentionally outside that strict style gate until a workflow is migrated or
+retired. Green CI is required to merge.
 
 Update [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` describing
 user-visible changes.

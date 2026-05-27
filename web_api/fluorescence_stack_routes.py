@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from flask import jsonify
 from pydantic import ValidationError
+from services.fluorescence import stack as fl_stack
 from services.fluorescence.route_helpers import iter_with_job_progress
 
 from .fluorescence_request_schemas import (
@@ -50,7 +51,6 @@ def register_fluorescence_stack_routes(app, fl):
     _fl_normalize_settings_for_pages = fl["_fl_normalize_settings_for_pages"]
     _fl_read_tiff_as_pages = fl["_fl_read_tiff_as_pages"]
     _fl_resolve_gif_scale = fl["_fl_resolve_gif_scale"]
-    _fl_select_display_frame = fl["_fl_select_display_frame"]
     _fl_tiff_gif_frame_count = fl["_fl_tiff_gif_frame_count"]
 
     def _stack_export_payload(d: dict) -> dict:
@@ -135,25 +135,33 @@ def register_fluorescence_stack_routes(app, fl):
         elif not Path(output_path_str).is_absolute():
             output_path_str = str(p_in.parent / output_path_str)
 
-        stack = tifflib.imread(str(p_in))
-        frames = [stack] if stack.ndim == 2 else [stack[i] for i in range(stack.shape[0])]
+        info = fl_stack.tiff_stack_info(p_in, tifflib)
         out_frames = []
-        for frame in frames:
-            arr_f = frame.astype(np.float32)
-            lo, hi = np.percentile(arr_f, [low_pct, high_pct])
-            if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
-                lo, hi = float(arr_f.min()), float(arr_f.max())
-            norm = np.clip((arr_f - lo) / max(hi - lo, 1e-12), 0.0, 1.0)
-            if dtype_name == "uint8":
-                out_frames.append(np.round(norm * 255).astype(np.uint8))
-            elif dtype_name == "float32":
-                out_frames.append(norm.astype(np.float32))
-            else:
-                out_frames.append(np.round(norm * 65535).astype(np.uint16))
-
-        out_stack = np.stack(out_frames) if len(out_frames) > 1 else out_frames[0]
         Path(output_path_str).parent.mkdir(parents=True, exist_ok=True)
-        tifflib.imwrite(output_path_str, out_stack)
+        with tifflib.TiffWriter(output_path_str) as writer:
+            for frame_i in range(int(info["n_frames"])):
+                frame, _idx, _n = fl_stack.read_tiff_page(p_in, frame_i, tifflib)
+                arr_f = frame.astype(np.float32)
+                lo, hi = np.percentile(arr_f, [low_pct, high_pct])
+                if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
+                    lo, hi = float(arr_f.min()), float(arr_f.max())
+                norm = np.clip((arr_f - lo) / max(hi - lo, 1e-12), 0.0, 1.0)
+                if dtype_name == "uint8":
+                    out_frame = np.round(norm * 255).astype(np.uint8)
+                elif dtype_name == "float32":
+                    out_frame = norm.astype(np.float32)
+                else:
+                    out_frame = np.round(norm * 65535).astype(np.uint16)
+                writer.write(out_frame)
+                out_frames.append(out_frame)
+
+        if not out_frames:
+            raise ValueError("TIFF contained no frames to normalize")
+
+        out_shape = [len(out_frames), *list(out_frames[0].shape)] if len(out_frames) > 1 else list(
+            out_frames[0].shape
+        )
+        out_dtype = str(out_frames[0].dtype)
 
         preview_b64 = ""
         if has_pil:
@@ -163,8 +171,8 @@ def register_fluorescence_stack_routes(app, fl):
             "ok": True,
             "output_path": output_path_str,
             "n_frames": len(out_frames),
-            "dtype": str(out_stack.dtype),
-            "shape": list(out_stack.shape),
+            "dtype": out_dtype,
+            "shape": out_shape,
             "preview": preview_b64,
             "outputs": [{"path": output_path_str, "type": "tiff", "role": "normalized_tiff"}],
         }
@@ -201,22 +209,15 @@ def register_fluorescence_stack_routes(app, fl):
             return err("tifffile not installed. Run: pip install tifffile")
         try:
             path = parse_json_payload(FluorescencePathRequest).path
-            stack = tifflib.imread(path)
-            if stack.ndim == 2:
-                n_frames, h, w = 1, stack.shape[0], stack.shape[1]
-            elif stack.ndim >= 3:
-                n_frames = stack.shape[0]
-                h = stack.shape[-2]
-                w = stack.shape[-1]
-            else:
-                return err("Unsupported TIFF shape")
+            info = fl_stack.tiff_stack_info(path, tifflib)
             return jsonify(
                 {
-                    "n_frames": n_frames,
-                    "height": h,
-                    "width": w,
-                    "dtype": str(stack.dtype),
-                    "shape": list(stack.shape),
+                    "n_frames": info["n_frames"],
+                    "height": info["height"],
+                    "width": info["width"],
+                    "dtype": info["dtype"],
+                    "shape": info["shape"],
+                    "estimated_bytes": info["estimated_bytes"],
                 }
             )
         except ValidationError as exc:
@@ -243,10 +244,11 @@ def register_fluorescence_stack_routes(app, fl):
             mode = d.mode
             z_start = d.z_start
             z_end = d.z_end
-            stack = tifflib.imread(path)
             z_start_i = None if z_start in {None, ""} else int_or(z_start, 0)
             z_end_i = None if z_end in {None, ""} else int_or(z_end, 0)
-            frame, info = _fl_select_display_frame(stack, frame_idx, mode, z_start_i, z_end_i)
+            frame, info = fl_stack.select_display_frame_from_tiff(
+                path, frame_idx, mode, z_start_i, z_end_i, tifflib
+            )
             b64 = _fl_frame_to_b64(frame, lut, p_low, p_high)
             return jsonify({"img": b64, **info})
         except ValidationError as exc:

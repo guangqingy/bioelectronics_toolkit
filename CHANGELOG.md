@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add `bte-web --self-check` to validate runtime dependencies and bundled ABF,
+  electrochemistry CSV, and fluorescence TIFF examples after installation.
+- Add a Python 3.12 `requirements-lock.txt`, a CI locked-install smoke job, and
+  golden regression tests for bundled example outputs.
+- Add runtime provenance to run manifests, report markdown, CSV export comments,
+  and SVG metadata, including toolkit version, git commit, Python/platform, and
+  key dependency versions.
+- Add a runnable public Pipeline Runner example, release workflow scaffolding
+  for PyPI trusted publishing, Zenodo metadata, a release checklist, and a code
+  of conduct.
+- Add local IO guard utilities for TIFF/CSV size preflight checks, bounded
+  fluorescence TIFF page caching, and a pyplot thread-safety guard script.
+- Add science regression coverage for echem pulse detection/export, ABF viewer
+  plotting/detection, EMG polarity detection, and fluorescence ROI/radial
+  metrics.
+
+### Changed
+- Declare `readlif` and `statsmodels` as runtime dependencies and import hard
+  dependencies directly instead of silently disabling documented features.
+- Move shared Web helper functions from `web_app.py` into `web_api.common`.
+- Switch unit/contract test commands and CI coverage collection to pytest.
+- Make the Pipeline Runner default to bundled examples and mark project-specific
+  local scripts as non-default catalog entries.
+- Document the desktop-first positioning, architecture, local deployment
+  boundary, Methods notes, lock-file usage, and legacy retirement policy.
+- Enforce Conventional Commit subjects with a pre-commit commit-msg hook and a
+  pull-request workflow.
+- Update package metadata to Beta and include Web templates/static assets and
+  example data in built distributions.
+- Render server-side plots with object-oriented Matplotlib helpers instead of
+  global `pyplot` state.
+- Stream fluorescence TIFF preview/ROI reads by page, add shared image-size
+  limits, bound background-job concurrency, and default export paths to
+  non-overwrite behavior.
+- Add `strict=True` to maintained-code `zip()` pairings that should never
+  silently truncate mismatched scientific arrays.
+- Lower interactive plot preview rendering cost by making `fig_to_b64` use
+  96-dpi non-tight PNG output by default; export code paths keep explicit
+  high-resolution save settings.
+- Make job SQLite persistence failures degrade to in-memory jobs after one
+  warning instead of logging a traceback for every later write attempt.
+- Serve the favicon through Flask's managed `send_file` path and add a coverage
+  floor for the services test suite.
+
 ## [0.6.0] - 2026-05-14
 
 ### Changed

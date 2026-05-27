@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import struct
 import tempfile
 import unittest
-import base64
 from io import BytesIO
 from pathlib import Path
 from unittest import mock

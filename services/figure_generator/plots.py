@@ -1,17 +1,18 @@
 """Matplotlib rendering helpers for figure-generator outputs."""
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib.ticker import LogLocator, ScalarFormatter
+
+from services.matplotlib_utils import close_figure, new_figure, prop_cycle_colors
 
 from .constants import DPI, EPS
 from .summary import _clip_to_range, _min_positive_x
 
 
 def _plot_linear(groups, ylabel, title_txt, xmin, xmax):
-    fig = plt.figure(figsize=(6, 4.5), dpi=DPI)
-    ax = plt.gca()
+    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    ax = fig.subplots()
     plotted = False
     for label, gdf in groups.items():
         if gdf is None or gdf.empty:
@@ -31,7 +32,7 @@ def _plot_linear(groups, ylabel, title_txt, xmin, xmax):
         )
         plotted = True
     if not plotted:
-        plt.close(fig)
+        close_figure(fig)
         return None
     ax.set_xlabel("Power density (mW/mm^2)")
     ax.set_ylabel(ylabel)
@@ -47,8 +48,8 @@ def _plot_log(groups, ylabel, title_txt, xmin, xmax):
     minpos = _min_positive_x(list(groups.values()))
     xmin_safe = max(xmin if xmin > 0 else minpos, EPS)
 
-    fig = plt.figure(figsize=(6, 4.5), dpi=DPI)
-    ax = plt.gca()
+    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    ax = fig.subplots()
     plotted = False
     for label, gdf in groups.items():
         if gdf is None or gdf.empty:
@@ -70,7 +71,7 @@ def _plot_log(groups, ylabel, title_txt, xmin, xmax):
         )
         plotted = True
     if not plotted:
-        plt.close(fig)
+        close_figure(fig)
         return None
 
     ax.set_xscale("log")
@@ -88,8 +89,8 @@ def _plot_log(groups, ylabel, title_txt, xmin, xmax):
 
 
 def _plot_linear_svg_plotonly(groups, xmin, xmax, out_path):
-    fig = plt.figure(figsize=(6, 4.5), dpi=DPI)
-    ax = plt.gca()
+    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    ax = fig.subplots()
     plotted = False
     for _, gdf in groups.items():
         if gdf is None or gdf.empty:
@@ -109,7 +110,7 @@ def _plot_linear_svg_plotonly(groups, xmin, xmax, out_path):
         plotted = True
 
     if not plotted:
-        plt.close(fig)
+        close_figure(fig)
         return False
 
     ax.set_xlim(xmin, xmax)
@@ -123,7 +124,7 @@ def _plot_linear_svg_plotonly(groups, xmin, xmax, out_path):
     ax.set_facecolor("none")
     fig.tight_layout()
     fig.savefig(out_path, dpi=DPI, bbox_inches="tight", transparent=True, facecolor="none")
-    plt.close(fig)
+    close_figure(fig)
     return True
 
 
@@ -131,8 +132,8 @@ def _plot_log_svg_plotonly(groups, xmin, xmax, out_path):
     minpos = _min_positive_x(list(groups.values()))
     xmin_safe = max(xmin if xmin > 0 else minpos, EPS)
 
-    fig = plt.figure(figsize=(6, 4.5), dpi=DPI)
-    ax = plt.gca()
+    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    ax = fig.subplots()
     plotted = False
     for _, gdf in groups.items():
         if gdf is None or gdf.empty:
@@ -154,7 +155,7 @@ def _plot_log_svg_plotonly(groups, xmin, xmax, out_path):
         plotted = True
 
     if not plotted:
-        plt.close(fig)
+        close_figure(fig)
         return False
 
     ax.set_xscale("log")
@@ -172,7 +173,7 @@ def _plot_log_svg_plotonly(groups, xmin, xmax, out_path):
     ax.set_facecolor("none")
     fig.tight_layout()
     fig.savefig(out_path, dpi=DPI, bbox_inches="tight", transparent=True, facecolor="none")
-    plt.close(fig)
+    close_figure(fig)
     return True
 
 
@@ -181,9 +182,7 @@ def _legend_svg_only_no_text(groups, out_path):
     if not labels:
         return False
 
-    colors = plt.rcParams["axes.prop_cycle"].by_key().get("color", [])
-    if not colors:
-        colors = ["C0", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "C9"]
+    colors = prop_cycle_colors()
 
     handles = []
     for i, _lab in enumerate(labels):
@@ -192,8 +191,8 @@ def _legend_svg_only_no_text(groups, out_path):
             Line2D([], [], color=c, marker="o", linestyle="-", linewidth=1.2, markersize=3.5)
         )
 
-    fig = plt.figure(figsize=(1.1, 0.35 * max(1, len(handles))), dpi=DPI)
-    ax = plt.gca()
+    fig = new_figure(figsize=(1.1, 0.35 * max(1, len(handles))), dpi=DPI)
+    ax = fig.subplots()
     ax.legend(
         handles=handles,
         labels=[""] * len(handles),
@@ -209,5 +208,5 @@ def _legend_svg_only_no_text(groups, out_path):
     ax.set_facecolor("none")
     fig.tight_layout()
     fig.savefig(out_path, dpi=DPI, bbox_inches="tight", transparent=True, facecolor="none")
-    plt.close(fig)
+    close_figure(fig)
     return True

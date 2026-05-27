@@ -228,7 +228,7 @@ def register_fluorescence_roi_export_routes(app, fl):
                 pixel_size_um = _fl_infer_pixel_size_um_from_tiff(frame_paths[0])
 
             frames = []
-            for p, name in zip(frame_paths, frame_names):
+            for p, name in zip(frame_paths, frame_names, strict=True):
                 img2d = _fl_roi_read_first_page(p)
                 frame = _fl_roi_render_gif_frame(
                     img2d=img2d,

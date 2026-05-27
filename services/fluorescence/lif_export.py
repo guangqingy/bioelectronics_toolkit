@@ -114,7 +114,7 @@ def frame_dimension_combinations(frame_dimensions: list[dict]):
     # Reverse twice so the first listed Leica dimension changes fastest.
     for frame_index, reversed_coords in enumerate(product(*reversed(ranges))):
         coords = tuple(reversed(reversed_coords))
-        yield frame_index, {dim_id: int(value) for dim_id, value in zip(dim_ids, coords)}
+        yield frame_index, {dim_id: int(value) for dim_id, value in zip(dim_ids, coords, strict=True)}
 
 
 def plane_sequence(plan: dict, limit: int = 10000) -> list[dict]:
@@ -360,7 +360,7 @@ def export_image_as_tiff(
     tifflib_module: Any,
     get_plane_by_dimensions,
     display_array,
-    overwrite: bool = True,
+    overwrite: bool = False,
 ) -> dict:
     if tifflib_module is None:
         raise RuntimeError(

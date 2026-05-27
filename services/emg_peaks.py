@@ -3,11 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from services import emg as emg_service
+from services.matplotlib_utils import new_subplots
 
 
 class EmgPeaksService:
@@ -109,7 +109,7 @@ class EmgPeaksService:
         x_max = self.float_or(data.get("x_max"), None)
         t, v, t_col, v_col = self._load_windowed_signal(path, x_min, x_max)
         dsf = max(1, len(t) // 50000)
-        fig, ax = plt.subplots(figsize=(10, 3.5))
+        fig, ax = new_subplots(figsize=(10, 3.5))
         ax.plot(t[::dsf], v[::dsf], color=self.line_color, lw=0.6)
         ax.set_xlabel(t_col)
         ax.set_ylabel(v_col)
@@ -197,7 +197,7 @@ class EmgPeaksService:
             )
         rows.sort(key=lambda row: row.get("time_s", 0.0))
 
-        fig, ax = plt.subplots(figsize=(10, 3.5))
+        fig, ax = new_subplots(figsize=(10, 3.5))
         ax.plot(tw, vw, color=self.line_color, lw=0.6)
         ax.scatter(
             [row["time"] for row in rows], [row["height"] for row in rows], color="#e06c00", s=18
@@ -215,7 +215,7 @@ class EmgPeaksService:
         t = t_raw[valid]
         v = v_raw[valid]
         dsf = max(1, len(t) // 50000)
-        fig, ax = plt.subplots(figsize=(10, 3.5))
+        fig, ax = new_subplots(figsize=(10, 3.5))
         ax.plot(t[::dsf], v[::dsf], color=self.line_color, lw=0.6)
         ax.set_xlabel(t_col)
         ax.set_ylabel(v_col)
@@ -268,7 +268,7 @@ class EmgPeaksService:
                 }
             )
 
-        fig, ax = plt.subplots(figsize=(10, 3.5))
+        fig, ax = new_subplots(figsize=(10, 3.5))
         ax.plot(t, v, color=self.line_color, lw=0.6, zorder=1)
         ax.scatter(
             [row["time_s"] for row in peak_rows],

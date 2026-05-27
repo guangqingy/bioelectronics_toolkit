@@ -174,7 +174,7 @@ def _fixed_count_ring_rows(
 ) -> list[dict]:
     rows = []
     edges_px = np.linspace(0.0, float(radius), count + 1)
-    for inner_px, outer_px in zip(edges_px[:-1], edges_px[1:]):
+    for inner_px, outer_px in zip(edges_px[:-1], edges_px[1:], strict=True):
         if outer_px <= inner_px:
             continue
         if outer_px >= radius:

@@ -14,7 +14,7 @@ Open `http://127.0.0.1:7433` in a browser after the server starts.
 Set `DATAPROCESS_WEB_NO_BROWSER=1` when another launcher should control which
 tool page is opened.
 
-## Threat Model
+## Deployment Boundary and Safety Assumptions
 
 This WebGUI is designed for **single-user local use** only.
 
@@ -23,6 +23,8 @@ This WebGUI is designed for **single-user local use** only.
 - The server binds to 127.0.0.1 by default, and the host browser is trusted.
 - The server process can read and write any file available to the running user.
 - One person uses one server instance at a time.
+- The Scripts panel executes local Python scripts with the same permissions as
+  the server process. Do not run scripts from untrusted sources.
 
 ### Non-assumptions
 
@@ -32,6 +34,21 @@ This WebGUI is designed for **single-user local use** only.
 
 Hosted demos require additional hardening: authentication, sandboxed file
 access, request rate limiting, CORS review, and export-path restrictions.
+
+### Local Resource Guards
+
+- Background jobs run through a bounded worker pool. Set
+  `DP_JOB_MAX_WORKERS` to tune local concurrency; the default is `2`.
+- TIFF and image decode paths perform a pre-flight size estimate before loading.
+  Use `DP_MAX_IMAGE_PIXELS` and `DP_MAX_TIFF_BYTES` to raise limits deliberately
+  for a large trusted workstation.
+- Fluorescence TIFF previews cache a small number of decoded pages by
+  `(path, mtime, size, frame)`. Tune with `DP_TIFF_PAGE_CACHE_ITEMS` and
+  `DP_TIFF_PAGE_CACHE_BYTES`.
+- CSV readers reject unexpectedly large files before full reads. Use
+  `DP_MAX_CSV_BYTES` when a known-large local export is intentional.
+- Export routes default to non-overwrite behavior where supported; repeated runs
+  create numbered filenames unless the caller explicitly requests overwrite.
 
 ## Layout
 
@@ -71,7 +88,7 @@ DataProcess/
 │       ├── dp_profiles.js
 │       ├── dp_jobs.js
 │       └── pages/              # Page-specific JavaScript extracted from templates
-├── tests/                      # Stdlib unittest smoke and contract tests
+├── tests/                      # pytest/unittest-compatible smoke and contract tests
 └── WEB_README.md
 ```
 
@@ -223,13 +240,20 @@ python3 -m ruff check .
 python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
 python3 -m ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
-python3 -m unittest discover -s tests -v
-coverage run --source=services -m unittest discover -s tests && coverage report
+bte-web --self-check
+python3 -m pytest tests --ignore=tests/e2e -v
+coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=58
 python3 dev_scripts/check_services_ratio.py --warn-only
+python3 dev_scripts/check_no_pyplot.py
 ```
 
-The test suite uses Flask's test client, so it does not require launching a
-separate browser or server.
+The unit/contract suite uses Flask's test client, so it does not require
+launching a separate browser or server. Browser-level smoke coverage lives under
+`tests/e2e` and runs with `python3 -m pytest tests/e2e`.
+
+Service coverage is currently ratcheted at the measured baseline (`58%`) so CI
+uses the signal instead of only uploading it. Raise this floor as new
+echem/ABF/EMG/ROI golden tests land.
 
 The first lint command is a compatibility baseline for the full repository.
 The stricter command is the maintained-code gate: new service modules, tests,

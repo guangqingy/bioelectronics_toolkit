@@ -61,9 +61,15 @@ below it.
 
 ## Legacy Retirement Tracker
 
+Legacy Tkinter entry points are compatibility fallbacks, not parallel products.
+Replacement-in-place tools may be marked deprecated in the next minor release
+after their WebGUI workflow has matching service-backed outputs. The target is
+to remove retired `--legacy` fallbacks at `v1.0`, while keeping thin `bte-*`
+launchers as stable WebGUI entry points.
+
 | Legacy file | Replacement | Status | Target retirement |
 | --- | --- | --- | --- |
-| `fluorescence_lut_gui.py` | `services/fluorescence/lut.py` plus a WebGUI LUT route | Blocked, service not implemented | TBD |
+| `fluorescence_lut_gui.py` | `services/fluorescence/lut.py` plus a WebGUI LUT route | Blocked, service not implemented | 2026 Q4 |
 | `fluorescence_roi_gui.py` | `/fluorescence/roi` plus `services/fluorescence/roi.py` | Replacement in place | 2026 Q3 |
 | `abf_batch_processor_gui.py` | `/abf/batch` plus `services/abf.py` | Replacement in place | 2026 Q3 |
 | `abf_peak_detection_gui.py` | `/abf/peaks` plus `services/abf.py` | Replacement in place | 2026 Q3 |

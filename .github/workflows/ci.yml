@@ -42,13 +42,13 @@ jobs:
           python -m compileall -q -f \
             $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 
-      - name: unittest discover
-        run: python -m unittest discover -s tests -v
+      - name: pytest unit tests
+        run: python -m pytest tests --ignore=tests/e2e -v
 
       - name: service coverage report
         run: |
-          coverage run --source=services -m unittest discover -s tests
-          coverage report --show-missing
+          coverage run --source=services -m pytest tests --ignore=tests/e2e
+          coverage report --show-missing --fail-under=58
           coverage xml -o coverage-services.xml
 
       - name: upload service coverage artifact
@@ -63,6 +63,8 @@ jobs:
 
       - name: private service boundary check
         run: python dev_scripts/check_private_service_usage.py
+      - name: pyplot thread-safety guard
+        run: python dev_scripts/check_no_pyplot.py
 
   lint:
     name: ruff lint
@@ -131,3 +133,21 @@ jobs:
               if ".dataprocess_cache" in path.parts:
                   continue
               py_compile.compile(str(path), doraise=True)
+
+  locked-install:
+    name: locked install smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install from lock constraints
+        run: |
+          python -m pip install --upgrade pip
+          pip install -c requirements-lock.txt -e ".[dev]"
+      - name: Self-check and golden examples
+        run: |
+          python web_app.py --self-check --no-browser
+          python -m pytest tests/test_self_check.py tests/test_golden_examples.py -q

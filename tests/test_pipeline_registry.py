@@ -25,7 +25,19 @@ class PipelineRegistryTests(unittest.TestCase):
             script_ids.extend(script["id"] for script in category["scripts"])
 
         self.assertEqual(len(script_ids), len(set(script_ids)))
+        self.assertEqual(default_category_id(), "examples")
+        self.assertIn("example_summary", script_ids)
         self.assertIn("pc_line_chart", script_ids)
+
+    def test_public_example_pipeline_is_available_in_repo_checkout(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        script = find_pipeline_script("example_summary", root)
+
+        self.assertIsNotNone(script)
+        assert script is not None
+        self.assertEqual(script["category"], "examples")
+        self.assertTrue(script["available"])
+        self.assertTrue(script["resolved_script_path"].endswith("example_summary.py"))
 
     def test_catalog_availability_is_visitor_friendly(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_pipeline_registry_") as tmp:
@@ -74,7 +86,30 @@ class PipelineRegistryTests(unittest.TestCase):
         self.assertEqual([], payload["errors"])
         self.assertGreaterEqual(len(payload["categories"]), 4)
         self.assertIn("available", payload["categories"][0]["scripts"][0])
+        self.assertEqual(payload["categories"][0]["id"], "examples")
+        self.assertTrue(payload["categories"][0]["scripts"][0]["available"])
         self.assertNotIn("resolved_script_path", payload["categories"][0]["scripts"][0])
+
+    def test_webgui_can_run_public_example_pipeline(self) -> None:
+        from web_app import app
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_example_pipeline_") as tmp:
+            response = app.test_client().post(
+                "/api/scripts/run",
+                json={
+                    "script_id": "example_summary",
+                    "params": {"output_dir": tmp},
+                    "cat": "examples",
+                },
+            )
+            payload = response.get_json()
+
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(payload["ok"], payload.get("stderr", ""))
+            artifact_names = {item["name"] for item in payload.get("artifacts", [])}
+            self.assertIn("example_pipeline_summary.csv", artifact_names)
+            self.assertIn("example_pipeline_summary.json", artifact_names)
+            self.assertIn("example_pipeline_summary.png", artifact_names)
 
     def test_scripts_page_uses_registry_categories(self) -> None:
         from web_app import app

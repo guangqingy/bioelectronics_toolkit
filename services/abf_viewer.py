@@ -4,11 +4,11 @@ import io
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
 from services import abf as abf_service
+from services.matplotlib_utils import close_figure, new_subplots
 
 
 class AbfViewerService:
@@ -142,7 +142,7 @@ class AbfViewerService:
         y = abf_service.baseline_subtract(y, t, bl0, bl1)
         t, y = self._clip_xy(t, y, x_min, x_max)
 
-        fig, ax = plt.subplots(figsize=(9, 4))
+        fig, ax = new_subplots(figsize=(9, 4))
         ax.plot(t, y, color=self.line_color, lw=0.7)
         ax.margins(x=0)
         ax.set_xlabel("Time (s)")
@@ -239,7 +239,7 @@ class AbfViewerService:
         t0_plot, t1_plot = window_bounds
         pol_out = peaks[0]["polarity"] if peaks else str(polarity or "positive").upper()
 
-        fig, ax = plt.subplots(figsize=(9, 4))
+        fig, ax = new_subplots(figsize=(9, 4))
         ax.plot(t_full, y_full, color=self.line_color, lw=0.7)
         ax.margins(x=0)
 
@@ -533,7 +533,7 @@ class AbfViewerService:
                 "download_name": base_name,
             }
 
-        fig, ax = plt.subplots(figsize=(9, 4))
+        fig, ax = new_subplots(figsize=(9, 4))
         ax.plot(t, y, color=self.line_color, lw=0.7)
         ax.margins(x=0)
         ax.set_xlabel("Time (s)")
@@ -546,7 +546,7 @@ class AbfViewerService:
         if fmt == "png":
             save_kw["dpi"] = 300
         fig.savefig(buf, **save_kw)
-        plt.close(fig)
+        close_figure(fig)
         buf.seek(0)
         payload = buf.getvalue()
         if self.mode_is_save(mode):

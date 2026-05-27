@@ -6,11 +6,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from services import rhd as rhd_service
 from services import rhd_processing
+from services.matplotlib_utils import close_figure, new_subplots
 from services.output_naming import sanitize_name_part
 
 
@@ -49,7 +49,7 @@ class RhdViewerService:
         t_d = t[::dsf]
         y_d = y[::dsf]
 
-        fig, ax = plt.subplots(
+        fig, ax = new_subplots(
             figsize=(fig_params["width_in"], fig_params["height_in"]), dpi=fig_params["dpi"]
         )
         try:
@@ -70,7 +70,7 @@ class RhdViewerService:
                 "inverted_y": rhd_processing.y_inversion_enabled(data),
             }
         finally:
-            plt.close(fig)
+            close_figure(fig)
 
     def processing_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_rhd()
@@ -78,7 +78,7 @@ class RhdViewerService:
         try:
             return {"img": self.fig_to_b64(result.figure), **result.metadata}
         finally:
-            plt.close(result.figure)
+            close_figure(result.figure)
 
     def export_channel_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_rhd()
@@ -119,7 +119,7 @@ class RhdViewerService:
                 return self._save_result(out_path, "rhd_channel_svg")
             return self._download_result(payload, "image/svg+xml", filename)
 
-        fig, ax = plt.subplots(
+        fig, ax = new_subplots(
             figsize=(fig_params["width_in"], fig_params["height_in"]), dpi=fig_params["dpi"]
         )
         try:
@@ -146,7 +146,7 @@ class RhdViewerService:
             )
             payload = buf.getvalue()
         finally:
-            plt.close(fig)
+            close_figure(fig)
 
         if self.mode_is_save(mode):
             out_path = self.next_numbered_path(src.with_name(filename))
@@ -175,7 +175,7 @@ class RhdViewerService:
                 payload = rhd_processing.figure_bytes(result.figure, fmt, dpi=fig_params["dpi"])
                 mimetype = "image/png" if fmt == "png" else "image/svg+xml"
         finally:
-            plt.close(result.figure)
+            close_figure(result.figure)
 
         filename = f"{stem}.{fmt}"
         if self.mode_is_save(mode):

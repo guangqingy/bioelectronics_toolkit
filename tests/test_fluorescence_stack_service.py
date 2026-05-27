@@ -26,8 +26,16 @@ class FluorescenceStackServiceTests(unittest.TestCase):
             tifffile.imwrite(source, np.stack(pages, axis=0))
 
             loaded_pages = fl_stack.read_tiff_as_pages(source, tifffile)
+            info = fl_stack.tiff_stack_info(source, tifffile)
+            frame, display_info = fl_stack.select_display_frame_from_tiff(
+                source, 1, "single", None, None, tifffile
+            )
             settings = fl_stack.build_default_settings_for_pages(loaded_pages)
 
+            self.assertEqual(info["n_frames"], 2)
+            self.assertEqual(info["shape"], [2, 5, 5])
+            self.assertTrue(np.array_equal(frame, pages[1]))
+            self.assertEqual(display_info["frame"], 1)
             self.assertEqual(len(settings), 2)
             self.assertEqual(settings[0]["lut"], "Red")
             self.assertEqual(settings[1]["lut"], "Blue")

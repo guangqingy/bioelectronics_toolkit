@@ -9,8 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import numpy as np
+
+from services.matplotlib_utils import new_subplots
 
 
 @dataclass(frozen=True)
@@ -100,7 +101,7 @@ def volume_payload_from_body(
 def export_volume_payload(d: dict, ctx: Volume3DExportContext) -> dict:
     output_name = str(d.get("output_name", "") or "").strip()
     output_dir_raw = str(d.get("output_dir", "") or "").strip()
-    overwrite = ctx.bool_value(d.get("overwrite", True), True)
+    overwrite = ctx.bool_value(d.get("overwrite", False), False)
     p, payload = volume_payload_from_body(d, ctx, for_export=True)
     output_dir = _output_dir_for(p, output_dir_raw)
     safe_name = ctx.sanitize_prefix(output_name or p.stem, p.stem)
@@ -167,7 +168,7 @@ def rotation_gif_payload(
     output_dir_raw = str(d.get("output_dir", "") or "").strip()
     output_dir = _output_dir_for(p, output_dir_raw)
     output_name = str(d.get("output_name", "") or "").strip()
-    overwrite = ctx.bool_value(d.get("overwrite", True), True)
+    overwrite = ctx.bool_value(d.get("overwrite", False), False)
     safe_name = ctx.sanitize_prefix(output_name or p.stem, p.stem)
     out_path = _unique_output_path(output_dir / f"{safe_name}_3d_rotation.gif", overwrite)
     out_path.write_bytes(gif_bytes)
@@ -268,10 +269,10 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
             "coordinate_um": round(float(coord), 6),
             "intensity": round(float(value), 6),
         }
-        for i, (coord, value) in enumerate(zip(coords, values))
+        for i, (coord, value) in enumerate(zip(coords, values, strict=True))
     ]
 
-    fig, ax = plt.subplots(figsize=(6.0, 3.2), dpi=140)
+    fig, ax = new_subplots(figsize=(6.0, 3.2), dpi=140)
     ax.plot(coords, values, color="#3E6AE1", linewidth=1.6)
     ax.set_xlabel(f"{axis.upper()} position (um)")
     ax.set_ylabel(f"{metric.title()} intensity")
@@ -282,7 +283,7 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
 
     output_dir_raw = str(d.get("output_dir", "") or "").strip()
     output_name = str(d.get("output_name", "") or "").strip()
-    overwrite = ctx.bool_value(d.get("overwrite", True), True)
+    overwrite = ctx.bool_value(d.get("overwrite", False), False)
     output_dir = _output_dir_for(p, output_dir_raw)
     safe_name = ctx.sanitize_prefix(output_name or p.stem, p.stem)
     csv_path = _unique_output_path(
@@ -344,7 +345,7 @@ def rotation_axis_vector(axis: object) -> tuple[np.ndarray, str]:
         raise ValueError(f"Invalid rotation axis: {raw}")
     vec = vec / norm
     label_parts = []
-    for coeff, axis_name in zip(vec, ("x", "y", "z")):
+    for coeff, axis_name in zip(vec, ("x", "y", "z"), strict=True):
         if abs(float(coeff)) > 1e-4:
             label_parts.append(f"{float(coeff):.3g}{axis_name}")
     return vec.astype(np.float32), "+".join(label_parts).replace("+-", "-") or "z"

@@ -5,11 +5,11 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 from flask import Response, jsonify
 from pydantic import Field, ValidationError
 
 from services import echem as echem_service
+from services.matplotlib_utils import new_subplots
 from web_api.common import as_bool
 
 from .jobs import submit_json_task
@@ -167,7 +167,7 @@ def register_echem_pv_routes(app, ctx):
             if len(t) == 0:
                 return err("No data points found in file")
 
-            fig, ax = plt.subplots(figsize=(9, 3.5))
+            fig, ax = new_subplots(figsize=(9, 3.5))
             ax.plot(t, v, color=line_color, lw=0.7)
             ax.set_xlabel(t_col)
             ax.set_ylabel(v_col)
@@ -336,7 +336,7 @@ def register_echem_pv_routes(app, ctx):
             y_plot = e_det if show_detrended else v
             y_label = "Detrended Voltage (V)" if show_detrended else v_col
 
-            fig, ax = plt.subplots(figsize=(10, 3.8))
+            fig, ax = new_subplots(figsize=(10, 3.8))
             ax.plot(t, y_plot, color=line_color, lw=0.8)
 
             ax.axvspan(float(t0), float(t1), alpha=0.12, color="gray")

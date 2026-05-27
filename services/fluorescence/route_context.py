@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import matplotlib.pyplot as plt
+from matplotlib import colormaps
 import numpy as np
 import pandas as pd
 
@@ -11,6 +11,7 @@ from services.fluorescence import roi_render_context as fl_roi_render_context
 from services.fluorescence import route_helpers as fl_helpers
 from services.fluorescence import stack as fl_stack
 from services.fluorescence import tiff_volume_context as fl_tiff_volume_context
+from services.matplotlib_utils import new_subplots
 
 
 def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
@@ -51,16 +52,7 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     _FL_DEFAULT_BACKGROUND_BY_INDEX = {0: "Off", 1: "Off", 2: "Off"}
 
     def _fl_read_tiff_as_pages(tiff_path: Path) -> list[np.ndarray]:
-        arr = tifflib.imread(str(tiff_path))
-        arr = np.asarray(arr)
-        if arr.ndim == 2:
-            return [arr]
-        if arr.ndim == 3:
-            return [arr[i] for i in range(arr.shape[0])]
-        raise ValueError(
-            f"Unsupported TIFF shape: {arr.shape}. "
-            "Only grayscale TIFF or multi-page grayscale TIFF is supported."
-        )
+        return fl_stack.read_tiff_as_pages(tiff_path, tifflib)
 
     def _fl_prepare_gif_plane(raw: np.ndarray) -> np.ndarray:
         return fl_gif.prepare_plane(raw)
@@ -283,8 +275,9 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
             .drop_duplicates()
             .sort_values(["roi_key", "_ring_inner_key"], kind="stable")
         )
+        tab20 = colormaps["tab20"]
         ring_color = {
-            tuple(row): plt.cm.tab20(i % 20)
+            tuple(row): tab20(i % 20)
             for i, row in enumerate(
                 ring_keys[["roi_key", "_ring_inner_key", "_ring_outer_key"]].itertuples(
                     index=False, name=None
@@ -293,7 +286,7 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         }
         show_legend = len(ring_keys) <= 18
 
-        fig, axes = plt.subplots(2, 2, figsize=(11.0, 7.4), dpi=120)
+        fig, axes = new_subplots(2, 2, figsize=(11.0, 7.4), dpi=120)
         ax1, ax2, ax3, ax4 = axes.ravel()
         panels = [
             (ax1, "stack1_value", "Stack1 by ring", y_label),

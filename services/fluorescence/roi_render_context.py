@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.patches import Circle, Rectangle
 
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
+from services.matplotlib_utils import new_subplots
 
 
 def build_roi_render_context(
@@ -77,7 +77,7 @@ def build_roi_render_context(
 
         fig_w = max(4.8, min(9.0, w / 180.0))
         fig_h = max(4.2, fig_w * (h / max(w, 1)))
-        fig, ax = plt.subplots(figsize=(fig_w, fig_h), dpi=140)
+        fig, ax = new_subplots(figsize=(fig_w, fig_h), dpi=140)
         ax.set_axis_off()
         ax.imshow(disp, cmap="gray", interpolation="nearest")
 

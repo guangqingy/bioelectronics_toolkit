@@ -286,7 +286,7 @@ class Fluorescence3dVolumeRequest(RequestModel):
     scale_bar_um: Any = 20.0
     output_name: str = ""
     output_dir: str = ""
-    overwrite: Any = True
+    overwrite: Any = False
 
 
 class Fluorescence3dRotationGifRequest(Fluorescence3dVolumeRequest):
@@ -313,4 +313,4 @@ class Fluorescence3dDistributionRequest(RequestModel):
     denoise: Any = None
     output_name: str = ""
     output_dir: str = ""
-    overwrite: Any = True
+    overwrite: Any = False

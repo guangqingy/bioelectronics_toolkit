@@ -1,0 +1,22 @@
+{
+  "title": "bioelectronics_toolkit",
+  "description": "Desktop launchers and a local Flask WebGUI for reproducible bioelectronics, electrophysiology, electrochemistry, fluorescence imaging, and histology data processing.",
+  "creators": [
+    {
+      "name": "Yang, Guangqing",
+      "affiliation": "The University of Chicago"
+    }
+  ],
+  "license": "MIT",
+  "keywords": [
+    "bioelectronics",
+    "electrophysiology",
+    "patch-clamp",
+    "EMG",
+    "fluorescence",
+    "electrochemistry",
+    "ABF",
+    "RHD"
+  ],
+  "upload_type": "software"
+}

@@ -26,6 +26,7 @@ from services.histology_discovery import (
     candidate_overview_files,
     find_histology_cases,
 )
+from services.histology_preview import image_to_b64, load_histology_preview_pair
 from services.histology_project import (
     add_histology_data_project_paths,
     analyze_histology_data_project_rois,
@@ -39,7 +40,6 @@ from services.histology_project import (
     rename_histology_data_project_entry,
     save_histology_data_project_rois,
 )
-from services.histology_preview import image_to_b64, load_histology_preview_pair
 from services.histology_tiff_project import (
     ImageRecord,
     SampleRecord,

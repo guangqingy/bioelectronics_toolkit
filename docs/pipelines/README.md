@@ -5,9 +5,11 @@ This folder documents how each script pipeline category integrates with the GUI 
 ## Coverage
 
 - Photocurrent pipelines: [photocurrent_pipeline_README.md](photocurrent_pipeline_README.md)
+- Runnable example pipeline: [example_pipeline_README.md](example_pipeline_README.md)
 - EMG pipelines: [emg_pipeline_README.md](emg_pipeline_README.md)
 - EChem curve pipelines: [echem_curve_pipeline_README.md](echem_curve_pipeline_README.md)
 - Viability pipelines: [viability_pipeline_README.md](viability_pipeline_README.md)
+- Methods notes: [methods.md](methods.md)
 - Web GUI run manifests: [webgui_run_manifest_2026-05-08.md](webgui_run_manifest_2026-05-08.md)
 - Web GUI file profiles: [webgui_file_profiles_2026-05-08.md](webgui_file_profiles_2026-05-08.md)
 - Web GUI job/API architecture pass: [webgui_second_priority_2026-05-08.md](webgui_second_priority_2026-05-08.md)
@@ -48,5 +50,5 @@ This folder documents how each script pipeline category integrates with the GUI 
 - The WebGUI page and `/api/pipelines/catalog` both load that registry, so do
   not duplicate script lists in templates or route modules.
 - Prefer environment-variable-driven scripts for robust GUI integration.
-- Run `python3 -m unittest discover -s tests` after Web GUI route, job, or
+- Run `python3 -m pytest tests --ignore=tests/e2e` after Web GUI route, job, or
   response-contract changes.

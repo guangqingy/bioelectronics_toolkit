@@ -96,7 +96,7 @@ def plane_points(
 
     positions: list[float] = []
     colors: list[float] = []
-    for y_s, x_s in zip(ys, xs):
+    for y_s, x_s in zip(ys, xs, strict=True):
         brightness = float(norm[y_s, x_s])
         if brightness <= 0:
             continue

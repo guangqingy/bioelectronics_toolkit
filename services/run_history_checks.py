@@ -143,6 +143,11 @@ def manifest_markdown(
     ]
     if manifest_path:
         lines.append(f"- Manifest: `{manifest_path}`")
+    tool = manifest.get("tool") if isinstance(manifest.get("tool"), dict) else {}
+    if tool:
+        lines.append(f"- Toolkit: `{tool.get('label') or tool.get('version') or ''}`")
+        if tool.get("commit"):
+            lines.append(f"- Commit: `{tool.get('commit')}`")
     lines.extend(["", "## Inputs", ""])
     for rec in manifest.get("input_files") or []:
         if isinstance(rec, dict):
@@ -173,6 +178,13 @@ def manifest_markdown(
                 f"- Missing: {summary.get('missing', 0)}",
             ]
         )
+    if tool:
+        deps = tool.get("dependencies") if isinstance(tool.get("dependencies"), dict) else {}
+        lines.extend(["", "## Runtime", ""])
+        lines.append(f"- Python: `{tool.get('python', '')}`")
+        lines.append(f"- Platform: `{tool.get('platform', '')}`")
+        for name in ("numpy", "scipy", "pandas", "tifffile"):
+            lines.append(f"- {name}: `{deps.get(name, '')}`")
     lines.extend(
         [
             "",

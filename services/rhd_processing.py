@@ -6,18 +6,20 @@ import io
 from dataclasses import dataclass
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.colors import is_color_like
+from matplotlib.figure import Figure
 from scipy import signal
+
+from services.matplotlib_utils import new_subplots
 
 
 @dataclass(slots=True)
 class ProcessingResult:
     """Computed RHD processing output ready for preview or export."""
 
-    figure: plt.Figure
+    figure: Figure
     metadata: dict[str, Any]
     table: pd.DataFrame
     kind: str
@@ -236,7 +238,7 @@ def process_trace(
     fig_params = figure_params(
         params, default_line_color=default_line_color, default_show_title=False
     )
-    fig, ax = plt.subplots(
+    fig, ax = new_subplots(
         figsize=(fig_params["width_in"], fig_params["height_in"]),
         dpi=fig_params["dpi"],
     )
@@ -408,7 +410,7 @@ def dataframe_csv_bytes(frame: pd.DataFrame) -> bytes:
     return buf.getvalue()
 
 
-def figure_bytes(figure: plt.Figure, fmt: str, *, dpi: int | None = None) -> bytes:
+def figure_bytes(figure: Figure, fmt: str, *, dpi: int | None = None) -> bytes:
     buf = io.BytesIO()
     figure.savefig(buf, format=fmt, dpi=dpi if fmt == "png" else None, bbox_inches="tight")
     buf.seek(0)

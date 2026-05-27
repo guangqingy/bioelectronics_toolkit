@@ -82,7 +82,9 @@ def clean_trace_svg(
         yy = top + (ymax - float(v)) / (ymax - ymin) * plot_h
         return max(top, min(top + plot_h, yy))
 
-    points = " ".join(f"{svg_num(sx(xv))},{svg_num(sy(yv))}" for xv, yv in zip(x, y))
+    points = " ".join(
+        f"{svg_num(sx(xv))},{svg_num(sy(yv))}" for xv, yv in zip(x, y, strict=True)
+    )
     axis_style = 'stroke="#222" stroke-width="1" vector-effect="non-scaling-stroke"'
     tick_style = 'stroke="#222" stroke-width="0.8" vector-effect="non-scaling-stroke"'
     text_style = 'font-family="Arial, Helvetica, sans-serif" font-size="11" fill="#222"'

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68", "wheel"]
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "bioelectronics-toolkit"
 version = "0.6.0"
 description = "Desktop GUIs and a lightweight Flask web app for processing bioelectronics and electrophysiology data (ABF, RHD, TIFF, electrochemistry CSV)."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.10"
 authors = [
     { name = "Guangqing Yang", email = "guangqing@uchicago.edu" }
@@ -23,9 +24,8 @@ keywords = [
     "RHD",
 ]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -40,7 +40,9 @@ dependencies = [
     "pandas>=2.0",
     "pyabf>=2.3",
     "pydantic>=2.6",
+    "readlif>=0.6.6",
     "scipy>=1.10",
+    "statsmodels>=0.14",
     "Pillow>=10.0",
     "pyserial>=3.5",
     "tifffile>=2023.7",
@@ -49,14 +51,17 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "build>=1.2",
     "coverage>=7.5",
     "playwright>=1.40",
+    "pre-commit>=3.7",
     "pytest>=8.0",
     "ruff>=0.4",
 ]
 
 [project.urls]
 Repository = "https://github.com/guangqingy/bioelectronics_toolkit"
+PyPI = "https://pypi.org/project/bioelectronics-toolkit/"
 
 # ---------------------------------------------------------------------------
 # Entry points – desktop commands open the canonical WebGUI page by default.
@@ -90,10 +95,30 @@ py-modules = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["desktop_apps*", "pipelines*", "services*", "vendor*", "web_api*"]
+include = [
+    "desktop_apps*",
+    "examples*",
+    "pipelines*",
+    "services*",
+    "vendor*",
+    "web_api*",
+    "web_static*",
+    "web_templates*",
+]
 
 [tool.setuptools.package-data]
+examples = [
+    "sample_echem_photocurrent.csv",
+    "sample_fluorescence_stack.tif",
+    "sample_patch_clamp.abf",
+]
 pipelines = ["*.json"]
+web_static = ["**/*"]
+web_templates = ["**/*"]
+
+[tool.setuptools.exclude-package-data]
+web_static = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
+web_templates = ["**/__pycache__/*", "**/*.pyc", "**/*.pyo"]
 
 # ---------------------------------------------------------------------------
 # Ruff linter (optional – run with `ruff check .`)

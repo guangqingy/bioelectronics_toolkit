@@ -5,13 +5,13 @@ import traceback
 from pathlib import Path
 from typing import Any
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from flask import Response, jsonify
 from pydantic import Field, ValidationError
 
 from services import echem as echem_service
+from services.matplotlib_utils import new_subplots
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
@@ -192,7 +192,7 @@ def register_echem_pc_routes(app, ctx):
                 pair_path = output_folder / f"{src.stem}_pair_{export_idx:03d}.csv"
                 with pair_path.open("w", encoding="utf-8") as f:
                     f.write("time_s,current_mA\n")
-                    for t_val, i_val in zip(t[mask], i_raw[mask]):
+                    for t_val, i_val in zip(t[mask], i_raw[mask], strict=True):
                         f.write(f"{float(t_val):.9g},{float(i_val):.9g}\n")
                 saved_count += 1
                 saved_paths.append(str(pair_path))
@@ -242,7 +242,7 @@ def register_echem_pc_routes(app, ctx):
             if len(t) == 0:
                 return err("No data points found in file")
 
-            fig, ax = plt.subplots(figsize=(9, 3.5))
+            fig, ax = new_subplots(figsize=(9, 3.5))
             ax.plot(t, i, color=line_color, lw=0.7)
             ax.set_xlabel(t_col)
             ax.set_ylabel(i_col)
@@ -348,7 +348,7 @@ def register_echem_pc_routes(app, ctx):
             t_w = t[mask_w]
             i_w = i_raw[mask_w]
 
-            fig, ax = plt.subplots(figsize=(10, 3.5))
+            fig, ax = new_subplots(figsize=(10, 3.5))
             ax.plot(t, i_raw, color="#D0D1D2", lw=0.6, zorder=1)
             ax.plot(t_w, i_w, color=line_color, lw=0.8, zorder=2)
             ax.axvspan(float(t0), float(t1), alpha=0.12, color="gray")

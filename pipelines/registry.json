@@ -1,7 +1,32 @@
 {
   "schema_version": 1,
-  "default_category": "photocurrent",
+  "default_category": "examples",
   "categories": [
+    {
+      "id": "examples",
+      "label": "Runnable Examples",
+      "description": "Self-contained smoke pipelines that run entirely from bundled examples/ data.",
+      "documentation": "docs/pipelines/example_pipeline_README.md",
+      "scripts": [
+        {
+          "id": "example_summary",
+          "name": "Bundled Example Summary",
+          "desc": "Read the bundled ABF, electrochemistry CSV, and fluorescence TIFF examples, then write a compact CSV/JSON/PNG summary.",
+          "script": "example_summary.py",
+          "script_path": "pipelines/examples/example_summary.py",
+          "integration_status": "bundled_example",
+          "params": [
+            {
+              "key": "output_dir",
+              "label": "Output directory",
+              "type": "path",
+              "desc": "Leave blank to write under .dataprocess_cache/exports/pipeline_examples.",
+              "default": ".dataprocess_cache/exports/pipeline_examples"
+            }
+          ]
+        }
+      ]
+    },
     {
       "id": "photocurrent",
       "label": "Photocurrent Analysis",

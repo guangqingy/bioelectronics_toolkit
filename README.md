@@ -10,6 +10,15 @@
 
 ![DataProcess WebGUI screenshot](web_static/img/screenshot_home.png)
 
+## Who This Is For
+
+`bioelectronics_toolkit` is for researchers who need a local, inspectable way to
+turn common bioelectronics lab files into reproducible figures, CSV exports,
+and run manifests. It is intentionally desktop-first: the WebGUI is the
+canonical surface for day-to-day analysis, while shared `services/` modules keep
+the scientific logic testable and reusable from launchers, scripts, and future
+automation.
+
 A collection of desktop GUIs and a lightweight Flask web app for processing
 data from common bioelectronics and electrophysiology instruments. Tools cover
 electrochemistry (photocurrent / photovoltage), EMG and patch-clamp recordings
@@ -22,6 +31,17 @@ workflows. For new feature work, the WebGUI is the canonical reference for
 output contracts, cached settings, file profiles, background jobs, and run
 manifests. The desktop GUIs remain supported standalone tools, but some older
 desktop workflows are intentionally thinner than their WebGUI equivalents.
+
+```mermaid
+flowchart LR
+    user[Researcher] --> web[Local WebGUI]
+    user --> launcher[bte-* launchers]
+    web --> api[web_api routes]
+    launcher --> api
+    api --> services[services algorithms]
+    services --> outputs[CSV / PNG / SVG / manifests]
+    legacy[legacy Tkinter] --> services
+```
 
 ## Features
 
@@ -106,6 +126,16 @@ source .venv/bin/activate          # on Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
+For a reproducible Python 3.12 setup matching the checked lock file, use:
+
+```bash
+pip install -c requirements-lock.txt -e ".[dev]"
+```
+
+CI tests normal dependency resolution on Python 3.10, 3.11, and 3.12. The
+`requirements-lock.txt` file records a known-good Python 3.12 dependency set for
+release and reproduction checks.
+
 Tkinter is part of the Python standard library on macOS and Windows. On Linux
 you may need to install it explicitly (e.g. `sudo apt install python3-tk`).
 
@@ -183,6 +213,7 @@ so a fresh clone can exercise the UI without lab data:
 
 ```bash
 pip install -e .
+bte-web --self-check
 python3 web_app.py
 ```
 
@@ -203,20 +234,20 @@ Additional screenshots:
 ## Pipeline Runner
 
 The Pipeline Runner is catalog-driven by [`pipelines/registry.json`](./pipelines/registry.json).
-Pipeline registry catalogs project-specific data workflows; external users see
-the catalog but most pipelines require local data not included in this repo.
-For external users, it primarily documents available workflow categories and
-parameter shapes. The current registered model scripts point at local
-project-specific analysis trees such as `2025_Subcutaneous/`; a fresh public
-clone will mark those entries as `Local script missing` until the matching
-project data/script tree is present.
+The default category is a runnable bundled example that reads only
+[`examples/`](./examples/) data and writes CSV/JSON/PNG artifacts. Additional
+categories catalog project-specific workflows; entries that require private
+local project data are marked `Local script missing` until that script tree is
+present.
 
 ## Project layout
 
 ```text
 bioelectronics_toolkit/
 ├── README.md                       # this file
+├── requirements-lock.txt            # known-good Python 3.12 dependency lock
 ├── LICENSE                         # MIT
+├── CODE_OF_CONDUCT.md               # community behavior expectations
 ├── config.py                       # config loader
 ├── config.example.json             # config template (copy to config.json)
 ├── web_gui_settings.example.json    # Web GUI local settings template
@@ -238,8 +269,9 @@ bioelectronics_toolkit/
 ├── WEB_README.md                   # web-app architecture notes
 ├── docs/                           # repository structure and parity notes
 │   └── pipelines/                  # data-processing pipeline docs
-├── tests/                          # stdlib unittest contract/smoke tests
+├── tests/                          # pytest/unittest-compatible contract tests
 ├── pipelines/                      # canonical WebGUI pipeline registry
+│   └── examples/                   # self-contained public pipeline scripts
 ```
 
 ## Development notes
@@ -269,8 +301,10 @@ bioelectronics_toolkit/
   python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
   python3 -m ruff check web_api --select F --ignore E402
   python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
-  python3 -m unittest discover -s tests
+  bte-web --self-check
+  python3 -m pytest tests --ignore=tests/e2e
   python3 dev_scripts/check_analysis_scripts.py
+  python3 dev_scripts/check_no_pyplot.py
   ```
 
 - CI intentionally applies two lint levels: a whole-repository baseline for
@@ -282,9 +316,9 @@ bioelectronics_toolkit/
 
 ## Contributing
 
-Issues and pull requests are welcome. See [`CONTRIBUTING.md`](./CONTRIBUTING.md)
-for the workflow (branch naming, Conventional Commits, pre-commit hooks, CI
-expectations).
+Issues and pull requests are welcome. See [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
+and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the workflow (branch naming,
+Conventional Commits, pre-commit hooks, CI expectations).
 
 ## Changelog
 
@@ -295,7 +329,9 @@ Notable changes to each release are tracked in [`CHANGELOG.md`](./CHANGELOG.md).
 If you use `bioelectronics_toolkit` in academic work, please cite it via the
 metadata in [`CITATION.cff`](./CITATION.cff). GitHub renders a "Cite this
 repository" button on the right sidebar that copies a ready-to-paste BibTeX
-or APA entry.
+or APA entry. Zenodo metadata is prepared in [`.zenodo.json`](./.zenodo.json);
+the version DOI should be added here and to `CITATION.cff` after the repository
+owner enables Zenodo for a tagged release.
 
 ## License
 

@@ -140,7 +140,7 @@ def build_tiff_volume_context(
         colors: list[float] = []
         z_coord = float(z_index if z_position is None else z_position)
         brightness_scale = max(0.0, min(1.0, float(brightness_scale or 1.0)))
-        for y_s, x_s in zip(ys, xs):
+        for y_s, x_s in zip(ys, xs, strict=True):
             brightness = float(norm[y_s, x_s]) * brightness_scale
             if brightness <= 0:
                 continue
@@ -252,7 +252,8 @@ def build_tiff_volume_context(
             cells, axis=0, return_inverse=True, return_counts=True
         )
         count_map = {
-            tuple(int(v) for v in cell): int(count) for cell, count in zip(unique_cells, counts)
+            tuple(int(v) for v in cell): int(count)
+            for cell, count in zip(unique_cells, counts, strict=True)
         }
         offsets = [(dx, dy, dz) for dx in (-1, 0, 1) for dy in (-1, 0, 1) for dz in (-1, 0, 1)]
         density_by_cell = np.zeros(unique_cells.shape[0], dtype=np.int32)

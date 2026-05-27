@@ -8,12 +8,7 @@ fluorescence imaging, and scripted data analysis.
 """
 
 import argparse
-import base64
-import importlib.metadata
-import io
 import os
-import re
-import subprocess
 import sys
 import threading
 import time
@@ -23,8 +18,14 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from flask import Flask, request, send_from_directory
+import pyabf
+import tifffile as tifflib
+from flask import Flask, send_file
+from PIL import Image, ImageDraw, ImageFont
+from readlif.reader import LifFile
+from scipy.signal import find_peaks, peak_widths, savgol_filter
+from scipy.stats import f_oneway
+from statsmodels.stats.multicomp import MultiComparison
 
 BASE_DIR = Path(__file__).parent
 sys.path.insert(0, str(BASE_DIR))
@@ -32,6 +33,15 @@ sys.path.insert(0, str(BASE_DIR))
 from web_api.api_docs import register_api_docs_routes
 from web_api.abf_batch import register_abf_batch_routes
 from web_api.abf_viewer import register_abf_viewer_routes
+from web_api.common import (
+    apply_axes_limits,
+    browse_files,
+    browse_files_recursive,
+    fig_to_b64,
+    float_or,
+    int_or,
+    request_data,
+)
 from web_api.context import WebApiContext
 from web_api.csv_viewer import register_csv_viewer_routes
 from web_api.echem_lineshape import register_echem_lineshape_routes
@@ -52,111 +62,21 @@ from web_api.run_history import register_run_history_routes
 from web_api.scripts_panel import register_scripts_panel_routes
 from web_api.system import register_system_routes
 from web_api.telemetry import register_telemetry_routes
+from services.io_guards import configure_pillow_image_limit
+from services.matplotlib_utils import configure_defaults
+from services.provenance import git_commit, project_version, version_label
 
-app = Flask(
-    __name__,
-    template_folder=str(BASE_DIR / "web_templates"),
-    static_folder=str(BASE_DIR / "web_static"),
-    static_url_path="/static",
-)
-
-
-def _project_version() -> str:
-    pyproject = BASE_DIR / "pyproject.toml"
-    if pyproject.exists():
-        try:
-            text = pyproject.read_text(encoding="utf-8")
-            match = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
-            if match:
-                return match.group(1)
-        except Exception:
-            pass
-    try:
-        return importlib.metadata.version("bioelectronics-toolkit")
-    except importlib.metadata.PackageNotFoundError:
-        return "0+unknown"
+APP_VERSION = project_version(BASE_DIR)
+APP_COMMIT = git_commit(BASE_DIR)
+APP_VERSION_LABEL = version_label(APP_VERSION, APP_COMMIT)
 
 
-def _git_commit() -> str:
-    for key in ("BIOELECTRONICS_TOOLKIT_COMMIT", "BTE_COMMIT", "GITHUB_SHA"):
-        value = (os.environ.get(key) or "").strip()
-        if value:
-            return value[:7]
-    if not (BASE_DIR / ".git").exists():
-        return ""
-    try:
-        proc = subprocess.run(
-            ["git", "rev-parse", "--short=7", "HEAD"],
-            cwd=BASE_DIR,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=2,
-        )
-        return proc.stdout.strip()
-    except Exception:
-        return ""
-
-
-APP_VERSION = _project_version()
-APP_COMMIT = _git_commit()
-APP_VERSION_LABEL = f"v{APP_VERSION}" + (f" · {APP_COMMIT}" if APP_COMMIT else "")
-app.config["APP_VERSION"] = APP_VERSION
-
-
-@app.context_processor
-def inject_template_defaults():
-    return {
-        "app_commit": APP_COMMIT,
-        "app_version": APP_VERSION,
-        "app_version_label": APP_VERSION_LABEL,
-        "default_data_dir": "",
-        "default_examples_dir": "examples",
-    }
-
-
-@app.route("/api/version")
-def api_version():
-    return {
-        "ok": True,
-        "version": APP_VERSION,
-        "commit": APP_COMMIT,
-        "label": APP_VERSION_LABEL,
-    }
-
-
-@app.route("/favicon.ico")
-def favicon():
-    return send_from_directory(app.static_folder, "favicon.ico")
-
-
-plt.rcParams.update(
-    {
-        "font.family": "sans-serif",
-        "font.sans-serif": ["Arial", "Helvetica", "DejaVu Sans", "sans-serif"],
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.linewidth": 0.8,
-        "xtick.major.size": 3,
-        "ytick.major.size": 3,
-        "figure.facecolor": "white",
-        "axes.facecolor": "white",
-        "grid.color": "#EEEEEE",
-        "grid.linewidth": 0.5,
-        "pdf.fonttype": 42,
-        "svg.fonttype": "none",
-    }
-)
+configure_defaults()
+configure_pillow_image_limit(Image)
 LINE_COLOR = "#3E6AE1"
 
 
-pyabf = None
-try:
-    import pyabf
-
-    HAS_ABF = True
-except ImportError:
-    HAS_ABF = False
+HAS_ABF = True
 
 rhd = None
 try:
@@ -166,182 +86,113 @@ try:
 except ImportError:
     HAS_RHD = False
 
-find_peaks = None
-peak_widths = None
-savgol_filter = None
-f_oneway = None
-try:
-    from scipy.signal import find_peaks, peak_widths, savgol_filter
-    from scipy.stats import f_oneway
-
-    HAS_SCIPY = True
-except ImportError:
-    HAS_SCIPY = False
-
-MultiComparison = None
-try:
-    from statsmodels.stats.multicomp import MultiComparison
-
-    HAS_STATSMODELS = True
-except ImportError:
-    HAS_STATSMODELS = False
-
-tifflib = None
-try:
-    import tifffile as tifflib
-
-    HAS_TIFF = True
-except ImportError:
-    HAS_TIFF = False
-
-Image = None
-ImageDraw = None
-ImageFont = None
-try:
-    from PIL import Image, ImageDraw, ImageFont
-
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
-
-LifFile = None
-try:
-    from readlif.reader import LifFile
-
-    HAS_READLIF = True
-except ImportError:
-    HAS_READLIF = False
-
-
-def fig_to_b64(fig, dpi=130, fmt="png"):
-    buf = io.BytesIO()
-    fig.savefig(buf, format=fmt, dpi=dpi, bbox_inches="tight")
-    buf.seek(0)
-    data = base64.b64encode(buf.read()).decode()
-    plt.close(fig)
-    return data
+HAS_SCIPY = True
+HAS_STATSMODELS = True
+HAS_TIFF = True
+HAS_PIL = True
+HAS_READLIF = True
 
 
 def err(msg, code=400):
     return api_error(msg, code)
 
 
-def browse_files(folder, exts):
-    p = Path(folder)
-    if not p.is_dir():
-        return []
-    result = []
-    for f in sorted(p.iterdir()):
-        if f.suffix.lower() in exts:
-            result.append({"name": f.name, "path": str(f)})
-    return result
+def create_app(
+    *,
+    base_dir: Path = BASE_DIR,
+    jobs: JobManager | None = None,
+) -> Flask:
+    flask_app = Flask(
+        __name__,
+        template_folder=str(base_dir / "web_templates"),
+        static_folder=str(base_dir / "web_static"),
+        static_url_path="/static",
+    )
+    flask_app.config["APP_VERSION"] = APP_VERSION
+
+    @flask_app.context_processor
+    def inject_template_defaults():
+        return {
+            "app_commit": APP_COMMIT,
+            "app_version": APP_VERSION,
+            "app_version_label": APP_VERSION_LABEL,
+            "default_data_dir": "",
+            "default_examples_dir": "examples",
+        }
+
+    @flask_app.route("/api/version")
+    def api_version():
+        return {
+            "ok": True,
+            "version": APP_VERSION,
+            "commit": APP_COMMIT,
+            "label": APP_VERSION_LABEL,
+        }
+
+    @flask_app.route("/favicon.ico")
+    def favicon():
+        return send_file(base_dir / "web_static" / "favicon.ico", mimetype="image/x-icon")
+
+    job_manager = jobs or JobManager(persistence_path=base_dir / ".dataprocess_cache" / "jobs.sqlite")
+    web_api_ctx = WebApiContext(
+        err=err,
+        browse_files=browse_files,
+        browse_files_recursive=browse_files_recursive,
+        fig_to_b64=fig_to_b64,
+        float_or=float_or,
+        int_or=int_or,
+        request_data=request_data,
+        apply_axes_limits=apply_axes_limits,
+        BASE_DIR=base_dir,
+        LINE_COLOR=LINE_COLOR,
+        HAS_ABF=HAS_ABF,
+        HAS_RHD=HAS_RHD,
+        HAS_SCIPY=HAS_SCIPY,
+        HAS_STATSMODELS=HAS_STATSMODELS,
+        HAS_TIFF=HAS_TIFF,
+        HAS_PIL=HAS_PIL,
+        HAS_READLIF=HAS_READLIF,
+        pyabf=pyabf,
+        rhd=rhd,
+        find_peaks=find_peaks,
+        savgol_filter=savgol_filter,
+        peak_widths=peak_widths,
+        f_oneway=f_oneway,
+        MultiComparison=MultiComparison,
+        tifflib=tifflib,
+        Image=Image,
+        ImageDraw=ImageDraw,
+        ImageFont=ImageFont,
+        LifFile=LifFile,
+        jobs=job_manager,
+    )
+
+    register_api_envelope(flask_app)
+    register_page_routes(flask_app, web_api_ctx)
+    register_csv_viewer_routes(flask_app, web_api_ctx)
+    register_abf_viewer_routes(flask_app, web_api_ctx)
+    register_abf_batch_routes(flask_app, web_api_ctx)
+    register_figure_generator_routes(flask_app, web_api_ctx)
+    register_echem_pc_routes(flask_app, web_api_ctx)
+    register_echem_pv_routes(flask_app, web_api_ctx)
+    register_echem_lineshape_routes(flask_app, web_api_ctx)
+    register_rhd_viewer_routes(flask_app, web_api_ctx)
+    register_emg_peaks_routes(flask_app, web_api_ctx)
+    register_fluorescence_routes(flask_app, web_api_ctx)
+    register_lif_viewer_routes(flask_app, web_api_ctx)
+    register_histology_routes(flask_app, web_api_ctx)
+    register_scripts_panel_routes(flask_app, web_api_ctx)
+    register_preferences_routes(flask_app, web_api_ctx)
+    register_file_profile_routes(flask_app, web_api_ctx)
+    register_run_history_routes(flask_app, web_api_ctx)
+    register_system_routes(flask_app, web_api_ctx)
+    register_job_routes(flask_app, web_api_ctx)
+    register_api_docs_routes(flask_app, web_api_ctx)
+    register_telemetry_routes(flask_app, web_api_ctx)
+    return flask_app
 
 
-def browse_files_recursive(folder, exts, max_files=300):
-    p = Path(folder)
-    if not p.is_dir():
-        return []
-    result = []
-    for f in sorted(p.rglob("*")):
-        if f.suffix.lower() in exts:
-            result.append({"name": f.name, "path": str(f), "rel": str(f.relative_to(p))})
-            if len(result) >= max_files:
-                break
-    return result
-
-
-def float_or(v, default):
-    try:
-        return float(v)
-    except (TypeError, ValueError):
-        return default
-
-
-def int_or(v, default):
-    try:
-        return int(v)
-    except (TypeError, ValueError):
-        return default
-
-
-def request_data():
-    if request.method == "GET":
-        return request.args
-    return request.json or {}
-
-
-def apply_axes_limits(ax, xmin, xmax, ymin, ymax):
-    if xmin is not None or xmax is not None:
-        cur = ax.get_xlim()
-        ax.set_xlim(
-            xmin if xmin is not None else cur[0],
-            xmax if xmax is not None else cur[1],
-        )
-    if ymin is not None or ymax is not None:
-        cur = ax.get_ylim()
-        ax.set_ylim(
-            ymin if ymin is not None else cur[0],
-            ymax if ymax is not None else cur[1],
-        )
-
-
-_job_manager = JobManager(persistence_path=BASE_DIR / ".dataprocess_cache" / "jobs.sqlite")
-_web_api_ctx = WebApiContext(
-    err=err,
-    browse_files=browse_files,
-    browse_files_recursive=browse_files_recursive,
-    fig_to_b64=fig_to_b64,
-    float_or=float_or,
-    int_or=int_or,
-    request_data=request_data,
-    apply_axes_limits=apply_axes_limits,
-    BASE_DIR=BASE_DIR,
-    LINE_COLOR=LINE_COLOR,
-    HAS_ABF=HAS_ABF,
-    HAS_RHD=HAS_RHD,
-    HAS_SCIPY=HAS_SCIPY,
-    HAS_STATSMODELS=HAS_STATSMODELS,
-    HAS_TIFF=HAS_TIFF,
-    HAS_PIL=HAS_PIL,
-    HAS_READLIF=HAS_READLIF,
-    pyabf=pyabf,
-    rhd=rhd,
-    find_peaks=find_peaks,
-    savgol_filter=savgol_filter,
-    peak_widths=peak_widths,
-    f_oneway=f_oneway,
-    MultiComparison=MultiComparison,
-    tifflib=tifflib,
-    Image=Image,
-    ImageDraw=ImageDraw,
-    ImageFont=ImageFont,
-    LifFile=LifFile,
-    jobs=_job_manager,
-)
-
-
-register_api_envelope(app)
-register_page_routes(app, _web_api_ctx)
-register_csv_viewer_routes(app, _web_api_ctx)
-register_abf_viewer_routes(app, _web_api_ctx)
-register_abf_batch_routes(app, _web_api_ctx)
-register_figure_generator_routes(app, _web_api_ctx)
-register_echem_pc_routes(app, _web_api_ctx)
-register_echem_pv_routes(app, _web_api_ctx)
-register_echem_lineshape_routes(app, _web_api_ctx)
-register_rhd_viewer_routes(app, _web_api_ctx)
-register_emg_peaks_routes(app, _web_api_ctx)
-register_fluorescence_routes(app, _web_api_ctx)
-register_lif_viewer_routes(app, _web_api_ctx)
-register_histology_routes(app, _web_api_ctx)
-register_scripts_panel_routes(app, _web_api_ctx)
-register_preferences_routes(app, _web_api_ctx)
-register_file_profile_routes(app, _web_api_ctx)
-register_run_history_routes(app, _web_api_ctx)
-register_system_routes(app, _web_api_ctx)
-register_job_routes(app, _web_api_ctx)
-register_api_docs_routes(app, _web_api_ctx)
-register_telemetry_routes(app, _web_api_ctx)
+app = create_app()
 
 
 PORT = 7433
@@ -361,7 +212,19 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--no-browser", action="store_true", help="Do not open a browser automatically."
     )
+    parser.add_argument(
+        "--self-check",
+        action="store_true",
+        help="Validate runtime dependencies and bundled example files, then exit.",
+    )
     args = parser.parse_args(argv)
+
+    if args.self_check:
+        from services.self_check import format_self_check_report, run_self_check
+
+        report = run_self_check(BASE_DIR)
+        print(format_self_check_report(report))
+        raise SystemExit(0 if report["ok"] else 1)
 
     PORT = int(args.port)
     os.chdir(BASE_DIR)

@@ -8,11 +8,12 @@ import re as _re2
 import traceback
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from flask import jsonify
 from pydantic import ValidationError
+
+from services.matplotlib_utils import new_subplots
 
 from .fluorescence_request_schemas import (
     FluorescenceGifRoiKymographExportRequest,
@@ -178,7 +179,9 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                 selected_total += len(selected_indices)
                 planes = _fl_read_selected_gif_planes(tiff_path, selected_indices)
 
-                for order_idx, (source_idx, plane) in enumerate(zip(selected_indices, planes)):
+                for order_idx, (source_idx, plane) in enumerate(
+                    zip(selected_indices, planes, strict=True)
+                ):
                     img2d = np.asarray(plane, dtype=np.float64)
                     if img2d.ndim != 2:
                         img2d = np.squeeze(img2d)
@@ -330,7 +333,7 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                     }
                 )
 
-            for meta, vals, bg_mean in zip(frame_meta, values_by_frame, bg_means):
+            for meta, vals, bg_mean in zip(frame_meta, values_by_frame, bg_means, strict=True):
                 finite = vals[np.isfinite(vals)]
                 counts, _ = np.histogram(finite, bins=edges)
                 denom = max(1, int(finite.size))
@@ -466,7 +469,7 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
                 "bg_subtracted": "BG-subtracted intensity",
                 "delta_f_over_f0": "DeltaF/F0",
             }
-            fig, ax = plt.subplots(figsize=(9.4, 4.8), dpi=140, constrained_layout=True)
+            fig, ax = new_subplots(figsize=(9.4, 4.8), dpi=140, constrained_layout=True)
             positive = hist_display_arr[hist_display_arr > 0]
             vmax_color = float(np.percentile(positive, 99.0)) if positive.size else 1.0
             im = ax.imshow(

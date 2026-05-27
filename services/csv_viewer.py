@@ -4,10 +4,11 @@ import io
 from pathlib import Path
 from typing import Any, Callable
 
-import matplotlib.pyplot as plt
 import pandas as pd
 
 from services import csv_tools
+from services.io_guards import assert_file_size_within_limit
+from services.matplotlib_utils import close_figure, new_subplots
 
 
 class CsvViewerService:
@@ -41,7 +42,7 @@ class CsvViewerService:
         downsample = self.int_or(data.get("dsf", 1), 1)
 
         x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=downsample)
-        fig, ax = plt.subplots(figsize=(8, 4))
+        fig, ax = new_subplots(figsize=(8, 4))
         ax.plot(x, y, color=self.line_color, lw=0.9)
         ax.margins(x=0)
         ax.set_xlabel(x_col)
@@ -75,7 +76,7 @@ class CsvViewerService:
             "#bcbd22",
             "#7f7f7f",
         ]
-        fig, ax = plt.subplots(figsize=(9, 4))
+        fig, ax = new_subplots(figsize=(9, 4))
         plotted = 0
         for index, path in enumerate(paths):
             try:
@@ -85,7 +86,7 @@ class CsvViewerService:
             ax.plot(x, y, color=colors[index % len(colors)], lw=0.9, label=Path(path).stem)
             plotted += 1
         if plotted == 0:
-            plt.close(fig)
+            close_figure(fig)
             raise ValueError("No mergeable rows found for selected columns/window")
         ax.margins(x=0)
         ax.set_xlabel(x_col)
@@ -164,7 +165,7 @@ class CsvViewerService:
                 "role": "plot",
             }
 
-        fig, ax = plt.subplots(figsize=(8, 4))
+        fig, ax = new_subplots(figsize=(8, 4))
         ax.plot(x, y, color=self.line_color, lw=0.9)
         ax.margins(x=0)
         ax.set_xlabel(x_col)
@@ -176,7 +177,7 @@ class CsvViewerService:
         buf = io.BytesIO()
         dpi = 300 if fmt == "png" else None
         fig.savefig(buf, format=fmt, dpi=dpi, bbox_inches="tight")
-        plt.close(fig)
+        close_figure(fig)
         buf.seek(0)
         return {
             "payload": buf.getvalue(),
@@ -191,6 +192,7 @@ class CsvViewerService:
     def full_csv_export_payload(data: dict[str, Any]) -> dict[str, Any]:
         path = data.get("path", "")
         src = Path(path)
+        assert_file_size_within_limit(src, label="CSV")
         df = pd.read_csv(path)
         return {
             "payload": df.to_csv(index=False).encode("utf-8"),

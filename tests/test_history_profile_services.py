@@ -38,6 +38,9 @@ class RunHistoryServiceTests(unittest.TestCase):
 
             loaded = run_history.get_run_manifest({"manifest_path": str(manifest_path)}, root)
             self.assertEqual(loaded["manifest"]["parameters"]["threshold"], 2)
+            self.assertEqual(loaded["manifest"]["tool"]["app"], "bioelectronics_toolkit")
+            self.assertIn("commit", loaded["manifest"]["tool"])
+            self.assertIn("numpy", loaded["manifest"]["tool"]["dependencies"])
 
             checked = run_history.check_run_manifest({"manifest_path": str(manifest_path)}, root)
             self.assertEqual(checked["check"]["status"], "ok")

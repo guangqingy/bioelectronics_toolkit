@@ -1,0 +1,21 @@
+name: Commit Messages
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  conventional-commits:
+    name: conventional commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check commit subjects
+        run: >
+          python dev_scripts/check_commit_message.py
+          --range "${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"

@@ -28,21 +28,21 @@
       "service_lines": 0,
       "service_target": "",
       "service_to_route_ratio": 0.0,
-      "web_lines": 30
+      "web_lines": 106
     },
     "web_api/csv_viewer.py": {
-      "route_to_service_ratio": 1.44,
-      "service_lines": 200,
+      "route_to_service_ratio": 1.4257425742574257,
+      "service_lines": 202,
       "service_target": "services/csv_viewer.py",
-      "service_to_route_ratio": 0.6944444444444444,
+      "service_to_route_ratio": 0.7013888888888888,
       "web_lines": 288
     },
     "web_api/echem_lineshape.py": {
-      "route_to_service_ratio": 0.8354978354978355,
-      "service_lines": 462,
-      "service_target": "services/echem.py",
-      "service_to_route_ratio": 1.1968911917098446,
-      "web_lines": 386
+      "route_to_service_ratio": 0.23232323232323232,
+      "service_lines": 792,
+      "service_target": "services/echem_lineshape.py",
+      "service_to_route_ratio": 4.304347826086956,
+      "web_lines": 184
     },
     "web_api/echem_pc.py": {
       "route_to_service_ratio": 0.9372294372294372,
@@ -80,95 +80,95 @@
       "web_lines": 72
     },
     "web_api/fluorescence.py": {
-      "route_to_service_ratio": 0.002723922448325589,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.0026608232900297386,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 367.11764705882354,
+      "service_to_route_ratio": 375.8235294117647,
       "web_lines": 17
     },
     "web_api/fluorescence_3d_routes.py": {
-      "route_to_service_ratio": 0.03829514500881269,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.037408045077476915,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 26.11297071129707,
+      "service_to_route_ratio": 26.732217573221757,
       "web_lines": 239
     },
     "web_api/fluorescence_gif_basic_routes.py": {
-      "route_to_service_ratio": 0.0962986700849223,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.09406792925340429,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 10.384359400998337,
+      "service_to_route_ratio": 10.630615640599002,
       "web_lines": 601
     },
     "web_api/fluorescence_gif_kymograph_routes.py": {
-      "route_to_service_ratio": 0.1112001281845858,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.10909375489121928,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 8.992795389048991,
-      "web_lines": 694
+      "service_to_route_ratio": 9.166427546628407,
+      "web_lines": 697
     },
     "web_api/fluorescence_gif_roi_analysis_routes.py": {
-      "route_to_service_ratio": 0.059125140201890726,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.0582250743465331,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 16.913279132791327,
-      "web_lines": 369
+      "service_to_route_ratio": 17.1747311827957,
+      "web_lines": 372
     },
     "web_api/fluorescence_gif_routes.py": {
-      "route_to_service_ratio": 0.0017625380547989103,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.0017217091876663014,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 567.3636363636364,
+      "service_to_route_ratio": 580.8181818181819,
       "web_lines": 11
     },
     "web_api/fluorescence_request_schemas.py": {
-      "route_to_service_ratio": 0.05063291139240506,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.04946000939114102,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 19.75,
+      "service_to_route_ratio": 20.218354430379748,
       "web_lines": 316
     },
     "web_api/fluorescence_roi_basic_routes.py": {
-      "route_to_service_ratio": 0.0424611440474283,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.04194709657223353,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 23.550943396226415,
-      "web_lines": 265
+      "service_to_route_ratio": 23.83955223880597,
+      "web_lines": 268
     },
     "web_api/fluorescence_roi_export_routes.py": {
-      "route_to_service_ratio": 0.046466912353789455,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.04539051494756613,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 21.520689655172415,
+      "service_to_route_ratio": 22.03103448275862,
       "web_lines": 290
     },
     "web_api/fluorescence_roi_routes.py": {
-      "route_to_service_ratio": 0.0017625380547989103,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.0017217091876663014,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 567.3636363636364,
+      "service_to_route_ratio": 580.8181818181819,
       "web_lines": 11
     },
     "web_api/fluorescence_roi_sequence_routes.py": {
-      "route_to_service_ratio": 0.08652459541740105,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.08498982626389107,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 11.557407407407407,
-      "web_lines": 540
+      "service_to_route_ratio": 11.766114180478821,
+      "web_lines": 543
     },
     "web_api/fluorescence_stack_routes.py": {
-      "route_to_service_ratio": 0.07050152219195642,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.0691814055407732,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 14.184090909090909,
-      "web_lines": 440
+      "service_to_route_ratio": 14.45475113122172,
+      "web_lines": 442
     },
     "web_api/histology.py": {
-      "route_to_service_ratio": 3.851063829787234,
-      "service_lines": 47,
-      "service_target": "services/histology.py",
-      "service_to_route_ratio": 0.2596685082872928,
-      "web_lines": 181
+      "route_to_service_ratio": 0.10246804759806082,
+      "service_lines": 4538,
+      "service_target": "services/histology*.py",
+      "service_to_route_ratio": 9.759139784946237,
+      "web_lines": 465
     },
     "web_api/jobs.py": {
       "route_to_service_ratio": null,
@@ -178,10 +178,10 @@
       "web_lines": 143
     },
     "web_api/lif_viewer.py": {
-      "route_to_service_ratio": 0.10687389841371575,
-      "service_lines": 6241,
+      "route_to_service_ratio": 0.1043981843794021,
+      "service_lines": 6389,
       "service_target": "services/fluorescence",
-      "service_to_route_ratio": 9.356821589205397,
+      "service_to_route_ratio": 9.578710644677662,
       "web_lines": 667
     },
     "web_api/preferences.py": {
@@ -203,27 +203,27 @@
       "service_lines": 0,
       "service_target": "",
       "service_to_route_ratio": 0.0,
-      "web_lines": 80
+      "web_lines": 103
     },
     "web_api/rhd_viewer.py": {
-      "route_to_service_ratio": 0.5110565110565111,
-      "service_lines": 407,
+      "route_to_service_ratio": 0.5889423076923077,
+      "service_lines": 416,
       "service_target": "services/rhd_viewer.py",
-      "service_to_route_ratio": 1.9567307692307692,
-      "web_lines": 208
+      "service_to_route_ratio": 1.6979591836734693,
+      "web_lines": 245
     },
     "web_api/run_history.py": {
-      "route_to_service_ratio": 0.9615384615384616,
-      "service_lines": 156,
+      "route_to_service_ratio": 0.9493670886075949,
+      "service_lines": 158,
       "service_target": "services/run_history.py",
-      "service_to_route_ratio": 1.04,
+      "service_to_route_ratio": 1.0533333333333332,
       "web_lines": 150
     },
     "web_api/scripts_panel.py": {
-      "route_to_service_ratio": 0.7132616487455197,
-      "service_lines": 279,
+      "route_to_service_ratio": 0.5467032967032966,
+      "service_lines": 364,
       "service_target": "services/scripts_panel.py",
-      "service_to_route_ratio": 1.4020100502512562,
+      "service_to_route_ratio": 1.829145728643216,
       "web_lines": 199
     },
     "web_api/system.py": {
@@ -231,7 +231,7 @@
       "service_lines": 0,
       "service_target": "",
       "service_to_route_ratio": 0.0,
-      "web_lines": 120
+      "web_lines": 164
     },
     "web_api/telemetry.py": {
       "route_to_service_ratio": null,

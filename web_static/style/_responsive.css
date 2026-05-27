@@ -1,4 +1,8 @@
 /* ─── Responsive ─── */
+.mobile-unsupported-banner {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   .nav-inner { padding: 0 12px; gap: 5px; }
   .nav-brand { margin-right: 4px; }
@@ -30,6 +34,22 @@
 }
 @media (max-width: 700px) {
   :root { --ctrl-w: 100%; }
+  .mobile-unsupported-banner {
+    display: block;
+    position: fixed;
+    top: var(--nav-h);
+    left: 0;
+    right: 0;
+    z-index: 190;
+    border-bottom: 1px solid var(--warning-border);
+    background: var(--warning-bg);
+    color: var(--warning);
+    font-size: 13px;
+    line-height: 1.35;
+    padding: 8px 12px;
+  }
+  .app-shell,
+  .dashboard-wrap { padding-top: calc(var(--nav-h) + 43px); }
   .nav-brand { font-size: 10px; letter-spacing: .12em; }
   .nav-menu-trigger,
   .nav-item { font-size: 12px; padding: 5px 8px; }
