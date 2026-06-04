@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from matplotlib import colormaps
 import numpy as np
 import pandas as pd
+from matplotlib import colormaps
 
 from services.fluorescence import gif as fl_gif
 from services.fluorescence import gif_roi_context as fl_gif_roi_context

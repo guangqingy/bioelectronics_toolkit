@@ -14,7 +14,6 @@ from services.fluorescence import roi as fl_roi
 from services.fluorescence import roi_primitives, roi_radial
 from web_api.common import apply_axes_limits, as_bool, float_or, int_or, mode_is_save
 
-
 ROOT = Path(__file__).resolve().parents[1]
 
 

@@ -82,6 +82,17 @@ def register_echem_lineshape_routes(app, ctx):
     fig_to_b64 = ctx["fig_to_b64"]
     jobs = ctx.get("jobs")
 
+    def _json_response(schema, handler):
+        try:
+            body = parse_json_payload(schema).model_dump()
+            return jsonify(handler(body))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
     @app.route("/api/echem/lineshape/browse", methods=["POST"])
     @request_schema(LineshapeBrowseRequest)
     def api_ls_browse():
@@ -124,28 +135,14 @@ def register_echem_lineshape_routes(app, ctx):
     @app.route("/api/echem/lineshape/plot", methods=["POST"])
     @request_schema(LineshapePlotRequest)
     def api_ls_plot():
-        try:
-            body = parse_json_payload(LineshapePlotRequest).model_dump()
-            return jsonify(lineshape_service.plot_payload(body, fig_to_b64))
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except ValueError as exc:
-            return err(str(exc))
-        except Exception:
-            return err(traceback.format_exc())
+        return _json_response(
+            LineshapePlotRequest, lambda body: lineshape_service.plot_payload(body, fig_to_b64)
+        )
 
     @app.route("/api/echem/lineshape/trace_data", methods=["POST"])
     @request_schema(LineshapePlotRequest)
     def api_ls_trace_data():
-        try:
-            body = parse_json_payload(LineshapePlotRequest).model_dump()
-            return jsonify(lineshape_service.trace_data_payload(body))
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except ValueError as exc:
-            return err(str(exc))
-        except Exception:
-            return err(traceback.format_exc())
+        return _json_response(LineshapePlotRequest, lineshape_service.trace_data_payload)
 
     @app.route("/api/echem/lineshape/export_avg", methods=["POST"])
     @request_schema(LineshapeExportAvgRequest)

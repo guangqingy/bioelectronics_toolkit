@@ -33,6 +33,17 @@ def scan_filename_tokens(files: list[dict[str, Any] | str]) -> dict[str, Any]:
     }
 
 
+def browse_payload(
+    folder: str,
+    browse_files_recursive: Callable[..., list[dict[str, Any]]],
+    *,
+    limit: int = 300,
+) -> dict[str, Any]:
+    files = browse_files_recursive(folder, {".abf"}, max_files=limit + 1)
+    truncated = len(files) > limit
+    return {"files": files[:limit], "truncated": truncated}
+
+
 def _write_operation_log(root_dir: Path, payload: dict[str, Any]) -> str:
     log_dir = root_dir / ".dataprocess_cache" / "operation_logs"
     log_dir.mkdir(parents=True, exist_ok=True)

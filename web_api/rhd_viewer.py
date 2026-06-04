@@ -4,7 +4,7 @@ from flask import Response, jsonify, request
 from pydantic import ValidationError
 
 from services import file_renamer
-from services.rhd_viewer import RhdViewerService
+from services import rhd_viewer as rhd_viewer_service
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
@@ -34,7 +34,7 @@ def register_rhd_viewer_routes(app, ctx):
     browse_files = ctx["browse_files"]
     browse_files_recursive = ctx["browse_files_recursive"]
     jobs = ctx.get("jobs")
-    service = RhdViewerService(
+    service = rhd_viewer_service.RhdViewerService(
         has_rhd=ctx["HAS_RHD"],
         rhd_module=ctx.get("rhd"),
         fig_to_b64=ctx["fig_to_b64"],
@@ -113,8 +113,7 @@ def register_rhd_viewer_routes(app, ctx):
     def api_rhd_browse():
         try:
             folder = parse_json_payload(RhdBrowseRequest).folder
-            files = browse_files(folder, {".rhd"})
-            return jsonify({"files": [f["path"] for f in files], "file_meta": files})
+            return jsonify(rhd_viewer_service.browse_payload(folder, browse_files))
         except ValidationError as exc:
             return validation_error_response(exc)
 
@@ -123,10 +122,9 @@ def register_rhd_viewer_routes(app, ctx):
     def api_rhd_browse_recursive():
         try:
             folder = parse_json_payload(RhdBrowseRequest).folder
-            files = browse_files_recursive(folder, {".rhd"}, max_files=301)
-            truncated = len(files) > 300
-            files = files[:300]
-            return jsonify({"files": [f["path"] for f in files], "file_meta": files, "truncated": truncated})
+            return jsonify(
+                rhd_viewer_service.browse_recursive_payload(folder, browse_files_recursive)
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
 

@@ -7,7 +7,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from services.io_guards import assert_tiff_within_limits
 from services.fluorescence.roi_primitives import (
     apply_metric_mode,  # noqa: F401 - public facade re-export
     background_mean,  # noqa: F401 - public facade re-export
@@ -26,6 +25,7 @@ from services.fluorescence.roi_radial import (  # noqa: F401 - public facade re-
     radial_metrics_2d,
     radial_pair_rows,
 )
+from services.io_guards import assert_tiff_within_limits
 
 
 def import_tifffile(tifflib_module: Any = None):

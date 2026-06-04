@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import sqlite3
 import threading
 import time
 import unittest
 from pathlib import Path
 from unittest import mock
-import sqlite3
 
 from services.background_jobs import JobManager
 

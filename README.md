@@ -111,7 +111,11 @@ Then open `http://127.0.0.1:7433`.
 
 ## Installation
 
-Requires Python 3.10+ (3.11 recommended).
+For non-developer users, start with [`START_HERE.md`](./START_HERE.md). It
+points to double-click scripts under `easy_start/` that create the local Python
+environment and launch the WebGUI.
+
+Requires Python 3.10-3.12 (3.12 recommended).
 
 ```bash
 # 1. clone

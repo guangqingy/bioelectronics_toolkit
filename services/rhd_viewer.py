@@ -14,6 +14,23 @@ from services.matplotlib_utils import close_figure, new_subplots
 from services.output_naming import sanitize_name_part
 
 
+def browse_payload(folder: str, browse_files: Callable[..., list[dict[str, Any]]]) -> dict[str, Any]:
+    files = browse_files(folder, {".rhd"})
+    return {"files": [f["path"] for f in files], "file_meta": files}
+
+
+def browse_recursive_payload(
+    folder: str,
+    browse_files_recursive: Callable[..., list[dict[str, Any]]],
+    *,
+    limit: int = 300,
+) -> dict[str, Any]:
+    files = browse_files_recursive(folder, {".rhd"}, max_files=limit + 1)
+    truncated = len(files) > limit
+    files = files[:limit]
+    return {"files": [f["path"] for f in files], "file_meta": files, "truncated": truncated}
+
+
 @dataclass(slots=True)
 class RhdViewerService:
     """Payload builders for the RHD viewer Web API."""
