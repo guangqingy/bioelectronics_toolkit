@@ -45,7 +45,7 @@ function scanFolder() {
         'Channels': f.channels || '\u2014'
       }));
       document.getElementById('fileTableWrap').innerHTML = buildTable(rows, cols);
-      setStatus('status', 'Ready', 'ok');
+      setStatus('status', r.truncated ? 'Showing first 300 matching files' : 'Ready', r.truncated ? 'warning' : 'ok');
     })
     .catch(e => {
       setStatus('status', 'Scan failed', 'error');

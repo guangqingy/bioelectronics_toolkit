@@ -2,6 +2,7 @@
 {% block title %}EChem Waveform Averager{% endblock %}
 
 {% block head %}
+<link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css"/>
 <style>
 .lineshape-workbench {
   display: grid;
@@ -224,5 +225,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="/static/js/pages/echem_lineshape.js"></script>
+<script defer src="/static/vendor/uplot/uPlot.iife.min.js"></script>
+<script defer src="/static/js/dp_uplot.js"></script>
+<script defer src="/static/js/pages/echem_lineshape.js"></script>
 {% endblock %}

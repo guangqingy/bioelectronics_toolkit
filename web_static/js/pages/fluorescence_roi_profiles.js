@@ -230,7 +230,7 @@ async function saveRoiFileProfile(saveAs) {
   if (!file) { setStatus('roiFileProfileStatus', 'Select a stack pair first.', 'error'); return; }
   let name = document.getElementById('roiFileProfileSelect').value || 'default';
   if (saveAs) {
-    name = promptProfileName(name);
+    name = await promptProfileName(name);
     if (!name) return;
   }
   try {
@@ -246,7 +246,14 @@ async function saveRoiFileProfile(saveAs) {
 async function deleteSelectedRoiFileProfile() {
   const file = roiPrimaryFile();
   const name = document.getElementById('roiFileProfileSelect').value;
-  if (!file || !name || !confirm(`Delete file profile "${name}"?`)) return;
+  if (!file || !name) return;
+  const confirmed = await DP.dom.confirm({
+    title: 'Delete file profile?',
+    message: `Delete file profile "${name}"?`,
+    confirmText: 'Delete',
+    danger: true,
+  });
+  if (!confirmed) return;
   try {
     const data = await deleteFileProfile('fluorescence_roi', file, roiProjectRoot(), name);
     renderRoiFileProfileOptions(data);
@@ -274,7 +281,12 @@ async function resetRoiDefaults() {
 async function saveRoiContext() {
   const settings = collectRoiSettings();
   const suggested = (settings.folderPath ? settings.folderPath.split(/[\\/]/).filter(Boolean).pop() : 'ROI context') || 'ROI context';
-  const name = window.prompt('Context name', suggested);
+  const name = await DP.dom.prompt({
+    title: 'Context name',
+    label: 'Context name',
+    defaultValue: suggested,
+    confirmText: 'Save',
+  });
   if (!name) return;
   _roiPrefs.contexts = _roiPrefs.contexts || {};
   const key = roiContextKey(name, settings);

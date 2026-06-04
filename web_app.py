@@ -8,6 +8,8 @@ fluorescence imaging, and scripted data analysis.
 """
 
 import argparse
+import gzip
+import hashlib
 import os
 import sys
 import threading
@@ -20,7 +22,7 @@ import matplotlib
 matplotlib.use("Agg")
 import pyabf
 import tifffile as tifflib
-from flask import Flask, send_file
+from flask import Flask, request, send_file, url_for
 from PIL import Image, ImageDraw, ImageFont
 from readlif.reader import LifFile
 from scipy.signal import find_peaks, peak_widths, savgol_filter
@@ -109,6 +111,18 @@ def create_app(
         static_url_path="/static",
     )
     flask_app.config["APP_VERSION"] = APP_VERSION
+    flask_app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 31_536_000
+
+    def static_asset(filename: str) -> str:
+        rel = str(filename).lstrip("/")
+        path = base_dir / "web_static" / rel
+        version = APP_COMMIT or APP_VERSION
+        try:
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()[:12]
+            version = f"{version}-{digest}"
+        except OSError:
+            pass
+        return url_for("static", filename=rel, v=version)
 
     @flask_app.context_processor
     def inject_template_defaults():
@@ -118,7 +132,40 @@ def create_app(
             "app_version_label": APP_VERSION_LABEL,
             "default_data_dir": "",
             "default_examples_dir": "examples",
+            "static_asset": static_asset,
         }
+
+    @flask_app.after_request
+    def optimize_delivery(response):
+        if request.path.startswith("/static/"):
+            response.cache_control.max_age = 31_536_000
+            response.cache_control.public = True
+            response.cache_control.immutable = True
+
+        compressible = {
+            "application/javascript",
+            "application/json",
+            "application/xml",
+            "image/svg+xml",
+            "text/css",
+            "text/html",
+            "text/javascript",
+            "text/plain",
+        }
+        if (
+            response.status_code == 200
+            and request.method in {"GET", "POST"}
+            and "gzip" in request.headers.get("Accept-Encoding", "").lower()
+            and not response.headers.get("Content-Encoding")
+            and response.mimetype in compressible
+        ):
+            response.direct_passthrough = False
+            data = response.get_data()
+            if len(data) >= 1024:
+                response.set_data(gzip.compress(data, compresslevel=5))
+                response.headers["Content-Encoding"] = "gzip"
+                response.headers["Vary"] = "Accept-Encoding"
+        return response
 
     @flask_app.route("/api/version")
     def api_version():

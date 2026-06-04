@@ -56,7 +56,7 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 10px;
-  align-items: center;
+  align-items: start;
   width: min(860px, calc(100% - 28px));
   padding: 10px 12px;
   border: 1px solid var(--error-border);
@@ -75,13 +75,41 @@
   letter-spacing: .10em;
   text-transform: uppercase;
 }
+.error-banner-body {
+  min-width: 0;
+}
 .error-banner-text {
   min-width: 0;
-  overflow: hidden;
   color: var(--error-text-strong);
   font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.error-banner-id {
+  margin-top: 3px;
+  color: var(--pewter);
+  font-size: 11px;
+}
+.error-banner-details {
+  margin-top: 6px;
+  color: var(--graphite);
+  font-size: 11.5px;
+}
+.error-banner-details summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.error-banner-details pre {
+  max-height: 220px;
+  margin: 6px 0 0;
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: pre-wrap;
 }
 .error-banner-close {
   min-height: 26px;

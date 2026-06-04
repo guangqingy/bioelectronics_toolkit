@@ -18,8 +18,12 @@ Object.assign(window.DP.dom, {
   toast,
   showErrorBanner,
   dismissErrorBanner,
+  confirm: dpConfirmAction,
+  prompt: dpPromptAction,
   btnBusy,
   enhanceEmptyStates: dpEnhanceEmptyStates,
+  enhancePlotImages: dpEnhancePlotImages,
+  useExamplesDir: dpUseExamplesDir,
 });
 Object.assign(window.DP.palette, {
   open: openCommandPalette,
@@ -56,6 +60,8 @@ Object.assign(window.DP.page, {logoutServer});
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();
   dpEnhanceEmptyStates();
+  dpEnhanceExampleEntrypoints();
+  dpInstallPlotImageObserver();
   dpEnhanceResettableSections();
   dpInstallGlobalKeyboardShortcuts();
   const commandSearch = document.getElementById('commandSearch');

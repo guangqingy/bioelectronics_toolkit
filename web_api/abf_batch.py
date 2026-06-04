@@ -72,8 +72,9 @@ def register_abf_batch_routes(app, ctx):
             payload = parse_json_payload(AbfBatchBrowseRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        files = browse_files_recursive(payload.folder, {".abf"})
-        return jsonify({"files": files})
+        files = browse_files_recursive(payload.folder, {".abf"}, max_files=301)
+        truncated = len(files) > 300
+        return jsonify({"files": files[:300], "truncated": truncated})
 
     @app.route("/api/abf_batch/scan_tokens", methods=["POST"])
     @request_schema(AbfBatchScanTokensRequest)

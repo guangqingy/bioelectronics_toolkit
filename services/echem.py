@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
+from scipy.ndimage import median_filter
 
 from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
@@ -404,12 +405,7 @@ def rolling_median(x: np.ndarray, win_pts: int) -> np.ndarray:
     if win_pts <= 1:
         return np.zeros_like(x)
     win_pts = int(win_pts | 1)
-    pad = win_pts // 2
-    xp = np.pad(x, pad, mode="edge")
-    out = np.empty_like(x)
-    for i in range(len(x)):
-        out[i] = np.median(xp[i : i + win_pts])
-    return out
+    return median_filter(np.asarray(x), size=win_pts, mode="nearest")
 
 
 def detrend_signal(

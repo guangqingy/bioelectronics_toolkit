@@ -296,6 +296,7 @@ function renderPreviewPage() {
 function clearAverage(message) {
   _avgData = null;
   _avgB64 = null;
+  if (typeof dpDestroyTrace === 'function') dpDestroyTrace('avgPlotArea');
   document.getElementById('avgPlotArea').innerHTML = `<div class="plot-placeholder">${escHtml(message || 'No samples selected')}</div>`;
   document.getElementById('avgInfo').textContent = '';
   document.getElementById('btnExportFiles').style.display = 'none';
@@ -360,12 +361,30 @@ function updatePlot() {
     return;
   }
   setStatus('status', 'Rendering average...', 'loading');
-  api('/api/echem/lineshape/plot', {
+  const payload = {
     samples: _samples.map(s => ({label: s.label, t: s.t, y: s.y, file: s.file})),
     selected,
     kind: document.getElementById('kind').value,
     ...axisState(),
-  }).then(d => {
+  };
+  if (typeof dpUplotAvailable !== 'function' || !dpUplotAvailable()) {
+    plotPngAverage(payload);
+    return;
+  }
+  api('/api/echem/lineshape/trace_data', payload).then(d => {
+    if (d.error) throw new Error(d.error);
+    _avgB64 = null;
+    _avgData = d.avg_data;
+    dpRenderTrace('avgPlotArea', d);
+    document.getElementById('avgInfo').textContent = `n=${d.n_selected}`;
+    document.getElementById('btnExportFiles').style.display = '';
+    document.getElementById('btnDownloadPNG').style.display = 'none';
+    setStatus('status', `Averaged ${d.n_selected} selected segment(s)`, 'ok');
+  }).catch(() => plotPngAverage(payload));
+}
+
+function plotPngAverage(payload) {
+  api('/api/echem/lineshape/plot', payload).then(d => {
     if (d.error) {
       clearAverage(d.error);
       setStatus('status', 'Error: ' + d.error, 'error');

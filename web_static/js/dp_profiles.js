@@ -43,9 +43,14 @@ function fileProfileOptionsHtml(profiles, selected) {
   return names.map(name => `<option value="${dpEscapeHtml(name)}"${name === selected ? ' selected' : ''}>${dpEscapeHtml(name)}</option>`).join('');
 }
 
-function promptProfileName(currentName) {
-  const name = window.prompt('Profile name', currentName || 'default');
-  return name ? name.trim() : '';
+async function promptProfileName(currentName) {
+  if (!window.DP?.dom?.prompt) return '';
+  return DP.dom.prompt({
+    title: 'Profile name',
+    label: 'Profile name',
+    defaultValue: currentName || 'default',
+    confirmText: 'Save',
+  });
 }
 
 function genericFileProfileCurrentPath() {
@@ -147,7 +152,7 @@ async function saveGenericFileProfile(saveAs) {
   }
   let name = document.getElementById('genericFileProfileSelect')?.value || 'default';
   if (saveAs) {
-    name = promptProfileName(name);
+    name = await promptProfileName(name);
     if (!name) return;
   }
   try {
@@ -163,7 +168,14 @@ async function saveGenericFileProfile(saveAs) {
 async function deleteSelectedGenericFileProfile() {
   const path = genericFileProfileCurrentPath();
   const name = document.getElementById('genericFileProfileSelect')?.value || '';
-  if (!path || !name || !confirm(`Delete file profile "${name}"?`)) return;
+  if (!path || !name) return;
+  const confirmed = await DP.dom.confirm({
+    title: 'Delete file profile?',
+    message: `Delete file profile "${name}"?`,
+    confirmText: 'Delete',
+    danger: true,
+  });
+  if (!confirmed) return;
   try {
     const data = await deleteFileProfile(CURRENT_VIEW, path, genericFileProfileProjectRoot(), name);
     renderGenericFileProfileOptions(data);

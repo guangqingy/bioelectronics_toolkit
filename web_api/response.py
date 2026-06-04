@@ -72,14 +72,23 @@ def _looks_like_traceback(message: Any) -> bool:
     return "Traceback (most recent call last)" in text or "\n  File " in text
 
 
-def _public_error(message: Any, code: int) -> tuple[Any, int, str | None]:
+def _friendly_traceback_message(correlation_id: str) -> str:
+    return (
+        "The operation failed before it could finish. Check that the selected file "
+        "exists, is not corrupted, and matches this tool, then try again. "
+        f"Error ID: {correlation_id}"
+    )
+
+
+def _public_error(message: Any, code: int) -> tuple[str, int, str | None, str | None]:
     if not _looks_like_traceback(message):
-        return message, code, None
+        return str(message), code, None, None
     correlation_id = uuid.uuid4().hex[:8]
-    LOG.error("[%s] %s", correlation_id, message)
+    technical_details = str(message)
+    LOG.error("[%s] Unhandled API exception\n%s", correlation_id, technical_details)
     if _debug_errors_enabled():
-        return message, max(500, code), correlation_id
-    return "Internal error", max(500, code), correlation_id
+        return technical_details, max(500, code), correlation_id, technical_details
+    return _friendly_traceback_message(correlation_id), max(500, code), correlation_id, technical_details
 
 
 def api_error(
@@ -89,11 +98,14 @@ def api_error(
     data: dict[str, Any] | None = None,
     warnings: list[str] | None = None,
 ):
-    message, code, correlation_id = _public_error(message, code)
+    message, code, correlation_id, technical_details = _public_error(message, code)
     payload = dict(data or {})
-    payload["error"] = str(message)
+    payload["error"] = message
     if correlation_id:
         payload["id"] = correlation_id
+        payload["error_id"] = correlation_id
+    if technical_details:
+        payload["technical_details"] = technical_details
     if warnings is not None:
         payload["warnings"] = warnings
     return jsonify(make_envelope(payload, ok=False, error=message)), code

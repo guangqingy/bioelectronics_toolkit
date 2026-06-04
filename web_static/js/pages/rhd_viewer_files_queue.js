@@ -203,7 +203,8 @@ function queueAddAllRecursive() {
       if (data.error) throw new Error(data.error);
       const paths = (data.files || []).map((f) => typeof f === 'string' ? f : (f.path || ''));
       const added = queueAddPaths(paths);
-      setStatus('status', added ? ('Added ' + added + ' file(s) recursively') : 'No new recursive files found', 'ok');
+      const suffix = data.truncated ? ' · showing first 300 matches' : '';
+      setStatus('status', added ? ('Added ' + added + ' file(s) recursively' + suffix) : ('No new recursive files found' + suffix), data.truncated ? 'warning' : 'ok');
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
 }

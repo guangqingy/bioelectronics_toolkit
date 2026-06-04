@@ -4,8 +4,8 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>{% block title %}DataProcess{% endblock %}{% if not standalone_lif %} — DataProcess{% endif %}</title>
-<link rel="icon" href="/static/favicon.ico" sizes="any"/>
-<link rel="stylesheet" href="/static/style.css"/>
+<link rel="icon" href="{{ static_asset('favicon.ico') }}" sizes="any"/>
+<link rel="stylesheet" href="{{ static_asset('style.css') }}"/>
 {% block head %}{% endblock %}
 </head>
 <body>
@@ -18,7 +18,14 @@
 
 <div id="errorBanner" class="error-banner" role="alert" aria-live="assertive" hidden>
   <div class="error-banner-title">Error</div>
-  <div id="errorBannerText" class="error-banner-text"></div>
+  <div class="error-banner-body">
+    <div id="errorBannerText" class="error-banner-text"></div>
+    <div id="errorBannerId" class="error-banner-id" hidden></div>
+    <details id="errorBannerDetails" class="error-banner-details" hidden>
+      <summary>Technical details</summary>
+      <pre id="errorBannerDetailsText"></pre>
+    </details>
+  </div>
   <button class="btn-icon error-banner-close" type="button" onclick="DP.dom.dismissErrorBanner()">Dismiss</button>
 </div>
 
@@ -99,22 +106,22 @@ let _genericPrefs = {};
 let _genericFileProfileState = null;
 
 </script>
-<script src="/static/js/dp_settings_schema.js"></script>
-<script src="/static/js/dp_dom.js"></script>
-<script src="/static/js/dp_live_folder.js"></script>
-<script src="/static/js/dp_telemetry.js"></script>
-<script src="/static/js/dp_palette.js"></script>
-<script src="/static/js/dp_api.js"></script>
-<script src="/static/js/dp_params.js"></script>
-<script src="/static/js/dp_param_glossary.js"></script>
-<script src="/static/js/dp_keyboard.js"></script>
-<script src="/static/js/dp_manifest.js"></script>
-<script src="/static/js/dp_settings_core.js"></script>
-<script src="/static/js/dp_settings_modal.js"></script>
-<script src="/static/js/dp_settings_generic.js"></script>
-<script src="/static/js/dp_profiles.js"></script>
-<script src="/static/js/dp_jobs.js"></script>
-<script src="/static/js/dp_core.js"></script>
+<script defer src="{{ static_asset('js/dp_settings_schema.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_dom.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_live_folder.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_telemetry.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_palette.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_api.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_params.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_param_glossary.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_keyboard.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_manifest.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_settings_core.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_settings_modal.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_settings_generic.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_profiles.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_jobs.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_core.js') }}"></script>
 <script>
 
 document.addEventListener('DOMContentLoaded', async () => {

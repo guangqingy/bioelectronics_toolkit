@@ -48,6 +48,15 @@ class CsvToolsServiceTests(unittest.TestCase):
 
 
 class EchemServiceTests(unittest.TestCase):
+    def test_rolling_median_matches_legacy_edge_padded_window(self) -> None:
+        values = np.asarray([0.0, 3.0, 1.0, 9.0, 2.0, 4.0, 5.0], dtype=float)
+        win_pts = 5
+        pad = win_pts // 2
+        padded = np.pad(values, pad, mode="edge")
+        expected = np.asarray([np.median(padded[i : i + win_pts]) for i in range(len(values))])
+
+        np.testing.assert_allclose(echem.rolling_median(values, win_pts), expected)
+
     def test_load_photocurrent_sorts_time_column(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_echem_service_") as tmp:
             path = Path(tmp) / "pc.txt"
@@ -272,6 +281,31 @@ class EchemLineshapeServiceTests(unittest.TestCase):
             self.assertIn("ATAT_photocurrent_1_1_pair_001.csv", manifest_text)
             self.assertIn("ATAT_photocurrent_2_1_pair_001.csv", manifest_text)
             self.assertEqual(len(result["outputs"]), 4)
+
+    def test_lineshape_trace_data_matches_average_without_matplotlib(self) -> None:
+        samples = [
+            {"label": "a", "t": [-0.001, 0.0, 0.001], "y": [0.0, 2.0, 0.0]},
+            {"label": "b", "t": [-0.001, 0.0, 0.001], "y": [0.0, 4.0, 0.0]},
+        ]
+
+        payload = echem_lineshape.trace_data_payload(
+            {
+                "samples": samples,
+                "selected": [0, 1],
+                "kind": "photocurrent",
+                "crop_t0": -0.001,
+                "crop_t1": 0.001,
+            },
+            max_points=100,
+        )
+
+        self.assertEqual(payload["title"], "Average (n=2)")
+        self.assertEqual(payload["x_label"], "Time (s)")
+        self.assertEqual(payload["y_label"], "Photocurrent (mA)")
+        self.assertEqual(payload["n_full"], len(payload["avg_data"]["time_s"]))
+        self.assertEqual(payload["n_points"], len(payload["x"]))
+        center_idx = int(np.argmin(np.abs(np.asarray(payload["avg_data"]["time_s"]))))
+        self.assertAlmostEqual(payload["avg_data"]["y"][center_idx], 3.0)
 
     def test_source_export_defaults_to_project_plots_folder(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_lineshape_source_export_") as tmp:

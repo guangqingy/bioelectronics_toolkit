@@ -96,11 +96,16 @@ def compute_stack_roi(
         pages = tif.pages
         if len(pages) == 1:
             first = np.asarray(pages[0].asarray())
-            frames = [first] if first.ndim == 2 else [np.asarray(first[i]) for i in range(first.shape[0])]
+            if first.ndim == 2:
+                frame_iter = (first,)
+                n_frames = 1
+            else:
+                frame_iter = (np.asarray(first[i]) for i in range(first.shape[0]))
+                n_frames = int(first.shape[0])
         else:
-            frames = [page.asarray() for page in pages]
-        n_frames = len(frames)
-        for raw_frame in frames:
+            frame_iter = (page.asarray() for page in pages)
+            n_frames = len(pages)
+        for raw_frame in frame_iter:
             frame = np.asarray(raw_frame, dtype=np.float64)
             if frame.ndim != 2:
                 frame = np.squeeze(frame)

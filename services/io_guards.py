@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 import os
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -11,6 +13,10 @@ import numpy as np
 DEFAULT_MAX_IMAGE_PIXELS = 300_000_000
 DEFAULT_MAX_TIFF_BYTES = 4_000_000_000
 DEFAULT_MAX_CSV_BYTES = 1_000_000_000
+_METADATA_CACHE_ITEMS = 256
+_METADATA_CACHE_LOCK = threading.Lock()
+_TIFF_ESTIMATE_CACHE: OrderedDict[tuple[str, int, int], Any] = OrderedDict()
+_FILE_SIZE_CACHE: OrderedDict[tuple[str, int, int], int] = OrderedDict()
 
 
 class InputTooLargeError(ValueError):
@@ -67,9 +73,34 @@ def _import_tifffile(tifflib_module: Any = None):
     return tifffile
 
 
+def _stat_key(path: Path) -> tuple[str, int, int]:
+    stat = path.stat()
+    return str(path.resolve()), int(stat.st_mtime_ns), int(stat.st_size)
+
+
+def _cache_get(cache: OrderedDict, key: tuple[str, int, int]):
+    with _METADATA_CACHE_LOCK:
+        value = cache.get(key)
+        if value is not None:
+            cache.move_to_end(key)
+        return value
+
+
+def _cache_put(cache: OrderedDict, key: tuple[str, int, int], value) -> None:
+    with _METADATA_CACHE_LOCK:
+        cache[key] = value
+        cache.move_to_end(key)
+        while len(cache) > _METADATA_CACHE_ITEMS:
+            cache.popitem(last=False)
+
+
 def estimate_tiff(path: str | Path, tifflib_module: Any = None) -> TiffEstimate:
     tifflib = _import_tifffile(tifflib_module)
     p = Path(path)
+    key = _stat_key(p)
+    cached = _cache_get(_TIFF_ESTIMATE_CACHE, key)
+    if cached is not None:
+        return cached
     with tifflib.TiffFile(str(p)) as tif:
         if tif.series:
             series = tif.series[0]
@@ -85,13 +116,15 @@ def estimate_tiff(path: str | Path, tifflib_module: Any = None) -> TiffEstimate:
 
     element_count = int(math.prod(shape)) if shape else 0
     estimated_bytes = int(element_count * dtype.itemsize)
-    return TiffEstimate(
+    estimate = TiffEstimate(
         path=str(p),
         shape=shape,
         dtype=str(dtype),
         element_count=element_count,
         estimated_bytes=estimated_bytes,
     )
+    _cache_put(_TIFF_ESTIMATE_CACHE, key, estimate)
+    return estimate
 
 
 def assert_tiff_within_limits(
@@ -128,7 +161,11 @@ def assert_file_size_within_limit(
 ) -> None:
     p = Path(path)
     limit = max_csv_bytes() if max_bytes is None else int(max_bytes)
-    size = p.stat().st_size
+    key = _stat_key(p)
+    cached_size = _cache_get(_FILE_SIZE_CACHE, key)
+    size = int(cached_size) if cached_size is not None else key[2]
+    if cached_size is None:
+        _cache_put(_FILE_SIZE_CACHE, key, size)
     if size > limit:
         raise InputTooLargeError(
             f"{label} is too large for this local session "

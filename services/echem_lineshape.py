@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from services.output_naming import sanitize_name_part
+from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
 DEFAULT_CHAMBERS = [1, 2, 3]
 DEFAULT_CROP_T0 = -0.005
@@ -552,6 +553,60 @@ def plot_payload(data: dict[str, Any], fig_to_b64: Callable[..., str]) -> dict[s
             if y_min is not None and y_max is not None
             else y_limits_for_samples(samples)
         ),
+    }
+
+
+def trace_data_payload(data: dict[str, Any], *, max_points: int = DEFAULT_MAX_POINTS) -> dict[str, Any]:
+    samples = data.get("samples") if isinstance(data.get("samples"), list) else []
+    if not samples:
+        raise ValueError("No samples provided")
+    kind = normalize_kind(data.get("kind"))
+    x_min = _float_or(data.get("crop_t0"), DEFAULT_CROP_T0)
+    x_max = _float_or(data.get("crop_t1"), DEFAULT_CROP_T1)
+    if x_min is None or x_max is None or x_max <= x_min:
+        raise ValueError("X max must be greater than X min")
+    selected = selected_indexes(data.get("selected"), len(samples))
+    x_offset = _float_or(data.get("x_offset"), 0.0) or 0.0
+    y_min = _float_or(data.get("y_min"), None)
+    y_max = _float_or(data.get("y_max"), None)
+    grid, avg = compute_average(samples, selected, x_min=x_min, x_max=x_max, x_offset=x_offset)
+    dx, dy = decimate_xy(grid, avg, max_points=max_points)
+    finite = avg[np.isfinite(avg)]
+    if y_min is None or y_max is None or y_max <= y_min:
+        if finite.size:
+            ymin = float(np.min(finite))
+            ymax = float(np.max(finite))
+            span = max(1e-12, ymax - ymin)
+            y_min = ymin - 0.05 * span
+            y_max = ymax + 0.05 * span
+        else:
+            y_min, y_max = 0.0, 1.0
+    avg_data = {
+        "time_s": grid.tolist(),
+        "t_ms": (grid * 1000.0).tolist(),
+        "y": avg.tolist(),
+        "y_column": (
+            "photovoltage_abs_V"
+            if normalize_kind(kind) == "photovoltage"
+            else "photocurrent_mA"
+        ),
+    }
+    return {
+        "x": dx.tolist(),
+        "y": dy.tolist(),
+        "x_label": "Time (s)",
+        "y_label": y_label(kind),
+        "title": f"Average (n={len(selected)})",
+        "y_min": y_min,
+        "y_max": y_max,
+        "n_full": int(len(grid)),
+        "n_points": int(len(dx)),
+        "decimated": int(len(dx)) < int(len(grid)),
+        "avg_data": avg_data,
+        "n_selected": len(selected),
+        "n_total": len(samples),
+        "x_limits": [x_min, x_max],
+        "y_limits": [y_min, y_max],
     }
 
 

@@ -44,3 +44,42 @@
   --radius-md:  8px;
   --trans:      0.25s;
 }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --blue: #8fb0ff;
+    --blue-hover: #a4bfff;
+    --success: #7ddca8;
+    --success-bg: #0d2f22;
+    --warning: #f0c36a;
+    --warning-bg: #2c2108;
+    --error: #ffaaa2;
+    --error-bg: #3a1412;
+    --toast-error: #b9463d;
+    --error-border-hover: #b85c55;
+    --error-text-strong: #ffd4d0;
+    --white: #14171d;
+    --ash: #1c2028;
+    --app-bg: #0d1016;
+    --nav-bg: rgba(16,19,25,0.96);
+    --surface-soft: #171b22;
+    --surface-panel: #191e27;
+    --surface-blue: #17213a;
+    --surface-blue-strong: #1d2b4b;
+    --border-muted: #343b49;
+    --border-strong: #4a5363;
+    --border-blue-muted: #35456b;
+    --border-dashed: #3c4350;
+    --code-bg: #05070b;
+    --code-fg: #e5ecf7;
+    --success-border: #246f47;
+    --warning-border: #7a5b17;
+    --error-border: #74302b;
+    --carbon: #f3f6fb;
+    --graphite: #d8deea;
+    --pewter: #aeb7c7;
+    --silver: #8791a3;
+    --cloud: #2a303b;
+    --pale: #48505e;
+  }
+}

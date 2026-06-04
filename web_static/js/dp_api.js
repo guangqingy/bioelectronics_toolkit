@@ -57,6 +57,9 @@ async function api(url, body, options) {
   const payload = await r.json().catch(() => ({}));
   const d = dpNormalizeApiPayload(payload, r.ok);
   if (!r.ok && !d.error) d.error = 'Request failed';
+  if (d.error && typeof showErrorBanner === 'function') {
+    showErrorBanner(d.error, d.technical_details, d.error_id || d.id);
+  }
   return d;
 }
 
@@ -83,13 +86,21 @@ async function dpJobCancel(jobId) {
 
 async function dpPollJob(jobId, onUpdate, options) {
   const opts = options || {};
-  const intervalMs = Math.max(250, Number(opts.interval_ms || 1000));
+  const minIntervalMs = Math.max(150, Number(opts.min_interval_ms || 250));
+  const maxIntervalMs = Math.max(minIntervalMs, Number(opts.max_interval_ms || opts.interval_ms || 1000));
+  const backoffAfterMs = Math.max(0, Number(opts.backoff_after_ms || 3500));
   const terminal = new Set(['succeeded', 'failed', 'cancelled']);
+  const startedAt = Date.now();
+  let intervalMs = minIntervalMs;
   while (true) {
     const job = await dpJobGet(jobId);
     if (typeof onUpdate === 'function') onUpdate(job);
     if (terminal.has(job.status)) return job;
     await new Promise(resolve => setTimeout(resolve, intervalMs));
+    const elapsed = Date.now() - startedAt;
+    if (elapsed >= backoffAfterMs) {
+      intervalMs = Math.min(maxIntervalMs, Math.round(intervalMs * 1.45));
+    }
   }
 }
 
@@ -155,7 +166,9 @@ async function dpRunJobEndpoint(endpoint, payload, options) {
 
   try {
     const finalJob = await dpPollJob(jobId, opts.on_update, {
-      interval_ms: opts.interval_ms || 1000,
+      min_interval_ms: opts.min_interval_ms || 250,
+      max_interval_ms: opts.interval_ms || opts.max_interval_ms || 1000,
+      backoff_after_ms: opts.backoff_after_ms || 3500,
     });
     const data = dpNormalizeJobData(finalJob.data || {});
     if ((!Array.isArray(data.outputs) || !data.outputs.length) && Array.isArray(finalJob.outputs) && finalJob.outputs.length) {
@@ -200,7 +213,15 @@ function isLogoutDisconnectMessage(message) {
 }
 
 async function logoutServer() {
-  if (!confirm(`Close ${APP_LABEL} and stop the Python server?`)) return;
+  const confirmed = typeof dpConfirmAction === 'function'
+    ? await dpConfirmAction({
+      title: `Close ${APP_LABEL}?`,
+      message: 'This will stop the local Python server. You can close this browser tab afterward.',
+      confirmText: 'Close Server',
+      danger: true,
+    })
+    : true;
+  if (!confirmed) return;
 
   btnBusy('logoutBtn', true, 'Closing...');
   let screenShown = false;

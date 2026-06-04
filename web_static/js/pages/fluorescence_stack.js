@@ -137,7 +137,7 @@ async function saveTiffFileProfile(saveAs) {
   if (!_currentFile) { setStatus('tiffProfileStatus', 'Select a TIFF first.', 'error'); return; }
   let name = document.getElementById('tiffProfileSelect').value || 'default';
   if (saveAs) {
-    name = promptProfileName(name);
+    name = await promptProfileName(name);
     if (!name) return;
   }
   try {
@@ -153,7 +153,14 @@ async function saveTiffFileProfile(saveAs) {
 async function deleteSelectedTiffProfile() {
   if (!_currentFile) return;
   const name = document.getElementById('tiffProfileSelect').value;
-  if (!name || !confirm(`Delete file profile "${name}"?`)) return;
+  if (!name) return;
+  const confirmed = await DP.dom.confirm({
+    title: 'Delete file profile?',
+    message: `Delete file profile "${name}"?`,
+    confirmText: 'Delete',
+    danger: true,
+  });
+  if (!confirmed) return;
   try {
     const data = await deleteFileProfile('fluorescence', _currentFile, tiffProjectRoot(), name);
     renderTiffProfileOptions(data);

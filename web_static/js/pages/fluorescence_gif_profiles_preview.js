@@ -209,7 +209,7 @@ async function saveGifFileProfile(saveAs) {
   if (!file) { setStatus('gifFileProfileStatus', 'Select or queue a TIFF first.', 'error'); return; }
   let name = document.getElementById('gifFileProfileSelect').value || 'default';
   if (saveAs) {
-    name = promptProfileName(name);
+    name = await promptProfileName(name);
     if (!name) return;
   }
   try {
@@ -225,7 +225,14 @@ async function saveGifFileProfile(saveAs) {
 async function deleteSelectedGifFileProfile() {
   const file = gifPrimaryFile();
   const name = document.getElementById('gifFileProfileSelect').value;
-  if (!file || !name || !confirm(`Delete file profile "${name}"?`)) return;
+  if (!file || !name) return;
+  const confirmed = await DP.dom.confirm({
+    title: 'Delete file profile?',
+    message: `Delete file profile "${name}"?`,
+    confirmText: 'Delete',
+    danger: true,
+  });
+  if (!confirmed) return;
   try {
     const data = await deleteFileProfile('fluorescence_gif', file, gifProjectRoot(), name);
     renderGifFileProfileOptions(data);

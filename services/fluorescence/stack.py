@@ -294,6 +294,28 @@ def read_tiff_page(
         return arr, idx, n_frames
 
 
+def _read_open_tiff_page(
+    tif,
+    idx: int,
+    *,
+    cache_prefix: tuple[str, int, int],
+) -> tuple[np.ndarray, int]:
+    if len(tif.pages) == 1:
+        pages = split_tiff_array_to_pages(np.asarray(tif.pages[0].asarray()))
+        n_frames = len(pages)
+        actual = max(0, min(int(idx), n_frames - 1))
+        return np.asarray(pages[actual]), n_frames
+    n_frames = len(tif.pages)
+    actual = max(0, min(int(idx), n_frames - 1))
+    key = (*cache_prefix, actual)
+    cached = _page_cache_get(key)
+    if cached is not None:
+        return cached, n_frames
+    arr = np.asarray(tif.pages[actual].asarray())
+    _page_cache_put(key, arr)
+    return arr, n_frames
+
+
 def select_display_frame_from_tiff(
     tiff_path: Path | str,
     frame_idx: int,
@@ -315,22 +337,27 @@ def select_display_frame_from_tiff(
     if z1 < z0:
         z0, z1 = z1, z0
 
-    if mode_clean == "max":
-        acc = None
-        for idx in range(z0, z1 + 1):
-            frame, _actual, _n = read_tiff_page(tiff_path, idx, tifflib_module)
-            arr = np.asarray(frame, dtype=np.float32)
-            acc = arr if acc is None else np.maximum(acc, arr)
-        out = acc
-    else:
-        total = None
-        count = 0
-        for idx in range(z0, z1 + 1):
-            frame, _actual, _n = read_tiff_page(tiff_path, idx, tifflib_module)
-            arr = np.asarray(frame, dtype=np.float64)
-            total = arr if total is None else total + arr
-            count += 1
-        out = (total / max(1, count)).astype(np.float32) if total is not None else None
+    p = Path(tiff_path)
+    stat = p.stat()
+    cache_prefix = (str(p.resolve()), int(stat.st_mtime_ns), int(stat.st_size))
+    tifflib = import_tifffile(tifflib_module)
+    with tifflib.TiffFile(str(p)) as tif:
+        if mode_clean == "max":
+            acc = None
+            for idx in range(z0, z1 + 1):
+                frame, _n = _read_open_tiff_page(tif, idx, cache_prefix=cache_prefix)
+                arr = np.asarray(frame, dtype=np.float32)
+                acc = arr if acc is None else np.maximum(acc, arr)
+            out = acc
+        else:
+            total = None
+            count = 0
+            for idx in range(z0, z1 + 1):
+                frame, _n = _read_open_tiff_page(tif, idx, cache_prefix=cache_prefix)
+                arr = np.asarray(frame, dtype=np.float64)
+                total = arr if total is None else total + arr
+                count += 1
+            out = (total / max(1, count)).astype(np.float32) if total is not None else None
 
     if out is None:
         out = read_tiff_page(tiff_path, frame_idx, tifflib_module)[0]

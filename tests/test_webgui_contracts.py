@@ -79,8 +79,10 @@ class ApiEnvelopeTests(unittest.TestCase):
 
         payload = response.get_json()
         self.assertEqual(code, 500)
-        self.assertEqual(payload["error"], "Internal error")
+        self.assertIn("operation failed", payload["error"])
+        self.assertNotIn("Traceback (most recent call last)", payload["error"])
         self.assertRegex(payload["id"], r"^[0-9a-f]{8}$")
+        self.assertEqual(payload["technical_details"], "Traceback (most recent call last):\n  File x.py")
 
 
 class JobManagerContractTests(unittest.TestCase):
@@ -199,6 +201,23 @@ class WebAppSmokeTests(unittest.TestCase):
                 html = response.data.decode("utf-8")
                 for needle in needles:
                     self.assertNotIn(needle, html)
+
+    def test_main_stylesheet_is_bundled_without_runtime_imports(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        style = (root / "web_static" / "style.css").read_text(encoding="utf-8")
+
+        self.assertNotIn("@import", style)
+        self.assertIn("DataProcess Web", style)
+
+    def test_static_page_scripts_are_deferred(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            for line in template.read_text(encoding="utf-8").splitlines():
+                if '<script ' in line and 'src="/static/' in line and "defer" not in line:
+                    offenders.append(f"{template.name}: {line.strip()}")
+
+        self.assertEqual([], offenders)
 
     def test_abf_viewer_does_not_auto_scan_empty_path(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1382,6 +1401,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/echem/detect": "#/components/schemas/EchemPcDetectRequest",
             "/api/echem_pv/detect": "#/components/schemas/EchemPvDetectRequest",
             "/api/echem/lineshape/plot": "#/components/schemas/LineshapePlotRequest",
+            "/api/echem/lineshape/trace_data": "#/components/schemas/LineshapePlotRequest",
             "/api/emg/detect": "#/components/schemas/EmgDetectRequest",
             "/api/emg/export_job": "#/components/schemas/EmgGroupedExportRequest",
             "/api/figure/run_job": "#/components/schemas/FigureRunRequest",

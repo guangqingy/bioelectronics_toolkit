@@ -134,6 +134,19 @@ def register_echem_lineshape_routes(app, ctx):
         except Exception:
             return err(traceback.format_exc())
 
+    @app.route("/api/echem/lineshape/trace_data", methods=["POST"])
+    @request_schema(LineshapePlotRequest)
+    def api_ls_trace_data():
+        try:
+            body = parse_json_payload(LineshapePlotRequest).model_dump()
+            return jsonify(lineshape_service.trace_data_payload(body))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
     @app.route("/api/echem/lineshape/export_avg", methods=["POST"])
     @request_schema(LineshapeExportAvgRequest)
     def api_ls_export_avg():

@@ -123,8 +123,10 @@ def register_rhd_viewer_routes(app, ctx):
     def api_rhd_browse_recursive():
         try:
             folder = parse_json_payload(RhdBrowseRequest).folder
-            files = browse_files_recursive(folder, {".rhd"})
-            return jsonify({"files": [f["path"] for f in files], "file_meta": files})
+            files = browse_files_recursive(folder, {".rhd"}, max_files=301)
+            truncated = len(files) > 300
+            files = files[:300]
+            return jsonify({"files": [f["path"] for f in files], "file_meta": files, "truncated": truncated})
         except ValidationError as exc:
             return validation_error_response(exc)
 

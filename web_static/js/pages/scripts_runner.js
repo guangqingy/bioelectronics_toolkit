@@ -433,7 +433,12 @@ async function saveCurrentContext() {
   applySharedPaths(params);
   const primary = primaryPathFromParams(params);
   const suggested = `${basename(primary) || _curScript.name} · ${_curScript.name}`;
-  const name = window.prompt('Context name', suggested);
+  const name = await DP.dom.prompt({
+    title: 'Context name',
+    label: 'Context name',
+    defaultValue: suggested,
+    confirmText: 'Save',
+  });
   if (!name) return;
   const key = upsertContext(name, params, false);
   rememberLastSession(params);
@@ -567,6 +572,7 @@ function pollJob(jobId, attempt) {
     setRunSummary('running', 'Still running', 'The script may still be working in Python.');
     return;
   }
+  const delay = Math.min(250 + attempt * 125, 1000);
   _pollTimer = setTimeout(async () => {
     try {
       const d = await api('/api/scripts/status', {job_id: jobId});
@@ -588,7 +594,7 @@ function pollJob(jobId, attempt) {
       setStatus('status', 'Network error while checking status', 'err');
       setRunSummary('error', 'Status check failed', e.message || 'Request failed');
     }
-  }, 2000);
+  }, delay);
 }
 
 function renderRunResult(d) {

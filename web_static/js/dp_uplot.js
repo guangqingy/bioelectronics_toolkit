@@ -46,6 +46,36 @@
     el.innerHTML = '<div class="plot-placeholder">' + (text || 'No output') + '</div>';
   }
 
+  function esc(value) {
+    return String(value == null ? '' : value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;');
+  }
+
+  function traceTable(payload, x, y) {
+    const limit = Math.min(x.length, y.length, 500);
+    const rows = [];
+    for (let i = 0; i < limit; i += 1) {
+      rows.push('<tr><td>' + esc(x[i]) + '</td><td>' + esc(y[i]) + '</td></tr>');
+    }
+    const note = x.length > limit ? '<div class="trace-data-note">Showing first 500 rendered points.</div>' : '';
+    return `
+      <details class="trace-data-fallback">
+        <summary>View plotted data</summary>
+        ${note}
+        <div class="data-table-wrap">
+          <table class="dp-table">
+            <thead><tr><th>${esc(payload.x_label || 'x')}</th><th>${esc(payload.y_label || 'y')}</th></tr></thead>
+            <tbody>${rows.join('')}</tbody>
+          </table>
+        </div>
+      </details>
+    `;
+  }
+
   function dpRenderTrace(containerId, payload, opts) {
     const el = document.getElementById(containerId);
     if (!el) return false;
@@ -117,8 +147,15 @@
       ],
     };
 
+    const chartHost = document.createElement('div');
+    chartHost.className = 'uplot-chart-host';
+    chartHost.setAttribute('role', 'img');
+    chartHost.setAttribute('aria-label', payload.title || 'Interactive trace plot');
+    el.appendChild(chartHost);
+
     try {
-      charts[containerId] = new window.uPlot(o, [x, y], el);
+      charts[containerId] = new window.uPlot(o, [x, y], chartHost);
+      el.insertAdjacentHTML('beforeend', traceTable(payload, x, y));
     } catch (e) {
       placeholder(el, 'Plot error');
       return false;
