@@ -9,6 +9,7 @@ import pandas as pd
 
 from services import abf as abf_service
 from services.matplotlib_utils import close_figure, new_subplots
+from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
 
 class AbfViewerService:
@@ -148,6 +149,7 @@ class AbfViewerService:
         ax.set_xlabel("Time (s)")
         ax.set_ylabel(y_unit)
         ch_name = abf.adcNames[channel] if channel < abf.channelCount else f"Ch{channel}"
+        ch_name = str(ch_name).replace("\x00", "").strip() or f"Ch{channel}"
         title = f"{Path(path).name} · sweep {sweep} · {ch_name}"
         if r_val:
             title += f" · R={r_val * 1e3:.1f} MOhm"
@@ -156,6 +158,71 @@ class AbfViewerService:
         self.apply_axes_limits(ax, None, None, y_min, y_max)
         fig.tight_layout()
         return {"img": self.fig_to_b64(fig), "r_val": r_val}
+
+    def trace_data_payload(
+        self, data: dict[str, Any], max_points: int = DEFAULT_MAX_POINTS
+    ) -> dict[str, Any]:
+        """Return decimated ABF trace samples for client-side interactive plotting."""
+        self._require_abf()
+        path = data.get("path", "")
+        sweep = self.int_or(data.get("sweep", 0), 0)
+        channel = self.int_or(data.get("channel", 0), 0)
+        i_ch = self.int_or(data.get("i_ch", 0), 0)
+        v_ch = self.int_or(data.get("v_ch", 1), 1)
+        r_norm = self.as_bool(data.get("r_norm", False))
+        bl0 = self.float_or(data.get("bl_pre0"), None)
+        bl1 = self.float_or(data.get("bl_pre1"), None)
+        x_min = self.float_or(data.get("x_min"), None)
+        x_max = self.float_or(data.get("x_max"), None)
+        y_min = self.float_or(data.get("y_min"), None)
+        y_max = self.float_or(data.get("y_max"), None)
+        downsample = max(1, self.int_or(data.get("dsf", 1), 1))
+
+        abf = self.pyabf_mod.ABF(path)
+        sweep_index = min(sweep, abf.sweepCount - 1)
+        channel = min(channel, abf.channelCount - 1)
+        abf.setSweep(sweep_index, channel=channel)
+        t = abf.sweepX[::downsample]
+        y = abf.sweepY[::downsample].copy()
+        y_unit = abf.adcUnits[channel] if channel < abf.channelCount else ""
+        ch_name = abf.adcNames[channel] if channel < abf.channelCount else f"Ch{channel}"
+        ch_name = str(ch_name).replace("\x00", "").strip() or f"Ch{channel}"
+
+        r_val = None
+        if r_norm and abf.channelCount >= 2:
+            abf.setSweep(sweep_index, channel=min(i_ch, abf.channelCount - 1))
+            i_full = abf.sweepY
+            abf.setSweep(sweep_index, channel=min(v_ch, abf.channelCount - 1))
+            v_full = abf.sweepY
+            dt_full = abf.sweepX[1] - abf.sweepX[0] if len(abf.sweepX) > 1 else 1e-4
+            r_val = abf_service.estimate_resistance(i_full, v_full, dt_full)
+
+            abf.setSweep(sweep_index, channel=channel)
+            y = abf.sweepY[::downsample].copy()
+            if r_val is not None:
+                y = y * (r_val * 1e3)
+                y_unit = "mV (xR)"
+
+        y = abf_service.baseline_subtract(y, t, bl0, bl1)
+        t, y = self._clip_xy(t, y, x_min, x_max)
+        n_full = int(t.shape[0])
+        td, yd = decimate_xy(t, y, max_points=max_points)
+        title = f"{Path(path).name} · sweep {sweep_index} · {ch_name}"
+        if r_val:
+            title += f" · R={r_val * 1e3:.1f} MOhm"
+        return {
+            "x": td.tolist(),
+            "y": yd.tolist(),
+            "x_label": "Time (s)",
+            "y_label": y_unit,
+            "title": title,
+            "y_min": y_min,
+            "y_max": y_max,
+            "n_full": n_full,
+            "n_points": int(td.shape[0]),
+            "decimated": int(td.shape[0]) < n_full,
+            "r_val": r_val,
+        }
 
     def detect_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_abf()

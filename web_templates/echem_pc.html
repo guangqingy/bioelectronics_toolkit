@@ -6,8 +6,28 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/echem/data">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanFolder')">Browse</button>
   </div>
+  <div class="btn-row" style="margin-top:6px">
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.openLatestFile()">Latest</button>
+  </div>
+  <div class="folder-live-row">
+    <label class="checkbox-row">
+      <input type="checkbox" id="folderAutoRefresh" onchange="DP.page.configureFolderAutoRefresh()">
+      <span>Auto refresh</span>
+    </label>
+    <select id="folderRefreshSeconds" onchange="DP.page.configureFolderAutoRefresh()">
+      <option value="3">3 s</option>
+      <option value="5" selected>5 s</option>
+      <option value="10">10 s</option>
+    </select>
+  </div>
+  <label class="checkbox-row" style="margin-top:6px">
+    <input type="checkbox" id="openNewOnRefresh">
+    <span>Open new file</span>
+  </label>
+  <div id="folderRefreshInfo" class="folder-refresh-info"></div>
 </div>
 
 <div class="ctrl-section">
@@ -112,5 +132,8 @@
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
+<script src="/static/vendor/uplot/uPlot.iife.min.js"></script>
+<script src="/static/js/dp_uplot.js"></script>
 <script src="/static/js/pages/echem_pc.js"></script>
 {% endblock %}

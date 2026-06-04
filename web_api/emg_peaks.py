@@ -37,6 +37,8 @@ class EmgPlotRequest(RequestModel):
     path: str = Field(min_length=1)
     x_min: Any = None
     x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
 
 
 class EmgDetectRequest(EmgPlotRequest):
@@ -149,6 +151,18 @@ def register_emg_peaks_routes(app, ctx):
     def api_emg_plot_compat():
         try:
             return jsonify(service.plot_payload(parse_json_payload(EmgPlotRequest).model_dump()))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/emg/trace_data", methods=["POST"])
+    @request_schema(EmgPlotRequest)
+    def api_emg_trace_data():
+        try:
+            return jsonify(
+                service.trace_data_payload(parse_json_payload(EmgPlotRequest).model_dump())
+            )
         except ValidationError as exc:
             return validation_error_response(exc)
         except Exception:

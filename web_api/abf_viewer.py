@@ -174,6 +174,20 @@ def register_abf_viewer_routes(app, ctx):
         except Exception:
             return err(traceback.format_exc())
 
+    @app.route("/api/abf/trace_data", methods=["POST"])
+    @request_schema(AbfPlotRequest)
+    def api_abf_trace_data():
+        try:
+            return jsonify(
+                service.trace_data_payload(parse_json_payload(AbfPlotRequest).model_dump())
+            )
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
     @app.route("/api/abf/detect", methods=["POST"])
     @request_schema(AbfDetectRequest)
     def api_abf_detect_compat():

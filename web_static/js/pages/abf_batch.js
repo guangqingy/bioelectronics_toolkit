@@ -1,4 +1,5 @@
 let _files = [];
+let _latestFile = null;
 const POWER_PRESETS = {
   '10-step-normal': '3.71, 2.79, 1.86, 0.995, 0.648, 0.553, 0.308, 0.100, 0.0574, 0.0210',
   '10-step-20x': '92.75, 69.75, 46.50, 24.875, 16.20, 13.825, 7.70, 2.50, 1.435, 0.525',
@@ -25,8 +26,11 @@ function scanFolder() {
   api('/api/abf_batch/browse', { folder })
     .then(r => {
       if (r.error) throw new Error(r.error);
-      _files = r.files || [];
+      _files = DP.liveFolder.normalizeFiles(r.files || []);
+      _latestFile = DP.liveFolder.newestFile(_files);
       document.getElementById('fileCount').textContent = _files.length + ' files';
+      const refreshInfo = document.getElementById('folderRefreshInfo');
+      if (refreshInfo) refreshInfo.textContent = DP.liveFolder.infoText(_files, [], _latestFile);
 
       if (_files.length === 0) {
         document.getElementById('fileTableWrap').innerHTML = '<div class="file-list-empty">No ABF files found</div>';

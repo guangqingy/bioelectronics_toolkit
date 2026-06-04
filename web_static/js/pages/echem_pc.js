@@ -2,6 +2,9 @@ let _currentFile = null;
 let _pairs = [];
 let _lastWindow = null;
 let _lastParams = null;
+let _folderFiles = [];
+let _latestFile = null;
+let _folderRefreshTimer = null;
 
 window.dpCurrentFilePath = () => _currentFile || '';
 window.dpCurrentProjectRoot = () => document.getElementById('folderPath').value.trim();
@@ -40,25 +43,148 @@ window.dpApplyRunManifest = manifest => {
 function baseName(p) { return (p || '').split('/').pop() || p; }
 function num(v, d) { return Number(v || 0).toFixed(d); }
 
+function echemBrowseFiles(payload) {
+  return DP.liveFolder.normalizeFiles(payload.file_meta || payload.files || []);
+}
+
+function updateFolderRefreshInfo(added) {
+  const el = document.getElementById('folderRefreshInfo');
+  if (!el) return;
+  el.textContent = DP.liveFolder.infoText(_folderFiles, added || [], _latestFile);
+}
+
+function activateFilePath(path) {
+  document.querySelectorAll('#fileList .file-item').forEach(e => {
+    e.classList.toggle('active', e.dataset.path === path);
+  });
+}
+
+function selectFileByPath(path) {
+  const el = DP.liveFolder.findFileItem('fileList', path);
+  if (!el) {
+    selectFile(null, path);
+    return;
+  }
+  selectFile(el, path);
+}
+
+function openLatestFile() {
+  if (!_latestFile) {
+    setStatus('status', 'No file available', 'error');
+    return;
+  }
+  selectFileByPath(_latestFile.path);
+}
+
+function configureFolderAutoRefresh() {
+  if (_folderRefreshTimer) {
+    clearInterval(_folderRefreshTimer);
+    _folderRefreshTimer = null;
+  }
+  const enabled = document.getElementById('folderAutoRefresh')?.checked;
+  if (!enabled) {
+    setStatus('status', 'Auto refresh off', 'ok');
+    return;
+  }
+  const seconds = Number(document.getElementById('folderRefreshSeconds')?.value || 5);
+  const intervalMs = Math.max(2, seconds) * 1000;
+  _folderRefreshTimer = setInterval(() => {
+    scanFolder({
+      preserveSelection: true,
+      selectNewestAdded: document.getElementById('openNewOnRefresh')?.checked,
+      selectFirstIfEmpty: false,
+      reloadCurrent: false,
+      silent: true,
+    });
+  }, intervalMs);
+  setStatus('status', 'Auto refresh on', 'ok');
+}
+
+function plotTracePreview(path) {
+  const payload = {
+    path,
+    x_min: null,
+    x_max: null,
+    y_min: null,
+    y_max: null,
+  };
+  if (window.dpUplotAvailable && window.dpUplotAvailable()) {
+    return api('/api/echem/trace_data', payload)
+      .then(d => {
+        if (d.error) throw new Error(d.error);
+        if (!window.dpRenderTrace('plotArea', d)) throw new Error('uplot-render-failed');
+        return d;
+      })
+      .catch(() => plotPngPreview(path));
+  }
+  return plotPngPreview(path);
+}
+
+function plotPngPreview(path) {
+  if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
+  return api('/api/echem/load', { path })
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      setPlot('plotArea', d.img);
+      return d;
+    });
+}
+
 function toggleWindow(useAll) {
   const row = document.getElementById('windowRow');
   row.style.opacity = useAll ? '0.35' : '1';
   row.querySelectorAll('input').forEach(el => el.disabled = useAll);
 }
 
-function scanFolder() {
+async function scanFolder(options) {
+  const opts = Object.assign({
+    preserveSelection: false,
+    selectLatest: false,
+    selectNewestAdded: false,
+    selectFirstIfEmpty: true,
+    reloadCurrent: true,
+    silent: false,
+  }, options || {});
   const folder = document.getElementById('folderPath').value.trim();
   if (!folder) { setStatus('status', 'Enter a folder path', 'error'); return; }
-  setStatus('status', 'Scanning…', 'loading');
-  api('/api/echem/browse', { folder })
-    .then(d => {
-      if (d.error) throw new Error(d.error);
-      const files = (d.files || []).map(f => typeof f === 'string' ? {name: baseName(f), path: f} : f);
-      buildFileList('fileList', files, el => selectFile(el, el.dataset.path));
-      if (files.length) selectFile(document.querySelector('#fileList .file-item'), files[0].path);
-      setStatus('status', files.length + ' file(s) found', 'ok');
-    })
-    .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+  if (!opts.silent) setStatus('status', 'Scanning…', 'loading');
+  try {
+    const d = await api('/api/echem/browse', { folder });
+    if (d.error) throw new Error(d.error);
+    const previousFiles = _folderFiles.slice();
+    const files = echemBrowseFiles(d);
+    const diff = DP.liveFolder.diffFiles(previousFiles, files);
+    _folderFiles = files;
+    _latestFile = DP.liveFolder.newestFile(files);
+    buildFileList('fileList', files, el => selectFile(el, el.dataset.path));
+    DP.liveFolder.markNewItems('fileList', diff.addedPaths);
+    updateFolderRefreshInfo(diff.added);
+
+    const newestAdded = DP.liveFolder.newestFile(diff.added);
+    let targetPath = null;
+    const currentStillAvailable = _currentFile && files.some(f => f.path === _currentFile);
+    if (opts.selectLatest && _latestFile) targetPath = _latestFile.path;
+    else if (opts.selectNewestAdded && newestAdded) targetPath = newestAdded.path;
+    else if (opts.preserveSelection && currentStillAvailable) targetPath = _currentFile;
+    else if (!opts.preserveSelection && _latestFile) targetPath = _latestFile.path;
+    else if ((!_currentFile || !currentStillAvailable) && opts.selectFirstIfEmpty !== false && _latestFile) targetPath = _latestFile.path;
+
+    if (targetPath) {
+      if (targetPath === _currentFile && opts.reloadCurrent === false) {
+        activateFilePath(targetPath);
+        if (!opts.silent) setStatus('status', files.length + ' file(s) found', 'ok');
+      } else {
+        selectFileByPath(targetPath);
+      }
+    } else {
+      if (!currentStillAvailable) _currentFile = null;
+      if (!_currentFile) document.getElementById('fileInfo').textContent = 'Select a file to preview the trace, then run detection.';
+      if (!files.length) document.getElementById('fileList').innerHTML = '<div class="file-list-empty">No files found</div>';
+      if (!opts.silent) setStatus('status', files.length + ' file(s) found', files.length ? 'ok' : 'error');
+    }
+  } catch (e) {
+    setStatus('status', 'Error: ' + e.message, 'error');
+  }
 }
 
 function selectFile(el, path) {
@@ -70,10 +196,8 @@ function selectFile(el, path) {
   _lastParams = null;
   updateTable();
   setStatus('status', 'Loading…', 'loading');
-  api('/api/echem/load', { path })
+  plotTracePreview(path)
     .then(d => {
-      if (d.error) throw new Error(d.error);
-      setPlot('plotArea', d.img);
       document.getElementById('t1').value = d.duration || 10;
       document.getElementById('fileInfo').textContent = baseName(path) + (d.n_points ? ' · ' + d.n_points + ' pts' : '') + (d.duration ? ' · ' + Number(d.duration).toFixed(1) + ' s' : '');
       loadGenericFileProfileForCurrent(true).finally(() => setStatus('status', 'Ready', 'ok'));
@@ -106,6 +230,7 @@ function detect() {
   })
     .then(d => {
       if (d.error) throw new Error(d.error);
+      if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
       setPlot('plotArea', d.img);
       _pairs = (d.pairs || []).map(p => Object.assign({}, p, {_removed: false}));
       _lastWindow = d.window || null;
@@ -228,11 +353,15 @@ window.DP.page = window.DP.page || {};
 [
   'activePairs',
   'baseName',
+  'configureFolderAutoRefresh',
   'detect',
   'exportCSV',
   'exportSegments',
   'num',
+  'openLatestFile',
   'openWaveformAverager',
+  'plotPngPreview',
+  'plotTracePreview',
   'restoreAllPairs',
   'scanFolder',
   'selectFile',

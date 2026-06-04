@@ -46,6 +46,36 @@ function toggleWindow(useAll) {
   row.querySelectorAll('input').forEach(el => el.disabled = useAll);
 }
 
+function plotTracePreview(path) {
+  const payload = {
+    path,
+    x_min: null,
+    x_max: null,
+    y_min: null,
+    y_max: null,
+  };
+  if (window.dpUplotAvailable && window.dpUplotAvailable()) {
+    return api('/api/echem_pv/trace_data', payload)
+      .then(d => {
+        if (d.error) throw new Error(d.error);
+        if (!window.dpRenderTrace('plotArea', d)) throw new Error('uplot-render-failed');
+        return d;
+      })
+      .catch(() => plotPngPreview(path));
+  }
+  return plotPngPreview(path);
+}
+
+function plotPngPreview(path) {
+  if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
+  return api('/api/echem_pv/load', { path })
+    .then(d => {
+      if (d.error) throw new Error(d.error);
+      setPlot('plotArea', d.img);
+      return d;
+    });
+}
+
 function scanFolder() {
   const folder = document.getElementById('folderPath').value.trim();
   if (!folder) { setStatus('status', 'Enter a folder path', 'error'); return; }
@@ -70,10 +100,8 @@ function selectFile(el, path) {
   _lastParams = null;
   updateTable();
   setStatus('status', 'Loading…', 'loading');
-  api('/api/echem_pv/load', { path })
+  plotTracePreview(path)
     .then(d => {
-      if (d.error) throw new Error(d.error);
-      setPlot('plotArea', d.img);
       document.getElementById('t1').value = d.duration || 10;
       document.getElementById('fileInfo').textContent =
         baseName(path)
@@ -117,6 +145,7 @@ function detect() {
     show_detrended
   }).then(d => {
     if (d.error) throw new Error(d.error);
+    if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
     setPlot('plotArea', d.img);
     _pulses = (d.pulses || []).map(p => Object.assign({}, p, {_removed: false}));
     _lastWindow = d.window || null;
@@ -239,6 +268,8 @@ window.DP.page = window.DP.page || {};
   'exportSegments',
   'num',
   'openWaveformAverager',
+  'plotPngPreview',
+  'plotTracePreview',
   'restoreAllPulses',
   'scanFolder',
   'selectFile',

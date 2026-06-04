@@ -1,6 +1,9 @@
 let currentFilePath = null;
 let exportQueue = [];
 let queueActiveIndex = -1;
+let _folderFiles = [];
+let _latestFile = null;
+let _folderRefreshTimer = null;
 
 window.dpCurrentFilePath = () => currentFilePath || '';
 window.dpCurrentProjectRoot = () => document.getElementById("folderPath").value.trim();
@@ -96,8 +99,57 @@ function renderFiles(files) {
     return;
   }
   list.innerHTML = files.map((f, idx) =>
-    `<div class="file-item" data-index="${idx}" data-path="${f.path}" onclick="selectFile(this)">${f.name}</div>`
+    `<div class="file-item" data-index="${idx}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" onclick="selectFile(this)">${escHtml(f.name)}</div>`
   ).join("");
+}
+
+function updateFolderRefreshInfo(added) {
+  const el = document.getElementById("folderRefreshInfo");
+  if (!el) return;
+  el.textContent = DP.liveFolder.infoText(_folderFiles, added || [], _latestFile);
+}
+
+function activateFilePath(path) {
+  document.querySelectorAll("#fileList .file-item").forEach(e => {
+    e.classList.toggle("active", e.getAttribute("data-path") === path);
+  });
+}
+
+function selectFileByPath(path) {
+  const el = DP.liveFolder.findFileItem("fileList", path);
+  if (el) selectFile(el);
+}
+
+function openLatestFile() {
+  if (!_latestFile) {
+    setStatusBar("No ABF file available.", "warning");
+    return;
+  }
+  selectFileByPath(_latestFile.path);
+}
+
+function configureFolderAutoRefresh() {
+  if (_folderRefreshTimer) {
+    clearInterval(_folderRefreshTimer);
+    _folderRefreshTimer = null;
+  }
+  const enabled = document.getElementById("folderAutoRefresh")?.checked;
+  if (!enabled) {
+    setStatusBar("Auto refresh off.", "ok");
+    return;
+  }
+  const seconds = Number(document.getElementById("folderRefreshSeconds")?.value || 5);
+  const intervalMs = Math.max(2, seconds) * 1000;
+  _folderRefreshTimer = setInterval(() => {
+    scanFolder({
+      preserveSelection: true,
+      selectNewestAdded: document.getElementById("openNewOnRefresh")?.checked,
+      selectFirstIfEmpty: false,
+      reloadCurrent: false,
+      silent: true,
+    });
+  }, intervalMs);
+  setStatusBar("Auto refresh on.", "ok");
 }
 
 function renderQueue() {
@@ -256,14 +308,22 @@ async function queueExportAllCsv() {
   );
 }
 
-async function scanFolder() {
+async function scanFolder(options) {
+  const opts = Object.assign({
+    preserveSelection: false,
+    selectLatest: false,
+    selectNewestAdded: false,
+    selectFirstIfEmpty: true,
+    reloadCurrent: true,
+    silent: false,
+  }, options || {});
   const folder = document.getElementById("folderPath").value.trim();
   if (!folder) {
     setStatusBar("Enter a folder path.", "error");
     return;
   }
   updateBreadcrumb(folder);
-  setStatusBar("Scanning folder...", "loading");
+  if (!opts.silent) setStatusBar("Scanning folder...", "loading");
 
   try {
     const data = await api("/api/abf/browse", { folder });
@@ -273,15 +333,40 @@ async function scanFolder() {
       renderSubdirs([]);
       return;
     }
-    renderFiles(data.files || []);
+    const previousFiles = _folderFiles.slice();
+    const files = DP.liveFolder.normalizeFiles(data.files || []);
+    const diff = DP.liveFolder.diffFiles(previousFiles, files);
+    _folderFiles = files;
+    _latestFile = DP.liveFolder.newestFile(files);
+    renderFiles(files);
+    DP.liveFolder.markNewItems("fileList", diff.addedPaths);
+    updateFolderRefreshInfo(diff.added);
 
     const tree = await api("/api/abf/browse/tree", { folder });
     renderSubdirs(tree.subdirs || []);
 
-    if (data.files && data.files.length) {
-      const first = document.querySelector("#fileList .file-item");
-      if (first) selectFile(first);
+    if (files.length) {
+      const currentStillAvailable = currentFilePath && files.some(f => f.path === currentFilePath);
+      const newestAdded = DP.liveFolder.newestFile(diff.added);
+      let targetPath = null;
+      if (opts.selectLatest && _latestFile) targetPath = _latestFile.path;
+      else if (opts.selectNewestAdded && newestAdded) targetPath = newestAdded.path;
+      else if (opts.preserveSelection && currentStillAvailable) targetPath = currentFilePath;
+      else if (!opts.preserveSelection && _latestFile) targetPath = _latestFile.path;
+      else if ((!currentFilePath || !currentStillAvailable) && opts.selectFirstIfEmpty !== false && _latestFile) targetPath = _latestFile.path;
+
+      if (targetPath) {
+        if (targetPath === currentFilePath && opts.reloadCurrent === false) {
+          activateFilePath(targetPath);
+          if (!opts.silent) setStatusBar("Scan complete: " + files.length + " ABF file(s).", "ok");
+        } else {
+          selectFileByPath(targetPath);
+        }
+      } else if (!opts.silent) {
+        setStatusBar("Scan complete: " + files.length + " ABF file(s).", "ok");
+      }
     } else {
+      currentFilePath = null;
       document.getElementById("selectedFile").textContent = "No file selected";
       setPlot("plotArea", null);
       setStatusBar("Scan complete. No ABF files in this folder.", "warning");
@@ -381,6 +466,24 @@ async function plot() {
   };
 
   setStatusBar("Rendering plot...", "loading");
+
+  if (window.dpUplotAvailable && window.dpUplotAvailable()) {
+    try {
+      const data = await api("/api/abf/trace_data", payload);
+      if (data.error) throw new Error(data.error);
+      if (!window.dpRenderTrace("plotArea", data)) throw new Error("uplot-render-failed");
+      setStatusBar("Ready", "ok");
+      return;
+    } catch (_e) {
+      // Fall back to the legacy matplotlib PNG path below.
+    }
+  }
+
+  await plotPng(payload);
+}
+
+async function plotPng(payload) {
+  if (window.dpDestroyTrace) window.dpDestroyTrace("plotArea");
   try {
     const data = await api("/api/abf/plot", payload);
     if (data.error) {
@@ -454,11 +557,14 @@ window.DP.page = window.DP.page || {};
   'abfExportParams',
   'baseName',
   'buildExportPayload',
+  'configureFolderAutoRefresh',
   'exportCSV',
   'exportFig',
   'goUpFolder',
+  'openLatestFile',
   'openSubdir',
   'plot',
+  'plotPng',
   'queueAddAll',
   'queueAddCurrent',
   'queueClear',

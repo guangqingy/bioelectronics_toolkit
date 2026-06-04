@@ -209,6 +209,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("if (folderInput.value.trim())", page_js)
         self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', page_js)
         self.assertIn('data-rnorm-state="checked"', template)
+        self.assertIn('id="folderAutoRefresh"', template)
+        self.assertIn("openLatestFile", page_js)
         self.assertIn("function updateAbfParameterGroups()", page_js)
         self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', page_js)
         self.assertNotIn('DEFAULT_DATA_DIR + "/examples"', template)

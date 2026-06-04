@@ -30,6 +30,15 @@ class EchemPvLoadRequest(RequestModel):
     path: str = Field(min_length=1)
 
 
+class EchemPvTraceDataRequest(EchemPvLoadRequest):
+    x_min: Any = None
+    x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
+    t0: Any = None
+    t1: Any = None
+
+
 class EchemPvDetectRequest(RequestModel):
     path: str = Field(min_length=1)
     t0: Any = None
@@ -182,6 +191,17 @@ def register_echem_pv_routes(app, ctx):
                     "n_points": len(t),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/echem_pv/trace_data", methods=["POST"])
+    @request_schema(EchemPvTraceDataRequest)
+    def api_echem_pv_trace_data():
+        try:
+            d = parse_json_payload(EchemPvTraceDataRequest).model_dump()
+            return jsonify(echem_service.photovoltage_trace_data_payload(d))
         except ValidationError as exc:
             return validation_error_response(exc)
         except Exception:

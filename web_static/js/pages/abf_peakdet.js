@@ -2,6 +2,9 @@ let _currentFile = null;
 let _peaks = [];
 let _lastWindow = null;
 let _lastMeta = null;
+let _folderFiles = [];
+let _latestFile = null;
+let _folderRefreshTimer = null;
 
 function n(v, d = 4) {
   const x = Number(v);
@@ -26,6 +29,55 @@ function restoreAllPeaks() {
   _peaks.forEach(p => { p._removed = false; });
   updatePeaksTable();
   setStatus('status', 'All peaks restored', 'ok');
+}
+
+function updateFolderRefreshInfo(added) {
+  const el = document.getElementById('folderRefreshInfo');
+  if (!el) return;
+  el.textContent = DP.liveFolder.infoText(_folderFiles, added || [], _latestFile);
+}
+
+function activateFilePath(path) {
+  document.querySelectorAll('#fileList .file-item').forEach(e => {
+    e.classList.toggle('active', e.dataset.path === path);
+  });
+}
+
+function selectFileByPath(path) {
+  const el = DP.liveFolder.findFileItem('fileList', path);
+  if (el) selectFile(el);
+}
+
+function openLatestFile() {
+  if (!_latestFile) {
+    setStatus('status', 'No ABF file available', 'error');
+    return;
+  }
+  selectFileByPath(_latestFile.path);
+}
+
+function configureFolderAutoRefresh() {
+  if (_folderRefreshTimer) {
+    clearInterval(_folderRefreshTimer);
+    _folderRefreshTimer = null;
+  }
+  const enabled = document.getElementById('folderAutoRefresh')?.checked;
+  if (!enabled) {
+    setStatus('status', 'Auto refresh off', 'ok');
+    return;
+  }
+  const seconds = Number(document.getElementById('folderRefreshSeconds')?.value || 5);
+  const intervalMs = Math.max(2, seconds) * 1000;
+  _folderRefreshTimer = setInterval(() => {
+    scanFolder({
+      preserveSelection: true,
+      selectNewestAdded: document.getElementById('openNewOnRefresh')?.checked,
+      selectFirstIfEmpty: false,
+      reloadCurrent: false,
+      silent: true,
+    });
+  }, intervalMs);
+  setStatus('status', 'Auto refresh on', 'ok');
 }
 
 function updatePeaksTable() {
@@ -66,7 +118,15 @@ function updatePeaksTable() {
     + `</div>`;
 }
 
-function scanFolder() {
+async function scanFolder(options) {
+  const opts = Object.assign({
+    preserveSelection: false,
+    selectLatest: false,
+    selectNewestAdded: false,
+    selectFirstIfEmpty: true,
+    reloadCurrent: true,
+    silent: false,
+  }, options || {});
   const folder = document.getElementById('folderPath').value.trim();
   if (!folder) {
     setStatus('status', 'Enter folder path', 'error');
@@ -74,30 +134,53 @@ function scanFolder() {
     return;
   }
 
-  setStatus('status', 'Scanning folder...', 'loading');
-  api('/api/abf/browse', { folder })
-    .then(r => {
-      if (r.error) throw new Error(r.error);
-      const files = r.files || [];
-      const fileList = document.getElementById('fileList');
+  if (!opts.silent) setStatus('status', 'Scanning folder...', 'loading');
+  try {
+    const r = await api('/api/abf/browse', { folder });
+    if (r.error) throw new Error(r.error);
+    const previousFiles = _folderFiles.slice();
+    const files = DP.liveFolder.normalizeFiles(r.files || []);
+    const diff = DP.liveFolder.diffFiles(previousFiles, files);
+    const fileList = document.getElementById('fileList');
+    _folderFiles = files;
+    _latestFile = DP.liveFolder.newestFile(files);
+    updateFolderRefreshInfo(diff.added);
 
-      if (files.length === 0) {
-        fileList.innerHTML = '<div class="file-list-empty">No ABF files found</div>';
-        setStatus('status', 'No files found', 'error');
-        return;
+    if (files.length === 0) {
+      _currentFile = null;
+      fileList.innerHTML = '<div class="file-list-empty">No ABF files found</div>';
+      setStatus('status', 'No files found', 'error');
+      return;
+    }
+
+    fileList.innerHTML = files.map((f, i) => {
+      return `<div class="file-item" data-idx="${i}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" onclick="selectFile(this)">${escHtml(f.name)}</div>`;
+    }).join('');
+    DP.liveFolder.markNewItems('fileList', diff.addedPaths);
+
+    const currentStillAvailable = _currentFile && files.some(f => f.path === _currentFile);
+    const newestAdded = DP.liveFolder.newestFile(diff.added);
+    let targetPath = null;
+    if (opts.selectLatest && _latestFile) targetPath = _latestFile.path;
+    else if (opts.selectNewestAdded && newestAdded) targetPath = newestAdded.path;
+    else if (opts.preserveSelection && currentStillAvailable) targetPath = _currentFile;
+    else if (!opts.preserveSelection && _latestFile) targetPath = _latestFile.path;
+    else if ((!_currentFile || !currentStillAvailable) && opts.selectFirstIfEmpty !== false && _latestFile) targetPath = _latestFile.path;
+
+    if (targetPath) {
+      if (targetPath === _currentFile && opts.reloadCurrent === false) {
+        activateFilePath(targetPath);
+        if (!opts.silent) setStatus('status', 'Ready', 'ok');
+      } else {
+        selectFileByPath(targetPath);
       }
-
-      fileList.innerHTML = files.map((f, i) => {
-        const fname = typeof f === 'string' ? f : f.name || f;
-        const fpath = typeof f === 'string' ? f : f.path || f;
-        return `<div class="file-item" data-idx="${i}" data-path="${fpath}" onclick="selectFile(this)">${fname}</div>`;
-      }).join('');
+    } else if (!opts.silent) {
       setStatus('status', 'Ready', 'ok');
-    })
-    .catch(e => {
-      setStatus('status', 'Scan failed', 'error');
-      toast('Scan failed: ' + e.message, true);
-    });
+    }
+  } catch (e) {
+    setStatus('status', 'Scan failed', 'error');
+    toast('Scan failed: ' + e.message, true);
+  }
 }
 
 function selectFile(el) {
@@ -286,11 +369,13 @@ window.DP = window.DP || {};
 window.DP.page = window.DP.page || {};
 [
   'activePeaks',
+  'configureFolderAutoRefresh',
   'detect',
   'exportCSV',
   'exportPNG',
   'exportSVG',
   'n',
+  'openLatestFile',
   'restoreAllPeaks',
   'scanFolder',
   'selectFile',

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import base64
+import tempfile
 import unittest
+from pathlib import Path
 
-from web_api.common import fig_to_b64
+from web_api.common import browse_files, fig_to_b64
 
 
 class _FakeFigure:
@@ -34,6 +36,18 @@ class WebApiCommonTests(unittest.TestCase):
             fig.savefig_kwargs,
             {"format": "png", "dpi": 130, "bbox_inches": "tight"},
         )
+
+    def test_browse_files_includes_metadata_for_live_refresh(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_browse_meta_") as tmp:
+            path = Path(tmp) / "trace.abf"
+            path.write_bytes(b"abf")
+
+            files = browse_files(tmp, {".abf"})
+
+        self.assertEqual(len(files), 1)
+        self.assertEqual(files[0]["name"], "trace.abf")
+        self.assertEqual(files[0]["size"], 3)
+        self.assertGreater(files[0]["mtime"], 0)
 
 
 if __name__ == "__main__":

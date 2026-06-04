@@ -8,6 +8,7 @@ import pandas as pd
 
 from services import emg as emg_service
 from services.matplotlib_utils import new_subplots
+from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
 
 class EmgPeaksService:
@@ -116,6 +117,31 @@ class EmgPeaksService:
         ax.grid(True, alpha=0.4)
         fig.tight_layout()
         return {"img": self.fig_to_b64(fig)}
+
+    def trace_data_payload(
+        self, data: dict[str, Any], max_points: int = DEFAULT_MAX_POINTS
+    ) -> dict[str, Any]:
+        """Return decimated EMG samples for client-side interactive plotting."""
+        path = data.get("path", "")
+        x_min = self.float_or(data.get("x_min"), None)
+        x_max = self.float_or(data.get("x_max"), None)
+        y_min = self.float_or(data.get("y_min"), None)
+        y_max = self.float_or(data.get("y_max"), None)
+        t, v, t_col, v_col = self._load_windowed_signal(path, x_min, x_max)
+        n_full = int(t.shape[0])
+        td, vd = decimate_xy(t, v, max_points=max_points)
+        return {
+            "x": td.tolist(),
+            "y": vd.tolist(),
+            "x_label": t_col,
+            "y_label": v_col,
+            "title": Path(path).name,
+            "y_min": y_min,
+            "y_max": y_max,
+            "n_full": n_full,
+            "n_points": int(td.shape[0]),
+            "decimated": int(td.shape[0]) < n_full,
+        }
 
     def detect_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_scipy()

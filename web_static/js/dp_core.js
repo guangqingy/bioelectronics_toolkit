@@ -8,6 +8,7 @@ window.DP.telemetry = window.DP.telemetry || {};
 window.DP.folder = window.DP.folder || {};
 window.DP.settings = window.DP.settings || {};
 window.DP.jobs = window.DP.jobs || {};
+window.DP.liveFolder = window.DP.liveFolder || {};
 window.DP.page = window.DP.page || {};
 
 Object.assign(window.DP.api, {request: api});

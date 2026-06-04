@@ -39,6 +39,7 @@ function detectPeaks() {
   })
     .then(data => {
       if (data.error) throw new Error(data.error);
+      if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
       setPlot('plotArea', data.img);
       const detected = (data.peaks || []).map(normalizePeak);
       if (detectMode === 'append') {

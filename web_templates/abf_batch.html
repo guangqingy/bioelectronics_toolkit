@@ -13,8 +13,12 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/files">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanFolder')" title="Scan folder">Browse</button>
   </div>
+  <div class="btn-row" style="margin-top:6px">
+    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder()">Refresh</button>
+  </div>
+  <div id="folderRefreshInfo" class="folder-refresh-info"></div>
 </div>
 
 <div class="ctrl-section">

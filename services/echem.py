@@ -7,6 +7,8 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
+from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
+
 FLOAT_RE = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?")
 
 PC_VALUE_COL_HINTS = ["<i>", "current", "i/m", "i/\u00b5", "i/a", "ewe"]
@@ -86,6 +88,69 @@ def load_photocurrent(path: str | Path):
 
 def load_photovoltage(path: str | Path):
     return load_echem_file(path, PV_VALUE_COL_HINTS)
+
+
+def _clip_xy(
+    t: np.ndarray,
+    values: np.ndarray,
+    x_min: float | None,
+    x_max: float | None,
+) -> tuple[np.ndarray, np.ndarray]:
+    if x_min is not None:
+        mask = t >= x_min
+        t, values = t[mask], values[mask]
+    if x_max is not None:
+        mask = t <= x_max
+        t, values = t[mask], values[mask]
+    return t, values
+
+
+def trace_data_payload(
+    data: dict[str, Any],
+    *,
+    loader: Callable[[str | Path], tuple[np.ndarray, np.ndarray, str, str]],
+    max_points: int = DEFAULT_MAX_POINTS,
+) -> dict[str, Any]:
+    """Return a decimated numeric echem trace for browser-side plotting."""
+    path = data.get("path", "")
+    x_min = _float_or(data.get("x_min", data.get("t0")), None)
+    x_max = _float_or(data.get("x_max", data.get("t1")), None)
+    y_min = _float_or(data.get("y_min"), None)
+    y_max = _float_or(data.get("y_max"), None)
+
+    t, values, t_col, value_col = loader(path)
+    t, values = _clip_xy(t, values, x_min, x_max)
+    n_full = int(t.shape[0])
+    td, yd = decimate_xy(t, values, max_points=max_points)
+    duration = round(float(t[-1] - t[0]), 3) if len(t) else 0
+    return {
+        "x": td.tolist(),
+        "y": yd.tolist(),
+        "x_label": t_col,
+        "y_label": value_col,
+        "title": Path(path).name,
+        "t_range": [float(t[0]), float(t[-1])] if len(t) else [0.0, 0.0],
+        "duration": duration,
+        "y_min": y_min,
+        "y_max": y_max,
+        "n_full": n_full,
+        "n_points": int(td.shape[0]),
+        "decimated": int(td.shape[0]) < n_full,
+    }
+
+
+def photocurrent_trace_data_payload(
+    data: dict[str, Any],
+    max_points: int = DEFAULT_MAX_POINTS,
+) -> dict[str, Any]:
+    return trace_data_payload(data, loader=load_photocurrent, max_points=max_points)
+
+
+def photovoltage_trace_data_payload(
+    data: dict[str, Any],
+    max_points: int = DEFAULT_MAX_POINTS,
+) -> dict[str, Any]:
+    return trace_data_payload(data, loader=load_photovoltage, max_points=max_points)
 
 
 def _float_or(value: Any, default: Any) -> Any:

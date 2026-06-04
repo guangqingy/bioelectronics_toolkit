@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from services import abf, csv_tools, echem, echem_lineshape, emg, rhd
+from services.emg_peaks import EmgPeaksService
 
 
 def _fake_find_peaks(signal, height=None, distance=None, **_kwargs):
@@ -98,6 +99,24 @@ class EchemServiceTests(unittest.TestCase):
 
         self.assertEqual(pulses[0]["idx"], 4)
         self.assertAlmostEqual(pulses[0]["width_ms"], 2.0)
+
+    def test_photocurrent_trace_data_payload_decimates_window(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_echem_trace_") as tmp:
+            path = Path(tmp) / "pc.csv"
+            rows = ["time_s,current_mA"]
+            rows.extend(f"{i * 0.001},{float(i)}" for i in range(20))
+            path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            payload = echem.photocurrent_trace_data_payload(
+                {"path": str(path), "x_min": 0.005, "x_max": 0.015},
+                max_points=6,
+            )
+
+        self.assertEqual(payload["x_label"], "time_s")
+        self.assertEqual(payload["y_label"], "current_mA")
+        self.assertEqual(payload["n_full"], 11)
+        self.assertLessEqual(payload["n_points"], 6)
+        self.assertTrue(payload["decimated"])
 
 
 class EchemLineshapeServiceTests(unittest.TestCase):
@@ -343,6 +362,34 @@ class EmgServiceTests(unittest.TestCase):
 
         self.assertEqual(peaks.tolist(), [2, 4])
         self.assertEqual(signs.tolist(), [1, -1])
+
+    def test_emg_trace_data_payload_reuses_decimated_shape(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_trace_") as tmp:
+            path = Path(tmp) / "channel.csv"
+            rows = ["time_s,value_uV"]
+            rows.extend(f"{i * 0.001},{float(i % 7)}" for i in range(30))
+            path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            service = EmgPeaksService(
+                has_scipy=False,
+                find_peaks=None,
+                peak_widths=None,
+                fig_to_b64=lambda _fig: "",
+                float_or=lambda value, default: float(value)
+                if value not in (None, "")
+                else default,
+                line_color="#3E6AE1",
+                mode_is_save=lambda _mode: False,
+            )
+            payload = service.trace_data_payload(
+                {"path": str(path), "x_min": 0.005, "x_max": 0.025},
+                max_points=8,
+            )
+
+        self.assertEqual(payload["x_label"], "time_s")
+        self.assertEqual(payload["y_label"], "value_uV")
+        self.assertEqual(payload["n_full"], 21)
+        self.assertLessEqual(payload["n_points"], 8)
 
 
 class _FakeRhdModule:

@@ -48,6 +48,20 @@ def fig_to_b64(fig, dpi=96, fmt="png", *, tight: bool = False):
     return data
 
 
+def file_record(path: Path, *, rel_root: Path | None = None) -> dict:
+    try:
+        stat = path.stat()
+        size = int(stat.st_size)
+        mtime = float(stat.st_mtime)
+    except OSError:
+        size = 0
+        mtime = 0.0
+    record = {"name": path.name, "path": str(path), "size": size, "mtime": mtime}
+    if rel_root is not None:
+        record["rel"] = str(path.relative_to(rel_root))
+    return record
+
+
 def browse_files(folder, exts):
     p = Path(folder)
     if not p.is_dir():
@@ -55,7 +69,7 @@ def browse_files(folder, exts):
     result = []
     for f in sorted(p.iterdir()):
         if f.suffix.lower() in exts:
-            result.append({"name": f.name, "path": str(f)})
+            result.append(file_record(f))
     return result
 
 
@@ -66,7 +80,7 @@ def browse_files_recursive(folder, exts, max_files=300):
     result = []
     for f in sorted(p.rglob("*")):
         if f.suffix.lower() in exts:
-            result.append({"name": f.name, "path": str(f), "rel": str(f.relative_to(p))})
+            result.append(file_record(f, rel_root=p))
             if len(result) >= max_files:
                 break
     return result

@@ -125,9 +125,26 @@ function plot() {
 
   const x_min = parseFloat(document.getElementById('xMin').value) || 0;
   const x_max = document.getElementById('xMax').value ? parseFloat(document.getElementById('xMax').value) : null;
+  const payload = { path, x_min, x_max };
 
   setStatus('status', 'Plotting...', 'loading');
-  api('/api/emg/plot', { path, x_min, x_max })
+  if (window.dpUplotAvailable && window.dpUplotAvailable()) {
+    api('/api/emg/trace_data', payload)
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        if (!window.dpRenderTrace('plotArea', data)) throw new Error('uplot-render-failed');
+        setStatus('status', 'Ready', 'ok');
+      })
+      .catch(() => plotPng(payload));
+    return;
+  }
+
+  plotPng(payload);
+}
+
+function plotPng(payload) {
+  if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
+  api('/api/emg/plot', payload)
     .then(data => {
       if (data.error) throw new Error(data.error);
       setPlot('plotArea', data.img);
@@ -147,6 +164,7 @@ window.DP.page = window.DP.page || {};
   'loadChannelData',
   'loadChannels',
   'plot',
+  'plotPng',
   'selectChannel',
   'selectSubfolder',
 ].forEach(name => {

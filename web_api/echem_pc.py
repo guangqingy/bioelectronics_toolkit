@@ -32,6 +32,15 @@ class EchemPcLoadRequest(RequestModel):
     path: str = Field(min_length=1)
 
 
+class EchemPcTraceDataRequest(EchemPcLoadRequest):
+    x_min: Any = None
+    x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
+    t0: Any = None
+    t1: Any = None
+
+
 class EchemPcDetectRequest(RequestModel):
     path: str = Field(min_length=1)
     t0: Any = None
@@ -257,6 +266,17 @@ def register_echem_pc_routes(app, ctx):
                     "n_points": len(t),
                 }
             )
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/echem/trace_data", methods=["POST"])
+    @request_schema(EchemPcTraceDataRequest)
+    def api_echem_trace_data():
+        try:
+            d = parse_json_payload(EchemPcTraceDataRequest).model_dump()
+            return jsonify(echem_service.photocurrent_trace_data_payload(d))
         except ValidationError as exc:
             return validation_error_response(exc)
         except Exception:

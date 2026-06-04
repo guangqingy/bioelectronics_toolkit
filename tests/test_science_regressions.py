@@ -217,6 +217,15 @@ class AbfViewerRegressionTests(unittest.TestCase):
         plot = service.plot_payload({"path": str(path), "sweep": 0, "channel": 0, "dsf": 10})
         self.assertEqual(plot["img"], "plot")
 
+        trace = service.trace_data_payload(
+            {"path": str(path), "sweep": 0, "channel": 0, "dsf": 10},
+            max_points=100,
+        )
+        self.assertEqual(trace["x_label"], "Time (s)")
+        self.assertEqual(trace["y_label"], "pA")
+        self.assertGreater(trace["n_full"], trace["n_points"])
+        self.assertLessEqual(trace["n_points"], 100)
+
         detected = service.detect_payload(
             {
                 "path": str(path),
