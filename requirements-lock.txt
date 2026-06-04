@@ -33,7 +33,7 @@ packaging==26.2
 pandas==3.0.3
 patsy==1.0.2
 pillow==12.2.0
-platformdirs==4.9.6
+platformdirs==4.10.0
 playwright==1.60.0
 pluggy==1.6.0
 pre_commit==4.6.0
