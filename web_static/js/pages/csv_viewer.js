@@ -194,6 +194,26 @@ function plot() {
   };
 
   setStatus('status', 'Plotting...', 'loading');
+
+  // Interactive client-side render first (instant zoom/pan, no server PNG).
+  // Falls back to the matplotlib PNG endpoint if uPlot is unavailable or the
+  // data endpoint errors, so behavior is never worse than before.
+  if (window.dpUplotAvailable && window.dpUplotAvailable()) {
+    api('/api/csv/trace_data', payload)
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        if (!window.dpRenderTrace('plotArea', data)) throw new Error('uplot-render-failed');
+        setStatus('status', 'Ready', 'ok');
+      })
+      .catch(() => plotPng(payload));
+    return;
+  }
+
+  plotPng(payload);
+}
+
+function plotPng(payload) {
+  if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
   api('/api/csv/plot', payload)
     .then(data => {
       if (data.error) throw new Error(data.error);

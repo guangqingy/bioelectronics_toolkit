@@ -9,6 +9,7 @@ import pandas as pd
 from services import csv_tools
 from services.io_guards import assert_file_size_within_limit
 from services.matplotlib_utils import close_figure, new_subplots
+from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
 
 class CsvViewerService:
@@ -52,6 +53,41 @@ class CsvViewerService:
         ax.set_title(Path(path).name, fontsize=10, color="#5C5E62")
         fig.tight_layout()
         return {"img": self.fig_to_b64(fig)}
+
+    def trace_data_payload(
+        self, data: dict[str, Any], max_points: int = DEFAULT_MAX_POINTS
+    ) -> dict[str, Any]:
+        """Return decimated x/y arrays for client-side interactive plotting.
+
+        No matplotlib involved: the browser draws and zooms the trace locally,
+        so this avoids a server ``savefig`` on every view change. The data is
+        envelope-preserving-decimated to keep the payload small without hiding
+        spikes (see ``services.trace_decimate``).
+        """
+        path = data.get("path", "")
+        x_col = data.get("x_col", "")
+        y_col = data.get("y_col", "")
+        x_min = self.float_or(data.get("x_min"), None)
+        x_max = self.float_or(data.get("x_max"), None)
+        y_min = self.float_or(data.get("y_min"), None)
+        y_max = self.float_or(data.get("y_max"), None)
+        downsample = self.int_or(data.get("dsf", 1), 1)
+
+        x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=downsample)
+        n_full = int(x.shape[0])
+        xd, yd = decimate_xy(x, y, max_points=max_points)
+        return {
+            "x": xd.tolist(),
+            "y": yd.tolist(),
+            "x_label": x_col,
+            "y_label": y_col,
+            "title": Path(path).name,
+            "y_min": y_min,
+            "y_max": y_max,
+            "n_full": n_full,
+            "n_points": int(xd.shape[0]),
+            "decimated": int(xd.shape[0]) < n_full,
+        }
 
     def merge_preview_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         paths = data.get("paths", [])

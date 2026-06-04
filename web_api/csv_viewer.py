@@ -148,6 +148,19 @@ def register_csv_viewer_routes(app, ctx):
         except Exception:
             return err(traceback.format_exc())
 
+    @app.route("/api/csv/trace_data", methods=["POST"])
+    @request_schema(CsvPlotRequest)
+    def api_csv_trace_data():
+        # Decimated numeric trace for client-side interactive (uPlot) rendering.
+        # No server-side matplotlib render; the browser handles zoom/pan locally.
+        try:
+            d = parse_json_payload(CsvPlotRequest).model_dump()
+            return jsonify(viewer_service.trace_data_payload(d))
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except Exception:
+            return err(traceback.format_exc())
+
     @app.route("/api/csv/merge", methods=["POST"])
     @request_schema(CsvMergeRequest)
     def api_csv_merge():
