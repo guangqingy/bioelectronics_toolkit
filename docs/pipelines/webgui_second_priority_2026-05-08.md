@@ -148,11 +148,11 @@ Completed jobs also show an inferred output count and first output path when ava
   API envelope, job output inference, page rendering, and CSV export job
   contract.
 - Moved local Web GUI preferences out of tracked source state:
-  `web_gui_settings.json` is ignored and `web_gui_settings.example.json`
+  `.dataprocess_cache/web_gui_settings.json` is ignored and `web_gui_settings.example.json`
   documents the expected shape.
 - Removed tracked local editor/agent configuration from the repository and
   ignored `.claude/` and `.vscode/`.
-- Updated `README.md`, `WEB_README.md`, and `docs/pipelines/README.md` with
+- Updated `README.md`, `docs/webgui.md`, and `docs/pipelines/README.md` with
   current validation and cache behavior.
 
 ## Migration Direction

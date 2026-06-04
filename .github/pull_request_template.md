@@ -23,7 +23,7 @@
 - [ ] Any new route file > 200 LOC, service file > 600 LOC, or JS file > 400 LOC includes a PR note explaining why splitting would be worse
 - [ ] Any page with > 18 visible user-facing controls includes a UX review note
 - [ ] New web routes use Pydantic request schemas and appear in OpenAPI docs
-- [ ] CHANGELOG.md updated under `[Unreleased]`
+- [ ] docs/CHANGELOG.md updated under `[Unreleased]`
 - [ ] README / pipeline docs updated if behavior changed
 
 ## Baseline / architecture notes

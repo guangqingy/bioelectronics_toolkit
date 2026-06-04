@@ -4,7 +4,7 @@ Date: 2026-05-08
 
 The GUI now separates two kinds of saved state:
 
-- `web_gui_settings.json`: global and per-interface defaults used when a page opens.
+- `.dataprocess_cache/web_gui_settings.json`: global and per-interface defaults used when a page opens.
 - `.dataprocess_cache/file_profiles.json`: per-project, per-file profiles used when reopening the same data file.
 
 The file profile cache is written under the selected project/data folder:

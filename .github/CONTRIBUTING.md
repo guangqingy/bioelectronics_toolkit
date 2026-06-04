@@ -58,7 +58,7 @@ unused-name/import gate. Historical Tkinter files under `desktop_apps/legacy/`
 are intentionally outside that strict style gate until a workflow is migrated or
 retired. Green CI is required to merge.
 
-Update [`CHANGELOG.md`](./CHANGELOG.md) under `[Unreleased]` describing
+Update [`docs/CHANGELOG.md`](../docs/CHANGELOG.md) under `[Unreleased]` describing
 user-visible changes.
 
 If `dev_scripts/services_ratio_baseline.json` changes, the PR description must
@@ -74,7 +74,7 @@ The WebGUI is the canonical user surface. Launcher modules under
 the matching WebGUI route by default.
 
 For larger feature work, start by copying the maintenance prompt in
-[`docs/feature_integration_prompt.md`](./docs/feature_integration_prompt.md)
+[`docs/feature_integration_prompt.md`](../docs/feature_integration_prompt.md)
 into the planning or coding session.
 
 1. Put reusable analysis logic in `services/<domain>/`.
@@ -85,7 +85,7 @@ into the planning or coding session.
 5. Add or update any thin source launcher in `desktop_apps/launchers/`.
 6. Register or adjust console scripts in `pyproject.toml`.
 7. Add tests under `tests/` for the service, launcher, and API contract.
-8. Update `README.md`, `WEB_README.md`, and the relevant `docs/` note.
+8. Update `README.md`, `docs/webgui.md`, and the relevant `docs/` note.
 9. Use full user-facing names in navigation and cards; keep abbreviations only
    when the full name is also visible.
 10. Make the workflow keyboard-navigable: focus states visible, dropdowns usable
@@ -98,7 +98,7 @@ into the planning or coding session.
 
 ## Adding a new web blueprint
 
-Follow the contract documented in [`WEB_README.md`](./WEB_README.md):
+Follow the contract documented in [`docs/webgui.md`](../docs/webgui.md):
 
 - Expose `register_xxx_routes(app, ctx)` from `web_api/xxx.py`.
 - Use shared helpers from `ctx` (`err`, `fig_to_b64`, `float_or`, …).
@@ -143,4 +143,4 @@ Use the bug-report issue template. Always include:
 ## License
 
 By contributing, you agree that your contributions are released under the
-[MIT License](./LICENSE).
+[MIT License](../LICENSE).

@@ -4,7 +4,7 @@ Use this checklist when cutting a public release.
 
 ## Version
 
-1. Update `pyproject.toml`, `CITATION.cff`, and `CHANGELOG.md`.
+1. Update `pyproject.toml`, `CITATION.cff`, and `docs/CHANGELOG.md`.
 2. Run the full local validation commands from `README.md`.
 3. Confirm `bte-web --self-check` passes in a fresh environment.
 4. Refresh `requirements-lock.txt` from a clean Python 3.12 virtualenv when

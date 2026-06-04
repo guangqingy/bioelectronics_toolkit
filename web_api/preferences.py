@@ -51,6 +51,19 @@ def _default_preferences() -> dict[str, Any]:
     }
 
 
+def preferences_path(base_dir: Path) -> Path:
+    base_dir = Path(base_dir)
+    cache_path = base_dir / ".dataprocess_cache" / "web_gui_settings.json"
+    legacy_path = base_dir / "web_gui_settings.json"
+    if legacy_path.exists() and not cache_path.exists():
+        try:
+            cache_path.parent.mkdir(parents=True, exist_ok=True)
+            os.replace(legacy_path, cache_path)
+        except OSError:
+            return legacy_path
+    return cache_path
+
+
 def _read_preferences(path: Path) -> dict[str, Any]:
     if not path.exists():
         return _default_preferences()
@@ -85,7 +98,7 @@ def _write_preferences(path: Path, data: dict[str, Any]) -> None:
 
 def register_preferences_routes(app, ctx):
     err = ctx["err"]
-    prefs_path = Path(ctx["BASE_DIR"]) / "web_gui_settings.json"
+    prefs_path = preferences_path(Path(ctx["BASE_DIR"]))
 
     @app.route("/api/preferences/get", methods=["POST"])
     @request_schema(PreferencesGetRequest)

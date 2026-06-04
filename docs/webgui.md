@@ -89,7 +89,7 @@ DataProcess/
 │       ├── dp_jobs.js
 │       └── pages/              # Page-specific JavaScript extracted from templates
 ├── tests/                      # pytest/unittest-compatible smoke and contract tests
-└── WEB_README.md
+└── docs/webgui.md              # this architecture guide
 ```
 
 ## API Contract
@@ -174,8 +174,9 @@ data contents.
 Local state is deliberately stored outside browser-local-only storage so it can
 be reused from any browser on the same machine.
 
-- `web_gui_settings.json`: global and per-view defaults. This is local cache and
-  is gitignored. `web_gui_settings.example.json` documents the shape.
+- `.dataprocess_cache/web_gui_settings.json`: global and per-view defaults.
+  This is local cache and is gitignored. `web_gui_settings.example.json`
+  documents the shape.
 - `.dataprocess_cache/file_profiles.json`: per-project, per-file UI settings.
 - `.dataprocess_cache/runs/*.json`: durable run records for generated
   outputs and later packaging/reporting.

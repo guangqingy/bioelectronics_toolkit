@@ -15,6 +15,7 @@ from .request_validation import (
     request_schema,
     validation_error_response,
 )
+from .preferences import preferences_path
 from .response import api_ok
 
 
@@ -99,7 +100,7 @@ def _record_telemetry_event(
 def register_telemetry_routes(app, ctx) -> None:
     base_dir = Path(ctx["BASE_DIR"])
     err = ctx["err"]
-    prefs_path = base_dir / "web_gui_settings.json"
+    prefs_path = preferences_path(base_dir)
     telemetry_path = base_dir / ".dataprocess_cache" / "telemetry.json"
 
     @app.route("/api/telemetry/page", methods=["POST"])

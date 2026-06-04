@@ -96,7 +96,7 @@ Intan `.rhd` parsing is provided by the vendored reference parser under
 ### Web app
 
 `web_app.py` is a Flask app that wraps most of the analysis routines above
-behind a unified browser UI. See [`WEB_README.md`](./WEB_README.md) for the
+behind a unified browser UI. See [`docs/webgui.md`](./docs/webgui.md) for the
 internal architecture (route modules, templates, shared helpers, API response
 contracts, background jobs, and local cache behavior).
 
@@ -164,7 +164,7 @@ The Web GUI also creates local cache files while you work:
 
 | Path | Meaning |
 | --- | --- |
-| `web_gui_settings.json` | Global and per-view default parameters for the local Web GUI. |
+| `.dataprocess_cache/web_gui_settings.json` | Global and per-view default parameters for the local Web GUI. |
 | `.dataprocess_cache/file_profiles.json` | Per-project, per-file cached UI settings. |
 | `.dataprocess_cache/runs/` | Saved run manifests used by the Runs page and package/report tools. |
 
@@ -248,41 +248,31 @@ present.
 
 ```text
 bioelectronics_toolkit/
-├── README.md                       # this file
-├── requirements-lock.txt            # known-good Python 3.12 dependency lock
-├── LICENSE                         # MIT
-├── CODE_OF_CONDUCT.md               # community behavior expectations
-├── config.py                       # config loader
-├── config.example.json             # config template (copy to config.json)
-├── web_gui_settings.example.json    # Web GUI local settings template
-├── dev_scripts/                    # maintainer-only repository scripts
-├── .gitignore
-│
-├── desktop_apps/
-│   ├── launchers/                  # thin WebGUI/CLI entry modules
-│   ├── web_launcher.py             # maps desktop commands to WebGUI pages
-│   └── legacy/                     # historical Tkinter applications
-├── vendor/intan/                   # vendored Intan `.rhd` reference parser
+├── START_HERE.md                   # non-developer setup guide
+├── easy_start/                     # double-click install/start scripts
 ├── examples/                       # tiny synthetic demo data
+├── web_app.py                      # local WebGUI entry point
+├── config.example.json             # optional config template
+├── web_gui_settings.example.json    # optional WebGUI settings template
 │
-├── web_app.py                      # Flask app entry point
-├── web_api/                        # route modules per domain
-├── services/                       # shared processing logic used by UI surfaces
-├── web_templates/                  # Jinja templates
-├── web_static/                     # CSS / JS assets
-├── WEB_README.md                   # web-app architecture notes
-├── docs/                           # repository structure and parity notes
-│   └── pipelines/                  # data-processing pipeline docs
-├── tests/                          # pytest/unittest-compatible contract tests
-├── pipelines/                      # canonical WebGUI pipeline registry
-│   └── examples/                   # self-contained public pipeline scripts
+├── services/                       # reusable scientific/data-processing logic
+├── web_api/                        # Flask JSON/page routes
+├── web_templates/                  # Jinja pages and partials
+├── web_static/                     # CSS, JS, icons, vendored browser assets
+├── desktop_apps/                   # installed bte-* launchers and legacy GUIs
+├── pipelines/                      # WebGUI Pipeline Runner registry
+├── tests/                          # pytest and Playwright tests
+├── docs/                           # architecture, release, changelog, WebGUI docs
+├── dev_scripts/                    # maintainer-only checks and helpers
+├── vendor/                         # vendored reference parsers
+├── .github/                        # CI, issue templates, contribution/security docs
 ```
 
 ## Development notes
 
 - The web app is layered into thin `register_*_routes(app, ctx)` modules under
   `web_api/`. New tools should follow the contract documented in
-  [`WEB_README.md`](./WEB_README.md).
+  [`docs/webgui.md`](./docs/webgui.md).
 - Repository organization and desktop/Web parity notes are indexed in
   [`docs/README.md`](./docs/README.md).
 - Shared algorithms should live under `services/` before they are reused by
@@ -320,13 +310,15 @@ bioelectronics_toolkit/
 
 ## Contributing
 
-Issues and pull requests are welcome. See [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md)
-and [`CONTRIBUTING.md`](./CONTRIBUTING.md) for the workflow (branch naming,
+Issues and pull requests are welcome. See
+[`CODE_OF_CONDUCT.md`](./.github/CODE_OF_CONDUCT.md) and
+[`CONTRIBUTING.md`](./.github/CONTRIBUTING.md) for the workflow (branch naming,
 Conventional Commits, pre-commit hooks, CI expectations).
 
 ## Changelog
 
-Notable changes to each release are tracked in [`CHANGELOG.md`](./CHANGELOG.md).
+Notable changes to each release are tracked in
+[`docs/CHANGELOG.md`](./docs/CHANGELOG.md).
 
 ## Citing this work
 

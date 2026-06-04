@@ -19,7 +19,7 @@ When integrating a new feature or migrating an existing workflow, follow these
 rules:
 
 1. Understand the existing shape first.
-   - Read README.md, WEB_README.md, CONTRIBUTING.md, docs/README.md, and the
+   - Read README.md, docs/webgui.md, .github/CONTRIBUTING.md, docs/README.md, and the
      relevant service/web_api/template/static files before editing.
    - Prefer existing local patterns over new framework ideas.
    - Keep changes scoped to the requested workflow and avoid unrelated cleanup.
@@ -84,12 +84,12 @@ rules:
 
 8. Update documentation and release notes.
    - Update README.md for user-visible workflows, examples, commands, or setup.
-   - Update WEB_README.md for web architecture/API contract changes.
+   - Update docs/webgui.md for web architecture/API contract changes.
    - Update docs/README.md or the relevant docs/*.md file for maintenance
      decisions.
-   - Update CHANGELOG.md under [Unreleased] for user-visible changes.
+   - Update docs/CHANGELOG.md under [Unreleased] for user-visible changes.
    - If changing package version or release metadata, keep pyproject.toml,
-     CITATION.cff, CHANGELOG.md links, and version tests in sync.
+     CITATION.cff, docs/CHANGELOG.md links, and version tests in sync.
 
 9. Run the validation chain before finishing.
    - python -m ruff check .

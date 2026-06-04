@@ -9,22 +9,29 @@ desktop launcher commands.
 
 ```text
 DataProcess/
++-- START_HERE.md             # non-developer entry guide
++-- easy_start/               # double-click setup/start scripts
++-- examples/                 # tiny synthetic demo data
++-- web_app.py                # Flask composition root and local app entry
++-- config.example.json       # optional config template
++-- web_gui_settings.example.json
++-- README.md
++-- LICENSE
 +-- desktop_apps/
 |   +-- launchers/            # thin WebGUI/CLI launchers
 |   +-- web_launcher.py       # opens the canonical WebGUI page for each tool
 |   +-- legacy/               # historical Tkinter applications
-+-- web_app.py                # Flask composition root
 +-- web_api/                  # Page/API routes, context, jobs, and local system routes
 +-- services/                 # UI-independent processing services
 +-- web_templates/            # Jinja templates
 +-- web_static/               # CSS and shared JavaScript
 +-- vendor/                   # vendored reference parsers kept out of root
-+-- examples/                 # tiny synthetic demo data
 +-- dev_scripts/              # maintainer-only repository scripts
 +-- pipelines/                # canonical WebGUI pipeline registry
 +-- tests/                    # smoke and contract tests
-+-- docs/                     # repository-level maintenance notes
++-- docs/                     # architecture, WebGUI, changelog, and release notes
 |   +-- pipelines/            # domain pipeline notes and audits
++-- .github/                  # CI, contribution, security, and issue templates
 ```
 
 This shape is supported by `pyproject.toml`, where GUI console scripts point at
@@ -93,10 +100,13 @@ problem.
 - Keep Pipeline Runner metadata in `pipelines/registry.json`; route modules and
   templates should consume that registry instead of keeping their own script
   maps.
-- Keep local state out of git: `web_gui_settings.json`, `config.json`, real
+- Keep local state out of git: `.dataprocess_cache/web_gui_settings.json`, `config.json`, real
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.
-- Update `README.md`, `WEB_README.md`, and the relevant file in
+- Keep root friendly for non-developer users: setup guides, app entry points,
+  examples, and essential packaging/config files can stay there; maintainer
+  docs belong in `docs/` or `.github/`.
+- Update `README.md`, `docs/webgui.md`, and the relevant file in
   `docs/pipelines/` whenever a user-facing workflow changes.
 
 ## Suggested Refactor Order

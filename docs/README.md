@@ -7,6 +7,9 @@ notes live under `docs/pipelines/`.
 
 - [Repository structure](repository_structure.md): current layout, recommended
   package direction, and near-term rules for keeping the repo maintainable.
+- [WebGUI architecture](webgui.md): Flask route layout, API response contract,
+  background jobs, local safety assumptions, and browser assets.
+- [Changelog](CHANGELOG.md): notable release and unreleased changes.
 - [Desktop and WebGUI parity](desktop_web_parity.md): feature comparison across
   desktop launcher commands and WebGUI routes, with WebGUI treated as the
   canonical reference.

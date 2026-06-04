@@ -1486,6 +1486,20 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertFalse(payload["ok"])
         self.assertEqual(payload["error"], "Invalid request payload")
 
+    def test_preference_file_migrates_out_of_root(self) -> None:
+        from web_api.preferences import preferences_path
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            legacy_path = root / "web_gui_settings.json"
+            legacy_path.write_text('{"version": 1, "global": {}, "views": {}}\n', encoding="utf-8")
+
+            path = preferences_path(root)
+
+            self.assertEqual(path, root / ".dataprocess_cache" / "web_gui_settings.json")
+            self.assertFalse(legacy_path.exists())
+            self.assertTrue(path.exists())
+
     def test_migrated_csv_schema_validation_returns_422(self) -> None:
         response = self.client.post("/api/csv/columns", json={})
         payload = response.get_json()

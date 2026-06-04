@@ -112,9 +112,9 @@ README 有 Conventional Commits 徽章、CONTRIBUTING 给了 `feat()/fix()` 范�
 > 建议：把私有项目条目移出默认 registry（或放进一个 `examples` 命名空间），并至少提供 1 个**完全自包含、用 `examples/` 数据即可跑通**的示范 pipeline，让"Pipeline Runner"对外部用户是活的而非占位。
 
 ### C6 · 缺 CODE_OF_CONDUCT — P2，极小工作量
-issue/PR 模板、dependabot、SECURITY.md 都有，唯独没有行为准则。对接受外部贡献的公开项目这是常见缺口。
+issue/PR 模板、dependabot、.github/SECURITY.md 都有，唯独没有行为准则。对接受外部贡献的公开项目这是常见缺口。
 
-> 建议：加一份标准 `CODE_OF_CONDUCT.md`（Contributor Covenant 即可）。
+> 建议：加一份标准 `.github/CODE_OF_CONDUCT.md`（Contributor Covenant 即可）。
 
 ---
 

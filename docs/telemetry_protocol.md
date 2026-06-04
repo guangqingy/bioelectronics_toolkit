@@ -2,7 +2,7 @@
 
 Telemetry is an opt-in local usage counter for the WebGUI. It is disabled by
 default and only records events when `global.telemetry_enabled` is `true` in
-`web_gui_settings.json`.
+`.dataprocess_cache/web_gui_settings.json`.
 
 The client must fail silently. Telemetry errors should not show the persistent
 error banner, toast, or inline status because analytics must never interrupt a

@@ -70,4 +70,6 @@ Then run the install script again.
 - `examples/`: bundled sample files.
 - `web_app.py`: the local Web app entry point, used by the scripts.
 
-Everything else is project code, tests, or developer documentation.
+You can safely ignore `services/`, `web_api/`, `web_static/`, `web_templates/`,
+`tests/`, `docs/`, `dev_scripts/`, `.github/`, and `pipelines/` unless you are
+developing the toolkit.

@@ -47,7 +47,7 @@ python -m py_compile $(git ls-files '*.py')
 ## Release Rhythm
 
 1. Land focused commits with tests.
-2. Update `CHANGELOG.md` under `[Unreleased]`.
+2. Update `docs/CHANGELOG.md` under `[Unreleased]`.
 3. Tag a minor release when user-visible WebGUI or cross-platform changes
    accumulate.
 4. Keep README screenshots or demo GIF current when the main UI changes.

@@ -283,7 +283,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIT license, top-level README, dependency metadata, and pipeline
   documentation under `docs/pipelines/`.
 - GitHub Actions CI workflow (lint + unittest + compileall).
-- `sync_to_github.sh` helper script for quick chore-style syncs.
+- Local `dev_scripts/local/sync_to_github.sh` helper script for quick chore-style syncs.
 
 [Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.6.0...HEAD
 [0.6.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.5.0...v0.6.0
