@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Fluorescence ROI Analysis{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="/static/css/fluorescence_roi.css"/>
+<link rel="stylesheet" href="{{ static_asset('css/fluorescence_roi.css') }}"/>
 {% endblock %}
 
 {% block controls %}
@@ -137,16 +137,17 @@
     <select id="plotMetric">
       <option value="absolute">Absolute</option>
       <option value="bg_subtracted">BG Subtracted</option>
+      <option value="bg_normalized" selected>BG Normalized</option>
       <option value="delta_f_over_f0">DeltaF/F0</option>
     </select>
   </div>
   <div class="param-row">
     <div class="param-label" title="Reference frame for normalization">Ref seq</div>
-    <input type="text" id="refSequence" value="0" placeholder="e.g. 0 or 10" style="font-size:11.5px">
+    <input type="text" id="refSequence" value="" placeholder="e.g. 0 or 10" style="font-size:11.5px">
   </div>
   <div class="param-row">
     <div class="param-label">Prefix</div>
-    <input type="text" id="outPrefix" value="roi_sequence_analysis" placeholder="output filename prefix" style="font-size:11.5px">
+    <input type="text" id="outPrefix" value="roi_analysis" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
   <div class="param-row">
     <div class="param-label">Scale bar um</div>
@@ -166,7 +167,7 @@
   </div>
   <div class="param-row">
     <div class="param-label">Label scale</div>
-    <input type="number" id="labelScale" value="1.0" min="0.5" max="4" step="0.1" style="font-size:11.5px">
+    <input type="number" id="labelScale" value="2.0" min="0.5" max="4" step="0.1" style="font-size:11.5px">
   </div>
   <label class="checkbox-row" style="margin-top:6px">
     <input type="checkbox" id="showPreviewName" checked>
@@ -269,10 +270,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/fluorescence_roi_profiles.js"></script>
-<script defer src="/static/js/pages/fluorescence_roi_pairs.js"></script>
-<script defer src="/static/js/pages/fluorescence_roi_shapes.js"></script>
-<script defer src="/static/js/pages/fluorescence_roi_canvas.js"></script>
-<script defer src="/static/js/pages/fluorescence_roi_exports.js"></script>
-<script defer src="/static/js/pages/fluorescence_roi_events.js"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_profiles.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_pairs.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_shapes.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_canvas.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_exports.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_roi_events.js') }}"></script>
 {% endblock %}

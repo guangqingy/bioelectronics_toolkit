@@ -7,7 +7,7 @@
 }.get(gif_page_mode, 'Fluorescence GIF Export') %}
 {% block title %}{{ gif_page_title }}{% endblock %}
 {% block head %}
-<link rel="stylesheet" href="/static/css/fluorescence_gif.css"/>
+<link rel="stylesheet" href="{{ static_asset('css/fluorescence_gif.css') }}"/>
 {% endblock %}
 
 {% block controls %}
@@ -403,10 +403,10 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/fluorescence_gif_files.js"></script>
-<script defer src="/static/js/pages/fluorescence_gif_profiles_preview.js"></script>
-<script defer src="/static/js/pages/fluorescence_gif_roi_shapes.js"></script>
-<script defer src="/static/js/pages/fluorescence_gif_canvas.js"></script>
-<script defer src="/static/js/pages/fluorescence_gif_roi_analysis.js"></script>
-<script defer src="/static/js/pages/fluorescence_gif_kymograph.js"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_files.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_profiles_preview.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_roi_shapes.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_canvas.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_roi_analysis.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_gif_kymograph.js') }}"></script>
 {% endblock %}

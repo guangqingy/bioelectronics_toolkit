@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import tempfile
 import threading
 import time
@@ -171,6 +172,80 @@ class WebAppSmokeTests(unittest.TestCase):
 
         cls.client = app.test_client()
 
+    @staticmethod
+    def _page_script_refs(template_text: str) -> list[str]:
+        return re.findall(r"static_asset\(['\"]js/pages/([^'\"]+)['\"]\)", template_text)
+
+    @staticmethod
+    def _strip_js_comments_and_strings(source: str) -> str:
+        out: list[str] = []
+        i = 0
+        state = "code"
+        quote = ""
+        while i < len(source):
+            ch = source[i]
+            nxt = source[i + 1] if i + 1 < len(source) else ""
+            if state == "code":
+                if ch == "/" and nxt == "/":
+                    state = "line"
+                    out.append(" ")
+                    i += 2
+                    continue
+                if ch == "/" and nxt == "*":
+                    state = "block"
+                    out.append(" ")
+                    i += 2
+                    continue
+                if ch in {"'", '"', "`"}:
+                    state = "string"
+                    quote = ch
+                    out.append(" ")
+                    i += 1
+                    continue
+                out.append(ch)
+                i += 1
+                continue
+            if state == "line":
+                out.append("\n" if ch == "\n" else " ")
+                if ch == "\n":
+                    state = "code"
+                i += 1
+                continue
+            if state == "block":
+                if ch == "*" and nxt == "/":
+                    state = "code"
+                    out.append(" ")
+                    i += 2
+                    continue
+                out.append("\n" if ch == "\n" else " ")
+                i += 1
+                continue
+            if ch == "\\":
+                out.append(" ")
+                i += 2
+                continue
+            out.append("\n" if ch == "\n" else " ")
+            if ch == quote:
+                state = "code"
+            i += 1
+        return "".join(out)
+
+    @classmethod
+    def _top_level_js_lexicals(cls, source: str) -> list[str]:
+        code = cls._strip_js_comments_and_strings(source)
+        token_re = re.compile(r"[{}]|\b(?:const|let|class)\s+([A-Za-z_$][\w$]*)")
+        depth = 0
+        names: list[str] = []
+        for match in token_re.finditer(code):
+            token = match.group(0)
+            if token == "{":
+                depth += 1
+            elif token == "}":
+                depth = max(0, depth - 1)
+            elif depth == 0 and match.group(1):
+                names.append(match.group(1))
+        return names
+
     def test_all_web_pages_render(self) -> None:
         for route in self.PAGE_ROUTES:
             with self.subTest(route=route):
@@ -219,6 +294,150 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual([], offenders)
 
+    def test_page_level_scripts_are_cache_busted(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            text = template.read_text(encoding="utf-8")
+            if 'src="/static/js/pages/' in text or "src='/static/js/pages/" in text:
+                offenders.append(str(template.relative_to(root)))
+
+        self.assertEqual([], offenders)
+
+    def test_rendered_static_assets_are_cache_busted_and_served(self) -> None:
+        asset_re = re.compile(r"<(?:script|link)\b[^>]+(?:src|href)=['\"]([^'\"]+)['\"]", re.I)
+        for route in self.PAGE_ROUTES:
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 200)
+                html = response.data.decode("utf-8")
+                for asset in asset_re.findall(html):
+                    if asset.startswith(("/static/js/pages/", "/static/css/")):
+                        self.assertIn("?v=", asset)
+                    if asset.startswith("/static/"):
+                        asset_response = self.client.get(asset)
+                        self.assertEqual(asset_response.status_code, 200, asset)
+                        self.assertGreater(len(asset_response.data), 0, asset)
+                        asset_response.close()
+
+    def test_page_script_dom_ids_are_declared_or_known_dynamic(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        base = (root / "web_templates" / "base.html").read_text(encoding="utf-8")
+        base_ids = set(re.findall(r"\bid=['\"]([^'\"]+)['\"]", base))
+        id_ref_re = re.compile(r"document\.getElementById\(['\"]([^'\"]+)['\"]\)")
+        known_dynamic_ids = {
+            ("fluorescence_3d_stacking.html", "fluorescence_3d_files_preview.js", "chanSwatch_${i}"),
+            ("fluorescence_lif.html", "fluorescence_lif_files.js", "renameInput"),
+            ("fluorescence_roi.html", "fluorescence_roi_exports.js", "roiRadialResultCard"),
+            ("run_history.html", "run_history.js", "runCompareBody"),
+            ("run_history.html", "run_history.js", "runPreflightBody"),
+            ("scripts.html", "scripts_runner.js", "param_base_dir"),
+            ("scripts.html", "scripts_runner.js", "param_csv_path"),
+            ("scripts.html", "scripts_runner.js", "param_data_dir"),
+            ("scripts.html", "scripts_runner.js", "param_input_path"),
+            ("scripts.html", "scripts_runner.js", "param_model_dir"),
+            ("scripts.html", "scripts_runner.js", "param_peaks_dir"),
+        }
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            template_text = template.read_text(encoding="utf-8")
+            template_ids = base_ids | set(re.findall(r"\bid=['\"]([^'\"]+)['\"]", template_text))
+            for script_name in self._page_script_refs(template_text):
+                script_path = root / "web_static" / "js" / "pages" / script_name
+                script_text = script_path.read_text(encoding="utf-8")
+                for match in id_ref_re.finditer(script_text):
+                    dom_id = match.group(1)
+                    key = (template.name, script_name, dom_id)
+                    if dom_id not in template_ids and key not in known_dynamic_ids:
+                        line = script_text[: match.start()].count("\n") + 1
+                        offenders.append(f"{template.name}:{script_name}:{line}: #{dom_id}")
+
+        self.assertEqual([], offenders)
+
+    def test_multi_script_pages_do_not_redeclare_global_lexicals(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            scripts = self._page_script_refs(template.read_text(encoding="utf-8"))
+            if len(scripts) < 2:
+                continue
+            seen: dict[str, str] = {}
+            for script_name in scripts:
+                script_path = root / "web_static" / "js" / "pages" / script_name
+                for name in self._top_level_js_lexicals(script_path.read_text(encoding="utf-8")):
+                    if name in seen:
+                        offenders.append(f"{template.name}: {name} in {seen[name]} and {script_name}")
+                    else:
+                        seen[name] = script_name
+
+        self.assertEqual([], offenders)
+
+    def test_inline_event_handlers_reference_available_functions(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        handler_re = re.compile(
+            r"\bon(?:click|change|input|submit|mousedown|mouseup|mousemove|mouseleave|wheel)"
+            r"=['\"]([^'\"]+)['\"]"
+        )
+        call_re = re.compile(r"\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(")
+        js_root = root / "web_static" / "js"
+        common_js = "\n".join(path.read_text(encoding="utf-8") for path in js_root.glob("dp_*.js"))
+        allowed_names = {
+            "alert",
+            "clearTimeout",
+            "confirm",
+            "decodeURIComponent",
+            "encodeURIComponent",
+            "if",
+            "parseFloat",
+            "parseInt",
+            "setTimeout",
+        }
+        allowed_prefixes = (
+            "Array.",
+            "DP.",
+            "JSON.",
+            "Math.",
+            "Number.",
+            "Object.",
+            "String.",
+            "console.",
+            "event.",
+        )
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            template_text = template.read_text(encoding="utf-8")
+            page_js = "\n".join(
+                (root / "web_static" / "js" / "pages" / script_name).read_text(
+                    encoding="utf-8"
+                )
+                for script_name in self._page_script_refs(template_text)
+            )
+            source = f"{template_text}\n{page_js}\n{common_js}"
+            for handler in handler_re.findall(template_text):
+                for name in call_re.findall(handler):
+                    if name in allowed_names:
+                        continue
+                    if name.startswith(allowed_prefixes):
+                        if name.startswith("DP.page."):
+                            local_name = name.rsplit(".", 1)[-1]
+                            has_function = re.search(
+                                rf"\bfunction\s+{re.escape(local_name)}\s*\(",
+                                source,
+                            )
+                            has_export = re.search(rf"['\"]{re.escape(local_name)}['\"]", source)
+                            if not has_function and not has_export:
+                                offenders.append(f"{template.name}: missing {name}")
+                        continue
+                    has_global_function = re.search(
+                        rf"\bfunction\s+{re.escape(name)}\s*\(",
+                        source,
+                    )
+                    has_window_export = re.search(rf"\bwindow\.{re.escape(name)}\s*=", source)
+                    if not has_global_function and not has_window_export:
+                        offenders.append(f"{template.name}: missing {name}")
+
+        self.assertEqual([], offenders)
+
     def test_abf_viewer_does_not_auto_scan_empty_path(self) -> None:
         root = Path(__file__).resolve().parents[1]
         template = (root / "web_templates" / "abf_viewer.html").read_text(encoding="utf-8")
@@ -229,6 +448,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('setStatusBar("Choose an ABF folder to begin.", "")', page_js)
         self.assertIn('data-rnorm-state="checked"', template)
         self.assertIn('id="folderAutoRefresh"', template)
+        self.assertIn('id="queueList"', template)
+        self.assertIn("queueExportAllCsv", template)
         self.assertIn("openLatestFile", page_js)
         self.assertIn("function updateAbfParameterGroups()", page_js)
         self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', page_js)
@@ -523,7 +744,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="previewMergePair"', template)
         self.assertIn('id="invertY"', template)
         for module in modules:
-            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertIn(f"static_asset('js/pages/{module}')", template)
         self.assertIn("function reloadCurrentRhdFile()", source)
         self.assertIn("function renderRhdFileList(options)", source)
         self.assertIn("Auto merge folder recording", template)
@@ -571,7 +792,7 @@ class WebAppSmokeTests(unittest.TestCase):
         )
 
         for module in modules:
-            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
         self.assertIn("window.LIF_VIEWER_FLAGS", template)
         self.assertNotIn("function loadLifPreview()", template)
@@ -590,7 +811,7 @@ class WebAppSmokeTests(unittest.TestCase):
         )
 
         for module in modules:
-            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
         self.assertIn("window.FL3D_FLAGS", template)
         self.assertNotIn("function renderVolume3D(volume)", template)
@@ -611,7 +832,7 @@ class WebAppSmokeTests(unittest.TestCase):
         )
 
         for module in modules:
-            self.assertIn(f"/static/js/pages/{module}", template)
+            self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
         self.assertIn("function detectPeaks()", js_source)
         self.assertIn("function autoGroupByTime()", js_source)
@@ -984,6 +1205,42 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(source.exists())
             self.assertTrue(Path(payload["data"]["operation_log_path"]).exists())
 
+    def test_abf_batch_run_button_surfaces_confirmation_and_empty_results(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        template = (root / "web_templates" / "abf_batch.html").read_text(encoding="utf-8")
+        js_source = (root / "web_static" / "js" / "pages" / "abf_batch.js").read_text(
+            encoding="utf-8"
+        )
+        rendered = self.client.get("/abf/batch").data.decode("utf-8")
+
+        self.assertIn('onclick="DP.page.runBatch()"', template)
+        self.assertIn("static_asset('js/pages/abf_batch.js')", template)
+        self.assertRegex(rendered, r"/static/js/pages/abf_batch\.js\?v=")
+        self.assertIn("Waiting for confirmation before moving or renaming files", js_source)
+        self.assertIn("No matching files processed", js_source)
+        self.assertIn("Enter folder, main token, and treatment token", js_source)
+        self.assertIn("tokenListText(mains)", js_source)
+
+    def test_abf_batch_job_endpoint_reports_empty_match_as_completed_job(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_empty_job_") as tmp:
+            started = self.client.post(
+                "/api/abf_batch/process_job",
+                json={
+                    "folder": tmp,
+                    "main": "ctrl",
+                    "treat": "T1",
+                    "move_files": False,
+                    "dry_run": False,
+                },
+            )
+            payload = started.get_json()
+            self.assertEqual(started.status_code, 200)
+            self.assertTrue(payload["ok"])
+            job = self._wait_for_api_job(payload["job_id"])
+            self.assertEqual(job["status"], "succeeded")
+            self.assertEqual(job["data"]["n"], 0)
+            self.assertEqual(job["data"]["message"], "No matching files processed")
+
     def test_fluorescence_refactor_keeps_route_contracts(self) -> None:
         routes = {str(rule.rule) for rule in self.client.application.url_map.iter_rules()}
         expected = {
@@ -1119,7 +1376,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function installFileListFilters()", dom_js)
         self.assertIn("function dpApplyParamGroups(selectId, attr)", params_js)
         self.assertIn("function dpApplyToggleGroups(controlId, attr)", params_js)
-        self.assertIn("Object.assign(window.DP.page, {logoutServer})", core_js)
+        self.assertIn("'logoutServer'", core_js)
+        self.assertIn("'saveGenericFileProfile'", core_js)
+        self.assertIn("window.DP.page[name] = window[name]", core_js)
         self.assertIn("load failed", api_js)
         self.assertIn("[hidden] { display: none !important; }", reset_css)
         self.assertNotIn("btn.click();\n        btn.click();", keyboard_js)

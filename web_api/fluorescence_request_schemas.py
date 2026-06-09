@@ -40,7 +40,7 @@ class FluorescenceRoiAnalyzeSequenceRequest(RequestModel):
     records: list[Any] = Field(default_factory=list)
     rois: list[Any] = Field(default_factory=list)
     metric: str = "mean"
-    plot_metric: str = "absolute"
+    plot_metric: str = "bg_normalized"
     bg_mode: str = "none"
     bg_roi: Any = None
     ref_sequence: str = ""
@@ -51,7 +51,7 @@ class FluorescenceRoiAnalyzeSequenceRequest(RequestModel):
     show_preview_name: Any = True
     show_scale_bar: Any = True
     scale_bar_label: str = ""
-    label_scale: Any = 1.0
+    label_scale: Any = 2.0
     img_width: Any = 0
     img_height: Any = 0
 
@@ -214,7 +214,7 @@ class FluorescencePreviewFrameRequest(RequestModel):
     frame: Any = 0
     lut: str = "Gray"
     p_low: Any = 1.0
-    p_high: Any = 99.0
+    p_high: Any = 99.8
     mode: str = "single"
     z_start: Any = None
     z_end: Any = None

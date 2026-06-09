@@ -29,12 +29,14 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Filename Tokens</div>
   <div class="param-row">
-    <div class="param-label" title="Filename token, e.g. control or main">Main Tok</div>
-    <input type="text" id="mainToken" class="input-path" placeholder="control">
+    <div class="param-label" title="Comma-separated filename tokens, e.g. 1mm, 3mm">Main Tok(s)</div>
+    <input type="text" id="mainToken" class="input-path" placeholder="1mm, 3mm" list="mainTokenSuggestions">
+    <datalist id="mainTokenSuggestions"></datalist>
   </div>
   <div class="param-row">
-    <div class="param-label" title="Filename token, e.g. treatment or treat">Treat Tok</div>
-    <input type="text" id="treatToken" class="input-path" placeholder="T1">
+    <div class="param-label" title="Comma-separated treatment tokens, e.g. MOS, T1">Treat Tok(s)</div>
+    <input type="text" id="treatToken" class="input-path" placeholder="MOS, T1" list="treatTokenSuggestions">
+    <datalist id="treatTokenSuggestions"></datalist>
   </div>
   <button class="btn-secondary" onclick="DP.page.suggestTokens()" style="width:100%; margin-top:8px;">Auto-detect Tokens</button>
 </div>
@@ -46,9 +48,9 @@
     <option value="10-step-20x">10-step (20x)</option>
     <option value="12-step-old">12-step (old)</option>
     <option value="25-step-wide">25-step (wide)</option>
-    <option value="custom">Custom</option>
+    <option value="custom" selected>Custom</option>
   </select>
-  <input type="text" id="powers" class="input-path" placeholder="0, 0.1, 0.3, 1, 3" value="0, 0.1, 0.3, 1, 3">
+  <input type="text" id="powers" class="input-path" placeholder="0, 0.1, 0.3, 1, 3" value="">
 </div>
 
 <div class="ctrl-section">
@@ -61,32 +63,35 @@
     <div class="param-label">V Ch</div>
     <input type="number" id="vCh" class="input-xs" value="1" min="0" max="10">
   </div>
-</div>
-
-<div class="ctrl-section">
-  <div class="ctrl-label">Baseline (ms)</div>
   <div class="param-row">
-    <div class="param-label">Start</div>
-    <input type="number" id="blPre0" class="input-xs" value="0" min="0">
-  </div>
-  <div class="param-row">
-    <div class="param-label">End</div>
-    <input type="number" id="blPre1" class="input-xs" value="50" min="0">
+    <div class="param-label">TTL Ch</div>
+    <input type="number" id="analogCh" class="input-xs" value="2" min="0" max="10">
   </div>
 </div>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">Peak Window</div>
+  <div class="ctrl-label">Segment Selection</div>
   <div class="param-row">
-    <div class="param-label">Win ms</div>
-    <input type="number" id="peakWin" class="input-xs" value="200" min="1">
+    <div class="param-label">Mode</div>
+    <select id="segmentMode" class="input-xs" onchange="DP.page.syncSegmentControls()">
+      <option value="auto" selected>Auto</option>
+      <option value="manual">Manual</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <div class="param-label">t0 s</div>
+    <input type="number" id="segmentT0" class="input-xs" value="0.1" step="any" min="0">
+  </div>
+  <div class="param-row">
+    <div class="param-label">t1 s</div>
+    <input type="number" id="segmentT1" class="input-xs" value="0.7" step="any" min="0">
   </div>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Batch Behavior</div>
   <label class="checkbox-row">
-    <input type="checkbox" id="dryRun" checked>
+    <input type="checkbox" id="dryRun">
     <span>Dry run only (plan and log, no files moved)</span>
   </label>
   <label class="checkbox-row">
@@ -129,5 +134,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/abf_batch.js"></script>
+<script defer src="{{ static_asset('js/pages/abf_batch.js') }}"></script>
 {% endblock %}

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from services import abf, csv_tools, echem, echem_lineshape, emg, rhd
+from services import abf, abf_batch, csv_tools, echem, echem_lineshape, emg, rhd
 from services.emg_peaks import EmgPeaksService
 
 
@@ -45,6 +45,235 @@ class CsvToolsServiceTests(unittest.TestCase):
             merged = csv_tools.merge_xy_tables([first, second], "time", "value")
             self.assertEqual(merged["time"].tolist(), [0, 1, 2, 3])
             self.assertEqual(csv_tools.default_merge_name(), "merged_preview_auto-auto.csv")
+
+
+class AbfBatchServiceTests(unittest.TestCase):
+    def test_scan_filename_tokens_reports_ambiguous_mains_without_guessing(self) -> None:
+        payload = abf_batch.scan_filename_tokens(
+            [
+                "1mm_MOS_sample_2_3_0003.abf",
+                "1mm_MOS_sample_2_3_0004.abf",
+                "3mm_MOS_sample_1_1_0000.abf",
+            ]
+        )
+
+        self.assertEqual(payload["mains"], ["1mm", "3mm"])
+        self.assertEqual(payload["treats"], ["MOS"])
+        self.assertEqual(payload["main_token"], "1mm, 3mm")
+        self.assertEqual(payload["treat_token"], "MOS")
+        self.assertTrue(payload["multiple_main_tokens"])
+        self.assertFalse(payload["multiple_treat_tokens"])
+        self.assertEqual(payload["main_counts"], {"1mm": 2, "3mm": 1})
+
+    def test_scan_filename_tokens_accepts_names_without_sample_label(self) -> None:
+        payload = abf_batch.scan_filename_tokens(
+            [
+                "1mm_MOS_1_1_0000.abf",
+                "3mm_MOS_2_2_0001.abf",
+            ]
+        )
+
+        self.assertEqual(payload["main_token"], "1mm, 3mm")
+        self.assertEqual(payload["treat_token"], "MOS")
+        self.assertEqual(payload["main_counts"], {"1mm": 1, "3mm": 1})
+
+    def test_process_payload_reports_abf_analysis_failures_as_warnings(self) -> None:
+        class FakePyabf:
+            class ABF:
+                def __init__(self, _path: str) -> None:
+                    raise RuntimeError("fake read failure")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_batch_warning_") as tmp:
+            root = Path(tmp)
+            (root / "ctrl_T1_sample_1_A_0001.abf").write_bytes(b"not a real abf")
+
+            payload = abf_batch.process_payload(
+                {
+                    "folder": str(root),
+                    "main": "ctrl",
+                    "treat": "T1",
+                    "powers": "0, 1",
+                    "move_files": False,
+                    "dry_run": False,
+                },
+                has_abf=True,
+                pyabf_mod=FakePyabf,
+                float_or=lambda value, _default: float(value),
+                int_or=lambda value, _default: int(value),
+                root_dir=root,
+            )
+
+        self.assertEqual(payload["n"], 0)
+        self.assertTrue(payload["warnings"])
+        self.assertIn("Analysis failed for ctrl_T1_sample_1_A_0001.abf", payload["warnings"][0])
+
+    def test_process_payload_writes_legacy_segment_csv_and_summary(self) -> None:
+        time_s = np.arange(5000, dtype=float) * 0.001
+        current = np.zeros_like(time_s)
+        current[2300] = 10.0
+        voltage = np.zeros_like(time_s)
+        voltage[1800:2500] = -5.0
+        analog = np.zeros_like(time_s)
+        analog[2200:2600] = 1.0
+
+        class FakePyabf:
+            class ABF:
+                sweepList = [0]
+
+                def __init__(self, _path: str) -> None:
+                    self._channel = 0
+                    self.sweepX = time_s
+
+                def setSweep(self, _sweep: int, channel: int = 0) -> None:
+                    self._channel = int(channel)
+                    self.sweepX = time_s
+                    if self._channel == 0:
+                        self.sweepY = current
+                    elif self._channel == 1:
+                        self.sweepY = voltage
+                    else:
+                        self.sweepY = analog
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_batch_segments_") as tmp:
+            root = Path(tmp)
+            source = root / "ctrl_T1_sample_1_A_0001.abf"
+            source.write_bytes(b"fake")
+
+            payload = abf_batch.process_payload(
+                {
+                    "folder": str(root),
+                    "main": "ctrl",
+                    "treat": "T1",
+                    "powers": "",
+                    "move_files": False,
+                    "dry_run": False,
+                    "segment_mode": "auto",
+                },
+                has_abf=True,
+                pyabf_mod=FakePyabf,
+                float_or=lambda value, _default: float(value),
+                int_or=lambda value, _default: int(value),
+                root_dir=root,
+            )
+
+            summary = Path(payload["csv_path"])
+            segment = root / "ctrl_T1_sample_1_A_0001_segment.csv"
+            self.assertTrue(summary.exists())
+            self.assertTrue(segment.exists())
+            df = pd.read_csv(summary)
+            self.assertIn("power_mW", df.columns)
+            self.assertTrue(pd.isna(df.loc[0, "power_mW"]))
+            self.assertEqual(payload["results"][0]["segment_csv"], str(segment))
+            self.assertTrue(any(item["role"] == "abf_batch_segment" for item in payload["outputs"]))
+
+    def test_process_payload_accepts_legacy_comma_separated_token_lists(self) -> None:
+        time_s = np.arange(5000, dtype=float) * 0.001
+        current = np.zeros_like(time_s)
+        current[2300] = 10.0
+        voltage = np.zeros_like(time_s)
+        voltage[1800:2500] = -5.0
+        analog = np.zeros_like(time_s)
+        analog[2200:2600] = 1.0
+
+        class FakePyabf:
+            class ABF:
+                sweepList = [0]
+
+                def __init__(self, _path: str) -> None:
+                    self.sweepX = time_s
+
+                def setSweep(self, _sweep: int, channel: int = 0) -> None:
+                    self.sweepX = time_s
+                    if int(channel) == 0:
+                        self.sweepY = current
+                    elif int(channel) == 1:
+                        self.sweepY = voltage
+                    else:
+                        self.sweepY = analog
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_batch_token_list_") as tmp:
+            root = Path(tmp)
+            (root / "1mm_MOS_sample_1_1_0000.abf").write_bytes(b"fake")
+            (root / "3mm_MOS_sample_1_1_0000.abf").write_bytes(b"fake")
+
+            payload = abf_batch.process_payload(
+                {
+                    "folder": str(root),
+                    "main": "1mm, 3mm",
+                    "treat": "MOS",
+                    "powers": "",
+                    "move_files": False,
+                    "dry_run": False,
+                    "segment_mode": "auto",
+                },
+                has_abf=True,
+                pyabf_mod=FakePyabf,
+                float_or=lambda value, _default: float(value),
+                int_or=lambda value, _default: int(value),
+                root_dir=root,
+            )
+
+            self.assertEqual(payload["n"], 2)
+            self.assertEqual(
+                set(payload["summary_paths"]),
+                {
+                    str(root / "1mm_MOS" / "summary_1mm_MOS.csv"),
+                    str(root / "3mm_MOS" / "summary_3mm_MOS.csv"),
+                },
+            )
+            self.assertTrue(all(Path(path).exists() for path in payload["summary_paths"]))
+
+    def test_process_payload_accepts_filenames_without_sample_label(self) -> None:
+        time_s = np.arange(5000, dtype=float) * 0.001
+        current = np.zeros_like(time_s)
+        current[2300] = 10.0
+        voltage = np.zeros_like(time_s)
+        voltage[1800:2500] = -5.0
+        analog = np.zeros_like(time_s)
+        analog[2200:2600] = 1.0
+
+        class FakePyabf:
+            class ABF:
+                sweepList = [0]
+
+                def __init__(self, _path: str) -> None:
+                    self.sweepX = time_s
+
+                def setSweep(self, _sweep: int, channel: int = 0) -> None:
+                    self.sweepX = time_s
+                    if int(channel) == 0:
+                        self.sweepY = current
+                    elif int(channel) == 1:
+                        self.sweepY = voltage
+                    else:
+                        self.sweepY = analog
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_batch_no_label_") as tmp:
+            root = Path(tmp)
+            source = root / "3mm_MOS_2_2_0001.abf"
+            source.write_bytes(b"fake")
+
+            payload = abf_batch.process_payload(
+                {
+                    "folder": str(root),
+                    "main": "3mm",
+                    "treat": "MOS",
+                    "powers": "0, 1.25",
+                    "move_files": False,
+                    "dry_run": False,
+                    "segment_mode": "auto",
+                },
+                has_abf=True,
+                pyabf_mod=FakePyabf,
+                float_or=lambda value, _default: float(value),
+                int_or=lambda value, _default: int(value),
+                root_dir=root,
+            )
+
+            self.assertEqual(payload["n"], 1)
+            self.assertEqual(payload["csv_path"], str(root / "3mm_MOS" / "summary_3mm_MOS.csv"))
+            self.assertTrue((root / "3mm_MOS" / "summary_3mm_MOS.csv").exists())
+            self.assertTrue((root / "3mm_MOS_2_2_0001_segment.csv").exists())
 
 
 class EchemServiceTests(unittest.TestCase):

@@ -40,15 +40,15 @@
   </div>
   <div class="param-row">
     <div class="param-label">Height</div>
-    <input type="number" id="pkHeight" class="input-sm" value="0.5" step="0.1">
+    <input type="number" id="pkHeight" class="input-sm" value="200" step="1">
   </div>
   <div class="param-row">
     <div class="param-label" title="Prominence: minimum peak height relative to surrounding signal">Prom</div>
-    <input type="number" id="pkProm" class="input-sm" value="0.3" step="0.1">
+    <input type="number" id="pkProm" class="input-sm" value="100" step="1">
   </div>
   <div class="param-row">
     <div class="param-label" title="Minimum spacing between consecutive peaks">Dist ms</div>
-    <input type="number" id="pkDist" class="input-sm" value="50" step="1" min="1">
+    <input type="number" id="pkDist" class="input-sm" value="400" step="1" min="1">
   </div>
   <div class="param-row">
     <div class="param-label">Max ms</div>
@@ -62,7 +62,7 @@
     <div class="param-label" title="Window length for peak width estimation">wlen ms</div>
     <input type="number" id="pkWlen" class="input-sm" step="1" min="0" placeholder="blank=auto">
   </div>
-  <label class="checkbox-row"><input type="checkbox" id="pkAdaptive"><span>Adaptive sigma</span></label>
+  <label class="checkbox-row"><input type="checkbox" id="pkAdaptive" checked><span>Adaptive sigma</span></label>
   <div class="param-row">
     <div class="param-label" title="Multiplier applied to baseline prominence threshold">k_prom</div>
     <input type="number" id="pkSigmaProm" class="input-sm" value="1" step="0.1" min="0">
@@ -181,9 +181,9 @@
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <script defer src="/static/vendor/uplot/uPlot.iife.min.js"></script>
 <script defer src="/static/js/dp_uplot.js"></script>
-<script defer src="/static/js/pages/emg_peaks_state.js"></script>
-<script defer src="/static/js/pages/emg_peaks_browser.js"></script>
-<script defer src="/static/js/pages/emg_peaks_detection.js"></script>
-<script defer src="/static/js/pages/emg_peaks_table_edit.js"></script>
-<script defer src="/static/js/pages/emg_peaks_export.js"></script>
+<script defer src="{{ static_asset('js/pages/emg_peaks_state.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/emg_peaks_browser.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/emg_peaks_detection.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/emg_peaks_table_edit.js') }}"></script>
+<script defer src="{{ static_asset('js/pages/emg_peaks_export.js') }}"></script>
 {% endblock %}

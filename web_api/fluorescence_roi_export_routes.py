@@ -71,7 +71,7 @@ def register_fluorescence_roi_export_routes(app, fl):
             return validation_error_response(exc)
         records = d.get("records", [])
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_sequence_analysis")
+        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_analysis")
 
         save_csv = _fl_bool(d.get("save_csv", True), True)
         save_plot = _fl_bool(d.get("save_plot", True), True)
@@ -180,7 +180,7 @@ def register_fluorescence_roi_export_routes(app, fl):
         rois = d.get("rois", [])
         preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
         output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_sequence_analysis")
+        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_analysis")
 
         frame_ms = int_or(d.get("frame_ms", 2000), 2000)
         frame_ms = max(20, frame_ms)

@@ -240,7 +240,7 @@ def register_fluorescence_stack_routes(app, fl):
             frame_idx = int_or(d.frame, 0)
             lut = d.lut
             p_low = float_or(d.p_low, 1.0)
-            p_high = float_or(d.p_high, 99.0)
+            p_high = float_or(d.p_high, 99.8)
             mode = d.mode
             z_start = d.z_start
             z_end = d.z_end

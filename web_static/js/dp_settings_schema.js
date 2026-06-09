@@ -98,9 +98,9 @@ const SETTINGS_SCHEMAS = {
     {section: 'Power Series'}, {id: 'powerPreset', label: 'Power preset', type: 'select', options: [
       ['10-step-normal', '10-step normal'], ['10-step-20x', '10-step 20x'], ['12-step-old', '12-step old'], ['25-step-wide', '25-step wide'], ['custom', 'Custom']
     ]}, {id: 'powers', label: 'Powers', type: 'text'},
-    {section: 'Channels'}, {id: 'iCh', label: 'Current channel', type: 'number'}, {id: 'vCh', label: 'Voltage channel', type: 'number'},
-    {section: 'Detection'}, {id: 'blPre0', label: 'Baseline start ms', type: 'number'}, {id: 'blPre1', label: 'Baseline end ms', type: 'number'}, {id: 'peakWin', label: 'Peak window ms', type: 'number'},
-    {section: 'Batch Behavior'}, {id: 'moveFiles', label: 'Reorganize files', type: 'checkbox'}, {id: 'reindexSeq', label: 'Renumber sequences', type: 'checkbox'},
+    {section: 'Channels'}, {id: 'iCh', label: 'Current channel', type: 'number'}, {id: 'vCh', label: 'Voltage channel', type: 'number'}, {id: 'analogCh', label: 'TTL channel', type: 'number'},
+    {section: 'Segment Selection'}, {id: 'segmentMode', label: 'Segment mode', type: 'select', options: [['auto', 'Auto'], ['manual', 'Manual']]}, {id: 'segmentT0', label: 'Start s', type: 'number'}, {id: 'segmentT1', label: 'End s', type: 'number'},
+    {section: 'Batch Behavior'}, {id: 'moveFiles', label: 'Reorganize files', type: 'checkbox'}, {id: 'reindexSeq', label: 'Renumber sequences', type: 'checkbox'}, {id: 'dryRun', label: 'Dry run only', type: 'checkbox'},
   ],
   abf_figure: [
     {section: 'Paths'}, {id: 'mainFolder', label: 'Main folder', type: 'path'}, {id: 'outputName', label: 'Output folder name', type: 'text'},

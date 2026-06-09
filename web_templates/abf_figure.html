@@ -50,7 +50,7 @@
 
 <div class="ctrl-section">
   <div class="ctrl-label">Linear X-Ranges</div>
-  <input type="text" id="xLin" class="input-path" placeholder="0-1; 0-4; 0-100" value="0-1; 0-4; 0-100">
+  <input type="text" id="xLin" class="input-path" placeholder="0-1; 0-100" value="0-1; 0-100">
 </div>
 
 <div class="ctrl-section">
@@ -84,5 +84,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/abf_figure.js"></script>
+<script defer src="{{ static_asset('js/pages/abf_figure.js') }}"></script>
 {% endblock %}

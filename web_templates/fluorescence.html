@@ -65,11 +65,11 @@
   </div>
   <div class="param-row">
     <div class="param-label" title="Upper percentile for contrast stretching">Hi %</div>
-    <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" onchange="refreshPreview()">
+    <input type="number" id="pHigh" class="input-sm" value="99.8" step="0.1" min="51" max="100" onchange="refreshPreview()">
   </div>
   <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="DP.page.setContrastPreset(0, 100)">Full</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.setContrastPreset(1, 99)">Auto</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.setContrastPreset(1, 99.8)">Auto</button>
     <button class="btn-secondary" type="button" onclick="DP.page.setContrastPreset(3, 99.7)">High</button>
   </div>
   <div style="margin-top:8px">
@@ -139,5 +139,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/fluorescence_stack.js"></script>
+<script defer src="{{ static_asset('js/pages/fluorescence_stack.js') }}"></script>
 {% endblock %}

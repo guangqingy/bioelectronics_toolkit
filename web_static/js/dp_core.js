@@ -55,7 +55,25 @@ Object.assign(window.DP.jobs, {
   cancel: cancelBackgroundJob,
   cancelActive: () => dpJobCancel(_dpActiveJobId),
 });
-Object.assign(window.DP.page, {logoutServer});
+[
+  'applyPrefsToCurrentPage',
+  'deleteSelectedGenericFileProfile',
+  'loadCurrentPageIntoSettings',
+  'loadPrefsModal',
+  'loadRunHistoryForCurrentProject',
+  'loadSelectedGenericFileProfile',
+  'logoutServer',
+  'pickFolderForSettings',
+  'renderPrefsView',
+  'resetGenericPageDefaults',
+  'restoreGenericPageDefaults',
+  'saveGenericFileProfile',
+  'saveGenericPageDefaults',
+  'savePrefsJson',
+  'savePrefsVisual',
+].forEach(name => {
+  if (typeof window[name] === 'function') window.DP.page[name] = window[name];
+});
 
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();

@@ -105,5 +105,5 @@ window.SCRIPTS_PAGE_BOOTSTRAP = {
   routeCategoryExplicit: {{ cat_explicit | tojson }}
 };
 </script>
-<script defer src="/static/js/pages/scripts_runner.js"></script>
+<script defer src="{{ static_asset('js/pages/scripts_runner.js') }}"></script>
 {% endblock %}

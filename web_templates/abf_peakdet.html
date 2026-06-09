@@ -57,7 +57,7 @@
     <input type="number" id="vCh" class="input-xs" value="1" min="0" max="10">
   </div>
   <label class="checkbox-row" style="margin-top:8px;">
-    <input type="checkbox" id="rNorm">
+    <input type="checkbox" id="rNorm" checked>
     <span>R normalization</span>
   </label>
 </div>
@@ -143,5 +143,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script defer src="/static/js/pages/abf_peakdet.js"></script>
+<script defer src="{{ static_asset('js/pages/abf_peakdet.js') }}"></script>
 {% endblock %}

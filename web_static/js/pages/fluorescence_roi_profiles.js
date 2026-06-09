@@ -21,7 +21,7 @@ let _lastPlotB64 = null;
 let _lastPreviewB64 = null;
 let _radialCsvContent = null;
 let _lastRadialPlotB64 = null;
-let _lastExportPrefix = 'roi_sequence_analysis';
+let _lastExportPrefix = 'roi_analysis';
 let _lastRefSequence = '';
 let _defaultOutputDir = '';
 

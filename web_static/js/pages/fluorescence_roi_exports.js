@@ -4,8 +4,8 @@ function nowStamp() {
 
 function sanitizePrefix(s) {
   const raw = String(s || '').trim();
-  const use = raw || 'roi_sequence_analysis';
-  return use.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._]+|[._]+$/g, '') || 'roi_sequence_analysis';
+  const use = raw || 'roi_analysis';
+  return use.replace(/[^a-zA-Z0-9._-]+/g, '_').replace(/^[._]+|[._]+$/g, '') || 'roi_analysis';
 }
 
 function buildExportPrefix() {
@@ -133,7 +133,7 @@ function runAnalysis() {
   const pixelSizeRaw = document.getElementById('pixelSizeUm').value.trim();
   const pixelSizeUm = pixelSizeRaw ? parseFloat(pixelSizeRaw) : undefined;
   const scaleBarLabel = document.getElementById('scaleLabel').value.trim();
-  const labelScale = parseFloat(document.getElementById('labelScale').value) || 1.0;
+  const labelScale = parseFloat(document.getElementById('labelScale').value) || 2.0;
   const showPreviewName = document.getElementById('showPreviewName').checked;
   const showScaleBar = document.getElementById('showScaleBar').checked;
 
@@ -298,7 +298,7 @@ function exportGif() {
   const pixelSizeRaw = document.getElementById('pixelSizeUm').value.trim();
   const pixelSizeUm = pixelSizeRaw ? parseFloat(pixelSizeRaw) : undefined;
   const scaleBarLabel = document.getElementById('scaleLabel').value.trim();
-  const labelScale = parseFloat(document.getElementById('labelScale').value) || 1.0;
+  const labelScale = parseFloat(document.getElementById('labelScale').value) || 2.0;
   const showPreviewName = document.getElementById('showPreviewName').checked;
   const showScaleBar = document.getElementById('showScaleBar').checked;
 

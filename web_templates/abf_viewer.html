@@ -45,8 +45,19 @@
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Batch Export</summary>
-  <div class="status-bar">Batch exports now live on the ABF Batch page.</div>
-  <a class="btn-secondary btn-block" href="/abf/batch" style="text-align:center;text-decoration:none">Open ABF Batch</a>
+  <div class="btn-row">
+    <button class="btn-secondary" type="button" onclick="DP.page.queueAddCurrent()">Add Current</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.queueAddAll()">Add All</button>
+  </div>
+  <div id="queueList" class="file-list abf-list-sm" style="margin-top:8px"></div>
+  <div class="btn-row" style="margin-top:8px">
+    <button class="btn-secondary" type="button" onclick="DP.page.queueMove(-1)">Up</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.queueMove(1)">Down</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.queueRemoveActive()">Remove</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.queueClear()">Clear</button>
+  </div>
+  <button class="btn-primary btn-block" type="button" onclick="DP.page.queueExportAllCsv()" style="margin-top:8px">Export Queue CSV</button>
+  <a class="btn-secondary btn-block" href="/abf/batch" style="margin-top:8px;text-align:center;text-decoration:none">Open ABF Batch Processor</a>
 </details>
 
 <div class="ctrl-section" id="infoSection" style="display:none;">
@@ -132,6 +143,7 @@
   <select id="dsf" class="abf-select" onchange="plot()">
     <option value="1">1x (no downsample)</option>
     <option value="2">2x</option>
+    <option value="3">3x</option>
     <option value="5">5x</option>
     <option value="10">10x</option>
   </select>
@@ -175,5 +187,5 @@
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <script defer src="/static/vendor/uplot/uPlot.iife.min.js"></script>
 <script defer src="/static/js/dp_uplot.js"></script>
-<script defer src="/static/js/pages/abf_viewer.js"></script>
+<script defer src="{{ static_asset('js/pages/abf_viewer.js') }}"></script>
 {% endblock %}

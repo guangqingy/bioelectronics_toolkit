@@ -55,7 +55,7 @@ function currentVolumePayload(forExport) {
     ...currentPreviewPayload(),
     ...volumeQualitySettings(!!forExport),
     channel_mode: document.getElementById('volumeChannelMode')?.value || 'composite',
-    denoise: 'Off',
+    denoise: document.getElementById('volumeDenoise')?.value || 'Off',
     interlayer_level: document.getElementById('interlayerLevel')?.value || 'middle',
     density_mode: document.getElementById('volumeDensityMode')?.value || 'off',
     density_radius_um: Number.isFinite(densityRadius) ? Math.max(0, densityRadius) : null,
@@ -79,6 +79,7 @@ window.dpApplyRunManifest = async manifest => {
     document.getElementById('volumeQuality').value = qualityMap[params.volume_quality] || params.volume_quality;
   }
   if (params.interlayer_level) document.getElementById('interlayerLevel').value = params.interlayer_level;
+  if (params.denoise) document.getElementById('volumeDenoise').value = params.denoise;
   if (params.density_mode) document.getElementById('volumeDensityMode').value = params.density_mode;
   if (params.density_radius_um !== undefined && params.density_radius_um !== null) {
     document.getElementById('volumeDensityRadius').value = params.density_radius_um;

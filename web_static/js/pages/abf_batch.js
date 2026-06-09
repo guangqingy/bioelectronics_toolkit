@@ -9,9 +9,39 @@ const POWER_PRESETS = {
 
 function applyPowerPreset() {
   const key = document.getElementById('powerPreset').value;
-  if (key !== 'custom' && POWER_PRESETS[key]) {
+  if (key === 'custom') {
+    document.getElementById('powers').value = '';
+  } else if (POWER_PRESETS[key]) {
     document.getElementById('powers').value = POWER_PRESETS[key];
   }
+}
+
+function syncSegmentControls() {
+  const manual = document.getElementById('segmentMode').value === 'manual';
+  document.getElementById('segmentT0').disabled = !manual;
+  document.getElementById('segmentT1').disabled = !manual;
+}
+
+function updateTokenSuggestions(listId, tokens) {
+  const list = document.getElementById(listId);
+  if (!list) return;
+  list.innerHTML = '';
+  (tokens || []).forEach(token => {
+    const option = document.createElement('option');
+    option.value = token;
+    list.appendChild(option);
+  });
+}
+
+function formatDetectedTokens(tokens, counts) {
+  return (tokens || []).map(token => {
+    const count = counts && counts[token];
+    return count ? `${token} (${count})` : token;
+  }).join(', ');
+}
+
+function tokenListText(tokens) {
+  return (tokens || []).filter(Boolean).join(', ');
 }
 
 function scanFolder() {
@@ -65,10 +95,23 @@ function suggestTokens() {
   api('/api/abf_batch/scan_tokens', { files: fileNames })
     .then(r => {
       if (r.error) throw new Error(r.error);
-      if (r.main_token) document.getElementById('mainToken').value = r.main_token;
-      if (r.treat_token) document.getElementById('treatToken').value = r.treat_token;
-      setStatus('status', 'Tokens suggested', 'ok');
-      toast('Tokens auto-detected');
+      const mains = Array.isArray(r.mains) ? r.mains : [];
+      const treats = Array.isArray(r.treats) ? r.treats : [];
+      updateTokenSuggestions('mainTokenSuggestions', mains);
+      updateTokenSuggestions('treatTokenSuggestions', treats);
+      if (mains.length) document.getElementById('mainToken').value = tokenListText(mains);
+      if (treats.length) document.getElementById('treatToken').value = tokenListText(treats);
+
+      if (mains.length || treats.length) {
+        const parts = [];
+        if (mains.length) parts.push('main: ' + formatDetectedTokens(mains, r.main_counts));
+        if (treats.length) parts.push('treat: ' + formatDetectedTokens(treats, r.treat_counts));
+        setStatus('status', 'Tokens suggested (' + parts.join('; ') + ')', 'ok');
+        toast('Tokens auto-detected');
+      } else {
+        setStatus('status', 'No filename tokens matched the expected pattern', 'warning');
+        toast('No matching filename tokens found', true);
+      }
     })
     .catch(e => {
       setStatus('status', 'Suggestion failed', 'error');
@@ -95,26 +138,30 @@ async function runBatch() {
   const powers = document.getElementById('powers').value.trim();
   const i_ch = parseInt(document.getElementById('iCh').value, 10);
   const v_ch = parseInt(document.getElementById('vCh').value, 10);
-  const bl_pre0 = parseInt(document.getElementById('blPre0').value, 10);
-  const bl_pre1 = parseInt(document.getElementById('blPre1').value, 10);
-  const peak_window = parseInt(document.getElementById('peakWin').value, 10);
+  const analog_ch = parseInt(document.getElementById('analogCh').value, 10);
+  const segment_mode = document.getElementById('segmentMode').value;
+  const segment_t0 = parseFloat(document.getElementById('segmentT0').value);
+  const segment_t1 = parseFloat(document.getElementById('segmentT1').value);
   const move_files = document.getElementById('moveFiles').checked;
   const reindex_seq = document.getElementById('reindexSeq').checked;
   const dry_run = document.getElementById('dryRun').checked;
 
   if (!folder || !main || !treat) {
+    setStatus('status', 'Enter folder, main token, and treatment token before running batch', 'error');
     toast('Enter all required parameters', true);
     return;
   }
 
   const payload = {
     folder, main, treat, powers,
-    i_ch, v_ch, bl_pre0, bl_pre1, peak_window,
+    i_ch, v_ch, analog_ch,
+    segment_mode, segment_t0, segment_t1, save_segments: true,
     move_files, reindex_seq, dry_run
   };
 
   if ((move_files || reindex_seq) && !dry_run) {
     const total = _files.length || 'all matching';
+    setStatus('status', 'Waiting for confirmation before moving or renaming files...', 'warning');
     const confirmed = await dpConfirmAction({
       title: 'Apply ABF filesystem changes?',
       subtitle: 'Dry run is off, so this can move or rename files on disk.',
@@ -181,16 +228,22 @@ async function runBatch() {
         'Status': row.status || 'ok',
         'Main': row.main_val || '\u2014',
         'Treat': row.treat_val || '\u2014',
-        'Peaks': row.peak_count || 0
+        'Segment': row.segment_csv ? 'saved' : '\u2014'
       }));
 
-      document.getElementById('resultBody').innerHTML = buildTable(rows, ['File', 'Status', 'Main', 'Treat', 'Peaks']);
+      const emptyMessage = rows.length === 0
+        ? '<div class="status-bar status-warning"><span class="status-text">' + escHtml(r.message || 'No matching files processed. Check filename tokens and expected _sample_ filename pattern.') + '</span></div>'
+        : '';
+      const warnings = Array.isArray(r.warnings) && r.warnings.length
+        ? '<div class="status-bar status-warning" style="margin-top:8px">' + r.warnings.map(escHtml).join('<br>') + '</div>'
+        : '';
+      document.getElementById('resultBody').innerHTML = emptyMessage + buildTable(rows, ['File', 'Status', 'Main', 'Treat', 'Segment']) + warnings;
       document.getElementById('resultCard').style.display = 'block';
       const mv = Number(r.moved_count || 0);
       const rn = Number(r.renamed_count || 0);
       const wn = Array.isArray(r.warnings) ? r.warnings.length : 0;
       document.getElementById('resultHeader').textContent = 'Results (' + rows.length + ' files | moved=' + mv + ' | renamed=' + rn + ' | warn=' + wn + ')';
-      setStatus('status', 'Batch complete', 'ok');
+      setStatus('status', rows.length ? 'Batch complete' : (r.message || 'No matching files processed'), rows.length ? 'ok' : 'warning');
       toast('Batch processing complete');
       recordRunHistory({
         view: 'abf_batch',
@@ -198,7 +251,7 @@ async function runBatch() {
         status: wn ? 'warning' : 'ok',
         project_root: folder,
         input_files: (_files || []).map(f => ({path: (typeof f === 'string' ? f : f.path), role: 'source_abf'})).filter(f => f.path),
-        outputs: [
+        outputs: Array.isArray(r.outputs) ? r.outputs : [
           ...(r.csv_path ? [{path: r.csv_path, type: 'summary_csv'}] : []),
           ...(r.operation_log_path ? [{path: r.operation_log_path, type: 'operation_log'}] : []),
         ],
@@ -219,8 +272,8 @@ async function runBatch() {
 }
 
 window.addEventListener('load', () => {
-  document.getElementById('powerPreset').value = '10-step-normal';
-  applyPowerPreset();
+  document.getElementById('powerPreset').value = 'custom';
+  syncSegmentControls();
 });
 
 // DP.page exports for template event handlers.
@@ -232,6 +285,8 @@ window.DP.page = window.DP.page || {};
   'runBatch',
   'scanFolder',
   'suggestTokens',
+  'syncSegmentControls',
+  'tokenListText',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

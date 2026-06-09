@@ -73,7 +73,7 @@ def register_fluorescence_roi_sequence_routes(app, fl):
         records = d.get("records", [])
         rois = d.get("rois", [])
         metric = d.get("metric", "mean")
-        plot_metric = d.get("plot_metric", "absolute")
+        plot_metric = d.get("plot_metric", "bg_normalized")
         bg_mode = d.get("bg_mode", "none")
         bg_roi = d.get("bg_roi", None)
         ref_sequence_raw = str(d.get("ref_sequence", "") or "").strip()
@@ -88,7 +88,7 @@ def register_fluorescence_roi_sequence_routes(app, fl):
         show_preview_name = _fl_bool(d.get("show_preview_name", True), True)
         show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
         scale_bar_label = str(d.get("scale_bar_label", "") or "").strip()
-        label_scale = float_or(d.get("label_scale", 1.0), 1.0)
+        label_scale = float_or(d.get("label_scale", 2.0), 2.0)
         label_scale = max(0.5, min(4.0, label_scale))
 
         valid_metrics = {"mean", "top20_mean", "sum", "max", "std"}
@@ -96,7 +96,7 @@ def register_fluorescence_roi_sequence_routes(app, fl):
         if metric not in valid_metrics:
             metric = "mean"
         if plot_metric not in valid_plot_metrics:
-            plot_metric = "absolute"
+            plot_metric = "bg_normalized"
 
         if not isinstance(records, list) or not records:
             return err("No records selected")

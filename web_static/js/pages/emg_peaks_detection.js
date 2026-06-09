@@ -6,9 +6,9 @@ function detectPeaks() {
     return;
   }
 
-  const pk_height = parseFloat(document.getElementById('pkHeight').value) || 0.5;
-  const pk_prom = parseFloat(document.getElementById('pkProm').value) || 0.3;
-  const pk_dist = parseInt(document.getElementById('pkDist').value, 10) || 50;
+  const pk_height = parseFloat(document.getElementById('pkHeight').value) || 200;
+  const pk_prom = parseFloat(document.getElementById('pkProm').value) || 100;
+  const pk_dist = parseInt(document.getElementById('pkDist').value, 10) || 400;
   const pk_dur = parseInt(document.getElementById('pkDur').value, 10) || 200;
   const pk_minw = parseFloat(document.getElementById('pkMinW').value);
   const pk_wlen = document.getElementById('pkWlen').value.trim();

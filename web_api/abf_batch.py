@@ -34,9 +34,11 @@ class AbfBatchProcessRequest(RequestModel):
     powers: str = ""
     i_ch: Any = 0
     v_ch: Any = 1
-    bl_pre0: Any = 0
-    bl_pre1: Any = 50
-    peak_window: Any = 200
+    analog_ch: Any = 2
+    segment_mode: str = "auto"
+    segment_t0: Any = 0.1
+    segment_t1: Any = 0.7
+    save_segments: bool = True
     move_files: bool = True
     reindex_seq: bool = False
     dry_run: bool = False

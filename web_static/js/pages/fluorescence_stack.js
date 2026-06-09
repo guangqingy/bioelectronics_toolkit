@@ -271,7 +271,7 @@ function _doPreview() {
   const frame  = parseInt(document.getElementById('frameSlider').value, 10);
   const lut    = document.getElementById('lutSelect').value;
   const p_low  = parseFloat(document.getElementById('pLow').value) || 1;
-  const p_high = parseFloat(document.getElementById('pHigh').value) || 99;
+  const p_high = parseFloat(document.getElementById('pHigh').value) || 99.8;
   const mode = document.getElementById('displayMode').value;
   const z_start = Math.max(0, (parseInt(document.getElementById('zStart').value || '1', 10) || 1) - 1);
   const z_end = Math.max(0, (parseInt(document.getElementById('zEnd').value || '1', 10) || 1) - 1);
