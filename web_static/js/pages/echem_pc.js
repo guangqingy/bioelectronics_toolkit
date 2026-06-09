@@ -285,6 +285,42 @@ function exportCSV() {
   exportSegments();
 }
 
+function figureExportPayload(fmt) {
+  return {
+    path: _currentFile,
+    fmt,
+    pairs: activePairs(),
+    window: _lastWindow,
+    dpi: 300
+  };
+}
+
+function exportFigure(fmt) {
+  if (!_currentFile) { setStatus('status', 'No file selected', 'error'); return; }
+  const payload = figureExportPayload(fmt);
+  setStatus('status', 'Saving ' + fmt.toUpperCase() + ' figure...', 'loading');
+  dpRunJobEndpoint('/api/echem/export_figure_job', payload, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Saving ${fmt.toUpperCase()} figure${pct}${msg}`, 'loading');
+    },
+  }).then(d => {
+    setStatus('status', 'Saved figure: ' + (d.saved_path || 'ok'), 'ok');
+    recordRunHistory({
+      view: 'echem_pc',
+      title: 'EChem Photocurrent Figure Export',
+      status: 'ok',
+      project_root: document.getElementById('folderPath').value.trim(),
+      input_files: [{path: _currentFile, role: 'source_echem'}],
+      outputs: dpAsPathRecords(d.saved_path ? [d.saved_path] : [], 'photocurrent_preview_' + fmt),
+      parameters: payload,
+      metadata: {format: fmt},
+    });
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
 function exportSegments() {
   const pairs = activePairs();
   if (!_currentFile || !pairs.length) { setStatus('status', 'No active pairs to export', 'error'); return; }
@@ -356,7 +392,9 @@ window.DP.page = window.DP.page || {};
   'configureFolderAutoRefresh',
   'detect',
   'exportCSV',
+  'exportFigure',
   'exportSegments',
+  'figureExportPayload',
   'num',
   'openLatestFile',
   'openWaveformAverager',

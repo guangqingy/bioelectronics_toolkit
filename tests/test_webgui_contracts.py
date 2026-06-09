@@ -452,6 +452,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("queueExportAllCsv", template)
         self.assertIn("openLatestFile", page_js)
         self.assertIn("function updateAbfParameterGroups()", page_js)
+        self.assertIn('params.get("rnorm")', page_js)
+        self.assertIn("rNorm.checked = true", page_js)
         self.assertIn('dpBindToggleGroups("rNorm", "data-rnorm-state")', page_js)
         self.assertNotIn('DEFAULT_DATA_DIR + "/examples"', template)
 
@@ -1240,6 +1242,38 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(job["status"], "succeeded")
             self.assertEqual(job["data"]["n"], 0)
             self.assertEqual(job["data"]["message"], "No matching files processed")
+
+    def test_echem_pc_and_pv_export_legacy_preview_figures(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_echem_figures_") as tmp:
+            root = Path(tmp)
+            pc_path = root / "pc.txt"
+            pv_path = root / "pv.csv"
+            pc_path.write_text(
+                "Time/s\tI/mA\n0\t0\n0.001\t0.5\n0.002\t-0.3\n0.003\t0\n",
+                encoding="utf-8",
+            )
+            pv_path.write_text(
+                "Time/s,Voltage/V\n0,0\n0.01,0.1\n0.02,0\n0.03,-0.05\n",
+                encoding="utf-8",
+            )
+
+            cases = [
+                ("/api/echem/export_figure", pc_path, "png", "pc_preview.png"),
+                ("/api/echem/export_figure", pc_path, "svg", "pc_preview_signal.svg"),
+                ("/api/echem_pv/export_figure", pv_path, "png", "pv_preview.png"),
+                ("/api/echem_pv/export_figure", pv_path, "svg", "pv_preview_signal.svg"),
+            ]
+            for endpoint, source, fmt, filename in cases:
+                with self.subTest(endpoint=endpoint, fmt=fmt):
+                    response = self.client.post(endpoint, json={"path": str(source), "fmt": fmt})
+                    payload = response.get_json()
+
+                    self.assertEqual(response.status_code, 200)
+                    self.assertTrue(payload["ok"])
+                    out_path = root / filename
+                    self.assertEqual(payload["data"]["saved_path"], str(out_path))
+                    self.assertTrue(out_path.exists())
+                    self.assertGreater(out_path.stat().st_size, 100)
 
     def test_fluorescence_refactor_keeps_route_contracts(self) -> None:
         routes = {str(rule.rule) for rule in self.client.application.url_map.iter_rules()}

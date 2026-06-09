@@ -11,7 +11,7 @@ from flask import Response, jsonify
 from pydantic import Field, ValidationError
 
 from services import echem as echem_service
-from services.matplotlib_utils import new_subplots
+from services.matplotlib_utils import close_figure, new_subplots
 from web_api.common import as_bool, mode_is_save
 
 from .jobs import submit_json_task
@@ -66,6 +66,18 @@ class EchemPcExportRequest(RequestModel):
     pos_min_mA: Any = None
     neg_min_abs_mA: Any = None
     pair_window_ms: Any = 50.0
+
+
+class EchemPcFigureExportRequest(RequestModel):
+    path: str = Field(min_length=1)
+    fmt: str = "png"
+    pairs: list[Any] = Field(default_factory=list)
+    window: list[Any] = Field(default_factory=list)
+    x_min: Any = None
+    x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
+    dpi: Any = 300
 
 
 def register_echem_pc_routes(app, ctx):
@@ -231,6 +243,113 @@ def register_echem_pc_routes(app, ctx):
         save_body = dict(body or {})
         save_body["mode"] = "save"
         return _echem_pc_export_payload(save_body)["data"]
+
+    def _figure_window(d: dict, t: np.ndarray) -> tuple[float, float]:
+        window = d.get("window", [])
+        x0 = float_or(d.get("x_min"), None)
+        x1 = float_or(d.get("x_max"), None)
+        if (x0 is None or x1 is None) and isinstance(window, list) and len(window) >= 2:
+            x0 = float_or(window[0], None)
+            x1 = float_or(window[1], None)
+        if x0 is None or x1 is None or x1 <= x0:
+            x0, x1 = float(t[0]), float(t[-1])
+        if x1 <= x0:
+            x1 = x0 + 1.0
+        return float(x0), float(x1)
+
+    def _marker_index_from_pair(pair: dict, t: np.ndarray) -> int | None:
+        raw_idx = pair.get("pi", pair.get("idx"))
+        try:
+            idx = int(raw_idx)
+            if 0 <= idx < len(t):
+                return idx
+        except Exception:
+            pass
+        raw_t = pair.get("t_pos", pair.get("time"))
+        marker_t = float_or(raw_t, None)
+        if marker_t is None:
+            return None
+        return int(np.argmin(np.abs(t - marker_t)))
+
+    def _echem_pc_figure_export_payload(d: dict) -> dict:
+        src = Path(d.get("path", ""))
+        if not src.exists():
+            raise ValueError(f"File not found: {src}")
+        fmt = str(d.get("fmt", "png") or "png").lower()
+        if fmt not in {"png", "svg"}:
+            raise ValueError("Figure format must be png or svg")
+
+        t, i_raw, _t_col, _i_col = _load_echem(str(src))
+        if len(t) == 0:
+            raise ValueError("No data points found in file")
+        x0, x1 = _figure_window(d, t)
+        mask = (t >= x0) & (t <= x1)
+        if not np.any(mask):
+            raise ValueError("No points in the current preview window")
+        y_min = float_or(d.get("y_min"), None)
+        y_max = float_or(d.get("y_max"), None)
+        if y_min is None or y_max is None or y_max <= y_min:
+            y_view = i_raw[mask]
+            pad = float(np.ptp(y_view)) * 0.08 if len(y_view) else 0.0
+            if pad <= 0:
+                pad = 1.0
+            y_min = float(np.nanmin(y_view) - pad)
+            y_max = float(np.nanmax(y_view) + pad)
+
+        out_path = src.with_name(
+            f"{src.stem}_preview.png" if fmt == "png" else f"{src.stem}_preview_signal.svg"
+        )
+        fig, ax = new_subplots(figsize=(9, 4.8) if fmt == "png" else (8, 3), dpi=100)
+        try:
+            if fmt == "svg":
+                ax.plot(t[mask], i_raw[mask], color=line_color, lw=1.0)
+                ax.set_xlim(x0, x1)
+                ax.set_ylim(y_min, y_max)
+                ax.set_position([0, 0, 1, 1])
+                ax.set_xticks([])
+                ax.set_yticks([])
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+                ax.set_frame_on(False)
+                ax.axis("off")
+                fig.savefig(
+                    out_path,
+                    format="svg",
+                    bbox_inches="tight",
+                    pad_inches=0,
+                    transparent=True,
+                    facecolor="none",
+                )
+            else:
+                ax.plot(t, i_raw, color=line_color, lw=1.0)
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel("Current (mA)")
+                ax.set_xlim(x0, x1)
+                ax.set_ylim(y_min, y_max)
+                marker_t = []
+                marker_i = []
+                for pair in d.get("pairs", []):
+                    idx = _marker_index_from_pair(pair, t)
+                    if idx is not None and x0 <= float(t[idx]) <= x1:
+                        marker_t.append(float(t[idx]))
+                        marker_i.append(float(i_raw[idx]))
+                if marker_t:
+                    ax.scatter(marker_t, marker_i, s=50, marker="^", color="red", zorder=5)
+                dpi = int(float_or(d.get("dpi"), 300) or 300)
+                fig.savefig(out_path, dpi=dpi, bbox_inches="tight", pad_inches=0.05, facecolor="white")
+        finally:
+            close_figure(fig)
+
+        role = f"photocurrent_preview_{fmt}"
+        return {
+            "saved_path": str(out_path),
+            "fmt": fmt,
+            "outputs": [{"path": str(out_path), "type": fmt, "role": role}],
+        }
+
+    def _echem_pc_figure_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting photocurrent preview figure")
+        return _echem_pc_figure_export_payload(dict(body or {}))
 
     @app.route("/api/echem/browse", methods=["POST"])
     @request_schema(EchemPcBrowseRequest)
@@ -450,4 +569,34 @@ def register_echem_pc_routes(app, ctx):
             _echem_pc_export_task,
             body,
             metadata={"endpoint": "/api/echem/export"},
+        )
+
+    @app.route("/api/echem/export_figure", methods=["POST"])
+    @request_schema(EchemPcFigureExportRequest)
+    def api_echem_export_figure():
+        try:
+            d = parse_json_payload(EchemPcFigureExportRequest).model_dump()
+            result = _echem_pc_figure_export_payload(d)
+            return api_ok(result, outputs=result["outputs"])
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/echem/export_figure_job", methods=["POST"])
+    @request_schema(EchemPcFigureExportRequest)
+    def api_echem_export_figure_job():
+        try:
+            body = parse_json_payload(EchemPcFigureExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        return submit_json_task(
+            jobs,
+            "echem_pc.export_figure",
+            "Export echem photocurrent preview figure",
+            _echem_pc_figure_export_task,
+            body,
+            metadata={"endpoint": "/api/echem/export_figure"},
         )

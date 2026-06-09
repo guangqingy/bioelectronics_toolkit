@@ -50,6 +50,43 @@ Good first targets:
 - Fluorescence ROI CSV/image output writers.
 - GIF ROI overlay, crop, kymograph, and analysis exporters.
 
+## Legacy Audit 2026-06-09
+
+All 13 modules under `desktop_apps/legacy/` have a thin launcher and a WebGUI
+route, with `--legacy` fallback still available. The only extra desktop launcher,
+`desktop_apps/launchers/fluorescence_tiff_to_gif.py`, is a service-backed CLI
+wrapper rather than a historical Tk GUI.
+
+Changes made during this audit:
+
+- ABF batch now restores the legacy `Pure CSV Conversion` path in WebGUI. It
+  writes `_segment.csv` files only, skips power parsing and summary metrics, and
+  uses the legacy manual `t0/t1` segment window for pure conversion.
+- ABF viewer launchers now preserve the conflicting legacy defaults: the
+  photocurrent viewer opens `/abf/viewer?rnorm=1`, while the sweep viewer opens
+  `/abf/viewer` with R normalization off.
+- EChem photocurrent and photovoltage WebGUI pages now restore the legacy
+  preview figure exports: `<stem>_preview.png` and
+  `<stem>_preview_signal.svg`, separate from pairs/pulses CSV export.
+
+Confirmed parity points:
+
+- ABF peaks, ABF figure generation, CSV viewer, RHD viewer, EMG peak selector,
+  Fluorescence LUT stack export, and Histology naming/project creation all expose
+  the legacy core actions and defaults through WebGUI controls or service-backed
+  routes.
+- EMG grouped export keeps the legacy fixed +/-100 ms per-peak segment window.
+- Fluorescence ROI keeps the legacy core defaults for prefix, GIF duration,
+  scale bar, label scale, background defaults, and BG-normalized plot mode, while
+  WebGUI adds file profiles, radial/concentric ROI outputs, and run manifests.
+
+Known intentional divergence:
+
+- Fluorescence ROI WebGUI does not try to clone every historical notebook tab
+  layout from the Tk app. The Web page is the maintained workflow for sequence
+  CSV/plot/GIF/reference/radial outputs; the older advanced summary plots remain
+  available through `bte-fl-roi --legacy` if a one-off reproduction is needed.
+
 ## User-Facing Guidance
 
 - Prefer the WebGUI for batch work, cached defaults, per-file settings, and

@@ -292,8 +292,11 @@ def process_payload(
     treat_tokens = _parse_token_list(treat_token)
     main_filter = {token.lower() for token in main_tokens}
     treat_filter = {token.lower() for token in treat_tokens}
+    pure_csv = bool(data.get("pure_csv", False))
+    powers = []
     try:
-        powers = [float(x) for x in data.get("powers", "").split(",") if x.strip()]
+        if not pure_csv:
+            powers = [float(x) for x in data.get("powers", "").split(",") if x.strip()]
     except ValueError as exc:
         raise ValueError("Power list must be comma-separated numbers") from exc
     i_ch = int_or(data.get("i_ch", 0), 0)
@@ -302,7 +305,7 @@ def process_payload(
     move_files = bool(data.get("move_files", True))
     reindex_seq = bool(data.get("reindex_seq", False))
     dry_run = bool(data.get("dry_run", False))
-    save_segments = bool(data.get("save_segments", True))
+    save_segments = bool(data.get("save_segments", True)) or pure_csv
     segment_mode = str(data.get("segment_mode", "auto") or "auto").strip().lower()
     if segment_mode not in {"auto", "manual"}:
         raise ValueError("Segment mode must be 'auto' or 'manual'")
@@ -442,12 +445,15 @@ def process_payload(
             pulses = None
             segment_csv = ""
             if save_segments:
+                # Legacy Pure CSV Conversion uses the manual t0/t1 window even
+                # when the normal batch segment mode is set to Auto.
+                effective_segment_mode = "manual" if pure_csv else segment_mode
                 t0, t1, pulses = _segment_bounds(
                     time_s,
                     current,
                     voltage,
                     analog,
-                    mode=segment_mode,
+                    mode=effective_segment_mode,
                     manual_t0=float(segment_t0),
                     manual_t1=float(segment_t1),
                     pulses=pulses,
@@ -471,6 +477,22 @@ def process_payload(
                 seg_df.to_csv(out_csv, index=False)
                 segment_csv = str(out_csv)
                 segment_paths.append(segment_csv)
+
+            if pure_csv:
+                records.append(
+                    {
+                        "file": cur_path.name,
+                        "file_path": str(cur_path),
+                        "main": main,
+                        "treat": treat,
+                        "sample": sample,
+                        "spot": spot,
+                        "seq": str(seq_i),
+                        "seq_index": seq_i,
+                        "segment_csv": segment_csv,
+                    }
+                )
+                continue
 
             if pulses is None:
                 pulses = _find_all_pulses(analog, voltage)
@@ -513,6 +535,7 @@ def process_payload(
             "treat": treat_token,
             "move_files": move_files,
             "reindex_seq": reindex_seq,
+            "pure_csv": pure_csv,
             "planned_count": len(operations),
             "planned_move_count": sum(1 for op in operations if op["action"] == "move"),
             "planned_rename_count": sum(1 for op in operations if op["action"] == "rename"),
@@ -550,6 +573,7 @@ def process_payload(
                     "treat": treat_token,
                     "move_files": move_files,
                     "reindex_seq": reindex_seq,
+                    "pure_csv": pure_csv,
                     "moved_count": moved_count,
                     "renamed_count": renamed_count,
                     "processed_count": 0,
@@ -575,6 +599,55 @@ def process_payload(
             "operation_log_path": log_path,
             "outputs": outputs,
             "warnings": warnings[:100],
+        }
+
+    if pure_csv:
+        results = [
+            {
+                "file": record.get("file", ""),
+                "status": "ok",
+                "main_val": record.get("main", ""),
+                "treat_val": record.get("treat", ""),
+                "peak_count": 0,
+                "segment_csv": record.get("segment_csv", ""),
+            }
+            for record in records
+        ]
+        log_payload = {
+            "mode": "pure_csv",
+            "created_at": datetime.now().isoformat(timespec="seconds"),
+            "folder": str(source_dir),
+            "main": main_token,
+            "treat": treat_token,
+            "move_files": move_files,
+            "reindex_seq": reindex_seq,
+            "pure_csv": True,
+            "moved_count": moved_count,
+            "renamed_count": renamed_count,
+            "processed_count": len(records),
+            "operations": operations,
+            "warnings": warnings,
+            "segment_csv_paths": segment_paths,
+        }
+        log_path = _write_operation_log(root_dir, log_payload)
+        return {
+            "pure_csv": True,
+            "message": f"Pure CSV conversion complete: saved {len(segment_paths)} segment CSV file(s).",
+            "n": len(records),
+            "rows": records[:50],
+            "results": results,
+            "segment_csv_paths": segment_paths,
+            "moved_count": moved_count,
+            "renamed_count": renamed_count,
+            "warnings": warnings[:100],
+            "operation_log_path": log_path,
+            "outputs": [
+                *[
+                    {"path": path, "type": "csv", "role": "abf_batch_segment"}
+                    for path in segment_paths
+                ],
+                {"path": log_path, "type": "json", "role": "operation_log"},
+            ],
         }
 
     df = pd.DataFrame(records)
@@ -610,6 +683,7 @@ def process_payload(
         "treat": treat_token,
         "move_files": move_files,
         "reindex_seq": reindex_seq,
+        "pure_csv": pure_csv,
         "moved_count": moved_count,
         "renamed_count": renamed_count,
         "processed_count": len(records),

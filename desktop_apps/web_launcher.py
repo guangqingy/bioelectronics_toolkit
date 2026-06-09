@@ -19,7 +19,7 @@ TOOL_ROUTES = {
     "abf_batch": "/abf/batch",
     "abf_peaks": "/abf/peaks",
     "abf_pc_figure": "/abf/figure",
-    "abf_pc_viewer": "/abf/viewer",
+    "abf_pc_viewer": "/abf/viewer?rnorm=1",
     "abf_sweep": "/abf/viewer",
     "csv_viewer": "/csv",
     "echem_pc": "/echem/photocurrent",

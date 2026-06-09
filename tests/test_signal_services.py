@@ -166,6 +166,66 @@ class AbfBatchServiceTests(unittest.TestCase):
             self.assertEqual(payload["results"][0]["segment_csv"], str(segment))
             self.assertTrue(any(item["role"] == "abf_batch_segment" for item in payload["outputs"]))
 
+    def test_process_payload_pure_csv_uses_legacy_manual_segment_window(self) -> None:
+        time_s = np.arange(5000, dtype=float) * 0.001
+        current = np.zeros_like(time_s)
+        current[2300] = 10.0
+        voltage = np.zeros_like(time_s)
+        voltage[1800:2500] = -5.0
+        analog = np.zeros_like(time_s)
+        analog[2200:2600] = 1.0
+
+        class FakePyabf:
+            class ABF:
+                sweepList = [0]
+
+                def __init__(self, _path: str) -> None:
+                    self.sweepX = time_s
+
+                def setSweep(self, _sweep: int, channel: int = 0) -> None:
+                    self.sweepX = time_s
+                    if int(channel) == 0:
+                        self.sweepY = current
+                    elif int(channel) == 1:
+                        self.sweepY = voltage
+                    else:
+                        self.sweepY = analog
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_abf_batch_pure_csv_") as tmp:
+            root = Path(tmp)
+            source = root / "ctrl_T1_sample_1_A_0001.abf"
+            source.write_bytes(b"fake")
+
+            payload = abf_batch.process_payload(
+                {
+                    "folder": str(root),
+                    "main": "ctrl",
+                    "treat": "T1",
+                    "powers": "not a number",
+                    "move_files": False,
+                    "dry_run": False,
+                    "segment_mode": "auto",
+                    "segment_t0": 0.1,
+                    "segment_t1": 0.7,
+                    "pure_csv": True,
+                },
+                has_abf=True,
+                pyabf_mod=FakePyabf,
+                float_or=lambda value, _default: float(value),
+                int_or=lambda value, _default: int(value),
+                root_dir=root,
+            )
+
+            segment = root / "ctrl_T1_sample_1_A_0001_segment.csv"
+            self.assertEqual(payload["n"], 1)
+            self.assertTrue(payload["pure_csv"])
+            self.assertTrue(segment.exists())
+            self.assertFalse((root / "ctrl_T1" / "summary_ctrl_T1.csv").exists())
+            df = pd.read_csv(segment)
+            self.assertAlmostEqual(float(df["time_s"].iloc[0]), 0.1)
+            self.assertAlmostEqual(float(df["time_s"].iloc[-1]), 0.7, delta=0.001)
+            self.assertEqual(payload["segment_csv_paths"], [str(segment)])
+
     def test_process_payload_accepts_legacy_comma_separated_token_lists(self) -> None:
         time_s = np.arange(5000, dtype=float) * 0.001
         current = np.zeros_like(time_s)

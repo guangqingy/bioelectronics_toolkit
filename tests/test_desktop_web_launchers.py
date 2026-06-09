@@ -24,6 +24,10 @@ class DesktopWebLauncherTests(unittest.TestCase):
                 module = importlib.import_module(web_launcher.LEGACY_MODULES[tool])
                 self.assertTrue(callable(getattr(module, "main", None)))
 
+    def test_abf_viewer_launchers_preserve_legacy_rnorm_defaults(self) -> None:
+        self.assertEqual(web_launcher.TOOL_ROUTES["abf_pc_viewer"], "/abf/viewer?rnorm=1")
+        self.assertEqual(web_launcher.TOOL_ROUTES["abf_sweep"], "/abf/viewer")
+
     def test_launcher_modules_stay_thin(self) -> None:
         modules = [
             "desktop_apps.launchers.abf_batch_processor_gui",

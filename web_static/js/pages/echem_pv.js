@@ -198,6 +198,48 @@ function exportCSV() {
   exportSegments();
 }
 
+function figureExportPayload(fmt) {
+  return {
+    path: _currentFile,
+    fmt,
+    pulses: activePulses(),
+    window: _lastWindow,
+    params: _lastParams || {},
+    show_detrended: document.getElementById('showDetrended').checked,
+    baseline_method: document.getElementById('detrendMethod').value,
+    baseline_win_ms: parseFloat(document.getElementById('baselineWinMs').value),
+    sg_window_ms: parseFloat(document.getElementById('sgWinMs').value),
+    sg_poly: parseInt(document.getElementById('sgPoly').value, 10),
+    dpi: 300
+  };
+}
+
+function exportFigure(fmt) {
+  if (!_currentFile) { setStatus('status', 'No file selected', 'error'); return; }
+  const payload = figureExportPayload(fmt);
+  setStatus('status', 'Saving ' + fmt.toUpperCase() + ' figure...', 'loading');
+  dpRunJobEndpoint('/api/echem_pv/export_figure_job', payload, {
+    interval_ms: 1000,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Saving ${fmt.toUpperCase()} figure${pct}${msg}`, 'loading');
+    },
+  }).then(d => {
+    setStatus('status', 'Saved figure: ' + (d.saved_path || 'ok'), 'ok');
+    recordRunHistory({
+      view: 'echem_pv',
+      title: 'EChem Photovoltage Figure Export',
+      status: 'ok',
+      project_root: document.getElementById('folderPath').value.trim(),
+      input_files: [{path: _currentFile, role: 'source_echem'}],
+      outputs: dpAsPathRecords(d.saved_path ? [d.saved_path] : [], 'photovoltage_preview_' + fmt),
+      parameters: payload,
+      metadata: {format: fmt},
+    });
+  }).catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
+}
+
 function exportSegments() {
   const pulses = activePulses();
   if (!_currentFile || !pulses.length) { setStatus('status', 'No active pulses to export', 'error'); return; }
@@ -265,7 +307,9 @@ window.DP.page = window.DP.page || {};
   'baseName',
   'detect',
   'exportCSV',
+  'exportFigure',
   'exportSegments',
+  'figureExportPayload',
   'num',
   'openWaveformAverager',
   'plotPngPreview',

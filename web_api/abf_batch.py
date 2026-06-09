@@ -39,6 +39,7 @@ class AbfBatchProcessRequest(RequestModel):
     segment_t0: Any = 0.1
     segment_t1: Any = 0.7
     save_segments: bool = True
+    pure_csv: bool = False
     move_files: bool = True
     reindex_seq: bool = False
     dry_run: bool = False

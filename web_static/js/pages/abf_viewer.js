@@ -533,13 +533,19 @@ function exportCSV() {
 }
 
 window.addEventListener("load", function() {
+  const params = new URLSearchParams(window.location.search);
+  const rNormParam = (params.get("rnorm") || params.get("r_norm") || "").toLowerCase();
+  if (["1", "true", "yes", "on"].includes(rNormParam)) {
+    const rNorm = document.getElementById("rNorm");
+    if (rNorm) rNorm.checked = true;
+  }
   dpBindToggleGroups("rNorm", "data-rnorm-state");
   const ctrl = document.getElementById("ctrlPanel");
   const main = document.getElementById("mainContent");
   const folderInput = document.getElementById("folderPath");
   if (ctrl) ctrl.classList.add("abf-panel");
   if (main) main.classList.add("abf-main");
-  if (new URLSearchParams(window.location.search).get("demo") === "abf") {
+  if (params.get("demo") === "abf") {
     folderInput.value = DEFAULT_EXAMPLES_DIR || "examples";
   }
   renderQueue();

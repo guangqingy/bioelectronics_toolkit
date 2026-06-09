@@ -131,7 +131,9 @@ function renderOperationPlan(plan) {
   return buildTable(rows, ['Action', 'From', 'To']);
 }
 
-async function runBatch() {
+async function runBatch(options) {
+  const opts = options || {};
+  const pure_csv = Boolean(opts.pureCsv);
   const folder = document.getElementById('folderPath').value.trim();
   const main = document.getElementById('mainToken').value.trim();
   const treat = document.getElementById('treatToken').value.trim();
@@ -156,6 +158,7 @@ async function runBatch() {
     folder, main, treat, powers,
     i_ch, v_ch, analog_ch,
     segment_mode, segment_t0, segment_t1, save_segments: true,
+    pure_csv,
     move_files, reindex_seq, dry_run
   };
 
@@ -182,15 +185,18 @@ async function runBatch() {
     }
   }
 
-  btnBusy('btnRun', true, dry_run ? 'Planning...' : 'Processing...');
-  setStatus('status', dry_run ? 'Planning batch operation...' : 'Running batch analysis...', 'loading');
+  const busyButtonId = pure_csv ? 'btnPureCsv' : 'btnRun';
+  const idleLabel = pure_csv ? 'Pure CSV Conversion' : 'Run Batch';
+  btnBusy(busyButtonId, true, dry_run ? 'Planning...' : (pure_csv ? 'Converting...' : 'Processing...'));
+  setStatus('status', dry_run ? 'Planning batch operation...' : (pure_csv ? 'Running pure CSV conversion...' : 'Running batch analysis...'), 'loading');
 
   dpRunJobEndpoint('/api/abf_batch/process_job', payload, {
     interval_ms: 1000,
     on_update: job => {
       const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
       const msg = job.message ? ` · ${job.message}` : '';
-      setStatus('status', `Running batch analysis${pct}${msg}`, 'loading');
+      const jobVerb = pure_csv ? 'Running pure CSV conversion' : 'Running batch analysis';
+      setStatus('status', `${jobVerb}${pct}${msg}`, 'loading');
     },
   })
     .then(r => {
@@ -242,12 +248,12 @@ async function runBatch() {
       const mv = Number(r.moved_count || 0);
       const rn = Number(r.renamed_count || 0);
       const wn = Array.isArray(r.warnings) ? r.warnings.length : 0;
-      document.getElementById('resultHeader').textContent = 'Results (' + rows.length + ' files | moved=' + mv + ' | renamed=' + rn + ' | warn=' + wn + ')';
-      setStatus('status', rows.length ? 'Batch complete' : (r.message || 'No matching files processed'), rows.length ? 'ok' : 'warning');
-      toast('Batch processing complete');
+      document.getElementById('resultHeader').textContent = (pure_csv ? 'Pure CSV Results' : 'Results') + ' (' + rows.length + ' files | moved=' + mv + ' | renamed=' + rn + ' | warn=' + wn + ')';
+      setStatus('status', rows.length ? (r.message || (pure_csv ? 'Pure CSV conversion complete' : 'Batch complete')) : (r.message || 'No matching files processed'), rows.length ? 'ok' : 'warning');
+      toast(pure_csv ? 'Pure CSV conversion complete' : 'Batch processing complete');
       recordRunHistory({
         view: 'abf_batch',
-        title: 'ABF Batch Processing',
+        title: pure_csv ? 'ABF Pure CSV Conversion' : 'ABF Batch Processing',
         status: wn ? 'warning' : 'ok',
         project_root: folder,
         input_files: (_files || []).map(f => ({path: (typeof f === 'string' ? f : f.path), role: 'source_abf'})).filter(f => f.path),
@@ -265,10 +271,10 @@ async function runBatch() {
       });
     })
     .catch(e => {
-      setStatus('status', 'Batch failed', 'error');
-      toast('Batch failed: ' + e.message, true);
+      setStatus('status', pure_csv ? 'Pure CSV conversion failed' : 'Batch failed', 'error');
+      toast((pure_csv ? 'Pure CSV conversion failed: ' : 'Batch failed: ') + e.message, true);
     })
-    .finally(() => btnBusy('btnRun', false, 'Run Batch'));
+    .finally(() => btnBusy(busyButtonId, false, idleLabel));
 }
 
 window.addEventListener('load', () => {

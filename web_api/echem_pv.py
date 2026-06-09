@@ -5,11 +5,12 @@ import traceback
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 from flask import Response, jsonify
 from pydantic import Field, ValidationError
 
 from services import echem as echem_service
-from services.matplotlib_utils import new_subplots
+from services.matplotlib_utils import close_figure, new_subplots
 from web_api.common import as_bool
 
 from .jobs import submit_json_task
@@ -85,6 +86,24 @@ class EchemPvExportRequest(RequestModel):
     pulse_window_ms: Any = 50.0
 
 
+class EchemPvFigureExportRequest(RequestModel):
+    path: str = Field(min_length=1)
+    fmt: str = "png"
+    pulses: list[Any] = Field(default_factory=list)
+    window: list[Any] = Field(default_factory=list)
+    params: dict[str, Any] = Field(default_factory=dict)
+    x_min: Any = None
+    x_max: Any = None
+    y_min: Any = None
+    y_max: Any = None
+    show_detrended: Any = None
+    baseline_method: str = ""
+    baseline_win_ms: Any = None
+    sg_window_ms: Any = None
+    sg_poly: Any = None
+    dpi: Any = 300
+
+
 def register_echem_pv_routes(app, ctx):
     err = ctx["err"]
     browse_files = ctx["browse_files"]
@@ -156,6 +175,132 @@ def register_echem_pv_routes(app, ctx):
         save_body = dict(body or {})
         save_body["mode"] = "save"
         return _echem_pv_export_payload(save_body)["data"]
+
+    def _figure_window(d: dict, t) -> tuple[float, float]:
+        window = d.get("window", [])
+        x0 = float_or(d.get("x_min"), None)
+        x1 = float_or(d.get("x_max"), None)
+        if (x0 is None or x1 is None) and isinstance(window, list) and len(window) >= 2:
+            x0 = float_or(window[0], None)
+            x1 = float_or(window[1], None)
+        if x0 is None or x1 is None or x1 <= x0:
+            x0, x1 = float(t[0]), float(t[-1])
+        if x1 <= x0:
+            x1 = x0 + 1.0
+        return float(x0), float(x1)
+
+    def _marker_index_from_pulse(pulse: dict, t) -> int | None:
+        try:
+            idx = int(pulse.get("idx", -1))
+            if 0 <= idx < len(t):
+                return idx
+        except Exception:
+            pass
+        marker_t = float_or(pulse.get("t", pulse.get("time")), None)
+        if marker_t is None:
+            return None
+        return int(np.argmin(np.abs(t - marker_t)))
+
+    def _echem_pv_figure_export_payload(d: dict) -> dict:
+        src = Path(d.get("path", ""))
+        if not src.exists():
+            raise ValueError(f"File not found: {src}")
+        fmt = str(d.get("fmt", "png") or "png").lower()
+        if fmt not in {"png", "svg"}:
+            raise ValueError("Figure format must be png or svg")
+
+        t, v_raw, _t_col, _v_col = _load_echem(str(src))
+        if len(t) == 0:
+            raise ValueError("No data points found in file")
+        params = d.get("params", {}) if isinstance(d.get("params"), dict) else {}
+        show_detrended = _as_bool(
+            d.get("show_detrended", params.get("show_detrended", False)),
+            False,
+        )
+        if show_detrended:
+            baseline_method = _normalize_method(
+                d.get("baseline_method") or params.get("baseline_method") or "median"
+            )
+            baseline_win_ms = float_or(
+                d.get("baseline_win_ms", params.get("baseline_win_ms", 50.0)),
+                50.0,
+            )
+            sg_window_ms = float_or(d.get("sg_window_ms", params.get("sg_window_ms", 51.0)), 51.0)
+            sg_poly = int_or(d.get("sg_poly", params.get("sg_poly", 3)), 3)
+            y = _detrend_signal(t, v_raw, baseline_method, baseline_win_ms, sg_window_ms, sg_poly)
+            y_label = "Detrended Voltage (V)"
+        else:
+            y = v_raw
+            y_label = "Voltage (V)"
+
+        x0, x1 = _figure_window(d, t)
+        mask = (t >= x0) & (t <= x1)
+        if not np.any(mask):
+            raise ValueError("No points in the current preview window")
+        y_min = float_or(d.get("y_min"), None)
+        y_max = float_or(d.get("y_max"), None)
+        if y_min is None or y_max is None or y_max <= y_min:
+            y_view = y[mask]
+            pad = float(np.ptp(y_view)) * 0.08 if len(y_view) else 0.0
+            if pad <= 0:
+                pad = 1.0
+            y_min = float(np.nanmin(y_view) - pad)
+            y_max = float(np.nanmax(y_view) + pad)
+
+        out_path = src.with_name(
+            f"{src.stem}_preview.png" if fmt == "png" else f"{src.stem}_preview_signal.svg"
+        )
+        fig, ax = new_subplots(figsize=(9, 4.8) if fmt == "png" else (8, 3), dpi=100)
+        try:
+            if fmt == "svg":
+                ax.plot(t[mask], y[mask], color=line_color, lw=1.0)
+                ax.set_xlim(x0, x1)
+                ax.set_ylim(y_min, y_max)
+                ax.set_position([0, 0, 1, 1])
+                ax.set_xticks([])
+                ax.set_yticks([])
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+                ax.set_frame_on(False)
+                ax.axis("off")
+                fig.savefig(
+                    out_path,
+                    format="svg",
+                    bbox_inches="tight",
+                    pad_inches=0,
+                    transparent=True,
+                    facecolor="none",
+                )
+            else:
+                ax.plot(t, y, color=line_color, lw=1.0)
+                ax.set_xlabel("Time (s)")
+                ax.set_ylabel(y_label)
+                ax.set_xlim(x0, x1)
+                ax.set_ylim(y_min, y_max)
+                marker_t = []
+                marker_y = []
+                for pulse in d.get("pulses", []):
+                    idx = _marker_index_from_pulse(pulse, t)
+                    if idx is not None and x0 <= float(t[idx]) <= x1:
+                        marker_t.append(float(t[idx]))
+                        marker_y.append(float(y[idx]))
+                if marker_t:
+                    ax.scatter(marker_t, marker_y, s=50, marker="^", color="red", zorder=5)
+                dpi = int(float_or(d.get("dpi"), 300) or 300)
+                fig.savefig(out_path, dpi=dpi, bbox_inches="tight", pad_inches=0.05, facecolor="white")
+        finally:
+            close_figure(fig)
+
+        role = f"photovoltage_preview_{fmt}"
+        return {
+            "saved_path": str(out_path),
+            "fmt": fmt,
+            "outputs": [{"path": str(out_path), "type": fmt, "role": role}],
+        }
+
+    def _echem_pv_figure_export_task(job_ctx, body: dict) -> dict:
+        job_ctx.set_progress(0.2, "Exporting photovoltage preview figure")
+        return _echem_pv_figure_export_payload(dict(body or {}))
 
     @app.route("/api/echem_pv/browse", methods=["POST"])
     @request_schema(EchemPvBrowseRequest)
@@ -440,4 +585,34 @@ def register_echem_pv_routes(app, ctx):
             _echem_pv_export_task,
             body,
             metadata={"endpoint": "/api/echem_pv/export"},
+        )
+
+    @app.route("/api/echem_pv/export_figure", methods=["POST"])
+    @request_schema(EchemPvFigureExportRequest)
+    def api_echem_pv_export_figure():
+        try:
+            d = parse_json_payload(EchemPvFigureExportRequest).model_dump()
+            result = _echem_pv_figure_export_payload(d)
+            return api_ok(result, outputs=result["outputs"])
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/echem_pv/export_figure_job", methods=["POST"])
+    @request_schema(EchemPvFigureExportRequest)
+    def api_echem_pv_export_figure_job():
+        try:
+            body = parse_json_payload(EchemPvFigureExportRequest).model_dump()
+        except ValidationError as exc:
+            return validation_error_response(exc)
+        return submit_json_task(
+            jobs,
+            "echem_pv.export_figure",
+            "Export echem photovoltage preview figure",
+            _echem_pv_figure_export_task,
+            body,
+            metadata={"endpoint": "/api/echem_pv/export_figure"},
         )
