@@ -28,6 +28,9 @@ async function selectFile(el, path, options) {
     if (requestSeq !== _fileLoadSeq || path !== _currentFile) return;
     if (data.error) throw new Error(data.error);
     _metadata = data;
+    if (typeof autoFillRhdRenameToken === 'function') {
+      autoFillRhdRenameToken(path);
+    }
     document.getElementById('xMax').value = data.duration || 10;
     updateInfoCard();
     populateChannelList(data.channels || []);

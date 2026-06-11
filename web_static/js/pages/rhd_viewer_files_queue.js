@@ -177,13 +177,27 @@ function queueAddPaths(paths) {
   return added;
 }
 
+function currentRhdBatchPaths() {
+  if (previewMergeEnabled()) {
+    if (Array.isArray(_metadata.source_paths) && _metadata.source_paths.length) {
+      return _metadata.source_paths.slice();
+    }
+    if (_rhdFiles.length) {
+      return _rhdFiles.slice();
+    }
+  }
+  return _currentFile ? [_currentFile] : [];
+}
+
 function queueAddCurrent() {
   if (!_currentFile) {
     setStatus('status', 'No file selected', 'error');
     return;
   }
-  const added = queueAddPaths([_currentFile]);
-  setStatus('status', added ? 'Added current file to queue' : 'Current file already in queue', added ? 'ok' : 'loading');
+  const paths = currentRhdBatchPaths();
+  const added = queueAddPaths(paths);
+  const label = paths.length > 1 ? `${paths.length} continuous recording file(s)` : 'current file';
+  setStatus('status', added ? `Added ${label} to queue` : `${label} already in queue`, added ? 'ok' : 'loading');
 }
 
 function queueAddAll() {
@@ -313,6 +327,7 @@ window.DP.page = window.DP.page || {};
   'currentFigureParams',
   'currentProcessingParams',
   'currentProcessingPayload',
+  'currentRhdBatchPaths',
   'currentViewParams',
   'exportQueue',
   'previewInvertYEnabled',

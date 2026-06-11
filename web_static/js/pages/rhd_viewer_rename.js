@@ -67,6 +67,19 @@ function useSelectedRhdToken() {
   setStatus('status', token ? `Old token set to ${token}` : 'Selected recording token unavailable', token ? 'ok' : 'error');
 }
 
+function autoFillRhdRenameToken(source) {
+  const findEl = document.getElementById('renameFind');
+  const replaceEl = document.getElementById('renameReplace');
+  if (!findEl || !replaceEl) return '';
+  if (findEl.value.trim() || replaceEl.value.trim()) return findEl.value.trim();
+  const token = rhdRecordingToken(source || rhdSelectedNameSource());
+  if (token) {
+    findEl.value = token;
+    setRhdQuickRenameDefaults();
+  }
+  return token;
+}
+
 function useSelectedRhdName() {
   const name = rhdStemName(rhdSelectedNameSource());
   document.getElementById('renameFind').value = name;
@@ -296,6 +309,7 @@ window.DP.page = window.DP.page || {};
 [
   'applyRhdRenames',
   'applyQuickRhdRename',
+  'autoFillRhdRenameToken',
   'buildRhdRenamePayload',
   'previewQuickRhdRename',
   'previewRhdRenames',
