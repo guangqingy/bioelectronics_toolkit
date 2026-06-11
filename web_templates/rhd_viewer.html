@@ -242,14 +242,25 @@
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Rename Recording</summary>
+  <div class="run-history-meta" style="margin-bottom:8px;">Quick rename replaces the recording token across the selected folder tree.</div>
   <div class="param-row">
-    <div class="param-label">Current</div>
+    <div class="param-label">Old Tok</div>
     <input type="text" id="renameFind" class="input-sm" placeholder="old recording name">
   </div>
   <div class="param-row">
-    <div class="param-label">New</div>
+    <div class="param-label">New Tok</div>
     <input type="text" id="renameReplace" class="input-sm" placeholder="new recording name">
   </div>
+  <div class="btn-row">
+    <button class="btn-secondary" type="button" onclick="DP.page.useSelectedRhdToken()">Use Selected Token</button>
+    <button class="btn-secondary" type="button" onclick="DP.page.useSelectedRhdName()">Use Selected Name</button>
+  </div>
+  <div class="btn-row" style="margin-top:8px;">
+    <button id="btnQuickRenamePreview" class="btn-secondary" type="button" onclick="DP.page.previewQuickRhdRename()">Preview Quick Rename</button>
+    <button id="btnQuickRenameApply" class="btn-primary" type="button" onclick="DP.page.applyQuickRhdRename()">Apply Quick Rename</button>
+  </div>
+  <details class="ctrl-details" style="margin-top:10px;">
+    <summary class="ctrl-label">Advanced Rename Options</summary>
   <div class="param-row">
     <div class="param-label">Prefix</div>
     <input type="text" id="renamePrefix" class="input-sm">
@@ -266,11 +277,12 @@
   <label class="checkbox-row"><input type="checkbox" id="renameCaseSensitive" checked><span>Case sensitive</span></label>
   <div class="param-row">
     <div class="param-label">Exts</div>
-    <input type="text" id="renameExtensions" class="input-sm" value=".rhd,.csv,.txt,.tsv,.json,.png,.svg">
+    <input type="text" id="renameExtensions" class="input-sm" value=".rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg">
   </div>
   <button class="btn-secondary" type="button" onclick="DP.page.useCurrentFolderName()" style="width:100%; margin-top:8px;">Use Folder Name</button>
   <button id="btnRenamePreview" class="btn-secondary" type="button" onclick="DP.page.previewRhdRenames()" style="width:100%; margin-top:8px;">Preview Renames</button>
   <button id="btnRenameApply" class="btn-primary" type="button" onclick="DP.page.applyRhdRenames()" style="margin-top:8px;">Apply Renames</button>
+  </details>
 </details>
 
 <details class="ctrl-section ctrl-details">

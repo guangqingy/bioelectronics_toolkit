@@ -17,6 +17,63 @@ function rhdDirName(path) {
   return String(path || '').replace(/[\\/]+$/, '').split(/[\\/]/).pop() || '';
 }
 
+function rhdStemName(pathOrName) {
+  return rhdDirName(pathOrName).replace(/\.[^.\\/]+$/, '');
+}
+
+function rhdRecordingToken(pathOrName) {
+  const stem = rhdStemName(pathOrName);
+  const match = stem.match(/^(.+)_\d{6}_\d{4,6}$/);
+  return (match ? match[1] : stem).trim();
+}
+
+function rhdSelectedNameSource() {
+  if (_currentFile) return _currentFile;
+  const active = document.querySelector('#rhdList .file-item.active');
+  if (active?.title) {
+    const firstPath = String(active.title).split('\n').find(Boolean);
+    if (firstPath) return firstPath;
+  }
+  return rhdCurrentRenameRoot();
+}
+
+function setRhdQuickRenameDefaults() {
+  const fields = {
+    renamePrefix: '',
+    renameSuffix: '',
+    renameExtensions: '.rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg',
+  };
+  Object.entries(fields).forEach(([id, value]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = value;
+  });
+  [
+    ['renameRoot', true],
+    ['renameFiles', true],
+    ['renameDirs', true],
+    ['renameRecursive', true],
+    ['renameRegex', false],
+    ['renameCaseSensitive', true],
+  ].forEach(([id, checked]) => {
+    const el = document.getElementById(id);
+    if (el) el.checked = checked;
+  });
+}
+
+function useSelectedRhdToken() {
+  const token = rhdRecordingToken(rhdSelectedNameSource());
+  document.getElementById('renameFind').value = token;
+  setRhdQuickRenameDefaults();
+  setStatus('status', token ? `Old token set to ${token}` : 'Selected recording token unavailable', token ? 'ok' : 'error');
+}
+
+function useSelectedRhdName() {
+  const name = rhdStemName(rhdSelectedNameSource());
+  document.getElementById('renameFind').value = name;
+  setRhdQuickRenameDefaults();
+  setStatus('status', name ? `Old recording name set to ${name}` : 'Selected recording name unavailable', name ? 'ok' : 'error');
+}
+
 function useCurrentFolderName() {
   const root = rhdCurrentRenameRoot();
   if (!root) {
@@ -26,6 +83,34 @@ function useCurrentFolderName() {
   const name = rhdDirName(root);
   document.getElementById('renameFind').value = name;
   setStatus('status', name ? `Current rename text set to ${name}` : 'Folder name unavailable', name ? 'ok' : 'error');
+}
+
+function validateQuickRhdRename() {
+  setRhdQuickRenameDefaults();
+  const oldValue = rhdRenameValue('renameFind').trim();
+  const newValue = rhdRenameValue('renameReplace').trim();
+  if (!oldValue) {
+    useSelectedRhdToken();
+  }
+  if (!rhdRenameValue('renameFind').trim()) {
+    setStatus('status', 'Choose a recording or enter an old token first', 'error');
+    return false;
+  }
+  if (!newValue) {
+    setStatus('status', 'Enter a new recording token', 'error');
+    return false;
+  }
+  return true;
+}
+
+function previewQuickRhdRename() {
+  if (!validateQuickRhdRename()) return Promise.resolve(null);
+  return previewRhdRenames({buttonId: 'btnQuickRenamePreview', idleLabel: 'Preview Quick Rename'});
+}
+
+function applyQuickRhdRename() {
+  if (!validateQuickRhdRename()) return Promise.resolve(null);
+  return applyRhdRenames({buttonId: 'btnQuickRenameApply', idleLabel: 'Apply Quick Rename'});
 }
 
 function buildRhdRenamePayload(extra) {
@@ -98,7 +183,10 @@ function renderRhdRenamePreview(data) {
   `;
 }
 
-function previewRhdRenames() {
+function previewRhdRenames(options) {
+  const opts = options || {};
+  const buttonId = opts.buttonId || 'btnRenamePreview';
+  const idleLabel = opts.idleLabel || 'Preview Renames';
   const payload = buildRhdRenamePayload();
   if (!payload.root) {
     _lastRhdRenamePreview = null;
@@ -107,7 +195,7 @@ function previewRhdRenames() {
   }
   _lastRhdRenamePreview = null;
   _lastRhdRenamePayloadKey = rhdRenamePayloadKey(payload);
-  btnBusy('btnRenamePreview', true, 'Previewing...');
+  btnBusy(buttonId, true, 'Previewing...');
   setStatus('status', 'Building rename preview...', 'loading');
   return api('/api/rhd/rename/preview', payload)
     .then(data => {
@@ -127,13 +215,16 @@ function previewRhdRenames() {
       setStatus('status', 'Error: ' + e.message, 'error');
       return null;
     })
-    .finally(() => btnBusy('btnRenamePreview', false, 'Preview Renames'));
+    .finally(() => btnBusy(buttonId, false, idleLabel));
 }
 
-async function applyRhdRenames() {
+async function applyRhdRenames(options) {
+  const opts = options || {};
+  const buttonId = opts.buttonId || 'btnRenameApply';
+  const idleLabel = opts.idleLabel || 'Apply Renames';
   const basePayload = buildRhdRenamePayload();
   if (!_lastRhdRenamePreview || _lastRhdRenamePayloadKey !== rhdRenamePayloadKey(basePayload)) {
-    await previewRhdRenames();
+    await previewRhdRenames(opts.previewOptions || options);
   }
   if (!_lastRhdRenamePreview) return;
   if (Number(_lastRhdRenamePreview.conflict_count || 0) > 0) {
@@ -155,7 +246,7 @@ async function applyRhdRenames() {
   if (!ok) return;
 
   const payload = buildRhdRenamePayload({confirm: true});
-  btnBusy('btnRenameApply', true, 'Applying...');
+  btnBusy(buttonId, true, 'Applying...');
   setStatus('status', 'Applying RHD renames...', 'loading');
   dpRunJobEndpoint('/api/rhd/rename/apply_job', payload, {
     interval_ms: 800,
@@ -172,8 +263,8 @@ async function applyRhdRenames() {
       if (rootChange?.target_path) {
         document.getElementById('folderPath').value = rootChange.target_path;
         document.getElementById('renameFind').value = rhdDirName(rootChange.target_path);
-        scanFolder();
       }
+      scanFolder();
       renderRhdRenamePreview({
         root: document.getElementById('folderPath').value.trim(),
         scanned_count: changes.length,
@@ -197,17 +288,23 @@ async function applyRhdRenames() {
       _lastRhdRenamePayloadKey = '';
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'))
-    .finally(() => btnBusy('btnRenameApply', false, 'Apply Renames'));
+    .finally(() => btnBusy(buttonId, false, idleLabel));
 }
 
 window.DP = window.DP || {};
 window.DP.page = window.DP.page || {};
 [
   'applyRhdRenames',
+  'applyQuickRhdRename',
   'buildRhdRenamePayload',
+  'previewQuickRhdRename',
   'previewRhdRenames',
+  'rhdRecordingToken',
   'renderRhdRenamePreview',
+  'setRhdQuickRenameDefaults',
   'useCurrentFolderName',
+  'useSelectedRhdName',
+  'useSelectedRhdToken',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

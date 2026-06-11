@@ -95,7 +95,7 @@ class RhdRenamePreviewRequest(RequestModel):
     case_sensitive: Any = True
     preserve_extension: Any = True
     skip_hidden: Any = True
-    extensions: Any = ".rhd,.csv,.txt,.tsv,.json,.png,.svg"
+    extensions: Any = ".rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg"
     max_items: int = Field(default=5000, ge=1, le=50000)
 
 
