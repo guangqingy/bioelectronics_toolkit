@@ -280,9 +280,43 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_main_stylesheet_is_bundled_without_runtime_imports(self) -> None:
         root = Path(__file__).resolve().parents[1]
         style = (root / "web_static" / "style.css").read_text(encoding="utf-8")
+        reset = (root / "web_static" / "style" / "_reset.css").read_text(encoding="utf-8")
+        forms = (root / "web_static" / "style" / "_forms.css").read_text(encoding="utf-8")
+        modals = (root / "web_static" / "style" / "_modals_base.css").read_text(
+            encoding="utf-8"
+        )
+        dom_js = (root / "web_static" / "js" / "dp_dom.js").read_text(encoding="utf-8")
 
         self.assertNotIn("@import", style)
         self.assertIn("DataProcess Web", style)
+        self.assertIn("color-scheme: light dark", style)
+        self.assertIn('"PingFang SC"', reset)
+        self.assertIn('appearance: none', forms)
+        self.assertIn(".checkbox-row input[type=\"checkbox\"]:checked", style)
+        self.assertIn(".modal-actions", modals)
+        self.assertIn("width: auto", modals)
+        self.assertIn('class="modal-actions"', dom_js)
+        self.assertNotIn('prefs-actions" style="margin-top:14px"', dom_js)
+
+    def test_static_styles_avoid_hardcoded_light_backgrounds(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        light_bg_re = re.compile(
+            r"background(?:-color)?\s*:\s*"
+            r"(?:#fff|#fb|#f8|#fee|linear-gradient\([^;]*(?:#fff|#fb|#f1|#e6))",
+            re.I,
+        )
+        offenders = []
+        for folder in (root / "web_templates", root / "web_static"):
+            for source in folder.rglob("*"):
+                if source.suffix not in {".html", ".js", ".css"}:
+                    continue
+                if "vendor" in source.parts:
+                    continue
+                for lineno, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+                    if light_bg_re.search(line):
+                        offenders.append(f"{source.relative_to(root)}:{lineno}: {line.strip()}")
+
+        self.assertEqual([], offenders)
 
     def test_static_page_scripts_are_deferred(self) -> None:
         root = Path(__file__).resolve().parents[1]

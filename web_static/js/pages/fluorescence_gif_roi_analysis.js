@@ -77,7 +77,7 @@ async function generateGif() {
     /* Result card */
     const outDir = d.output_path ? d.output_path.replace(/\/[^\/]+$/, '') : '';
     document.getElementById('resultArea').innerHTML = `
-      <div class="result-card" style="padding:12px 16px;background:#f8fffe;border:1px solid #cce;border-radius:6px">
+      <div class="result-card" style="padding:12px 16px;background:var(--surface-panel);border:1px solid var(--border-muted);border-radius:6px">
         <div style="font-weight:600;margin-bottom:6px">GIF Generated</div>
         <div style="font-size:12px;color:#555;margin-bottom:4px">Frames: <b>${d.n_frames}</b></div>
         ${d.selected_slices ? `<div style="font-size:12px;color:#555;margin-bottom:4px">Selected slices: <b>${d.selected_slices}</b></div>` : ''}

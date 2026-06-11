@@ -56,8 +56,8 @@
   white-space: nowrap;
 }
 .stack-file-row {
-  border: 1px solid #e5e7eb;
-  background: linear-gradient(180deg, #fff, #fbfbfc);
+  border: 1px solid var(--border-muted);
+  background: linear-gradient(180deg, var(--white), var(--surface-panel));
   border-radius: 8px;
   padding: 9px;
   display: flex;
@@ -78,7 +78,7 @@
   justify-content: center;
   flex-shrink: 0;
   border-radius: 50%;
-  background: #eef2ff;
+  background: var(--surface-blue-strong);
   color: var(--blue);
   font-size: 11px;
   font-weight: 700;
@@ -114,8 +114,8 @@
   align-items: center;
   min-height: 18px;
   border-radius: 999px;
-  border: 1px solid #dbe4ff;
-  background: #f2f5ff;
+  border: 1px solid var(--border-blue-muted);
+  background: var(--surface-blue);
   color: var(--blue);
   padding: 1px 7px;
   font-size: 10.5px;
@@ -146,7 +146,7 @@
   flex: 1;
   height: 30px;
   font-size: 11.5px;
-  background: #fff;
+  background: var(--white);
 }
 .stack-file-path-row .btn-icon {
   width: 30px;
@@ -166,7 +166,7 @@
   padding: 8px;
   border: 1px solid var(--cloud);
   border-radius: 8px;
-  background: #fbfcff;
+  background: var(--surface-panel);
 }
 .stack-channel-range-row {
   display: grid;
@@ -182,7 +182,7 @@
 .stack-channel-range-row input[type="color"] {
   width: 38px;
   padding: 2px;
-  background: #fff;
+  background: var(--white);
   cursor: pointer;
 }
 .stack-channel-range-row input[type="checkbox"] {
@@ -263,7 +263,7 @@
   display: block;
   border: 1px solid var(--cloud);
   border-radius: 6px;
-  background: #fff;
+  background: var(--white);
 }
 </style>
 {% endblock %}

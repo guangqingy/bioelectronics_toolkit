@@ -4,7 +4,7 @@
 
 {% block controls %}
 {% if not has_scipy %}
-<div style="background:#fee; border:1px solid #f99; border-radius:4px; padding:12px; font-size:12px; line-height:1.4;">
+<div class="status-bar status-error">
   <strong>scipy not installed.</strong><br>Run: <code>pip install scipy</code>
 </div>
 {% endif %}

@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(140deg, #f1f3f7, #e6e9ef);
+  background: linear-gradient(140deg, var(--app-bg), var(--ash));
 }
 .logout-card {
   width: min(420px, 100%);
@@ -26,4 +26,3 @@
   line-height: 1.6;
   color: var(--pewter);
 }
-

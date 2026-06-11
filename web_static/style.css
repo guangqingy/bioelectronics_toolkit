@@ -89,17 +89,22 @@
 /* ─── Reset ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
-html { height: 100%; font-size: 15px; }
+html {
+  height: 100%;
+  font-size: 15px;
+  color-scheme: light dark;
+}
 body {
   height: 100%;
   background: var(--app-bg);
   color: var(--graphite);
-  font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
+    "Helvetica Neue", Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   overflow-x: hidden;
 }
-
 
 /* web_static/style/_nav.css */
 /* ─── Top navigation ─── */
@@ -504,11 +509,39 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
   padding: 2px 0;
 }
 .checkbox-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
   width: 14px;
   height: 14px;
-  accent-color: var(--blue);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  background: var(--surface-soft);
+  color: var(--white);
   cursor: pointer;
   flex-shrink: 0;
+  transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
+}
+.checkbox-row input[type="checkbox"]::after {
+  content: "";
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  opacity: 0;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.checkbox-row input[type="checkbox"]:checked {
+  background: var(--blue);
+  border-color: var(--blue);
+}
+.checkbox-row input[type="checkbox"]:checked::after {
+  opacity: 1;
+}
+.checkbox-row input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(62,106,225,0.20);
 }
 
 /* web_static/style/_buttons.css */
@@ -586,7 +619,6 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
   flex-wrap: wrap;
 }
 .btn-row .btn-secondary { flex: 1; font-size: 12px; padding: 5px 8px; }
-
 
 /* web_static/style/_files_plots.css */
 /* ─── File list ─── */
@@ -933,7 +965,6 @@ table.dp-table tr:hover td { background: var(--ash); }
 }
 .page-sub { font-size: 13px; color: var(--pewter); }
 
-
 /* web_static/style/_status.css */
 /* ─── Status / notification ─── */
 .status-bar {
@@ -1173,6 +1204,22 @@ table.dp-table tr:hover td { background: var(--ash); }
 .modal-body {
   overflow: auto;
   padding: 14px 16px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+.modal-actions .btn-primary,
+.modal-actions .btn-secondary,
+.modal-actions .btn-danger {
+  width: auto;
+  min-width: 120px;
+  flex: 0 0 auto;
+  justify-content: center;
+  text-align: center;
 }
 
 /* web_static/style/_preferences.css */
@@ -1687,7 +1734,7 @@ kbd {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(140deg, #f1f3f7, #e6e9ef);
+  background: linear-gradient(140deg, var(--app-bg), var(--ash));
 }
 .logout-card {
   width: min(420px, 100%);
@@ -1708,7 +1755,6 @@ kbd {
   line-height: 1.6;
   color: var(--pewter);
 }
-
 
 /* web_static/style/_abf_params.css */
 /* ─── ABF Viewer layout ─── */
@@ -2077,7 +2123,6 @@ kbd {
   white-space: nowrap;
 }
 
-
 /* web_static/style/_views_tiff.css */
 /* ─── View main layout ─── */
 .view-main {
@@ -2173,7 +2218,6 @@ pre {
   display: block;
   image-rendering: pixelated;
 }
-
 
 /* web_static/style/_lif.css */
 /* ─── Leica LIF browser ─── */
@@ -2394,7 +2438,6 @@ pre {
   margin-bottom: 0;
 }
 
-
 /* web_static/style/_stacking.css */
 /* ─── 3D stacking ─── */
 .stacking-layout {
@@ -2477,7 +2520,6 @@ pre {
   background: var(--surface-panel);
   font-size: 12px;
 }
-
 
 /* web_static/style/_responsive.css */
 /* ─── Responsive ─── */

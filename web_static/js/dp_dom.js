@@ -130,7 +130,7 @@ function dpConfirmAction(options) {
           </div>
           <div class="modal-body">
             <div class="confirm-detail" id="dpConfirmDetail"></div>
-            <div class="prefs-actions" style="margin-top:14px">
+            <div class="modal-actions">
               <button class="btn-secondary" type="button" data-confirm="cancel">Cancel</button>
               <button class="btn-primary" type="button" data-confirm="ok">Continue</button>
             </div>
@@ -182,7 +182,7 @@ function dpPromptAction(options) {
           <div class="modal-body">
             <label class="form-label" id="dpPromptLabel" for="dpPromptInput"></label>
             <input id="dpPromptInput" type="text" autocomplete="off">
-            <div class="prefs-actions" style="margin-top:14px">
+            <div class="modal-actions">
               <button class="btn-secondary" type="button" data-prompt="cancel">Cancel</button>
               <button class="btn-primary" type="button" data-prompt="ok">Save</button>
             </div>
