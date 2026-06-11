@@ -282,6 +282,9 @@ class WebAppSmokeTests(unittest.TestCase):
         style = (root / "web_static" / "style.css").read_text(encoding="utf-8")
         reset = (root / "web_static" / "style" / "_reset.css").read_text(encoding="utf-8")
         forms = (root / "web_static" / "style" / "_forms.css").read_text(encoding="utf-8")
+        status = (root / "web_static" / "style" / "_status.css").read_text(
+            encoding="utf-8"
+        )
         modals = (root / "web_static" / "style" / "_modals_base.css").read_text(
             encoding="utf-8"
         )
@@ -293,6 +296,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('"PingFang SC"', reset)
         self.assertIn('appearance: none', forms)
         self.assertIn(".checkbox-row input[type=\"checkbox\"]:checked", style)
+        self.assertIn("overflow-wrap: anywhere", status)
+        self.assertIn("grid-template-columns: 34px minmax(0, 1fr)", status)
+        self.assertIn(".status-bar.status-ok", status)
         self.assertIn(".modal-actions", modals)
         self.assertIn("width: auto", modals)
         self.assertIn('class="modal-actions"', dom_js)
