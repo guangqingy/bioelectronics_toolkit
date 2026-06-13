@@ -42,12 +42,31 @@ function dpProgressFromMessage(msg) {
   return null;
 }
 
+function dpCompactPathForStatus(path) {
+  const text = String(path || '');
+  if (text.length <= 64) return text;
+  const parts = text.split(/[\\/]+/).filter(Boolean);
+  if (parts.length < 3) return text;
+  return '…/' + parts.slice(-2).join('/');
+}
+
+function dpCompactStatusMessage(msg) {
+  const text = String(msg || '');
+  if (text.length <= 180) return text;
+  let compact = text.replace(/(?:\/[^\s|;,]+){3,}/g, match => dpCompactPathForStatus(match));
+  if (compact.length > 240) compact = compact.slice(0, 237) + '...';
+  return compact;
+}
+
 function setStatus(id, msg, cls, progress) {
   const el = document.getElementById(id);
   if (!el) return;
+  const fullMessage = String(msg || '');
+  const compactMessage = dpCompactStatusMessage(fullMessage);
+  el.title = compactMessage !== fullMessage ? fullMessage : '';
   if (!cls) {
     el.className = 'status-bar';
-    el.textContent = msg || '';
+    el.textContent = compactMessage;
     return;
   }
   const norm = String(cls).startsWith('status-') ? cls : ('status-' + cls);
@@ -56,7 +75,8 @@ function setStatus(id, msg, cls, progress) {
   text.className = 'status-text';
   const message = document.createElement('span');
   message.className = 'status-message';
-  message.textContent = msg || '';
+  message.textContent = compactMessage;
+  if (compactMessage !== fullMessage) message.title = fullMessage;
   text.appendChild(message);
   el.replaceChildren(text);
   const progressValue = typeof progress === 'number' ? progress : dpProgressFromMessage(msg);

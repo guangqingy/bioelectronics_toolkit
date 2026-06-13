@@ -6,6 +6,8 @@ let _yLimits = null;
 let _page = 0;
 let _sourceFiles = [];
 let _selectedSources = [];
+let _lastSourceIndex = null;
+let _lastSampleIndex = null;
 const _perPage = 4;
 
 function baseName(path) {
@@ -39,7 +41,7 @@ function renderSourceFiles() {
     const active = selected.has(sourceKey(file.path));
     const count = Number(file.segment_count || 0);
     const suffix = count ? ` · ${count}` : '';
-    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.toggleSourceIndex(${i})">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.toggleSourceIndex(${i}, event)">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
   }).join('');
   updateSourceCount();
   if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
@@ -67,12 +69,30 @@ function addSourceRecord(file) {
   setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
 }
 
-function toggleSourceIndex(i) {
+function toggleSourceIndex(i, event) {
   const file = _sourceFiles[i];
   if (!file) return;
+  if (event && event.shiftKey && _lastSourceIndex !== null && _lastSourceIndex >= 0 && _lastSourceIndex < _sourceFiles.length) {
+    const start = Math.min(_lastSourceIndex, i);
+    const end = Math.max(_lastSourceIndex, i);
+    const selected = new Set(_selectedSources.map(item => sourceKey(item.path)));
+    for (let j = start; j <= end; j += 1) {
+      const candidate = _sourceFiles[j];
+      if (candidate && !selected.has(sourceKey(candidate.path))) {
+        _selectedSources.push(candidate);
+        selected.add(sourceKey(candidate.path));
+      }
+    }
+    _lastSourceIndex = i;
+    renderSourceFiles();
+    renderSelectedSources();
+    setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
+    return;
+  }
   const existing = _selectedSources.findIndex(item => sourceKey(item.path) === sourceKey(file.path));
   if (existing >= 0) _selectedSources.splice(existing, 1);
   else _selectedSources.push(file);
+  _lastSourceIndex = i;
   renderSourceFiles();
   renderSelectedSources();
   setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
@@ -97,6 +117,7 @@ function removeSource(i) {
 
 function clearSources() {
   _selectedSources = [];
+  _lastSourceIndex = null;
   renderSourceFiles();
   renderSelectedSources();
   setStatus('status', 'Selected files cleared', 'ok');
@@ -104,6 +125,7 @@ function clearSources() {
 
 function selectAllSources(value) {
   _selectedSources = value ? _sourceFiles.map(file => Object.assign({}, file)) : [];
+  _lastSourceIndex = value && _sourceFiles.length ? 0 : null;
   renderSourceFiles();
   renderSelectedSources();
   setStatus('status', `${_selectedSources.length} source file(s) selected`, 'ok');
@@ -172,6 +194,7 @@ function scanSourceFolder() {
   }).then(d => {
     if (d.error) throw new Error(d.error);
     _sourceFiles = Array.isArray(d.files) ? d.files : [];
+    _lastSourceIndex = null;
     const available = new Set(_sourceFiles.map(item => sourceKey(item.path)));
     _selectedSources = _selectedSources.filter(item => available.has(sourceKey(item.path)));
     renderSourceFiles();
@@ -198,6 +221,7 @@ function loadSamples() {
       }
       _samples = Array.isArray(d.samples) ? d.samples : [];
       _selected = new Set(_samples.map((_, i) => i));
+      _lastSampleIndex = _samples.length ? 0 : null;
       _avgData = null;
       _avgB64 = null;
       _yLimits = Array.isArray(d.y_limits) ? d.y_limits : null;
@@ -233,7 +257,7 @@ function renderSampleList() {
   }
   el.innerHTML = _samples.map((s, i) => {
     const active = _selected.has(i);
-    return `<div class="file-item${active ? ' active' : ''}" onclick="DP.page.toggleSample(${i})" data-idx="${i}" title="${escHtml(s.file || '')}">${active ? '✓ ' : ''}${escHtml(s.label || s.device || 'sample')}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" onclick="DP.page.toggleSample(${i}, event)" data-idx="${i}" title="${escHtml(s.file || '')}">${active ? '✓ ' : ''}${escHtml(s.label || s.device || 'sample')}</div>`;
   }).join('');
 }
 
@@ -281,7 +305,7 @@ function renderPreviewPage() {
     const path = svgPathForSample(sample, axes, yLimits);
     const zeroX = 10 + ((0 - axes.crop_t0) / (axes.crop_t1 - axes.crop_t0 || 1)) * 280;
     cards.push(`
-      <button class="lineshape-mini${active ? ' active' : ''}" type="button" onclick="DP.page.toggleSample(${idx})">
+      <button class="lineshape-mini${active ? ' active' : ''}" type="button" onclick="DP.page.toggleSample(${idx}, event)">
         <div class="lineshape-mini-title">${active ? '✓ ' : ''}${escHtml(sample.label || 'sample')}</div>
         <svg viewBox="0 0 300 150" role="img" aria-label="${escHtml(sample.label || 'sample')}">
           <line x1="${zeroX.toFixed(2)}" x2="${zeroX.toFixed(2)}" y1="8" y2="142" stroke="#D0D1D2" stroke-width="1" stroke-dasharray="3 3"></line>
@@ -303,9 +327,17 @@ function clearAverage(message) {
   document.getElementById('btnDownloadPNG').style.display = 'none';
 }
 
-function toggleSample(i) {
-  if (_selected.has(i)) _selected.delete(i);
-  else _selected.add(i);
+function toggleSample(i, event) {
+  if (event && event.shiftKey && _lastSampleIndex !== null && _lastSampleIndex >= 0 && _lastSampleIndex < _samples.length) {
+    const start = Math.min(_lastSampleIndex, i);
+    const end = Math.max(_lastSampleIndex, i);
+    for (let j = start; j <= end; j += 1) _selected.add(j);
+  } else if (_selected.has(i)) {
+    _selected.delete(i);
+  } else {
+    _selected.add(i);
+  }
+  _lastSampleIndex = i;
   renderSampleList();
   renderPreviewPage();
   updatePlot();
@@ -314,6 +346,7 @@ function toggleSample(i) {
 function selectAll(val) {
   if (val) _samples.forEach((_, i) => _selected.add(i));
   else _selected.clear();
+  _lastSampleIndex = val && _samples.length ? 0 : null;
   renderSampleList();
   renderPreviewPage();
   updatePlot();

@@ -76,6 +76,30 @@
     return Math.max(220, Math.min(420, Math.round(width * 0.46)));
   }
 
+  function formatCursorValue(value) {
+    if (!Number.isFinite(value)) return '--';
+    const abs = Math.abs(value);
+    if (abs >= 1000 || (abs > 0 && abs < 0.001)) return value.toExponential(3);
+    return value.toFixed(5).replace(/\.?0+$/, '');
+  }
+
+  function ensureCursorReadout(el, opts) {
+    if (opts.cursorReadout === false) return null;
+    let readout = el.querySelector('.plot-cursor-readout');
+    if (!readout) {
+      readout = document.createElement('div');
+      readout.className = 'plot-cursor-readout';
+      readout.textContent = 'x --, y --';
+      el.appendChild(readout);
+    }
+    return readout;
+  }
+
+  function updateCursorReadout(readout, x, y) {
+    if (!readout) return;
+    readout.textContent = 'x ' + formatCursorValue(x) + ', y ' + formatCursorValue(y);
+  }
+
   function resizeChart(containerId, el, opts) {
     const c = charts[containerId];
     if (!c) return;
@@ -152,6 +176,7 @@
     dpDestroyTrace(containerId);
     el.innerHTML = '';
     el.classList.add('is-uplot');
+    const cursorReadout = ensureCursorReadout(el, opts);
 
     const x = (payload && payload.x) || [];
     const y = (payload && payload.y) || [];
@@ -193,16 +218,17 @@
       hooks: {
         setCursor: [
           function (u) {
-            if (typeof opts.onCursor !== 'function') return;
             const left = u.cursor.left;
             const top = u.cursor.top;
             if (left == null || top == null) return;
-            opts.onCursor({
+            const cursor = {
               x: u.posToVal(left, 'x'),
               y: u.posToVal(top, 'y'),
               left: left,
               top: top,
-            });
+            };
+            updateCursorReadout(cursorReadout, cursor.x, cursor.y);
+            if (typeof opts.onCursor === 'function') opts.onCursor(cursor);
           },
         ],
       },

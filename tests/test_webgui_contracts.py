@@ -301,6 +301,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("flex: 0 0 34px", status)
         self.assertIn(".status-message", status)
         self.assertIn(".status-bar.status-ok", status)
+        self.assertIn("dpCompactStatusMessage", dom_js)
         self.assertIn(".modal-actions", modals)
         self.assertIn("width: auto", modals)
         self.assertIn('class="modal-actions"', dom_js)
@@ -923,8 +924,24 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("legend: { show: false, live: false }", source)
         self.assertIn("opts.dragZoom !== false", source)
         self.assertIn("opts.onCursor", source)
+        self.assertIn("plot-cursor-readout", source)
+        self.assertIn(".plot-cursor-readout", style)
+        self.assertIn(".u-legend", style)
         self.assertIn("chartHeight(el, width, opts)", source)
         self.assertIn(".plot-area.is-uplot", style)
+
+    def test_lineshape_selection_supports_shift_ranges(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "web_static" / "js" / "pages" / "echem_lineshape.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("toggleSourceIndex(${i}, event)", source)
+        self.assertIn("toggleSample(${i}, event)", source)
+        self.assertIn("toggleSample(${idx}, event)", source)
+        self.assertIn("event.shiftKey", source)
+        self.assertIn("_lastSourceIndex", source)
+        self.assertIn("_lastSampleIndex", source)
 
     def test_uplot_helper_is_cache_busted_on_all_uplot_pages(self) -> None:
         root = Path(__file__).resolve().parents[1]

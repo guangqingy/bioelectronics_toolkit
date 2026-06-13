@@ -237,6 +237,7 @@ function plot() {
         if (data.error) throw new Error(data.error);
         if (!window.dpRenderTrace('plotArea', data, {
           dragZoom: false,
+          cursorReadout: false,
           onCursor: pos => updateEmgPlotReadouts(pos.x, pos.y),
         })) throw new Error('uplot-render-failed');
         installEmgPlotInteractions();
