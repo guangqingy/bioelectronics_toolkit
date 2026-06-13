@@ -1,3 +1,91 @@
+let _emgPlotDrag = null;
+
+function formatEmgNumber(value, digits) {
+  if (!Number.isFinite(value)) return '--';
+  const abs = Math.abs(value);
+  if (abs >= 1000 || (abs > 0 && abs < 0.001)) return value.toExponential(3);
+  return value.toFixed(digits == null ? 4 : digits).replace(/\.?0+$/, '');
+}
+
+function updateEmgPlotReadouts(x, y) {
+  const coord = document.getElementById('plotCoordReadout');
+  if (coord) coord.textContent = `Cursor: x ${formatEmgNumber(x, 5)}, y ${formatEmgNumber(y, 3)}`;
+  updateEmgWindowReadout();
+}
+
+function updateEmgWindowReadout() {
+  const readout = document.getElementById('plotWindowReadout');
+  if (!readout) return;
+  const xMin = document.getElementById('xMin')?.value || '';
+  const xMax = document.getElementById('xMax')?.value || '';
+  readout.textContent = `Window: ${xMin || '--'} to ${xMax || '--'} s`;
+}
+
+function clearProcessedPeakPlot() {
+  const card = document.getElementById('processedPlotCard');
+  if (card) card.hidden = true;
+  setPlot('processedPlotArea', null);
+}
+
+function showProcessedPeakPlot(img, label) {
+  const card = document.getElementById('processedPlotCard');
+  if (card) card.hidden = false;
+  setPlot('processedPlotArea', img, 'png', label || 'Processed peak detection preview');
+}
+
+function emgValueFromPointer(plot, ev) {
+  const over = plot && plot.root ? plot.root.querySelector('.u-over') : null;
+  if (!over) return null;
+  const rect = over.getBoundingClientRect();
+  const left = ev.clientX - rect.left;
+  const top = ev.clientY - rect.top;
+  if (left < 0 || top < 0 || left > rect.width || top > rect.height) return null;
+  return {
+    left,
+    x: plot.posToVal(left, 'x'),
+    y: plot.posToVal(top, 'y')
+  };
+}
+
+function installEmgPlotInteractions() {
+  if (!window.dpGetTrace) return;
+  const chart = window.dpGetTrace('plotArea');
+  const over = chart && chart.root ? chart.root.querySelector('.u-over') : null;
+  if (!chart || !over || over._emgPeakInteractionsBound) return;
+
+  over._emgPeakInteractionsBound = true;
+  over.addEventListener('pointermove', ev => {
+    const pos = emgValueFromPointer(chart, ev);
+    if (pos) updateEmgPlotReadouts(pos.x, pos.y);
+  });
+  over.addEventListener('pointerleave', () => {
+    const coord = document.getElementById('plotCoordReadout');
+    if (coord) coord.textContent = 'Cursor: x --, y --';
+  });
+  over.addEventListener('pointerdown', ev => {
+    if (ev.button !== 0) return;
+    const pos = emgValueFromPointer(chart, ev);
+    if (!pos) return;
+    _emgPlotDrag = { left: pos.left, x: pos.x };
+  });
+  over.addEventListener('pointerup', ev => {
+    if (!_emgPlotDrag) return;
+    const start = _emgPlotDrag;
+    _emgPlotDrag = null;
+    const pos = emgValueFromPointer(chart, ev);
+    if (!pos || Math.abs(pos.left - start.left) < 6) return;
+
+    const x0 = Math.min(start.x, pos.x);
+    const x1 = Math.max(start.x, pos.x);
+    if (!Number.isFinite(x0) || !Number.isFinite(x1) || x1 <= x0) return;
+    document.getElementById('xMin').value = formatEmgNumber(x0, 6);
+    document.getElementById('xMax').value = formatEmgNumber(x1, 6);
+    updateEmgWindowReadout();
+    setStatus('status', `Window set: ${formatEmgNumber(x0, 5)} to ${formatEmgNumber(x1, 5)} s`, 'ok');
+    plot();
+  });
+}
+
 function browseMain() {
   const folder = document.getElementById('folderPath').value.trim();
   if (!folder) {
@@ -16,6 +104,7 @@ function browseMain() {
       _currentChannel = null;
       _peaks = [];
       _selected.clear();
+      clearProcessedPeakPlot();
       updatePeaksTable();
 
       const list = document.getElementById('subfolderList');
@@ -33,6 +122,7 @@ function browseMain() {
       } else {
         document.getElementById('channelList').innerHTML = '<div class="file-list-empty">No channels</div>';
         setPlot('plotArea', null);
+        clearProcessedPeakPlot();
       }
 
       setStatus('status', 'Ready', 'ok');
@@ -50,6 +140,7 @@ function selectSubfolder(el, subfolder) {
   _currentChannel = null;
   _peaks = [];
   _selected.clear();
+  clearProcessedPeakPlot();
   updatePeaksTable();
   loadChannels();
 }
@@ -79,6 +170,7 @@ function loadChannels() {
         selectChannel(list.children[0], data.channels[0]);
       } else {
         setPlot('plotArea', null);
+        clearProcessedPeakPlot();
       }
 
       setStatus('status', 'Ready', 'ok');
@@ -95,6 +187,7 @@ function selectChannel(el, channel) {
   _currentChannel = channel;
   _peaks = [];
   _selected.clear();
+  clearProcessedPeakPlot();
   updatePeaksTable();
   loadChannelData();
 }
@@ -111,6 +204,7 @@ function loadChannelData() {
     .then(data => {
       if (data.error) throw new Error(data.error);
       document.getElementById('xMax').value = data.duration || 10;
+      updateEmgWindowReadout();
       loadGenericFileProfileForCurrent(true).finally(() => plot());
     })
     .catch(e => {
@@ -126,6 +220,7 @@ function plot() {
   const x_min = parseFloat(document.getElementById('xMin').value) || 0;
   const x_max = document.getElementById('xMax').value ? parseFloat(document.getElementById('xMax').value) : null;
   const payload = { path, x_min, x_max };
+  updateEmgWindowReadout();
 
   setStatus('status', 'Plotting...', 'loading');
   if (window.dpUplotAvailable && window.dpUplotAvailable()) {
@@ -133,6 +228,7 @@ function plot() {
       .then(data => {
         if (data.error) throw new Error(data.error);
         if (!window.dpRenderTrace('plotArea', data)) throw new Error('uplot-render-failed');
+        installEmgPlotInteractions();
         setStatus('status', 'Ready', 'ok');
       })
       .catch(() => plotPng(payload));
@@ -148,6 +244,7 @@ function plotPng(payload) {
     .then(data => {
       if (data.error) throw new Error(data.error);
       setPlot('plotArea', data.img);
+      updateEmgWindowReadout();
       setStatus('status', 'Ready', 'ok');
     })
     .catch(e => {
@@ -167,6 +264,9 @@ window.DP.page = window.DP.page || {};
   'plotPng',
   'selectChannel',
   'selectSubfolder',
+  'clearProcessedPeakPlot',
+  'showProcessedPeakPlot',
+  'installEmgPlotInteractions',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

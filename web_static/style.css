@@ -738,6 +738,15 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
   min-height: 380px;
   position: relative;
 }
+.plot-area.is-uplot {
+  display: block;
+  padding: 8px;
+  overflow: hidden;
+}
+.plot-area.is-uplot .uplot-chart-host,
+.plot-area.is-uplot .u-wrap {
+  width: 100% !important;
+}
 .plot-area img {
   max-width: 100%;
   max-height: 100%;
@@ -827,6 +836,27 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 }
 .uplot-chart-host {
   width: 100%;
+}
+.plot-readout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 0;
+  color: var(--pewter);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.plot-readout-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.processed-plot-card {
+  margin-top: 12px;
+}
+.processed-plot-card .plot-area {
+  min-height: 320px;
 }
 .trace-data-fallback {
   width: 100%;
@@ -968,14 +998,16 @@ table.dp-table tr:hover td { background: var(--ash); }
 /* web_static/style/_status.css */
 /* ─── Status / notification ─── */
 .status-bar {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   max-width: 100%;
   min-width: 0;
   font-size: 12px;
   color: var(--silver);
   padding: 4px 0;
   min-height: 18px;
-  line-height: 1.45;
+  line-height: 1.35;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -1014,21 +1046,25 @@ table.dp-table tr:hover td { background: var(--ash); }
 .status-bar.status-warning { color: var(--warning); }
 .status-bar.status-loading { color: var(--blue); font-style: italic; }
 .status-text {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  column-gap: 8px;
-  align-items: start;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   min-width: 0;
   max-width: 100%;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 .status-text::before {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-size: 10px;
   font-style: normal;
   font-weight: 800;
-  min-width: 0;
+  flex: 0 0 34px;
+  min-width: 34px;
+  height: 18px;
+  line-height: 1;
 }
 .status-bar.status-ok .status-text::before,
 .status-bar.ok .status-text::before {

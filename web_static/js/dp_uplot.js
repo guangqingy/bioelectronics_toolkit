@@ -12,6 +12,7 @@
  * Public API:
  *   dpUplotAvailable()                       -> bool
  *   dpRenderTrace(containerId, payload, opts) -> bool   (false => fall back)
+ *   dpGetTrace(containerId)                  -> uPlot|null
  *   dpDestroyTrace(containerId)
  *
  * payload shape (from trace_data_payload):
@@ -35,11 +36,37 @@
   }
 
   function dpDestroyTrace(containerId) {
+    const el = document.getElementById(containerId);
     const c = charts[containerId];
     if (c) {
       try { c.destroy(); } catch (_) {}
       delete charts[containerId];
     }
+    if (el) el.classList.remove('is-uplot');
+  }
+
+  function dpGetTrace(containerId) {
+    return charts[containerId] || null;
+  }
+
+  function cssPixels(el, prop) {
+    const value = parseFloat(getComputedStyle(el).getPropertyValue(prop));
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function chartWidth(el) {
+    const outer = el.getBoundingClientRect().width || el.clientWidth || 760;
+    const pad = cssPixels(el, 'padding-left') + cssPixels(el, 'padding-right');
+    return Math.max(320, Math.floor(outer - pad));
+  }
+
+  function chartHeight(el, width, opts) {
+    if (opts && opts.height) return Math.max(220, opts.height);
+    const outer = el.getBoundingClientRect().height || el.clientHeight || 0;
+    const pad = cssPixels(el, 'padding-top') + cssPixels(el, 'padding-bottom');
+    const explicitHeight = Math.floor(outer - pad);
+    if (explicitHeight > 0) return Math.max(220, explicitHeight);
+    return Math.max(220, Math.min(420, Math.round(width * 0.46)));
   }
 
   function placeholder(el, text) {
@@ -84,6 +111,7 @@
 
     dpDestroyTrace(containerId);
     el.innerHTML = '';
+    el.classList.add('is-uplot');
 
     const x = (payload && payload.x) || [];
     const y = (payload && payload.y) || [];
@@ -96,8 +124,8 @@
     const gridColor = cssVar('--border-muted', '#d9dde6');
     const textColor = cssVar('--pewter', '#5C5E62');
 
-    const width = Math.max(320, Math.floor(el.clientWidth || 760));
-    const height = Math.max(220, opts.height || Math.round(width * 0.46));
+    const width = chartWidth(el);
+    const height = chartHeight(el, width, opts);
 
     const pts = payload.decimated
       ? payload.n_points.toLocaleString() + ' / ' + payload.n_full.toLocaleString() + ' pts'
@@ -120,17 +148,21 @@
       height: height,
       title: title,
       cursor: { drag: { x: true, y: false }, focus: { prox: 16 } },
-      legend: { live: true },
+      legend: { show: false, live: false },
       scales: { x: { time: false }, y: yScale },
       axes: [
         {
           label: payload.x_label || '',
+          gap: 8,
+          size: 46,
           stroke: textColor,
           grid: { stroke: gridColor, width: 1 },
           ticks: { stroke: gridColor, width: 1 },
         },
         {
           label: payload.y_label || '',
+          gap: 8,
+          size: 74,
           stroke: textColor,
           grid: { stroke: gridColor, width: 1 },
           ticks: { stroke: gridColor, width: 1 },
@@ -155,7 +187,7 @@
 
     try {
       charts[containerId] = new window.uPlot(o, [x, y], chartHost);
-      el.insertAdjacentHTML('beforeend', traceTable(payload, x, y));
+      if (opts.showDataTable) el.insertAdjacentHTML('beforeend', traceTable(payload, x, y));
     } catch (e) {
       placeholder(el, 'Plot error');
       return false;
@@ -170,8 +202,8 @@
         raf = requestAnimationFrame(function () {
           const c = charts[containerId];
           if (!c) return;
-          const w = Math.max(320, Math.floor(el.clientWidth || width));
-          c.setSize({ width: w, height: Math.max(220, Math.round(w * 0.46)) });
+          const w = chartWidth(el);
+          c.setSize({ width: w, height: chartHeight(el, w, opts) });
         });
       });
     }
@@ -181,5 +213,6 @@
 
   window.dpUplotAvailable = dpUplotAvailable;
   window.dpRenderTrace = dpRenderTrace;
+  window.dpGetTrace = dpGetTrace;
   window.dpDestroyTrace = dpDestroyTrace;
 })();

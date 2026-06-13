@@ -70,6 +70,11 @@ class EmgPeaksService:
             )
         return outputs
 
+    @staticmethod
+    def _finish_trace_figure(fig: Any) -> None:
+        fig.tight_layout(pad=1.1)
+        fig.subplots_adjust(left=0.10, right=0.985, bottom=0.18, top=0.92)
+
     def browse_payload(self, folder: str) -> dict[str, Any]:
         subfolders = []
         path = Path(folder)
@@ -115,7 +120,7 @@ class EmgPeaksService:
         ax.set_xlabel(t_col)
         ax.set_ylabel(v_col)
         ax.grid(True, alpha=0.4)
-        fig.tight_layout()
+        self._finish_trace_figure(fig)
         return {"img": self.fig_to_b64(fig)}
 
     def trace_data_payload(
@@ -231,7 +236,7 @@ class EmgPeaksService:
         ax.set_xlabel(t_col)
         ax.set_ylabel(v_col)
         ax.grid(True, alpha=0.4)
-        fig.tight_layout()
+        self._finish_trace_figure(fig)
         return {"img": self.fig_to_b64(fig), "peaks": rows}
 
     def load_csv_payload(self, path: str) -> dict[str, Any]:
@@ -247,7 +252,7 @@ class EmgPeaksService:
         ax.set_ylabel(v_col)
         ax.set_title(Path(path).name, fontsize=10, color="#5C5E62")
         ax.grid(True, alpha=0.4)
-        fig.tight_layout()
+        self._finish_trace_figure(fig)
         return {
             "img": self.fig_to_b64(fig),
             "t_col": t_col,
@@ -307,7 +312,7 @@ class EmgPeaksService:
         ax.set_ylabel(v_col)
         ax.set_title(f"{Path(path).name} - {len(peak_rows)} peaks", fontsize=10, color="#5C5E62")
         ax.grid(True, alpha=0.4)
-        fig.tight_layout()
+        self._finish_trace_figure(fig)
         return {"img": self.fig_to_b64(fig), "peaks": peak_rows}
 
     def grouped_export_payload(self, data: dict[str, Any]) -> dict[str, Any]:

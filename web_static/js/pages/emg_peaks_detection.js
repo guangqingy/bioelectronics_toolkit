@@ -39,9 +39,8 @@ function detectPeaks() {
   })
     .then(data => {
       if (data.error) throw new Error(data.error);
-      if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
-      setPlot('plotArea', data.img);
       const detected = (data.peaks || []).map(normalizePeak);
+      showProcessedPeakPlot(data.img, `Processed peak detection preview: ${detected.length} peak(s)`);
       if (detectMode === 'append') {
         mergeDetectedPeaks(detected);
       } else {

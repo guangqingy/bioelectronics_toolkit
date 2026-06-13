@@ -150,6 +150,16 @@
   </div>
   <div class="view-preview">
     <div id="plotArea" class="plot-area" style="height:360px;"><div class="plot-placeholder">Select folder, subfolder, and channel</div></div>
+    <div class="plot-readout-row" aria-live="polite">
+      <span id="plotCoordReadout">Cursor: x --, y --</span>
+      <span id="plotWindowReadout">Window: --</span>
+    </div>
+  </div>
+  <div id="processedPlotCard" class="result-card processed-plot-card" hidden>
+    <div class="result-card-header">Processed Preview</div>
+    <div class="result-card-body">
+      <div id="processedPlotArea" class="plot-area" style="height:320px;"><div class="plot-placeholder">No processed plot</div></div>
+    </div>
   </div>
   <div class="view-results">
     <div class="result-card">

@@ -310,6 +310,7 @@ function dpBindPlotActions(container, img, fmt, label) {
 function setPlot(containerId, b64, fmt, altText) {
   const c = document.getElementById(containerId);
   if (!c) return;
+  c.classList.remove('is-uplot');
   if (!b64) {
     c.innerHTML = '<div class="plot-placeholder">No output</div>';
     return;

@@ -115,6 +115,15 @@
   min-height: 380px;
   position: relative;
 }
+.plot-area.is-uplot {
+  display: block;
+  padding: 8px;
+  overflow: hidden;
+}
+.plot-area.is-uplot .uplot-chart-host,
+.plot-area.is-uplot .u-wrap {
+  width: 100% !important;
+}
 .plot-area img {
   max-width: 100%;
   max-height: 100%;
@@ -204,6 +213,27 @@
 }
 .uplot-chart-host {
   width: 100%;
+}
+.plot-readout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 0;
+  color: var(--pewter);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.plot-readout-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.processed-plot-card {
+  margin-top: 12px;
+}
+.processed-plot-card .plot-area {
+  min-height: 320px;
 }
 .trace-data-fallback {
   width: 100%;

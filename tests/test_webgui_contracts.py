@@ -297,7 +297,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('appearance: none', forms)
         self.assertIn(".checkbox-row input[type=\"checkbox\"]:checked", style)
         self.assertIn("overflow-wrap: anywhere", status)
-        self.assertIn("grid-template-columns: 34px minmax(0, 1fr)", status)
+        self.assertIn("display: flex", status)
+        self.assertIn("flex: 0 0 34px", status)
         self.assertIn(".status-bar.status-ok", status)
         self.assertIn(".modal-actions", modals)
         self.assertIn("width: auto", modals)
@@ -884,14 +885,34 @@ class WebAppSmokeTests(unittest.TestCase):
             (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
             for module in modules
         )
+        detection_source = (
+            root / "web_static" / "js" / "pages" / "emg_peaks_detection.js"
+        ).read_text(encoding="utf-8")
 
         for module in modules:
             self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
         self.assertIn("function detectPeaks()", js_source)
+        self.assertIn('id="plotCoordReadout"', template)
+        self.assertIn('id="processedPlotArea"', template)
+        self.assertIn("function installEmgPlotInteractions()", js_source)
+        self.assertIn("showProcessedPeakPlot(data.img", detection_source)
+        self.assertNotIn("setPlot('plotArea', data.img)", detection_source)
         self.assertIn("function autoGroupByTime()", js_source)
         self.assertIn("function exportGrouped()", js_source)
         self.assertNotIn("let _currentFolder = null", template)
+
+    def test_uplot_trace_renderer_fits_panel_without_side_legend(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "web_static" / "js" / "dp_uplot.js").read_text(encoding="utf-8")
+        style = (root / "web_static" / "style" / "_files_plots.css").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("function dpGetTrace(containerId)", source)
+        self.assertIn("legend: { show: false, live: false }", source)
+        self.assertIn("chartHeight(el, width, opts)", source)
+        self.assertIn(".plot-area.is-uplot", style)
 
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np
