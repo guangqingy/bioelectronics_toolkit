@@ -201,7 +201,7 @@
 {% block scripts %}
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <script defer src="/static/vendor/uplot/uPlot.iife.min.js"></script>
-<script defer src="/static/js/dp_uplot.js"></script>
+<script defer src="{{ static_asset('js/dp_uplot.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/emg_peaks_state.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/emg_peaks_browser.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/emg_peaks_detection.js') }}"></script>

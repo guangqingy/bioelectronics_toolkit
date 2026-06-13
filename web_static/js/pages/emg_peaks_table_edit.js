@@ -1,6 +1,11 @@
+let _lastPeakSelectionIndex = null;
+
 function updatePeaksTable() {
   const tbody = document.querySelector('#peaksTable tbody');
   tbody.innerHTML = '';
+  if (_lastPeakSelectionIndex !== null && (_lastPeakSelectionIndex < 0 || _lastPeakSelectionIndex >= _peaks.length)) {
+    _lastPeakSelectionIndex = null;
+  }
 
   _peaks.forEach((peak, idx) => {
     const tr = document.createElement('tr');
@@ -16,27 +21,53 @@ function updatePeaksTable() {
     const tVal = peakTime(peak).toFixed(3);
     const hVal = peakHeight(peak).toFixed(3);
     const dVal = peakDuration(peak).toFixed(2);
-    const group = (peak.group || '-');
+    const group = escHtml(peak.group || '-');
     const btnLabel = removed ? 'Undo' : 'Remove';
 
-    tr.innerHTML = '<td><input type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + ' onchange="togglePeakSelection(' + idx + ')"></td>' +
-      '<td onclick="togglePeakSelection(' + idx + ')" style="cursor:pointer;">' + idx + '</td>' +
-      '<td onclick="togglePeakSelection(' + idx + ')" style="cursor:pointer;">' + tVal + '</td>' +
-      '<td onclick="togglePeakSelection(' + idx + ')" style="cursor:pointer;">' + hVal + '</td>' +
-      '<td onclick="togglePeakSelection(' + idx + ')" style="cursor:pointer;">' + dVal + '</td>' +
+    tr.innerHTML = '<td><input type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + '></td>' +
+      '<td data-peak-select style="cursor:pointer;">' + idx + '</td>' +
+      '<td data-peak-select style="cursor:pointer;">' + tVal + '</td>' +
+      '<td data-peak-select style="cursor:pointer;">' + hVal + '</td>' +
+      '<td data-peak-select style="cursor:pointer;">' + dVal + '</td>' +
       '<td>' + group + '</td>' +
-      '<td><button class="btn-icon" onclick="togglePeakRemoved(' + idx + ')">' + btnLabel + '</button></td>';
+      '<td><button class="btn-icon">' + btnLabel + '</button></td>';
+
+    const checkbox = tr.querySelector('input[type="checkbox"]');
+    checkbox.addEventListener('click', ev => {
+      ev.preventDefault();
+      togglePeakSelection(idx, ev);
+    });
+    tr.querySelectorAll('[data-peak-select]').forEach(cell => {
+      cell.addEventListener('click', ev => togglePeakSelection(idx, ev));
+    });
+    tr.querySelector('button').addEventListener('click', () => togglePeakRemoved(idx));
     tbody.appendChild(tr);
   });
 }
 
-function togglePeakSelection(idx) {
-  if (_selected.has(idx)) {
+function togglePeakSelection(idx, event) {
+  const useRange = !!(
+    event &&
+    event.shiftKey &&
+    _lastPeakSelectionIndex !== null &&
+    _lastPeakSelectionIndex >= 0 &&
+    _lastPeakSelectionIndex < _peaks.length
+  );
+  if (useRange) {
+    const start = Math.max(0, Math.min(_lastPeakSelectionIndex, idx));
+    const end = Math.min(_peaks.length - 1, Math.max(_lastPeakSelectionIndex, idx));
+    for (let i = start; i <= end; i += 1) _selected.add(i);
+  } else if (_selected.has(idx)) {
     _selected.delete(idx);
   } else {
     _selected.add(idx);
   }
+  _lastPeakSelectionIndex = idx;
   updatePeaksTable();
+}
+
+function resetPeakSelectionAnchor() {
+  _lastPeakSelectionIndex = null;
 }
 
 function togglePeakRemoved(idx) {
@@ -108,11 +139,13 @@ function autoGroupByTime() {
 
 function selectAllPeaks() {
   _selected = new Set(_peaks.map((_, idx) => idx));
+  _lastPeakSelectionIndex = _peaks.length ? 0 : null;
   updatePeaksTable();
 }
 
 function clearPeakSelection() {
   _selected.clear();
+  _lastPeakSelectionIndex = null;
   updatePeaksTable();
 }
 
@@ -159,6 +192,7 @@ window.DP.page = window.DP.page || {};
   'restoreSelectedPeaks',
   'selectAllPeaks',
   'setGroupForSelected',
+  'resetPeakSelectionAnchor',
   'togglePeakRemoved',
   'togglePeakSelection',
   'updatePeaksTable',

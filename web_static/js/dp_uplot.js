@@ -190,6 +190,22 @@
       cursor: { drag: { x: opts.dragZoom !== false, y: false }, focus: { prox: 16 } },
       legend: { show: false, live: false },
       scales: { x: { time: false }, y: yScale },
+      hooks: {
+        setCursor: [
+          function (u) {
+            if (typeof opts.onCursor !== 'function') return;
+            const left = u.cursor.left;
+            const top = u.cursor.top;
+            if (left == null || top == null) return;
+            opts.onCursor({
+              x: u.posToVal(left, 'x'),
+              y: u.posToVal(top, 'y'),
+              left: left,
+              top: top,
+            });
+          },
+        ],
+      },
       axes: [
         {
           label: payload.x_label || '',

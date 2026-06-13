@@ -47,6 +47,7 @@ function detectPeaks() {
         _peaks = detected.sort((a, b) => peakTime(a) - peakTime(b));
       }
       _selected.clear();
+      if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
       updatePeaksTable();
       setStatus('status', 'Detected ' + detected.length + ' peaks (' + detectMode + ')', 'ok');
       toast('Peak detection complete');

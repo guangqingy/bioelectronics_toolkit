@@ -14,6 +14,7 @@ window.dpApplyFileProfilePayload = payload => {
   if (!payload || typeof payload !== 'object') return;
   if (Array.isArray(payload.peaks)) _peaks = payload.peaks.map(normalizePeak);
   _selected = new Set(Array.isArray(payload.selected) ? payload.selected : []);
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   updatePeaksTable();
 };
 window.dpAfterFileProfileApplied = () => {
@@ -34,6 +35,7 @@ window.dpApplyRunManifest = manifest => {
   if (params.settings) dpApplyObjectToControls(params.settings);
   if (Array.isArray(params.peaks)) _peaks = params.peaks.map(normalizePeak);
   _selected.clear();
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   updatePeaksTable();
   plot();
 };

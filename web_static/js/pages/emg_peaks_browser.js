@@ -66,10 +66,6 @@ function installEmgPlotInteractions() {
     const pos = emgValueFromPointer(chart, ev);
     if (pos) updateEmgPlotReadouts(pos.x, pos.y);
   });
-  over.addEventListener('pointerleave', () => {
-    const coord = document.getElementById('plotCoordReadout');
-    if (coord) coord.textContent = 'Cursor: x --, y --';
-  });
   over.addEventListener('pointerdown', ev => {
     if (ev.button !== 0) return;
     const pos = emgValueFromPointer(chart, ev);
@@ -112,6 +108,7 @@ function browseMain() {
       _currentChannel = null;
       _peaks = [];
       _selected.clear();
+      if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
       clearProcessedPeakPlot();
       updatePeaksTable();
 
@@ -148,6 +145,7 @@ function selectSubfolder(el, subfolder) {
   _currentChannel = null;
   _peaks = [];
   _selected.clear();
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   clearProcessedPeakPlot();
   updatePeaksTable();
   loadChannels();
@@ -195,6 +193,7 @@ function selectChannel(el, channel) {
   _currentChannel = channel;
   _peaks = [];
   _selected.clear();
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   clearProcessedPeakPlot();
   updatePeaksTable();
   loadChannelData();
@@ -236,7 +235,10 @@ function plot() {
     api('/api/emg/trace_data', payload)
       .then(data => {
         if (data.error) throw new Error(data.error);
-        if (!window.dpRenderTrace('plotArea', data, { dragZoom: false })) throw new Error('uplot-render-failed');
+        if (!window.dpRenderTrace('plotArea', data, {
+          dragZoom: false,
+          onCursor: pos => updateEmgPlotReadouts(pos.x, pos.y),
+        })) throw new Error('uplot-render-failed');
         installEmgPlotInteractions();
         setStatus('status', 'Ready', 'ok');
       })

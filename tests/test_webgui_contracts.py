@@ -900,7 +900,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Preview Window (s)", template)
         self.assertIn("function resetPreviewWindow()", js_source)
         self.assertIn("function installEmgPlotInteractions()", js_source)
-        self.assertIn("{ dragZoom: false }", js_source)
+        self.assertIn("dragZoom: false", js_source)
+        self.assertIn("onCursor: pos => updateEmgPlotReadouts(pos.x, pos.y)", js_source)
+        self.assertIn("event.shiftKey", js_source)
+        self.assertIn("function resetPeakSelectionAnchor()", js_source)
         self.assertIn("showProcessedPeakPlot(data.img", detection_source)
         self.assertNotIn("setPlot('plotArea', data.img)", detection_source)
         self.assertIn("function renderEmgExportOutputs(data)", js_source)
@@ -919,8 +922,25 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function dpGetTrace(containerId)", source)
         self.assertIn("legend: { show: false, live: false }", source)
         self.assertIn("opts.dragZoom !== false", source)
+        self.assertIn("opts.onCursor", source)
         self.assertIn("chartHeight(el, width, opts)", source)
         self.assertIn(".plot-area.is-uplot", style)
+
+    def test_uplot_helper_is_cache_busted_on_all_uplot_pages(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        templates = [
+            "abf_viewer.html",
+            "csv_viewer.html",
+            "echem_lineshape.html",
+            "echem_pc.html",
+            "echem_pv.html",
+            "emg_peaks.html",
+        ]
+        for name in templates:
+            with self.subTest(template=name):
+                template = (root / "web_templates" / name).read_text(encoding="utf-8")
+                self.assertIn("static_asset('js/dp_uplot.js')", template)
+                self.assertNotIn('src="/static/js/dp_uplot.js"', template)
 
     def test_rhd_preview_plot_accepts_merge_and_downsample(self) -> None:
         import numpy as np

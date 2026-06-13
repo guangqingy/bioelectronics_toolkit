@@ -112,6 +112,6 @@
 {% block scripts %}
 <link rel="stylesheet" href="/static/vendor/uplot/uPlot.min.css">
 <script defer src="/static/vendor/uplot/uPlot.iife.min.js"></script>
-<script defer src="/static/js/dp_uplot.js"></script>
+<script defer src="{{ static_asset('js/dp_uplot.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/csv_viewer.js') }}"></script>
 {% endblock %}
