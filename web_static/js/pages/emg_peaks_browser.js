@@ -1,4 +1,5 @@
 let _emgPlotDrag = null;
+let _emgTraceDuration = null;
 
 function formatEmgNumber(value, digits) {
   if (!Number.isFinite(value)) return '--';
@@ -31,6 +32,13 @@ function showProcessedPeakPlot(img, label) {
   const card = document.getElementById('processedPlotCard');
   if (card) card.hidden = false;
   setPlot('processedPlotArea', img, 'png', label || 'Processed peak detection preview');
+}
+
+function resetPreviewWindow() {
+  document.getElementById('xMin').value = 0;
+  document.getElementById('xMax').value = _emgTraceDuration || '';
+  updateEmgWindowReadout();
+  plot();
 }
 
 function emgValueFromPointer(plot, ev) {
@@ -203,6 +211,7 @@ function loadChannelData() {
   })
     .then(data => {
       if (data.error) throw new Error(data.error);
+      _emgTraceDuration = data.duration || null;
       document.getElementById('xMax').value = data.duration || 10;
       updateEmgWindowReadout();
       loadGenericFileProfileForCurrent(true).finally(() => plot());
@@ -227,7 +236,7 @@ function plot() {
     api('/api/emg/trace_data', payload)
       .then(data => {
         if (data.error) throw new Error(data.error);
-        if (!window.dpRenderTrace('plotArea', data)) throw new Error('uplot-render-failed');
+        if (!window.dpRenderTrace('plotArea', data, { dragZoom: false })) throw new Error('uplot-render-failed');
         installEmgPlotInteractions();
         setStatus('status', 'Ready', 'ok');
       })
@@ -267,6 +276,7 @@ window.DP.page = window.DP.page || {};
   'clearProcessedPeakPlot',
   'showProcessedPeakPlot',
   'installEmgPlotInteractions',
+  'resetPreviewWindow',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

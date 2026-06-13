@@ -120,9 +120,9 @@
   padding: 8px;
   overflow: hidden;
 }
-.plot-area.is-uplot .uplot-chart-host,
-.plot-area.is-uplot .u-wrap {
-  width: 100% !important;
+.plot-area.is-uplot .uplot-chart-host {
+  width: 100%;
+  min-width: 0;
 }
 .plot-area img {
   max-width: 100%;
@@ -234,6 +234,33 @@
 }
 .processed-plot-card .plot-area {
   min-height: 320px;
+}
+.export-result-card {
+  margin-top: 12px;
+}
+.output-path-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.output-path-item,
+.output-path-more {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--pewter);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.output-path-more {
+  color: var(--silver);
 }
 .trace-data-fallback {
   width: 100%;

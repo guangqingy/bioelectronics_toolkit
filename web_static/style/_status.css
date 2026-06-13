@@ -68,6 +68,12 @@
   height: 18px;
   line-height: 1;
 }
+.status-message {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .status-bar.status-ok .status-text::before,
 .status-bar.ok .status-text::before {
   content: "OK";

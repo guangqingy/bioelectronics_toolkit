@@ -1,4 +1,5 @@
 /* web_static/style/_variables.css */
+
 /* ═══════════════════════════════════════════════════
    DataProcess Web — Tesla-inspired design system
    ═══════════════════════════════════════════════════ */
@@ -86,6 +87,7 @@
 }
 
 /* web_static/style/_reset.css */
+
 /* ─── Reset ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 [hidden] { display: none !important; }
@@ -107,6 +109,7 @@ body {
 }
 
 /* web_static/style/_nav.css */
+
 /* ─── Top navigation ─── */
 .top-nav {
   position: fixed;
@@ -330,6 +333,7 @@ body {
 }
 
 /* web_static/style/_layout.css */
+
 /* ─── App shell ─── */
 .app-shell {
   display: flex;
@@ -403,6 +407,7 @@ body {
 }
 
 /* web_static/style/_forms.css */
+
 /* ─── Input group ─── */
 .input-group { display: flex; flex-direction: column; gap: 6px; }
 .input-row   { display: flex; align-items: center; gap: 6px; }
@@ -545,6 +550,7 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 }
 
 /* web_static/style/_buttons.css */
+
 /* ─── Buttons ─── */
 .btn-primary {
   align-items: center;
@@ -621,6 +627,7 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 .btn-row .btn-secondary { flex: 1; font-size: 12px; padding: 5px 8px; }
 
 /* web_static/style/_files_plots.css */
+
 /* ─── File list ─── */
 .file-filter {
   display: flex;
@@ -743,9 +750,9 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
   padding: 8px;
   overflow: hidden;
 }
-.plot-area.is-uplot .uplot-chart-host,
-.plot-area.is-uplot .u-wrap {
-  width: 100% !important;
+.plot-area.is-uplot .uplot-chart-host {
+  width: 100%;
+  min-width: 0;
 }
 .plot-area img {
   max-width: 100%;
@@ -858,6 +865,33 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 .processed-plot-card .plot-area {
   min-height: 320px;
 }
+.export-result-card {
+  margin-top: 12px;
+}
+.output-path-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 220px;
+  overflow: auto;
+}
+.output-path-item,
+.output-path-more {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border-muted);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--pewter);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.output-path-more {
+  color: var(--silver);
+}
 .trace-data-fallback {
   width: 100%;
   margin-top: 8px;
@@ -897,6 +931,7 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 .result-card-body { padding: 14px 16px; }
 
 /* web_static/style/_tables_dashboard.css */
+
 /* ─── Data table ─── */
 .data-table-wrap {
   overflow-x: auto;
@@ -996,6 +1031,7 @@ table.dp-table tr:hover td { background: var(--ash); }
 .page-sub { font-size: 13px; color: var(--pewter); }
 
 /* web_static/style/_status.css */
+
 /* ─── Status / notification ─── */
 .status-bar {
   display: flex;
@@ -1065,6 +1101,12 @@ table.dp-table tr:hover td { background: var(--ash); }
   min-width: 34px;
   height: 18px;
   line-height: 1;
+}
+.status-message {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .status-bar.status-ok .status-text::before,
 .status-bar.ok .status-text::before {
@@ -1237,6 +1279,7 @@ table.dp-table tr:hover td { background: var(--ash); }
 }
 
 /* web_static/style/_modals_base.css */
+
 /* ─── Modal / preferences ─── */
 .modal-overlay {
   position: fixed;
@@ -1302,6 +1345,7 @@ table.dp-table tr:hover td { background: var(--ash); }
 }
 
 /* web_static/style/_preferences.css */
+
 .prefs-body {
   display: flex;
   flex-direction: column;
@@ -1497,6 +1541,7 @@ table.dp-table tr:hover td { background: var(--ash); }
 }
 
 /* web_static/style/_run_history.css */
+
 .run-history-list {
   display: flex;
   flex-direction: column;
@@ -1699,6 +1744,7 @@ table.dp-table tr:hover td { background: var(--ash); }
 }
 
 /* web_static/style/_command_shortcuts.css */
+
 .shortcut-card {
   width: min(620px, 100%);
 }
@@ -1806,6 +1852,7 @@ kbd {
 }
 
 /* web_static/style/_logout.css */
+
 /* ─── Logout screen ─── */
 .logout-screen {
   min-height: 100vh;
@@ -1836,6 +1883,7 @@ kbd {
 }
 
 /* web_static/style/_abf_params.css */
+
 /* ─── ABF Viewer layout ─── */
 .abf-panel {
   width: calc(var(--ctrl-w) + 40px);
@@ -1876,6 +1924,7 @@ kbd {
 .abf-folder-actions .btn-secondary { min-height: 32px; }
 
 /* web_static/style/_scripts_pipeline.css */
+
 .script-header {
   display: flex;
   align-items: flex-start;
@@ -2112,6 +2161,7 @@ kbd {
 }
 
 /* web_static/style/_pipeline_artifacts.css */
+
 .pipeline-output-body {
   display: flex;
   flex-direction: column;
@@ -2203,6 +2253,7 @@ kbd {
 }
 
 /* web_static/style/_views_tiff.css */
+
 /* ─── View main layout ─── */
 .view-main {
   display: flex;
@@ -2299,6 +2350,7 @@ pre {
 }
 
 /* web_static/style/_lif.css */
+
 /* ─── Leica LIF browser ─── */
 .lif-layout {
   display: grid;
@@ -2518,6 +2570,7 @@ pre {
 }
 
 /* web_static/style/_stacking.css */
+
 /* ─── 3D stacking ─── */
 .stacking-layout {
   display: grid;
@@ -2601,6 +2654,7 @@ pre {
 }
 
 /* web_static/style/_responsive.css */
+
 /* ─── Responsive ─── */
 .mobile-unsupported-banner {
   display: none;

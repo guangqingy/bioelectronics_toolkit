@@ -21,6 +21,7 @@
  */
 (function () {
   const charts = {};
+  const resizeCleanups = {};
 
   function cssVar(name, fallback) {
     try {
@@ -36,6 +37,12 @@
   }
 
   function dpDestroyTrace(containerId) {
+    const cleanup = resizeCleanups[containerId];
+    if (cleanup) {
+      try { cleanup(); } catch (_) {}
+      delete resizeCleanups[containerId];
+    }
+
     const el = document.getElementById(containerId);
     const c = charts[containerId];
     if (c) {
@@ -67,6 +74,39 @@
     const explicitHeight = Math.floor(outer - pad);
     if (explicitHeight > 0) return Math.max(220, explicitHeight);
     return Math.max(220, Math.min(420, Math.round(width * 0.46)));
+  }
+
+  function resizeChart(containerId, el, opts) {
+    const c = charts[containerId];
+    if (!c) return;
+    const width = chartWidth(el);
+    c.setSize({ width: width, height: chartHeight(el, width, opts) });
+  }
+
+  function bindChartResize(containerId, el, opts) {
+    let raf = null;
+    const schedule = function () {
+      if (raf) cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(function () {
+        raf = null;
+        resizeChart(containerId, el, opts);
+      });
+    };
+
+    let observer = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(schedule);
+      observer.observe(el);
+    }
+    window.addEventListener('resize', schedule);
+
+    resizeCleanups[containerId] = function () {
+      if (raf) cancelAnimationFrame(raf);
+      if (observer) observer.disconnect();
+      window.removeEventListener('resize', schedule);
+    };
+
+    schedule();
   }
 
   function placeholder(el, text) {
@@ -147,7 +187,7 @@
       width: width,
       height: height,
       title: title,
-      cursor: { drag: { x: true, y: false }, focus: { prox: 16 } },
+      cursor: { drag: { x: opts.dragZoom !== false, y: false }, focus: { prox: 16 } },
       legend: { show: false, live: false },
       scales: { x: { time: false }, y: yScale },
       axes: [
@@ -193,20 +233,7 @@
       return false;
     }
 
-    // Keep the chart sized to its container.
-    if (!el._dpUplotResizeBound) {
-      el._dpUplotResizeBound = true;
-      let raf = null;
-      window.addEventListener('resize', function () {
-        if (raf) cancelAnimationFrame(raf);
-        raf = requestAnimationFrame(function () {
-          const c = charts[containerId];
-          if (!c) return;
-          const w = chartWidth(el);
-          c.setSize({ width: w, height: chartHeight(el, w, opts) });
-        });
-      });
-    }
+    bindChartResize(containerId, el, opts);
 
     return true;
   }

@@ -54,7 +54,10 @@ function setStatus(id, msg, cls, progress) {
   el.className = 'status-bar ' + cls + ' ' + norm;
   const text = document.createElement('span');
   text.className = 'status-text';
-  text.textContent = msg || '';
+  const message = document.createElement('span');
+  message.className = 'status-message';
+  message.textContent = msg || '';
+  text.appendChild(message);
   el.replaceChildren(text);
   const progressValue = typeof progress === 'number' ? progress : dpProgressFromMessage(msg);
   if (norm === 'status-loading' && typeof progressValue === 'number') {

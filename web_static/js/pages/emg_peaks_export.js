@@ -1,3 +1,35 @@
+function emgOutputBasename(path) {
+  return String(path || '').split(/[\\/]/).pop() || String(path || '');
+}
+
+function renderEmgExportOutputs(data) {
+  const card = document.getElementById('exportResultCard');
+  const summary = document.getElementById('exportOutputSummary');
+  const list = document.getElementById('exportOutputList');
+  if (!card || !summary || !list) return;
+
+  const segN = data.segment_count || 0;
+  const summaryPath = data.summary_path || '';
+  const paths = data.saved_paths || (summaryPath ? [summaryPath] : []);
+  summary.textContent = `Saved ${segN} segment file(s)` + (summaryPath ? ` · summary: ${emgOutputBasename(summaryPath)}` : '');
+  list.innerHTML = '';
+
+  paths.slice(0, 80).forEach(path => {
+    const item = document.createElement('div');
+    item.className = 'output-path-item';
+    item.title = path;
+    item.textContent = path;
+    list.appendChild(item);
+  });
+  if (paths.length > 80) {
+    const more = document.createElement('div');
+    more.className = 'output-path-more';
+    more.textContent = `+ ${paths.length - 80} more output path(s)`;
+    list.appendChild(more);
+  }
+  card.hidden = false;
+}
+
 function exportGrouped() {
   if (_peaks.length === 0) {
     setStatus('status', 'No peaks to export', 'error');
@@ -25,8 +57,8 @@ function exportGrouped() {
   })
     .then(d => {
       const segN = d.segment_count || 0;
-      const summary = d.summary_path ? (' | summary: ' + d.summary_path) : '';
-      setStatus('status', 'Saved summary + ' + segN + ' segment file(s): ' + (d.saved_path || 'ok') + summary, 'ok');
+      renderEmgExportOutputs(d);
+      setStatus('status', 'Export complete: saved summary + ' + segN + ' segment file(s)', 'ok');
       recordRunHistory({
         view: 'emg_peaks',
         title: 'EMG Grouped Peaks Export',
@@ -56,6 +88,7 @@ window.DP = window.DP || {};
 window.DP.page = window.DP.page || {};
 [
   'exportGrouped',
+  'renderEmgExportOutputs',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

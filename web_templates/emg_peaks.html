@@ -27,6 +27,22 @@
   <div id="channelList" class="file-list"></div>
 </div>
 
+<div class="ctrl-section">
+  <div class="ctrl-label">Preview Window (s)</div>
+  <div class="param-row">
+    <div class="param-label">X Min</div>
+    <input type="number" id="xMin" class="input-sm" value="0" step="any" onchange="DP.page.plot()">
+  </div>
+  <div class="param-row">
+    <div class="param-label">X Max</div>
+    <input type="number" id="xMax" class="input-sm" step="any" onchange="DP.page.plot()">
+  </div>
+  <div class="input-row" style="gap:6px; margin-top:8px;">
+    <button class="btn-secondary" onclick="DP.page.plot()" style="flex:1;">Preview</button>
+    <button class="btn-secondary" onclick="DP.page.resetPreviewWindow()" style="flex:1;">Full Range</button>
+  </div>
+</div>
+
 <details class="ctrl-section ctrl-details" open>
   <summary class="ctrl-label">Detect</summary>
   <div class="ctrl-label">Peak Detection</div>
@@ -78,18 +94,6 @@
       <option value="append">Append</option>
     </select>
   </div>
-
-<div class="ctrl-section">
-  <div class="ctrl-label">View Window (s)</div>
-  <div class="param-row">
-    <div class="param-label">X Min</div>
-    <input type="number" id="xMin" class="input-sm" value="0" step="any" onchange="plot()">
-  </div>
-  <div class="param-row">
-    <div class="param-label">X Max</div>
-    <input type="number" id="xMax" class="input-sm" step="any" onchange="plot()">
-  </div>
-</div>
 
 <button id="btnDetect" class="btn-primary" onclick="DP.page.detectPeaks()">Detect Peaks</button>
 </details>
@@ -159,6 +163,13 @@
     <div class="result-card-header">Processed Preview</div>
     <div class="result-card-body">
       <div id="processedPlotArea" class="plot-area" style="height:320px;"><div class="plot-placeholder">No processed plot</div></div>
+    </div>
+  </div>
+  <div id="exportResultCard" class="result-card export-result-card" hidden>
+    <div class="result-card-header">Export Outputs</div>
+    <div class="result-card-body">
+      <div id="exportOutputSummary" class="run-history-meta"></div>
+      <div id="exportOutputList" class="output-path-list"></div>
     </div>
   </div>
   <div class="view-results">
