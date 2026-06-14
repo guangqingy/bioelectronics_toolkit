@@ -189,6 +189,19 @@ function baselineSeedFromControls() {
   return generated;
 }
 
+function baselineDurationFromExistingPeaks() {
+  const durations = _peaks
+    .filter(peak => !isBaselinePeak(peak) && !peak.removed)
+    .map(peakDuration)
+    .filter(value => Number.isFinite(value) && value > 0)
+    .sort((a, b) => a - b);
+  if (!durations.length) return 2.0;
+  const mid = Math.floor(durations.length / 2);
+  return durations.length % 2
+    ? durations[mid]
+    : (durations[mid - 1] + durations[mid]) / 2;
+}
+
 function seededBaselineRandom(seed) {
   let state = seed >>> 0;
   return () => {
@@ -263,9 +276,7 @@ function fillMissingGroupsWithBaseline() {
 
   const halfMs = typeof emgGroupedSegmentHalfMs === 'function' ? emgGroupedSegmentHalfMs() : 100;
   const halfS = halfMs / 1000;
-  const durationMs = typeof emgGroupedSegmentDurationMs === 'function'
-    ? emgGroupedSegmentDurationMs()
-    : halfMs * 2;
+  const durationMs = baselineDurationFromExistingPeaks();
   const repsPerGroup = baselineRepsPerGroupFromControls();
   const totalPeriods = missing.length * repsPerGroup;
   const seed = baselineSeedFromControls();

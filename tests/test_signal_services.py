@@ -821,16 +821,13 @@ class EmgServiceTests(unittest.TestCase):
             summary_df = pd.read_csv(result["summary_path"])
 
         self.assertEqual(result["segment_count"], 2)
-        self.assertEqual(set(summary_df["source_kind"]), {"peak", "baseline"})
-        baseline_summary = summary_df[summary_df["source_kind"] == "baseline"].iloc[0]
+        self.assertEqual(
+            list(summary_df.columns),
+            ["peak_idx", "peak_time_s", "height_uV", "fwhm_ms", "group_id"],
+        )
+        baseline_summary = summary_df[summary_df["group_id"] == 1].iloc[0]
         self.assertAlmostEqual(float(baseline_summary["fwhm_ms"]), 2.0)
         self.assertAlmostEqual(float(baseline_summary["height_uV"]), 12.0)
-        self.assertAlmostEqual(float(baseline_summary["segment_start_s"]), 0.011)
-        self.assertAlmostEqual(float(baseline_summary["segment_end_s"]), 0.013)
-        self.assertAlmostEqual(float(baseline_summary["baseline_source_start_s"]), 0.010)
-        self.assertAlmostEqual(float(baseline_summary["baseline_source_end_s"]), 0.014)
-        self.assertEqual(int(baseline_summary["baseline_fill_seed"]), 12345)
-        self.assertEqual(int(baseline_summary["baseline_rep"]), 2)
         self.assertEqual(set(baseline_df["source_kind"]), {"baseline"})
         self.assertAlmostEqual(float(baseline_df["t_abs_s"].min()), 0.011)
         self.assertAlmostEqual(float(baseline_df["t_abs_s"].max()), 0.013)

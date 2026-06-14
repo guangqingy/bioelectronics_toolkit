@@ -424,6 +424,20 @@ class EmgPeaksService:
         channel = emg_service.channel_label_from_source(src)
         summary_rows = []
         prepared = []
+        nonbaseline_durations = []
+        for peak in active_peaks:
+            source_kind = str(peak.get("source_kind") or "").strip().lower()
+            if bool(peak.get("baseline")) or source_kind.startswith("baseline"):
+                continue
+            duration = self.float_or(
+                peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
+            )
+            if np.isfinite(duration) and duration > 0:
+                nonbaseline_durations.append(float(duration))
+        baseline_duration_ms = (
+            float(np.median(nonbaseline_durations)) if nonbaseline_durations else 2.0
+        )
+
         for peak in active_peaks:
             source_kind = str(peak.get("source_kind") or "").strip().lower()
             is_baseline = bool(peak.get("baseline")) or source_kind.startswith("baseline")
@@ -472,7 +486,7 @@ class EmgPeaksService:
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
             )
             if is_baseline:
-                duration = float(half_ms) * 2.0
+                duration = baseline_duration_ms
             height = (
                 float(v[peak_index])
                 if is_baseline
@@ -488,13 +502,6 @@ class EmgPeaksService:
                     "height_uV": float(height),
                     "fwhm_ms": float(duration),
                     "group_id": group,
-                    "source_kind": "baseline" if is_baseline else "peak",
-                    "segment_start_s": float(segment_start),
-                    "segment_end_s": float(segment_end),
-                    "baseline_source_start_s": baseline_source_start,
-                    "baseline_source_end_s": baseline_source_end,
-                    "baseline_fill_seed": baseline_fill_seed,
-                    "baseline_rep": baseline_rep,
                 }
             )
             prepared.append(
