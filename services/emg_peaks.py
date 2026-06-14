@@ -485,7 +485,7 @@ class EmgPeaksService:
             duration = self.float_or(
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
             )
-            if is_baseline:
+            if is_baseline and (not np.isfinite(duration) or duration <= 0):
                 duration = baseline_duration_ms
             height = (
                 float(v[peak_index])

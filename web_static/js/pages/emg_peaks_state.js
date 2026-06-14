@@ -117,6 +117,7 @@ function collectEmgPeakSettings() {
     grouping_start: val('grpStart'),
     grouping_target_count: val('grpTargetCount'),
     baseline_per_group: val('baselinePerGroup'),
+    baseline_threshold_scale: val('baselineThresholdScale'),
     baseline_start_s: val('baselineStart'),
     baseline_end_s: val('baselineEnd'),
     baseline_seed: val('baselineSeed'),

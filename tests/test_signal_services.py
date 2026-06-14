@@ -801,6 +801,7 @@ class EmgServiceTests(unittest.TestCase):
                             "source_kind": "baseline",
                             "segment_start_s": 0.010,
                             "segment_end_s": 0.014,
+                            "duration_ms": 1.75,
                             "baseline_fill_seed": 12345,
                             "baseline_rep": 2,
                         },
@@ -826,7 +827,7 @@ class EmgServiceTests(unittest.TestCase):
             ["peak_idx", "peak_time_s", "height_uV", "fwhm_ms", "group_id"],
         )
         baseline_summary = summary_df[summary_df["group_id"] == 1].iloc[0]
-        self.assertAlmostEqual(float(baseline_summary["fwhm_ms"]), 2.0)
+        self.assertAlmostEqual(float(baseline_summary["fwhm_ms"]), 1.75)
         self.assertAlmostEqual(float(baseline_summary["height_uV"]), 12.0)
         self.assertEqual(set(baseline_df["source_kind"]), {"baseline"})
         self.assertAlmostEqual(float(baseline_df["t_abs_s"].min()), 0.011)

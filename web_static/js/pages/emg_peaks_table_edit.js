@@ -180,6 +180,11 @@ function baselineRepsPerGroupFromControls() {
   return reps > 0 ? reps : 1;
 }
 
+function baselineThresholdScaleFromControls() {
+  const scale = parseFloat(document.getElementById('baselineThresholdScale').value);
+  return scale > 0 ? scale : 0.25;
+}
+
 function baselineSeedFromControls() {
   const input = document.getElementById('baselineSeed');
   const raw = parseInt(input.value, 10);
@@ -187,19 +192,6 @@ function baselineSeedFromControls() {
   const generated = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
   input.value = String(generated);
   return generated;
-}
-
-function baselineDurationFromExistingPeaks() {
-  const durations = _peaks
-    .filter(peak => !isBaselinePeak(peak) && !peak.removed)
-    .map(peakDuration)
-    .filter(value => Number.isFinite(value) && value > 0)
-    .sort((a, b) => a - b);
-  if (!durations.length) return 2.0;
-  const mid = Math.floor(durations.length / 2);
-  return durations.length % 2
-    ? durations[mid]
-    : (durations[mid - 1] + durations[mid]) / 2;
 }
 
 function seededBaselineRandom(seed) {
@@ -220,25 +212,47 @@ function shuffledBaselineSlots(count, seed) {
   return slots;
 }
 
-function baselineRandomCenters(bounds, count, seed, halfS) {
-  const widthS = halfS * 2;
-  const durationS = bounds.t1 - bounds.t0;
-  const maxSlots = Math.floor((durationS + 1e-12) / widthS);
-  if (count > maxSlots) {
-    return { error: `Baseline window can fit ${maxSlots} non-overlapping ${Math.round(widthS * 1000)} ms period(s); requested ${count}` };
+function chooseBaselineCandidates(candidates, count, seed) {
+  const sorted = (candidates || [])
+    .map(normalizePeak)
+    .filter(peak => Number.isFinite(peakTime(peak)) && Number.isFinite(peakHeight(peak)))
+    .sort((a, b) => peakTime(a) - peakTime(b));
+  if (count > sorted.length) {
+    return { error: `Baseline detection found ${sorted.length} candidate peak(s); requested ${count}. Lower Thresh x or choose a longer baseline window.` };
   }
-  const rand = seededBaselineRandom(seed ^ 0xa5a5a5a5);
-  const slots = shuffledBaselineSlots(maxSlots, seed)
+  const slots = shuffledBaselineSlots(sorted.length, seed)
     .slice(0, count)
     .sort((a, b) => a - b);
-  const slotWidth = durationS / maxSlots;
-  const centers = slots.map(slot => {
-    const lo = bounds.t0 + slot * slotWidth + halfS;
-    const hi = bounds.t0 + (slot + 1) * slotWidth - halfS;
-    const center = hi > lo ? lo + rand() * (hi - lo) : (lo + hi) / 2;
-    return Math.min(bounds.t1 - halfS, Math.max(bounds.t0 + halfS, center));
+  return { peaks: slots.map(index => sorted[index]) };
+}
+
+function detectBaselineCandidatePeaks(bounds, halfMs) {
+  const path = currentPath();
+  if (!path) return Promise.reject(new Error('Select folder, subfolder, and channel first'));
+
+  const scale = baselineThresholdScaleFromControls();
+  const height = parseFloat(document.getElementById('pkHeight').value);
+  const prom = parseFloat(document.getElementById('pkProm').value);
+  const minw = parseFloat(document.getElementById('pkMinW').value);
+  const wlen = document.getElementById('pkWlen').value.trim();
+  const sigmaProm = parseFloat(document.getElementById('pkSigmaProm').value);
+  const sigmaHeight = parseFloat(document.getElementById('pkSigmaHeight').value);
+
+  return api('/api/emg/detect', {
+    path,
+    pk_height: Number.isFinite(height) ? height * scale : null,
+    pk_prom: Number.isFinite(prom) ? prom * scale : null,
+    pk_dist: Math.max(1, Math.round(halfMs * 2)),
+    pk_dur: parseInt(document.getElementById('pkDur').value, 10) || 200,
+    pk_minw: Number.isFinite(minw) ? minw : null,
+    pk_wlen: wlen === '' ? null : Number(wlen),
+    polarity: document.getElementById('pkPolarity').value,
+    adaptive_sigma: document.getElementById('pkAdaptive').checked,
+    sigma_prom: Number.isFinite(sigmaProm) ? sigmaProm * scale : scale,
+    sigma_height: Number.isFinite(sigmaHeight) ? sigmaHeight * scale : scale,
+    x_min: bounds.t0,
+    x_max: bounds.t1,
   });
-  return { centers };
 }
 
 function existingActiveGroupLabels() {
@@ -264,8 +278,6 @@ function fillMissingGroupsWithBaseline() {
     setStatus('status', 'Enter a valid total group count', 'error');
     return;
   }
-  const targetSet = new Set(targetLabels);
-  _peaks = _peaks.filter(peak => !(isBaselinePeak(peak) && targetSet.has(String(peak.group || '').trim())));
 
   const existing = existingActiveGroupLabels();
   const missing = targetLabels.filter(label => !existing.has(label));
@@ -276,48 +288,62 @@ function fillMissingGroupsWithBaseline() {
 
   const halfMs = typeof emgGroupedSegmentHalfMs === 'function' ? emgGroupedSegmentHalfMs() : 100;
   const halfS = halfMs / 1000;
-  const durationMs = baselineDurationFromExistingPeaks();
   const repsPerGroup = baselineRepsPerGroupFromControls();
   const totalPeriods = missing.length * repsPerGroup;
   const seed = baselineSeedFromControls();
-  const sampled = baselineRandomCenters(bounds, totalPeriods, seed, halfS);
-  if (sampled.error) {
-    setStatus('status', sampled.error, 'error');
-    return;
-  }
 
-  const stamp = Date.now();
-  sampled.centers.forEach((center, sampledIndex) => {
-    const groupIndex = Math.floor(sampledIndex / repsPerGroup);
-    const repIndex = sampledIndex % repsPerGroup;
-    const group = missing[groupIndex];
-    _peaks.push(normalizePeak({
-      peak_idx: -1,
-      time_s: center,
-      height: null,
-      duration_ms: durationMs,
-      group,
-      baseline: true,
-      source_kind: 'baseline',
-      segment_start_s: center - halfS,
-      segment_end_s: center + halfS,
-      baseline_source_start_s: bounds.t0,
-      baseline_source_end_s: bounds.t1,
-      baseline_fill_seed: seed,
-      baseline_rep: repIndex + 1,
-      baseline_fill_id: `${stamp}_${sampledIndex}`,
-    }));
-  });
-  _peaks.sort((a, b) => {
-    const ga = Number(a.group);
-    const gb = Number(b.group);
-    if (Number.isFinite(ga) && Number.isFinite(gb) && ga !== gb) return ga - gb;
-    return peakTime(a) - peakTime(b);
-  });
-  _selected.clear();
-  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
-  updatePeaksTable();
-  setStatus('status', 'Filled ' + missing.length + ' group(s) with ' + totalPeriods + ' baseline period(s)', 'ok');
+  setStatus('status', 'Detecting low-threshold baseline candidates...', 'loading');
+  detectBaselineCandidatePeaks(bounds, halfMs)
+    .then(data => {
+      if (data.error) throw new Error(data.error);
+      showProcessedPeakPlot(data.img, `Baseline low-threshold candidates: ${(data.peaks || []).length} peak(s)`);
+      const chosen = chooseBaselineCandidates(data.peaks || [], totalPeriods, seed);
+      if (chosen.error) throw new Error(chosen.error);
+
+      const targetSet = new Set(targetLabels);
+      _peaks = _peaks.filter(peak => !(isBaselinePeak(peak) && targetSet.has(String(peak.group || '').trim())));
+      const stamp = Date.now();
+      chosen.peaks.forEach((candidate, sampledIndex) => {
+        const center = peakTime(candidate);
+        const groupIndex = Math.floor(sampledIndex / repsPerGroup);
+        const repIndex = sampledIndex % repsPerGroup;
+        const group = missing[groupIndex];
+        _peaks.push(normalizePeak({
+          peak_idx: candidate.peak_idx,
+          time: center,
+          time_s: center,
+          height: peakHeight(candidate),
+          height_uV: peakHeight(candidate),
+          duration: peakDuration(candidate),
+          duration_ms: peakDuration(candidate),
+          fwhm_ms: peakDuration(candidate),
+          group,
+          baseline: true,
+          source_kind: 'baseline',
+          segment_start_s: center - halfS,
+          segment_end_s: center + halfS,
+          baseline_source_start_s: bounds.t0,
+          baseline_source_end_s: bounds.t1,
+          baseline_fill_seed: seed,
+          baseline_rep: repIndex + 1,
+          baseline_fill_id: `${stamp}_${sampledIndex}`,
+        }));
+      });
+      _peaks.sort((a, b) => {
+        const ga = Number(a.group);
+        const gb = Number(b.group);
+        if (Number.isFinite(ga) && Number.isFinite(gb) && ga !== gb) return ga - gb;
+        return peakTime(a) - peakTime(b);
+      });
+      _selected.clear();
+      if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
+      updatePeaksTable();
+      setStatus('status', 'Filled ' + missing.length + ' group(s) with ' + totalPeriods + ' detected baseline peak(s)', 'ok');
+    })
+    .catch(e => {
+      setStatus('status', 'Error: ' + e.message, 'error');
+      toast('Baseline fill failed: ' + e.message, true);
+    });
 }
 
 function removeBaselineFillRows() {
@@ -379,7 +405,8 @@ window.DP.page = window.DP.page || {};
 [
   'autoGroupByTime',
   'clearPeakSelection',
-  'baselineRandomCenters',
+  'chooseBaselineCandidates',
+  'detectBaselineCandidatePeaks',
   'fillMissingGroupsWithBaseline',
   'isBaselinePeak',
   'removeSelectedPeaks',
