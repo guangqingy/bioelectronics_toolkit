@@ -766,6 +766,66 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(set(linked_df["source_channel"]), {"CH1"})
         self.assertTrue(((linked_df["t_rel_ms"] >= -1.001) & (linked_df["t_rel_ms"] <= 1.001)).all())
 
+    def test_emg_grouped_export_uses_explicit_baseline_window(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_baseline_") as tmp:
+            folder = Path(tmp) / "trial"
+            folder.mkdir()
+            detect_path = folder / "trial_CH0.csv"
+            rows = ["time_s,value_uV"]
+            for i in range(21):
+                t = i * 0.001
+                rows.append(f"{t},{i}")
+            detect_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            service = EmgPeaksService(
+                has_scipy=False,
+                find_peaks=None,
+                peak_widths=None,
+                fig_to_b64=lambda _fig: "",
+                float_or=lambda value, default: float(value)
+                if value not in (None, "")
+                else default,
+                line_color="#3E6AE1",
+                mode_is_save=lambda mode: mode == "save",
+            )
+            result = service.grouped_export_payload(
+                {
+                    "path": str(detect_path),
+                    "peaks": [
+                        {"peak_idx": 5, "time_s": 0.005, "group": "0"},
+                        {
+                            "peak_idx": -1,
+                            "time_s": 0.012,
+                            "group": "1",
+                            "baseline": True,
+                            "source_kind": "baseline",
+                            "segment_start_s": 0.010,
+                            "segment_end_s": 0.014,
+                        },
+                    ],
+                    "half_ms": 1.0,
+                    "mode": "save",
+                }
+            )["data"]
+
+            baseline_segments = [
+                Path(path)
+                for path in result["segment_paths"]
+                if Path(path).parent.name == "1_CH0"
+            ]
+            self.assertEqual(len(baseline_segments), 1)
+            self.assertTrue(baseline_segments[0].name.startswith("baseline_CH0_"))
+            baseline_df = pd.read_csv(baseline_segments[0])
+            summary_df = pd.read_csv(result["summary_path"])
+
+        self.assertEqual(result["segment_count"], 2)
+        self.assertEqual(set(summary_df["source_kind"]), {"peak", "baseline"})
+        self.assertEqual(set(baseline_df["source_kind"]), {"baseline"})
+        self.assertAlmostEqual(float(baseline_df["t_abs_s"].min()), 0.010)
+        self.assertAlmostEqual(float(baseline_df["t_abs_s"].max()), 0.014)
+        self.assertEqual(set(baseline_df["segment_start_s"]), {0.010})
+        self.assertEqual(set(baseline_df["segment_end_s"]), {0.014})
+
 
 class _FakeRhdModule:
     @staticmethod

@@ -50,16 +50,23 @@ function normalizePeak(p) {
   if (out.peak_idx === undefined || out.peak_idx === null) {
     out.peak_idx = (out.idx !== undefined && out.idx !== null) ? Number(out.idx) : -1;
   }
+  out.source_kind = String(out.source_kind || (out.baseline ? 'baseline' : 'peak'));
+  out.baseline = !!out.baseline || out.source_kind.indexOf('baseline') === 0;
   out.group = String(out.group || '');
   out.removed = !!out.removed;
   return out;
 }
 
 function peakKey(peak) {
-  if (peak && peak.peak_idx !== undefined && peak.peak_idx !== null && Number.isFinite(Number(peak.peak_idx))) {
-    return 'idx:' + Number(peak.peak_idx);
+  const idx = peak && peak.peak_idx !== undefined && peak.peak_idx !== null ? Number(peak.peak_idx) : NaN;
+  if (Number.isFinite(idx) && idx >= 0) {
+    return 'idx:' + idx;
   }
-  return 't:' + peakTime(peak).toFixed(6);
+  return [
+    't:' + peakTime(peak).toFixed(6),
+    'g:' + String(peak?.group || ''),
+    'k:' + String(peak?.source_kind || ''),
+  ].join('|');
 }
 
 function peakTime(peak) {
@@ -99,6 +106,9 @@ function collectEmgPeakSettings() {
     grouping_period_hz: val('grpPeriod'),
     grouping_gap_factor: val('grpGapFac'),
     grouping_start: val('grpStart'),
+    grouping_target_count: val('grpTargetCount'),
+    baseline_start_s: val('baselineStart'),
+    baseline_end_s: val('baselineEnd'),
     linked_channels: typeof collectLinkedChannelNames === 'function' ? collectLinkedChannelNames() : [],
   };
 }

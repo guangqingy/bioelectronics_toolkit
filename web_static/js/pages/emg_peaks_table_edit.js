@@ -22,6 +22,9 @@ function updatePeaksTable() {
     const hVal = peakHeight(peak).toFixed(3);
     const dVal = peakDuration(peak).toFixed(2);
     const group = escHtml(peak.group || '-');
+    const kind = peak.baseline || String(peak.source_kind || '').indexOf('baseline') === 0
+      ? 'Baseline'
+      : 'Peak';
     const btnLabel = removed ? 'Undo' : 'Remove';
 
     tr.innerHTML = '<td><input type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + '></td>' +
@@ -30,6 +33,7 @@ function updatePeaksTable() {
       '<td data-peak-select style="cursor:pointer;">' + hVal + '</td>' +
       '<td data-peak-select style="cursor:pointer;">' + dVal + '</td>' +
       '<td>' + group + '</td>' +
+      '<td>' + kind + '</td>' +
       '<td><button class="btn-icon">' + btnLabel + '</button></td>';
 
     const checkbox = tr.querySelector('input[type="checkbox"]');
@@ -137,6 +141,102 @@ function autoGroupByTime() {
   setStatus('status', 'Auto grouped ' + active.length + ' peaks', 'ok');
 }
 
+function usePreviewWindowForBaseline() {
+  const x0 = parseFloat(document.getElementById('xMin').value);
+  const x1Raw = document.getElementById('xMax').value;
+  const x1 = x1Raw ? parseFloat(x1Raw) : NaN;
+  if (!Number.isFinite(x0) || !Number.isFinite(x1) || x1 <= x0) {
+    setStatus('status', 'Set a valid preview window first', 'error');
+    return;
+  }
+  document.getElementById('baselineStart').value = formatEmgNumber(x0, 6);
+  document.getElementById('baselineEnd').value = formatEmgNumber(x1, 6);
+  setStatus('status', 'Baseline window copied', 'ok');
+}
+
+function baselineBoundsFromControls() {
+  let t0 = parseFloat(document.getElementById('baselineStart').value);
+  let t1 = parseFloat(document.getElementById('baselineEnd').value);
+  if (!Number.isFinite(t0) || !Number.isFinite(t1) || t0 === t1) return null;
+  if (t1 < t0) [t0, t1] = [t1, t0];
+  return { t0, t1 };
+}
+
+function targetGroupLabelsFromControls() {
+  const total = parseInt(document.getElementById('grpTargetCount').value, 10);
+  const startId = parseInt(document.getElementById('grpStart').value, 10) || 0;
+  if (!(total > 0)) return [];
+  return Array.from({ length: total }, (_, offset) => String(startId + offset));
+}
+
+function existingActiveGroupLabels() {
+  const labels = new Set();
+  _peaks.forEach(peak => {
+    if (peak.removed) return;
+    const group = String(peak.group || '').trim();
+    if (group) labels.add(group);
+  });
+  return labels;
+}
+
+function fillMissingGroupsWithBaseline() {
+  const bounds = baselineBoundsFromControls();
+  if (!bounds) {
+    setStatus('status', 'Enter a valid baseline window', 'error');
+    return;
+  }
+
+  const targetLabels = targetGroupLabelsFromControls();
+  if (!targetLabels.length) {
+    setStatus('status', 'Enter a valid total group count', 'error');
+    return;
+  }
+
+  const existing = existingActiveGroupLabels();
+  const missing = targetLabels.filter(label => !existing.has(label));
+  if (!missing.length) {
+    setStatus('status', 'No missing groups to fill', 'ok');
+    return;
+  }
+
+  const midpoint = (bounds.t0 + bounds.t1) / 2;
+  const durationMs = (bounds.t1 - bounds.t0) * 1000;
+  const stamp = Date.now();
+  missing.forEach((group, offset) => {
+    _peaks.push(normalizePeak({
+      peak_idx: -1,
+      time_s: midpoint,
+      height: 0,
+      duration_ms: durationMs,
+      group,
+      baseline: true,
+      source_kind: 'baseline',
+      segment_start_s: bounds.t0,
+      segment_end_s: bounds.t1,
+      baseline_fill_id: `${stamp}_${offset}`,
+    }));
+  });
+  _peaks.sort((a, b) => {
+    const ga = Number(a.group);
+    const gb = Number(b.group);
+    if (Number.isFinite(ga) && Number.isFinite(gb) && ga !== gb) return ga - gb;
+    return peakTime(a) - peakTime(b);
+  });
+  _selected.clear();
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
+  updatePeaksTable();
+  setStatus('status', 'Filled ' + missing.length + ' missing group(s) with baseline', 'ok');
+}
+
+function removeBaselineFillRows() {
+  const before = _peaks.length;
+  _peaks = _peaks.filter(peak => !(peak.baseline || String(peak.source_kind || '').indexOf('baseline') === 0));
+  _selected.clear();
+  if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
+  updatePeaksTable();
+  setStatus('status', 'Removed ' + (before - _peaks.length) + ' baseline fill row(s)', 'ok');
+}
+
 function selectAllPeaks() {
   _selected = new Set(_peaks.map((_, idx) => idx));
   _lastPeakSelectionIndex = _peaks.length ? 0 : null;
@@ -187,7 +287,9 @@ window.DP.page = window.DP.page || {};
 [
   'autoGroupByTime',
   'clearPeakSelection',
+  'fillMissingGroupsWithBaseline',
   'removeSelectedPeaks',
+  'removeBaselineFillRows',
   'resetAllRemovals',
   'restoreSelectedPeaks',
   'selectAllPeaks',
@@ -196,6 +298,7 @@ window.DP.page = window.DP.page || {};
   'togglePeakRemoved',
   'togglePeakSelection',
   'updatePeaksTable',
+  'usePreviewWindowForBaseline',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

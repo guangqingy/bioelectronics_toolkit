@@ -425,17 +425,40 @@ class EmgPeaksService:
         summary_rows = []
         prepared = []
         for peak in active_peaks:
+            source_kind = str(peak.get("source_kind") or "").strip().lower()
+            is_baseline = bool(peak.get("baseline")) or source_kind.startswith("baseline")
+            segment_start = self.float_or(
+                peak.get("segment_start_s", peak.get("baseline_start_s")), None
+            )
+            segment_end = self.float_or(
+                peak.get("segment_end_s", peak.get("baseline_end_s")), None
+            )
+            if segment_start is not None and segment_end is not None and segment_end < segment_start:
+                segment_start, segment_end = segment_end, segment_start
+
             peak_index = (
                 int(peak.get("peak_idx", peak.get("idx", -1)))
                 if peak.get("peak_idx", peak.get("idx", None)) is not None
                 else -1
             )
             peak_time = self.float_or(peak.get("time_s", peak.get("time")), None)
+            if is_baseline and segment_start is not None and segment_end is not None:
+                peak_time = (
+                    float(peak_time)
+                    if peak_time is not None
+                    else (float(segment_start) + float(segment_end)) / 2.0
+                )
             if peak_index < 0 or peak_index >= t.size:
                 if peak_time is None:
                     continue
                 peak_index = int(np.argmin(np.abs(t - peak_time)))
-            peak_time = float(t[peak_index])
+            if not is_baseline:
+                peak_time = float(t[peak_index])
+                segment_start = peak_time - half_s
+                segment_end = peak_time + half_s
+            elif segment_start is None or segment_end is None:
+                segment_start = float(peak_time) - half_s
+                segment_end = float(peak_time) + half_s
             group = str(peak.get("group", "")).strip()
             duration = self.float_or(
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
@@ -449,10 +472,20 @@ class EmgPeaksService:
                     "height_uV": float(height),
                     "fwhm_ms": float(duration),
                     "group_id": group,
+                    "source_kind": "baseline" if is_baseline else "peak",
+                    "segment_start_s": float(segment_start),
+                    "segment_end_s": float(segment_end),
                 }
             )
             prepared.append(
-                {"peak_idx": int(peak_index), "peak_time_s": peak_time, "group_id": group}
+                {
+                    "peak_idx": int(peak_index),
+                    "peak_time_s": float(peak_time),
+                    "group_id": group,
+                    "source_kind": "baseline" if is_baseline else "peak",
+                    "segment_start_s": float(segment_start),
+                    "segment_end_s": float(segment_end),
+                }
             )
 
         summary_path = src.parent / f"{src.parent.name}_{channel}_peaks_summary.csv"
@@ -509,15 +542,27 @@ class EmgPeaksService:
             group_dir.mkdir(parents=True, exist_ok=True)
             for index, row in enumerate(sorted_rows):
                 peak_time = float(row["peak_time_s"])
-                mask = (t >= peak_time - half_s) & (t <= peak_time + half_s)
+                source_kind = str(row.get("source_kind") or "peak")
+                is_baseline = source_kind == "baseline"
+                segment_start = self.float_or(row.get("segment_start_s"), None)
+                segment_end = self.float_or(row.get("segment_end_s"), None)
+                if segment_start is None or segment_end is None or segment_end <= segment_start:
+                    segment_start = peak_time - half_s
+                    segment_end = peak_time + half_s
+                mask = (t >= segment_start) & (t <= segment_end)
                 if not np.any(mask):
                     continue
-                out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
+                prefix = "baseline" if is_baseline else "peak"
+                out_file = group_dir / f"{prefix}_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
                 pd.DataFrame(
                     {
+                        "t_abs_s": t[mask],
                         "t_rel_ms": (t[mask] - peak_time) * 1e3,
                         "value_uV": v[mask],
                         "source_channel": channel,
+                        "source_kind": source_kind,
+                        "segment_start_s": float(segment_start),
+                        "segment_end_s": float(segment_end),
                     }
                 ).to_csv(out_file, index=False)
                 file_count += 1

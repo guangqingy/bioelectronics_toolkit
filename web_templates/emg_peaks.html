@@ -116,6 +116,27 @@
   <button class="btn-secondary" onclick="DP.page.autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
 
 <div class="ctrl-section">
+  <div class="ctrl-label">Baseline Fill</div>
+  <div class="param-row">
+    <div class="param-label">Total groups</div>
+    <input type="number" id="grpTargetCount" class="input-sm" value="10" step="1" min="1">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Base t0 s</div>
+    <input type="number" id="baselineStart" class="input-sm" step="any">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Base t1 s</div>
+    <input type="number" id="baselineEnd" class="input-sm" step="any">
+  </div>
+  <div class="input-row" style="gap:6px; margin-top:8px;">
+    <button class="btn-secondary" onclick="DP.page.usePreviewWindowForBaseline()" style="flex:1;">Use Window</button>
+    <button class="btn-secondary" onclick="DP.page.fillMissingGroupsWithBaseline()" style="flex:1;">Fill Missing</button>
+  </div>
+  <button class="btn-secondary" onclick="DP.page.removeBaselineFillRows()" style="width:100%; margin-top:8px;">Remove Baseline Fills</button>
+</div>
+
+<div class="ctrl-section">
   <div class="ctrl-label">Manual Group Assignment</div>
   <div class="input-row">
     <input type="text" id="groupInput" class="input-group" placeholder="Group label, e.g. A">
@@ -199,6 +220,7 @@
                 <th>Height</th>
                 <th>Duration (ms)</th>
                 <th>Group</th>
+                <th>Kind</th>
                 <th style="width:68px;">Remove</th>
               </tr>
             </thead>
