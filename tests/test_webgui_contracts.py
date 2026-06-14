@@ -935,6 +935,12 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function exportGrouped()", js_source)
         self.assertNotIn("let _currentFolder = null", template)
 
+    def test_emg_baseline_segments_keep_peak_file_naming(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "services" / "emg_peaks.py").read_text(encoding="utf-8")
+        self.assertIn('out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"', source)
+        self.assertNotIn('f"baseline_{channel}', source)
+
     def test_uplot_trace_renderer_fits_panel_without_side_legend(self) -> None:
         root = Path(__file__).resolve().parents[1]
         source = (root / "web_static" / "js" / "dp_uplot.js").read_text(encoding="utf-8")

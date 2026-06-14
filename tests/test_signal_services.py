@@ -816,7 +816,7 @@ class EmgServiceTests(unittest.TestCase):
                 if Path(path).parent.name == "1_CH0"
             ]
             self.assertEqual(len(baseline_segments), 1)
-            self.assertTrue(baseline_segments[0].name.startswith("baseline_CH0_"))
+            self.assertTrue(baseline_segments[0].name.startswith("peak_CH0_"))
             baseline_df = pd.read_csv(baseline_segments[0])
             summary_df = pd.read_csv(result["summary_path"])
 

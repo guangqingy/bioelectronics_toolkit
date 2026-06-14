@@ -567,7 +567,6 @@ class EmgPeaksService:
             for index, row in enumerate(sorted_rows):
                 peak_time = float(row["peak_time_s"])
                 source_kind = str(row.get("source_kind") or "peak")
-                is_baseline = source_kind == "baseline"
                 segment_start = self.float_or(row.get("segment_start_s"), None)
                 segment_end = self.float_or(row.get("segment_end_s"), None)
                 if segment_start is None or segment_end is None or segment_end <= segment_start:
@@ -577,8 +576,7 @@ class EmgPeaksService:
                 mask = (t >= segment_start - edge_eps) & (t <= segment_end + edge_eps)
                 if not np.any(mask):
                     continue
-                prefix = "baseline" if is_baseline else "peak"
-                out_file = group_dir / f"{prefix}_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
+                out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
                 pd.DataFrame(
                     {
                         "t_abs_s": t[mask],
