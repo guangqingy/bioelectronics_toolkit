@@ -200,7 +200,11 @@ function fillMissingGroupsWithBaseline() {
   }
 
   const midpoint = (bounds.t0 + bounds.t1) / 2;
-  const durationMs = (bounds.t1 - bounds.t0) * 1000;
+  const halfMs = typeof emgGroupedSegmentHalfMs === 'function' ? emgGroupedSegmentHalfMs() : 100;
+  const halfS = halfMs / 1000;
+  const durationMs = typeof emgGroupedSegmentDurationMs === 'function'
+    ? emgGroupedSegmentDurationMs()
+    : halfMs * 2;
   const stamp = Date.now();
   missing.forEach((group, offset) => {
     _peaks.push(normalizePeak({
@@ -211,8 +215,10 @@ function fillMissingGroupsWithBaseline() {
       group,
       baseline: true,
       source_kind: 'baseline',
-      segment_start_s: bounds.t0,
-      segment_end_s: bounds.t1,
+      segment_start_s: midpoint - halfS,
+      segment_end_s: midpoint + halfS,
+      baseline_source_start_s: bounds.t0,
+      baseline_source_end_s: bounds.t1,
       baseline_fill_id: `${stamp}_${offset}`,
     }));
   });

@@ -86,6 +86,14 @@ function peakDuration(peak) {
   return 0;
 }
 
+function emgGroupedSegmentHalfMs() {
+  return 100;
+}
+
+function emgGroupedSegmentDurationMs() {
+  return emgGroupedSegmentHalfMs() * 2;
+}
+
 function collectEmgPeakSettings() {
   const val = id => document.getElementById(id)?.value ?? '';
   const checked = id => !!document.getElementById(id)?.checked;
@@ -124,6 +132,8 @@ window.DP.page = window.DP.page || {};
 [
   'collectEmgPeakSettings',
   'currentPath',
+  'emgGroupedSegmentDurationMs',
+  'emgGroupedSegmentHalfMs',
   'normalizePeak',
   'peakDuration',
   'peakHeight',

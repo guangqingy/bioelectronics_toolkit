@@ -766,7 +766,7 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(set(linked_df["source_channel"]), {"CH1"})
         self.assertTrue(((linked_df["t_rel_ms"] >= -1.001) & (linked_df["t_rel_ms"] <= 1.001)).all())
 
-    def test_emg_grouped_export_uses_explicit_baseline_window(self) -> None:
+    def test_emg_grouped_export_uses_peak_like_baseline_window(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_baseline_") as tmp:
             folder = Path(tmp) / "trial"
             folder.mkdir()
@@ -820,11 +820,19 @@ class EmgServiceTests(unittest.TestCase):
 
         self.assertEqual(result["segment_count"], 2)
         self.assertEqual(set(summary_df["source_kind"]), {"peak", "baseline"})
+        baseline_summary = summary_df[summary_df["source_kind"] == "baseline"].iloc[0]
+        self.assertAlmostEqual(float(baseline_summary["fwhm_ms"]), 2.0)
+        self.assertAlmostEqual(float(baseline_summary["segment_start_s"]), 0.011)
+        self.assertAlmostEqual(float(baseline_summary["segment_end_s"]), 0.013)
+        self.assertAlmostEqual(float(baseline_summary["baseline_source_start_s"]), 0.010)
+        self.assertAlmostEqual(float(baseline_summary["baseline_source_end_s"]), 0.014)
         self.assertEqual(set(baseline_df["source_kind"]), {"baseline"})
-        self.assertAlmostEqual(float(baseline_df["t_abs_s"].min()), 0.010)
-        self.assertAlmostEqual(float(baseline_df["t_abs_s"].max()), 0.014)
-        self.assertEqual(set(baseline_df["segment_start_s"]), {0.010})
-        self.assertEqual(set(baseline_df["segment_end_s"]), {0.014})
+        self.assertAlmostEqual(float(baseline_df["t_abs_s"].min()), 0.011)
+        self.assertAlmostEqual(float(baseline_df["t_abs_s"].max()), 0.013)
+        self.assertEqual(set(baseline_df["segment_start_s"]), {0.011})
+        self.assertEqual(set(baseline_df["segment_end_s"]), {0.013})
+        self.assertEqual(set(baseline_df["baseline_source_start_s"]), {0.010})
+        self.assertEqual(set(baseline_df["baseline_source_end_s"]), {0.014})
 
 
 class _FakeRhdModule:

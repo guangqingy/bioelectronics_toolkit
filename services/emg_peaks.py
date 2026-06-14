@@ -427,14 +427,25 @@ class EmgPeaksService:
         for peak in active_peaks:
             source_kind = str(peak.get("source_kind") or "").strip().lower()
             is_baseline = bool(peak.get("baseline")) or source_kind.startswith("baseline")
-            segment_start = self.float_or(
-                peak.get("segment_start_s", peak.get("baseline_start_s")), None
+            baseline_source_start = self.float_or(
+                peak.get("baseline_source_start_s", peak.get("baseline_start_s")), None
             )
-            segment_end = self.float_or(
-                peak.get("segment_end_s", peak.get("baseline_end_s")), None
+            baseline_source_end = self.float_or(
+                peak.get("baseline_source_end_s", peak.get("baseline_end_s")), None
             )
-            if segment_start is not None and segment_end is not None and segment_end < segment_start:
-                segment_start, segment_end = segment_end, segment_start
+            if is_baseline and baseline_source_start is None:
+                baseline_source_start = self.float_or(peak.get("segment_start_s"), None)
+            if is_baseline and baseline_source_end is None:
+                baseline_source_end = self.float_or(peak.get("segment_end_s"), None)
+            if (
+                baseline_source_start is not None
+                and baseline_source_end is not None
+                and baseline_source_end < baseline_source_start
+            ):
+                baseline_source_start, baseline_source_end = (
+                    baseline_source_end,
+                    baseline_source_start,
+                )
 
             peak_index = (
                 int(peak.get("peak_idx", peak.get("idx", -1)))
@@ -442,11 +453,11 @@ class EmgPeaksService:
                 else -1
             )
             peak_time = self.float_or(peak.get("time_s", peak.get("time")), None)
-            if is_baseline and segment_start is not None and segment_end is not None:
+            if is_baseline and baseline_source_start is not None and baseline_source_end is not None:
                 peak_time = (
                     float(peak_time)
                     if peak_time is not None
-                    else (float(segment_start) + float(segment_end)) / 2.0
+                    else (float(baseline_source_start) + float(baseline_source_end)) / 2.0
                 )
             if peak_index < 0 or peak_index >= t.size:
                 if peak_time is None:
@@ -454,15 +465,14 @@ class EmgPeaksService:
                 peak_index = int(np.argmin(np.abs(t - peak_time)))
             if not is_baseline:
                 peak_time = float(t[peak_index])
-                segment_start = peak_time - half_s
-                segment_end = peak_time + half_s
-            elif segment_start is None or segment_end is None:
-                segment_start = float(peak_time) - half_s
-                segment_end = float(peak_time) + half_s
+            segment_start = float(peak_time) - half_s
+            segment_end = float(peak_time) + half_s
             group = str(peak.get("group", "")).strip()
             duration = self.float_or(
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
             )
+            if is_baseline:
+                duration = float(half_ms) * 2.0
             height = self.float_or(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
 
             summary_rows.append(
@@ -475,6 +485,8 @@ class EmgPeaksService:
                     "source_kind": "baseline" if is_baseline else "peak",
                     "segment_start_s": float(segment_start),
                     "segment_end_s": float(segment_end),
+                    "baseline_source_start_s": baseline_source_start,
+                    "baseline_source_end_s": baseline_source_end,
                 }
             )
             prepared.append(
@@ -485,6 +497,8 @@ class EmgPeaksService:
                     "source_kind": "baseline" if is_baseline else "peak",
                     "segment_start_s": float(segment_start),
                     "segment_end_s": float(segment_end),
+                    "baseline_source_start_s": baseline_source_start,
+                    "baseline_source_end_s": baseline_source_end,
                 }
             )
 
@@ -549,7 +563,8 @@ class EmgPeaksService:
                 if segment_start is None or segment_end is None or segment_end <= segment_start:
                     segment_start = peak_time - half_s
                     segment_end = peak_time + half_s
-                mask = (t >= segment_start) & (t <= segment_end)
+                edge_eps = max(1e-12, np.finfo(float).eps * max(abs(segment_start), abs(segment_end), 1.0) * 64)
+                mask = (t >= segment_start - edge_eps) & (t <= segment_end + edge_eps)
                 if not np.any(mask):
                     continue
                 prefix = "baseline" if is_baseline else "peak"
@@ -563,6 +578,8 @@ class EmgPeaksService:
                         "source_kind": source_kind,
                         "segment_start_s": float(segment_start),
                         "segment_end_s": float(segment_end),
+                        "baseline_source_start_s": row.get("baseline_source_start_s"),
+                        "baseline_source_end_s": row.get("baseline_source_end_s"),
                     }
                 ).to_csv(out_file, index=False)
                 file_count += 1
