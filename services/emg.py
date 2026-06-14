@@ -86,6 +86,8 @@ def build_peak_kwargs(
     if min_width_ms is not None and min_width_ms > 0:
         kwargs["width"] = max(1, ms_to_samples(min_width_ms, fs))
 
+    if (wlen_ms is None or wlen_ms <= 0) and min_peak_distance_ms is not None and min_peak_distance_ms > 0:
+        wlen_ms = float(min_peak_distance_ms)
     if wlen_ms is not None and wlen_ms > 0:
         wlen = ms_to_samples(wlen_ms, fs)
         if 3 <= wlen < sig.size:
@@ -119,6 +121,24 @@ def build_peak_kwargs(
     return kwargs
 
 
+def peak_widths_ms(sig, peaks, props, fs, peak_widths_func):
+    if peaks.size == 0:
+        return np.array([], dtype=float)
+    prominence_data = None
+    if props and all(key in props for key in ("prominences", "left_bases", "right_bases")):
+        prominence_data = (props["prominences"], props["left_bases"], props["right_bases"])
+    try:
+        if prominence_data is not None:
+            widths, _, _, _ = peak_widths_func(
+                sig, peaks, rel_height=0.5, prominence_data=prominence_data
+            )
+        else:
+            widths, _, _, _ = peak_widths_func(sig, peaks, rel_height=0.5)
+    except TypeError:
+        widths, _, _, _ = peak_widths_func(sig, peaks, rel_height=0.5)
+    return (widths / fs) * 1e3
+
+
 def detect_with_polarity(sig, fs, params, polarity, find_peaks_func, peak_widths_func):
     pos_idx = np.array([], dtype=int)
     pos_w_ms = np.array([], dtype=float)
@@ -127,18 +147,14 @@ def detect_with_polarity(sig, fs, params, polarity, find_peaks_func, peak_widths
 
     if polarity in ("positive", "both"):
         kw_pos = build_peak_kwargs(sig, fs, **params)
-        pos_idx, _ = find_peaks_func(sig, **kw_pos)
-        if pos_idx.size:
-            widths, _, _, _ = peak_widths_func(sig, pos_idx, rel_height=0.5)
-            pos_w_ms = (widths / fs) * 1e3
+        pos_idx, pos_props = find_peaks_func(sig, **kw_pos)
+        pos_w_ms = peak_widths_ms(sig, pos_idx, pos_props, fs, peak_widths_func)
 
     if polarity in ("negative", "both"):
         inv = -sig
         kw_neg = build_peak_kwargs(inv, fs, **params)
-        neg_idx, _ = find_peaks_func(inv, **kw_neg)
-        if neg_idx.size:
-            widths, _, _, _ = peak_widths_func(inv, neg_idx, rel_height=0.5)
-            neg_w_ms = (widths / fs) * 1e3
+        neg_idx, neg_props = find_peaks_func(inv, **kw_neg)
+        neg_w_ms = peak_widths_ms(inv, neg_idx, neg_props, fs, peak_widths_func)
 
     if polarity != "both":
         idx = pos_idx if polarity == "positive" else neg_idx

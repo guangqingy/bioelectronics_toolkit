@@ -686,6 +686,47 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(peaks.tolist(), [2, 4])
         self.assertEqual(signs.tolist(), [1, -1])
 
+    def test_detect_widths_use_find_peaks_prominence_bases(self) -> None:
+        signal = np.asarray([0.0, 1.0, 5.0, 1.0, 0.0])
+        params = {
+            "min_peak_distance_ms": 4.0,
+            "min_width_ms": 0.1,
+            "wlen_ms": None,
+            "min_prominence_uV": 1.0,
+            "min_height_uV": 1.0,
+            "use_adaptive_sigma": False,
+            "sigma_for_prom": 1.0,
+            "sigma_for_height": 1.0,
+        }
+        calls = []
+
+        def fake_find_peaks(_signal, **kwargs):
+            self.assertIn("wlen", kwargs)
+            return np.asarray([2]), {
+                "prominences": np.asarray([4.0]),
+                "left_bases": np.asarray([1]),
+                "right_bases": np.asarray([3]),
+            }
+
+        def fake_peak_widths(_signal, peaks, rel_height=0.5, prominence_data=None):
+            calls.append(prominence_data)
+            width = 2.0 if prominence_data is not None else 500.0
+            return np.ones(len(peaks), dtype=float) * width, None, None, None
+
+        peaks, widths, signs = emg.detect_with_polarity(
+            signal,
+            fs=1000.0,
+            params=params,
+            polarity="positive",
+            find_peaks_func=fake_find_peaks,
+            peak_widths_func=fake_peak_widths,
+        )
+
+        self.assertEqual(peaks.tolist(), [2])
+        self.assertEqual(signs.tolist(), [1])
+        self.assertEqual(widths.tolist(), [2.0])
+        self.assertIsNotNone(calls[0])
+
     def test_emg_trace_data_payload_reuses_decimated_shape(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_trace_") as tmp:
             path = Path(tmp) / "channel.csv"
