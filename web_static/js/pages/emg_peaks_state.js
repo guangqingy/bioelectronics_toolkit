@@ -76,8 +76,9 @@ function peakTime(peak) {
 }
 
 function peakHeight(peak) {
-  if (peak.height !== undefined) return Number(peak.height);
-  return 0;
+  if (peak.height !== undefined && peak.height !== null && peak.height !== '') return Number(peak.height);
+  if (peak.height_uV !== undefined && peak.height_uV !== null && peak.height_uV !== '') return Number(peak.height_uV);
+  return NaN;
 }
 
 function peakDuration(peak) {
@@ -115,8 +116,10 @@ function collectEmgPeakSettings() {
     grouping_gap_factor: val('grpGapFac'),
     grouping_start: val('grpStart'),
     grouping_target_count: val('grpTargetCount'),
+    baseline_per_group: val('baselinePerGroup'),
     baseline_start_s: val('baselineStart'),
     baseline_end_s: val('baselineEnd'),
+    baseline_seed: val('baselineSeed'),
     linked_channels: typeof collectLinkedChannelNames === 'function' ? collectLinkedChannelNames() : [],
   };
 }

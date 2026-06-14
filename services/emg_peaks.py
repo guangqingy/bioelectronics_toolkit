@@ -473,7 +473,13 @@ class EmgPeaksService:
             )
             if is_baseline:
                 duration = float(half_ms) * 2.0
-            height = self.float_or(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
+            height = (
+                float(v[peak_index])
+                if is_baseline
+                else self.float_or(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
+            )
+            baseline_fill_seed = peak.get("baseline_fill_seed", peak.get("baseline_seed"))
+            baseline_rep = peak.get("baseline_rep")
 
             summary_rows.append(
                 {
@@ -487,6 +493,8 @@ class EmgPeaksService:
                     "segment_end_s": float(segment_end),
                     "baseline_source_start_s": baseline_source_start,
                     "baseline_source_end_s": baseline_source_end,
+                    "baseline_fill_seed": baseline_fill_seed,
+                    "baseline_rep": baseline_rep,
                 }
             )
             prepared.append(
@@ -499,6 +507,8 @@ class EmgPeaksService:
                     "segment_end_s": float(segment_end),
                     "baseline_source_start_s": baseline_source_start,
                     "baseline_source_end_s": baseline_source_end,
+                    "baseline_fill_seed": baseline_fill_seed,
+                    "baseline_rep": baseline_rep,
                 }
             )
 
@@ -580,6 +590,8 @@ class EmgPeaksService:
                         "segment_end_s": float(segment_end),
                         "baseline_source_start_s": row.get("baseline_source_start_s"),
                         "baseline_source_end_s": row.get("baseline_source_end_s"),
+                        "baseline_fill_seed": row.get("baseline_fill_seed"),
+                        "baseline_rep": row.get("baseline_rep"),
                     }
                 ).to_csv(out_file, index=False)
                 file_count += 1

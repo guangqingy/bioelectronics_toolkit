@@ -122,12 +122,20 @@
     <input type="number" id="grpTargetCount" class="input-sm" value="10" step="1" min="1">
   </div>
   <div class="param-row">
+    <div class="param-label">Per group</div>
+    <input type="number" id="baselinePerGroup" class="input-sm" value="3" step="1" min="1">
+  </div>
+  <div class="param-row">
     <div class="param-label">Base t0 s</div>
     <input type="number" id="baselineStart" class="input-sm" step="any">
   </div>
   <div class="param-row">
     <div class="param-label">Base t1 s</div>
     <input type="number" id="baselineEnd" class="input-sm" step="any">
+  </div>
+  <div class="param-row">
+    <div class="param-label">Seed</div>
+    <input type="number" id="baselineSeed" class="input-sm" step="1" placeholder="auto">
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
     <button class="btn-secondary" onclick="DP.page.usePreviewWindowForBaseline()" style="flex:1;">Use Window</button>

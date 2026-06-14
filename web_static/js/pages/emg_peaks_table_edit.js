@@ -1,5 +1,13 @@
 let _lastPeakSelectionIndex = null;
 
+function formatPeakTableNumber(value, digits) {
+  return Number.isFinite(value) ? value.toFixed(digits) : '--';
+}
+
+function isBaselinePeak(peak) {
+  return !!(peak && (peak.baseline || String(peak.source_kind || '').indexOf('baseline') === 0));
+}
+
 function updatePeaksTable() {
   const tbody = document.querySelector('#peaksTable tbody');
   tbody.innerHTML = '';
@@ -18,13 +26,11 @@ function updatePeaksTable() {
       tr.style.backgroundColor = 'var(--cloud)';
     }
 
-    const tVal = peakTime(peak).toFixed(3);
-    const hVal = peakHeight(peak).toFixed(3);
-    const dVal = peakDuration(peak).toFixed(2);
+    const tVal = formatPeakTableNumber(peakTime(peak), 3);
+    const hVal = formatPeakTableNumber(peakHeight(peak), 3);
+    const dVal = formatPeakTableNumber(peakDuration(peak), 2);
     const group = escHtml(peak.group || '-');
-    const kind = peak.baseline || String(peak.source_kind || '').indexOf('baseline') === 0
-      ? 'Baseline'
-      : 'Peak';
+    const kind = isBaselinePeak(peak) ? 'Baseline' : 'Peak';
     const btnLabel = removed ? 'Undo' : 'Remove';
 
     tr.innerHTML = '<td><input type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + '></td>' +
@@ -169,10 +175,64 @@ function targetGroupLabelsFromControls() {
   return Array.from({ length: total }, (_, offset) => String(startId + offset));
 }
 
+function baselineRepsPerGroupFromControls() {
+  const reps = parseInt(document.getElementById('baselinePerGroup').value, 10);
+  return reps > 0 ? reps : 1;
+}
+
+function baselineSeedFromControls() {
+  const input = document.getElementById('baselineSeed');
+  const raw = parseInt(input.value, 10);
+  if (Number.isFinite(raw)) return raw >>> 0;
+  const generated = (Date.now() ^ Math.floor(Math.random() * 0xffffffff)) >>> 0;
+  input.value = String(generated);
+  return generated;
+}
+
+function seededBaselineRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function shuffledBaselineSlots(count, seed) {
+  const rand = seededBaselineRandom(seed);
+  const slots = Array.from({ length: count }, (_, idx) => idx);
+  for (let i = slots.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rand() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  return slots;
+}
+
+function baselineRandomCenters(bounds, count, seed, halfS) {
+  const widthS = halfS * 2;
+  const durationS = bounds.t1 - bounds.t0;
+  const maxSlots = Math.floor((durationS + 1e-12) / widthS);
+  if (count > maxSlots) {
+    return { error: `Baseline window can fit ${maxSlots} non-overlapping ${Math.round(widthS * 1000)} ms period(s); requested ${count}` };
+  }
+  const rand = seededBaselineRandom(seed ^ 0xa5a5a5a5);
+  const slots = shuffledBaselineSlots(maxSlots, seed)
+    .slice(0, count)
+    .sort((a, b) => a - b);
+  const slotWidth = durationS / maxSlots;
+  const centers = slots.map(slot => {
+    const lo = bounds.t0 + slot * slotWidth + halfS;
+    const hi = bounds.t0 + (slot + 1) * slotWidth - halfS;
+    const center = hi > lo ? lo + rand() * (hi - lo) : (lo + hi) / 2;
+    return Math.min(bounds.t1 - halfS, Math.max(bounds.t0 + halfS, center));
+  });
+  return { centers };
+}
+
 function existingActiveGroupLabels() {
   const labels = new Set();
   _peaks.forEach(peak => {
     if (peak.removed) return;
+    if (isBaselinePeak(peak)) return;
     const group = String(peak.group || '').trim();
     if (group) labels.add(group);
   });
@@ -191,6 +251,8 @@ function fillMissingGroupsWithBaseline() {
     setStatus('status', 'Enter a valid total group count', 'error');
     return;
   }
+  const targetSet = new Set(targetLabels);
+  _peaks = _peaks.filter(peak => !(isBaselinePeak(peak) && targetSet.has(String(peak.group || '').trim())));
 
   const existing = existingActiveGroupLabels();
   const missing = targetLabels.filter(label => !existing.has(label));
@@ -199,27 +261,40 @@ function fillMissingGroupsWithBaseline() {
     return;
   }
 
-  const midpoint = (bounds.t0 + bounds.t1) / 2;
   const halfMs = typeof emgGroupedSegmentHalfMs === 'function' ? emgGroupedSegmentHalfMs() : 100;
   const halfS = halfMs / 1000;
   const durationMs = typeof emgGroupedSegmentDurationMs === 'function'
     ? emgGroupedSegmentDurationMs()
     : halfMs * 2;
+  const repsPerGroup = baselineRepsPerGroupFromControls();
+  const totalPeriods = missing.length * repsPerGroup;
+  const seed = baselineSeedFromControls();
+  const sampled = baselineRandomCenters(bounds, totalPeriods, seed, halfS);
+  if (sampled.error) {
+    setStatus('status', sampled.error, 'error');
+    return;
+  }
+
   const stamp = Date.now();
-  missing.forEach((group, offset) => {
+  sampled.centers.forEach((center, sampledIndex) => {
+    const groupIndex = Math.floor(sampledIndex / repsPerGroup);
+    const repIndex = sampledIndex % repsPerGroup;
+    const group = missing[groupIndex];
     _peaks.push(normalizePeak({
       peak_idx: -1,
-      time_s: midpoint,
-      height: 0,
+      time_s: center,
+      height: null,
       duration_ms: durationMs,
       group,
       baseline: true,
       source_kind: 'baseline',
-      segment_start_s: midpoint - halfS,
-      segment_end_s: midpoint + halfS,
+      segment_start_s: center - halfS,
+      segment_end_s: center + halfS,
       baseline_source_start_s: bounds.t0,
       baseline_source_end_s: bounds.t1,
-      baseline_fill_id: `${stamp}_${offset}`,
+      baseline_fill_seed: seed,
+      baseline_rep: repIndex + 1,
+      baseline_fill_id: `${stamp}_${sampledIndex}`,
     }));
   });
   _peaks.sort((a, b) => {
@@ -231,12 +306,12 @@ function fillMissingGroupsWithBaseline() {
   _selected.clear();
   if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   updatePeaksTable();
-  setStatus('status', 'Filled ' + missing.length + ' missing group(s) with baseline', 'ok');
+  setStatus('status', 'Filled ' + missing.length + ' group(s) with ' + totalPeriods + ' baseline period(s)', 'ok');
 }
 
 function removeBaselineFillRows() {
   const before = _peaks.length;
-  _peaks = _peaks.filter(peak => !(peak.baseline || String(peak.source_kind || '').indexOf('baseline') === 0));
+  _peaks = _peaks.filter(peak => !isBaselinePeak(peak));
   _selected.clear();
   if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
   updatePeaksTable();
@@ -293,7 +368,9 @@ window.DP.page = window.DP.page || {};
 [
   'autoGroupByTime',
   'clearPeakSelection',
+  'baselineRandomCenters',
   'fillMissingGroupsWithBaseline',
+  'isBaselinePeak',
   'removeSelectedPeaks',
   'removeBaselineFillRows',
   'resetAllRemovals',
