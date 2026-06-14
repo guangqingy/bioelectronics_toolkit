@@ -99,6 +99,7 @@ function collectEmgPeakSettings() {
     grouping_period_hz: val('grpPeriod'),
     grouping_gap_factor: val('grpGapFac'),
     grouping_start: val('grpStart'),
+    linked_channels: typeof collectLinkedChannelNames === 'function' ? collectLinkedChannelNames() : [],
   };
 }
 

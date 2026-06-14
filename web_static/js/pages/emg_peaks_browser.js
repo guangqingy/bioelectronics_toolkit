@@ -1,5 +1,7 @@
 let _emgPlotDrag = null;
 let _emgTraceDuration = null;
+let _availableChannels = [];
+let _linkedChannels = new Set();
 
 function formatEmgNumber(value, digits) {
   if (!Number.isFinite(value)) return '--';
@@ -32,6 +34,50 @@ function showProcessedPeakPlot(img, label) {
   const card = document.getElementById('processedPlotCard');
   if (card) card.hidden = false;
   setPlot('processedPlotArea', img, 'png', label || 'Processed peak detection preview');
+}
+
+function linkedSelectableChannels() {
+  return (_availableChannels || []).filter(ch => ch && ch !== _currentChannel);
+}
+
+function renderLinkedChannelList() {
+  const list = document.getElementById('linkedChannelList');
+  if (!list) return;
+  const channels = linkedSelectableChannels();
+  if (!channels.length) {
+    list.innerHTML = '<div class="file-list-empty">No linked channels</div>';
+    return;
+  }
+  list.innerHTML = '';
+  channels.forEach(channel => {
+    const item = document.createElement('label');
+    item.className = 'file-item checkbox-row';
+    item.title = channel;
+    const checked = _linkedChannels.has(channel) ? ' checked' : '';
+    item.innerHTML = '<input type="checkbox"' + checked + '><span>' + escHtml(channel) + '</span>';
+    item.querySelector('input').addEventListener('change', ev => {
+      if (ev.target.checked) _linkedChannels.add(channel);
+      else _linkedChannels.delete(channel);
+    });
+    list.appendChild(item);
+  });
+}
+
+function resetLinkedChannelsToAll() {
+  _linkedChannels = new Set(linkedSelectableChannels());
+  renderLinkedChannelList();
+}
+
+function setLinkedChannels(value) {
+  _linkedChannels = value ? new Set(linkedSelectableChannels()) : new Set();
+  renderLinkedChannelList();
+}
+
+function collectLinkedChannelNames() {
+  const enabled = document.getElementById('linkedExportEnabled')?.checked;
+  if (!enabled) return [];
+  const selectable = new Set(linkedSelectableChannels());
+  return Array.from(_linkedChannels).filter(channel => selectable.has(channel));
 }
 
 function resetPreviewWindow() {
@@ -106,6 +152,8 @@ function browseMain() {
       _currentFolder = folder;
       _currentSubfolder = null;
       _currentChannel = null;
+      _availableChannels = [];
+      _linkedChannels.clear();
       _peaks = [];
       _selected.clear();
       if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
@@ -126,6 +174,7 @@ function browseMain() {
         selectSubfolder(list.children[0], data.subfolders[0]);
       } else {
         document.getElementById('channelList').innerHTML = '<div class="file-list-empty">No channels</div>';
+        renderLinkedChannelList();
         setPlot('plotArea', null);
         clearProcessedPeakPlot();
       }
@@ -161,10 +210,11 @@ function loadChannels() {
   })
     .then(data => {
       if (data.error) throw new Error(data.error);
+      _availableChannels = data.channels || [];
       const list = document.getElementById('channelList');
       list.innerHTML = '';
 
-      (data.channels || []).forEach(ch => {
+      _availableChannels.forEach(ch => {
         const item = document.createElement('div');
         item.className = 'file-item';
         item.textContent = ch;
@@ -172,9 +222,11 @@ function loadChannels() {
         list.appendChild(item);
       });
 
-      if ((data.channels || []).length > 0) {
+      if (_availableChannels.length > 0) {
         selectChannel(list.children[0], data.channels[0]);
       } else {
+        _linkedChannels.clear();
+        renderLinkedChannelList();
         setPlot('plotArea', null);
         clearProcessedPeakPlot();
       }
@@ -191,6 +243,7 @@ function selectChannel(el, channel) {
   document.querySelectorAll('#channelList .file-item').forEach(e => e.classList.remove('active'));
   el.classList.add('active');
   _currentChannel = channel;
+  resetLinkedChannelsToAll();
   _peaks = [];
   _selected.clear();
   if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
@@ -279,7 +332,10 @@ window.DP.page = window.DP.page || {};
   'clearProcessedPeakPlot',
   'showProcessedPeakPlot',
   'installEmgPlotInteractions',
+  'collectLinkedChannelNames',
+  'renderLinkedChannelList',
   'resetPreviewWindow',
+  'setLinkedChannels',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];
 });

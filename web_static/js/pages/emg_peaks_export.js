@@ -9,9 +9,12 @@ function renderEmgExportOutputs(data) {
   if (!card || !summary || !list) return;
 
   const segN = data.segment_count || 0;
+  const linkedN = data.linked_channel_count || 0;
   const summaryPath = data.summary_path || '';
   const paths = data.saved_paths || (summaryPath ? [summaryPath] : []);
-  summary.textContent = `Saved ${segN} segment file(s)` + (summaryPath ? ` · summary: ${emgOutputBasename(summaryPath)}` : '');
+  summary.textContent = `Saved ${segN} segment file(s)`
+    + (linkedN ? ` · linked channels: ${linkedN}` : '')
+    + (summaryPath ? ` · summary: ${emgOutputBasename(summaryPath)}` : '');
   list.innerHTML = '';
 
   paths.slice(0, 80).forEach(path => {
@@ -38,6 +41,7 @@ function exportGrouped() {
 
   btnBusy('btnExport', true, 'Exporting...');
   setStatus('status', 'Saving grouped peaks...', 'loading');
+  const linkedChannels = collectLinkedChannelNames();
 
   dpRunJobEndpoint('/api/emg/export_job', {
     folder: _currentFolder,
@@ -45,6 +49,7 @@ function exportGrouped() {
     channel: _currentChannel,
     path: currentPath(),
     peaks: _peaks,
+    linked_channels: linkedChannels,
     half_ms: 100,
     mode: 'save'
   }, {
@@ -64,15 +69,23 @@ function exportGrouped() {
         title: 'EMG Grouped Peaks Export',
         status: 'ok',
         project_root: document.getElementById('folderPath').value.trim(),
-        input_files: [{path: currentPath(), role: 'source_channel_csv'}],
+        input_files: [
+          {path: currentPath(), role: 'source_channel_csv'},
+          ...linkedChannels.map(channel => ({
+            path: _currentFolder + '/' + _currentSubfolder + '/' + channel,
+            role: 'linked_channel_csv',
+          })),
+        ],
         outputs: dpAsPathRecords(d.saved_paths || (d.summary_path ? [d.summary_path] : []), 'emg_peak_output'),
         parameters: {
           settings: collectEmgPeakSettings(),
           peaks: _peaks.map(p => ({...p})),
+          linked_channels: linkedChannels,
         },
         metadata: {
           saved_folder: d.saved_path || '',
           segment_count: segN,
+          linked_channel_count: d.linked_channel_count || 0,
         },
       });
     })

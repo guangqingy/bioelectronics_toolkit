@@ -714,6 +714,58 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(payload["n_full"], 21)
         self.assertLessEqual(payload["n_points"], 8)
 
+    def test_emg_grouped_export_can_include_linked_channels(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_linked_") as tmp:
+            folder = Path(tmp) / "trial"
+            folder.mkdir()
+            detect_path = folder / "trial_CH0.csv"
+            linked_path = folder / "trial_CH1.csv"
+            rows0 = ["time_s,value_uV"]
+            rows1 = ["time_s,value_uV"]
+            for i in range(11):
+                t = i * 0.001
+                rows0.append(f"{t},{i}")
+                rows1.append(f"{t},{100 + i}")
+            detect_path.write_text("\n".join(rows0) + "\n", encoding="utf-8")
+            linked_path.write_text("\n".join(rows1) + "\n", encoding="utf-8")
+
+            service = EmgPeaksService(
+                has_scipy=False,
+                find_peaks=None,
+                peak_widths=None,
+                fig_to_b64=lambda _fig: "",
+                float_or=lambda value, default: float(value)
+                if value not in (None, "")
+                else default,
+                line_color="#3E6AE1",
+                mode_is_save=lambda mode: mode == "save",
+            )
+            result = service.grouped_export_payload(
+                {
+                    "path": str(detect_path),
+                    "peaks": [{"peak_idx": 5, "time_s": 0.005, "group": "A"}],
+                    "linked_channels": [linked_path.name],
+                    "half_ms": 1.0,
+                    "mode": "save",
+                }
+            )["data"]
+
+            linked_segments = [
+                Path(path)
+                for path in result["segment_paths"]
+                if Path(path).parent.name == "A_CH1"
+            ]
+            self.assertEqual(len(linked_segments), 1)
+            linked_df = pd.read_csv(linked_segments[0])
+
+        self.assertEqual(result["segment_count"], 2)
+        self.assertEqual(result["linked_channel_count"], 1)
+        self.assertIn("CH0", result["segment_channels"])
+        self.assertIn("CH1", result["segment_channels"])
+        self.assertIn("source_channel", linked_df.columns)
+        self.assertEqual(set(linked_df["source_channel"]), {"CH1"})
+        self.assertTrue(((linked_df["t_rel_ms"] >= -1.001) & (linked_df["t_rel_ms"] <= 1.001)).all())
+
 
 class _FakeRhdModule:
     @staticmethod

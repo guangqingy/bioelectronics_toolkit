@@ -60,6 +60,7 @@ class EmgGroupedExportRequest(RequestModel):
     channel: str = ""
     path: str = ""
     peaks: list[Any] = Field(default_factory=list)
+    linked_channels: list[str] = Field(default_factory=list)
     half_ms: Any = 100.0
     mode: str = "download"
 

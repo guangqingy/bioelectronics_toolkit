@@ -75,6 +75,25 @@ class EmgPeaksService:
         fig.tight_layout(pad=1.1)
         fig.subplots_adjust(left=0.10, right=0.985, bottom=0.18, top=0.92)
 
+    @staticmethod
+    def _linked_channel_sources(src: Path, linked_channels: list[Any]) -> list[Path]:
+        parent = src.parent.resolve()
+        seen = {src.resolve()}
+        out = []
+        for value in linked_channels or []:
+            name = Path(str(value or "")).name
+            if not name:
+                continue
+            candidate = src.parent / name
+            if not candidate.exists() or candidate.suffix.lower() != ".csv":
+                continue
+            resolved = candidate.resolve()
+            if resolved.parent != parent or resolved in seen:
+                continue
+            seen.add(resolved)
+            out.append(candidate)
+        return out
+
     def browse_payload(self, folder: str) -> dict[str, Any]:
         subfolders = []
         path = Path(folder)
@@ -441,30 +460,22 @@ class EmgPeaksService:
 
         file_count = 0
         segment_paths = []
+        segment_channels = []
         grouped = [row for row in prepared if str(row.get("group_id", "")).strip() != ""]
         if grouped:
             groups = {}
             for row in grouped:
                 groups.setdefault(str(row["group_id"]), []).append(row)
 
-            for group_id, rows in groups.items():
-                rows = sorted(rows, key=lambda row: row["peak_time_s"])
-                group_dir = src.parent / f"{emg_service.sanitize_name(group_id)}_{channel}"
-                group_dir.mkdir(parents=True, exist_ok=True)
-                for index, row in enumerate(rows):
-                    peak_time = float(row["peak_time_s"])
-                    mask = (t >= peak_time - half_s) & (t <= peak_time + half_s)
-                    if not np.any(mask):
-                        continue
-                    out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
-                    pd.DataFrame(
-                        {
-                            "t_rel_ms": (t[mask] - peak_time) * 1e3,
-                            "value_uV": v[mask],
-                        }
-                    ).to_csv(out_file, index=False)
-                    file_count += 1
-                    segment_paths.append(str(out_file))
+            linked_sources = self._linked_channel_sources(src, data.get("linked_channels", []))
+            for channel_src in [src] + linked_sources:
+                channel_count, channel_paths = self._save_same_time_segments_for_channel(
+                    channel_src, groups, half_s
+                )
+                if channel_count:
+                    segment_channels.append(emg_service.channel_label_from_source(channel_src))
+                file_count += channel_count
+                segment_paths.extend(channel_paths)
 
         saved_paths = [str(summary_path)] + segment_paths
         return {
@@ -475,10 +486,43 @@ class EmgPeaksService:
                 "summary_path": str(summary_path),
                 "segment_count": file_count,
                 "segment_paths": segment_paths,
+                "linked_channel_count": len(self._linked_channel_sources(src, data.get("linked_channels", []))),
+                "segment_channels": segment_channels,
                 "saved_paths": saved_paths,
                 "outputs": self._peak_outputs(src.parent, "emg_peak_folder", saved_paths),
             },
         }
+
+    def _save_same_time_segments_for_channel(
+        self,
+        channel_src: Path,
+        groups: dict[str, list[dict[str, Any]]],
+        half_s: float,
+    ) -> tuple[int, list[str]]:
+        t, v, _t_col, _v_col = self._load_signal(channel_src)
+        channel = emg_service.channel_label_from_source(channel_src)
+        file_count = 0
+        segment_paths = []
+        for group_id, rows in groups.items():
+            sorted_rows = sorted(rows, key=lambda row: row["peak_time_s"])
+            group_dir = channel_src.parent / f"{emg_service.sanitize_name(group_id)}_{channel}"
+            group_dir.mkdir(parents=True, exist_ok=True)
+            for index, row in enumerate(sorted_rows):
+                peak_time = float(row["peak_time_s"])
+                mask = (t >= peak_time - half_s) & (t <= peak_time + half_s)
+                if not np.any(mask):
+                    continue
+                out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"
+                pd.DataFrame(
+                    {
+                        "t_rel_ms": (t[mask] - peak_time) * 1e3,
+                        "value_uV": v[mask],
+                        "source_channel": channel,
+                    }
+                ).to_csv(out_file, index=False)
+                file_count += 1
+                segment_paths.append(str(out_file))
+        return file_count, segment_paths
 
     @staticmethod
     def _load_signal(path: str | Path) -> tuple[np.ndarray, np.ndarray, str, str]:
