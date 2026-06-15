@@ -43,6 +43,7 @@ function exportGrouped() {
   setStatus('status', 'Saving grouped peaks...', 'loading');
   const linkedChannels = collectLinkedChannelNames();
   const halfMs = typeof emgGroupedSegmentHalfMs === 'function' ? emgGroupedSegmentHalfMs() : 100;
+  const invertSignal = typeof isEmgSignalInverted === 'function' ? isEmgSignalInverted() : false;
 
   dpRunJobEndpoint('/api/emg/export_job', {
     folder: _currentFolder,
@@ -52,6 +53,7 @@ function exportGrouped() {
     peaks: _peaks,
     linked_channels: linkedChannels,
     half_ms: halfMs,
+    invert_signal: invertSignal,
     mode: 'save'
   }, {
     interval_ms: 1000,
@@ -83,6 +85,7 @@ function exportGrouped() {
           peaks: _peaks.map(p => ({...p})),
           linked_channels: linkedChannels,
           segment_half_ms: halfMs,
+          invert_signal: invertSignal,
         },
         metadata: {
           saved_folder: d.saved_path || '',

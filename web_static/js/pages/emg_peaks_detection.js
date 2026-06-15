@@ -31,6 +31,7 @@ function detectPeaks() {
     pk_minw: Number.isFinite(pk_minw) ? pk_minw : null,
     pk_wlen: pk_wlen === '' ? null : Number(pk_wlen),
     polarity,
+    invert_signal: typeof isEmgSignalInverted === 'function' ? isEmgSignalInverted() : false,
     adaptive_sigma,
     sigma_prom: Number.isFinite(sigma_prom) ? sigma_prom : 1,
     sigma_height: Number.isFinite(sigma_height) ? sigma_height : 1,

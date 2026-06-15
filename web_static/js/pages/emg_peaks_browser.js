@@ -280,7 +280,12 @@ function plot() {
 
   const x_min = parseFloat(document.getElementById('xMin').value) || 0;
   const x_max = document.getElementById('xMax').value ? parseFloat(document.getElementById('xMax').value) : null;
-  const payload = { path, x_min, x_max };
+  const payload = {
+    path,
+    x_min,
+    x_max,
+    invert_signal: typeof isEmgSignalInverted === 'function' ? isEmgSignalInverted() : false,
+  };
   updateEmgWindowReadout();
 
   setStatus('status', 'Plotting...', 'loading');

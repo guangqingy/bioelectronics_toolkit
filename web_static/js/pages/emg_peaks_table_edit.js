@@ -247,6 +247,7 @@ function detectBaselineCandidatePeaks(bounds, halfMs) {
     pk_minw: Number.isFinite(minw) ? minw : null,
     pk_wlen: wlen === '' ? null : Number(wlen),
     polarity: document.getElementById('pkPolarity').value,
+    invert_signal: typeof isEmgSignalInverted === 'function' ? isEmgSignalInverted() : false,
     adaptive_sigma: document.getElementById('pkAdaptive').checked,
     sigma_prom: Number.isFinite(sigmaProm) ? sigmaProm * scale : scale,
     sigma_height: Number.isFinite(sigmaHeight) ? sigmaHeight * scale : scale,

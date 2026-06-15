@@ -416,6 +416,7 @@ body {
 
 /* ─── Inputs ─── */
 input[type="text"],
+input[type="search"],
 input[type="number"],
 input[type="file"],
 select,
@@ -547,6 +548,10 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 .checkbox-row input[type="checkbox"]:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(62,106,225,0.20);
+}
+.emg-inline-check {
+  margin: -1px 0 8px 80px;
+  color: var(--pewter);
 }
 
 /* web_static/style/_buttons.css */
@@ -703,6 +708,57 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
   font-size: 12.5px;
   color: var(--silver);
   text-align: center;
+}
+
+.linked-channel-picker .file-filter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+}
+.linked-channel-picker .file-filter input {
+  min-height: 34px;
+  border-color: var(--border-strong);
+  background: var(--surface-soft);
+  color: var(--graphite);
+  font-size: 12.5px;
+}
+.linked-channel-picker .file-filter input::placeholder {
+  color: var(--silver);
+}
+.linked-channel-picker .file-filter-count {
+  min-width: 46px;
+  color: var(--silver);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-align: right;
+}
+.linked-channel-list {
+  max-height: 160px;
+  border-color: var(--border-muted);
+  background: var(--surface-soft);
+}
+.linked-channel-picker .file-item.checkbox-row {
+  gap: 8px;
+  padding: 7px 8px;
+  background: transparent;
+  border-bottom-color: var(--border-muted);
+  color: var(--graphite);
+}
+.linked-channel-picker .file-item.checkbox-row:hover {
+  background: var(--ash);
+}
+.linked-channel-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-muted);
+}
+.linked-channel-actions button {
+  width: 100%;
 }
 
 .folder-refresh-info {

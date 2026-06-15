@@ -47,6 +47,9 @@ class EmgPeaksService:
             return value.strip().lower() in {"1", "true", "yes", "on"}
         return bool(value)
 
+    def _invert_signal_enabled(self, data: dict[str, Any]) -> bool:
+        return self._as_bool(data.get("invert_signal"), False)
+
     @staticmethod
     def _peak_outputs(
         saved_path: str | Path, role: str, extra_paths: list[str] | None = None
@@ -132,7 +135,10 @@ class EmgPeaksService:
         path = data.get("path", "")
         x_min = self.float_or(data.get("x_min"), None)
         x_max = self.float_or(data.get("x_max"), None)
-        t, v, t_col, v_col = self._load_windowed_signal(path, x_min, x_max)
+        invert_signal = self._invert_signal_enabled(data)
+        t, v, t_col, v_col = self._load_windowed_signal(
+            path, x_min, x_max, invert_signal=invert_signal
+        )
         dsf = max(1, len(t) // 50000)
         fig, ax = new_subplots(figsize=(10, 3.5))
         ax.plot(t[::dsf], v[::dsf], color=self.line_color, lw=0.6)
@@ -151,7 +157,10 @@ class EmgPeaksService:
         x_max = self.float_or(data.get("x_max"), None)
         y_min = self.float_or(data.get("y_min"), None)
         y_max = self.float_or(data.get("y_max"), None)
-        t, v, t_col, v_col = self._load_windowed_signal(path, x_min, x_max)
+        invert_signal = self._invert_signal_enabled(data)
+        t, v, t_col, v_col = self._load_windowed_signal(
+            path, x_min, x_max, invert_signal=invert_signal
+        )
         n_full = int(t.shape[0])
         td, vd = decimate_xy(t, v, max_points=max_points)
         return {
@@ -165,6 +174,7 @@ class EmgPeaksService:
             "n_full": n_full,
             "n_points": int(td.shape[0]),
             "decimated": int(td.shape[0]) < n_full,
+            "inverted_signal": invert_signal,
         }
 
     def detect_payload(self, data: dict[str, Any]) -> dict[str, Any]:
@@ -182,6 +192,7 @@ class EmgPeaksService:
         if polarity not in {"positive", "negative", "both"}:
             polarity = "both"
         adaptive_sigma = self._as_bool(data.get("adaptive_sigma"), False)
+        invert_signal = self._invert_signal_enabled(data)
         sigma_prom = self.float_or(data.get("sigma_prom"), 1.0)
         sigma_height = self.float_or(data.get("sigma_height"), 1.0)
         dur = self.float_or(data.get("pk_dur"), None)
@@ -189,6 +200,8 @@ class EmgPeaksService:
         df = pd.read_csv(path)
         t_col, v_col = emg_service.pick_columns(df)
         t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
+        if invert_signal:
+            v_raw = -v_raw
 
         t = t_raw[valid]
         v = v_raw[valid]
@@ -413,6 +426,9 @@ class EmgPeaksService:
         raw = pd.read_csv(src)
         t_col, v_col = emg_service.pick_columns(raw)
         t_raw, v_raw, valid = emg_service.numeric_signal(raw, t_col, v_col)
+        invert_signal = self._invert_signal_enabled(data)
+        if invert_signal:
+            v_raw = -v_raw
         t = t_raw[valid]
         v = v_raw[valid]
 
@@ -534,7 +550,7 @@ class EmgPeaksService:
             linked_sources = self._linked_channel_sources(src, data.get("linked_channels", []))
             for channel_src in [src] + linked_sources:
                 channel_count, channel_paths = self._save_same_time_segments_for_channel(
-                    channel_src, groups, half_s
+                    channel_src, groups, half_s, invert_signal=invert_signal
                 )
                 if channel_count:
                     segment_channels.append(emg_service.channel_label_from_source(channel_src))
@@ -553,6 +569,7 @@ class EmgPeaksService:
                 "linked_channel_count": len(self._linked_channel_sources(src, data.get("linked_channels", []))),
                 "segment_channels": segment_channels,
                 "saved_paths": saved_paths,
+                "inverted_signal": invert_signal,
                 "outputs": self._peak_outputs(src.parent, "emg_peak_folder", saved_paths),
             },
         }
@@ -562,8 +579,12 @@ class EmgPeaksService:
         channel_src: Path,
         groups: dict[str, list[dict[str, Any]]],
         half_s: float,
+        *,
+        invert_signal: bool = False,
     ) -> tuple[int, list[str]]:
-        t, v, _t_col, _v_col = self._load_signal(channel_src)
+        t, v, _t_col, _v_col = self._load_signal(
+            channel_src, invert_signal=invert_signal
+        )
         channel = emg_service.channel_label_from_source(channel_src)
         file_count = 0
         segment_paths = []
@@ -604,10 +625,14 @@ class EmgPeaksService:
         return file_count, segment_paths
 
     @staticmethod
-    def _load_signal(path: str | Path) -> tuple[np.ndarray, np.ndarray, str, str]:
+    def _load_signal(
+        path: str | Path, *, invert_signal: bool = False
+    ) -> tuple[np.ndarray, np.ndarray, str, str]:
         df = pd.read_csv(path)
         t_col, v_col = emg_service.pick_columns(df)
         t_raw, v_raw, valid = emg_service.numeric_signal(df, t_col, v_col)
+        if invert_signal:
+            v_raw = -v_raw
         return t_raw[valid], v_raw[valid], t_col, v_col
 
     def _load_windowed_signal(
@@ -615,8 +640,10 @@ class EmgPeaksService:
         path: str | Path,
         x_min: float | None,
         x_max: float | None,
+        *,
+        invert_signal: bool = False,
     ) -> tuple[np.ndarray, np.ndarray, str, str]:
-        t, v, t_col, v_col = self._load_signal(path)
+        t, v, t_col, v_col = self._load_signal(path, invert_signal=invert_signal)
         if x_min is not None:
             mask = t >= x_min
             t, v = t[mask], v[mask]

@@ -755,6 +755,54 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(payload["n_full"], 21)
         self.assertLessEqual(payload["n_points"], 8)
 
+    def test_emg_signal_inversion_applies_to_trace_and_grouped_export(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_invert_") as tmp:
+            folder = Path(tmp) / "trial"
+            folder.mkdir()
+            path = folder / "trial_CH0.csv"
+            rows = ["time_s,value_uV"]
+            for i in range(11):
+                rows.append(f"{i * 0.001},{float(i)}")
+            path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            service = EmgPeaksService(
+                has_scipy=False,
+                find_peaks=None,
+                peak_widths=None,
+                fig_to_b64=lambda _fig: "",
+                float_or=lambda value, default: float(value)
+                if value not in (None, "")
+                else default,
+                line_color="#3E6AE1",
+                mode_is_save=lambda mode: mode == "save",
+            )
+            trace = service.trace_data_payload(
+                {"path": str(path), "invert_signal": True},
+                max_points=50,
+            )
+            result = service.grouped_export_payload(
+                {
+                    "path": str(path),
+                    "peaks": [{"peak_idx": 5, "time_s": 0.005, "group": "A"}],
+                    "half_ms": 1.0,
+                    "invert_signal": True,
+                    "mode": "save",
+                }
+            )["data"]
+            segment_path = next(
+                Path(saved)
+                for saved in result["segment_paths"]
+                if Path(saved).parent.name == "A_CH0"
+            )
+            segment_df = pd.read_csv(segment_path)
+            summary_df = pd.read_csv(result["summary_path"])
+
+        self.assertTrue(trace["inverted_signal"])
+        self.assertEqual(trace["y"][5], -5.0)
+        self.assertTrue(result["inverted_signal"])
+        self.assertAlmostEqual(float(summary_df.iloc[0]["height_uV"]), -5.0)
+        self.assertIn(-5.0, segment_df["value_uV"].tolist())
+
     def test_emg_grouped_export_can_include_linked_channels(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_linked_") as tmp:
             folder = Path(tmp) / "trial"

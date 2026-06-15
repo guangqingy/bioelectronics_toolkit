@@ -58,6 +58,7 @@ function dpControlAliases(key) {
     x_max: ['xMax'],
     y_min: ['yMin'],
     y_max: ['yMax'],
+    invert_signal: ['invertSignal'],
     i_ch: ['iCh'],
     v_ch: ['vCh'],
     bl_pre0: ['blPre0'],

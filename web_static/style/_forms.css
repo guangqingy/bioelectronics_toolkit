@@ -6,6 +6,7 @@
 
 /* ─── Inputs ─── */
 input[type="text"],
+input[type="search"],
 input[type="number"],
 input[type="file"],
 select,
@@ -137,4 +138,8 @@ input.input-xs, select.input-xs { width: 60px !important; flex-shrink: 0; }
 .checkbox-row input[type="checkbox"]:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px rgba(62,106,225,0.20);
+}
+.emg-inline-check {
+  margin: -1px 0 8px 80px;
+  color: var(--pewter);
 }

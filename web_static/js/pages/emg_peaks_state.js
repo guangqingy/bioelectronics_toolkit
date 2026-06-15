@@ -95,10 +95,20 @@ function emgGroupedSegmentDurationMs() {
   return emgGroupedSegmentHalfMs() * 2;
 }
 
+function isEmgSignalInverted() {
+  return !!document.getElementById('invertSignal')?.checked;
+}
+
+function handleInvertSignalChanged() {
+  if (typeof clearProcessedPeakPlot === 'function') clearProcessedPeakPlot();
+  if (typeof plot === 'function') plot();
+}
+
 function collectEmgPeakSettings() {
   const val = id => document.getElementById(id)?.value ?? '';
   const checked = id => !!document.getElementById(id)?.checked;
   return {
+    invert_signal: checked('invertSignal'),
     polarity: val('pkPolarity'),
     height: val('pkHeight'),
     prominence: val('pkProm'),
@@ -138,6 +148,8 @@ window.DP.page = window.DP.page || {};
   'currentPath',
   'emgGroupedSegmentDurationMs',
   'emgGroupedSegmentHalfMs',
+  'handleInvertSignalChanged',
+  'isEmgSignalInverted',
   'normalizePeak',
   'peakDuration',
   'peakHeight',

@@ -54,6 +54,10 @@
       <option value="negative">Negative</option>
     </select>
   </div>
+  <label class="checkbox-row emg-inline-check">
+    <input type="checkbox" id="invertSignal" onchange="DP.page.handleInvertSignalChanged()">
+    <span>Polarity inverse</span>
+  </label>
   <div class="param-row">
     <div class="param-label">Height</div>
     <input type="number" id="pkHeight" class="input-sm" value="200" step="1">
@@ -171,16 +175,16 @@
   <button class="btn-secondary" onclick="DP.page.resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
 </details>
 
-<details class="ctrl-section ctrl-details" open>
+<details class="ctrl-section ctrl-details linked-channel-picker" open>
   <summary class="ctrl-label">Linked Channel Export</summary>
   <label class="checkbox-row">
     <input type="checkbox" id="linkedExportEnabled" checked>
     <span>Include linked channels</span>
   </label>
-  <div id="linkedChannelList" class="file-list" style="max-height:160px;"></div>
-  <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(true)" style="flex:1;">All</button>
-    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(false)" style="flex:1;">None</button>
+  <div id="linkedChannelList" class="file-list linked-channel-list"></div>
+  <div class="linked-channel-actions">
+    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(true)">All</button>
+    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(false)">None</button>
   </div>
 </details>
 

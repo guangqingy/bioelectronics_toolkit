@@ -39,6 +39,7 @@ class EmgPlotRequest(RequestModel):
     x_max: Any = None
     y_min: Any = None
     y_max: Any = None
+    invert_signal: Any = False
 
 
 class EmgDetectRequest(EmgPlotRequest):
@@ -62,6 +63,7 @@ class EmgGroupedExportRequest(RequestModel):
     peaks: list[Any] = Field(default_factory=list)
     linked_channels: list[str] = Field(default_factory=list)
     half_ms: Any = 100.0
+    invert_signal: Any = False
     mode: str = "download"
 
 
