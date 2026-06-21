@@ -41,7 +41,6 @@ function detectPeaks() {
     .then(data => {
       if (data.error) throw new Error(data.error);
       const detected = (data.peaks || []).map(normalizePeak);
-      showProcessedPeakPlot(data.img, `Processed peak detection preview: ${detected.length} peak(s)`);
       if (detectMode === 'append') {
         mergeDetectedPeaks(detected);
       } else {
@@ -50,6 +49,7 @@ function detectPeaks() {
       _selected.clear();
       if (typeof resetPeakSelectionAnchor === 'function') resetPeakSelectionAnchor();
       updatePeaksTable();
+      showProcessedPeakPlot(data.img, `Processed peak detection preview: ${_peaks.length} peak(s)`);
       setStatus('status', 'Detected ' + detected.length + ' peaks (' + detectMode + ')', 'ok');
       toast('Peak detection complete');
     })

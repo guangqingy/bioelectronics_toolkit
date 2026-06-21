@@ -34,11 +34,9 @@ window.dpApplyRunManifest = async manifest => {
       const d = await api('/api/csv/columns', {path: _currentFile});
       if (!d.error) {
         _columns = d.columns || [];
-        ['xCol', 'yCol'].forEach(id => {
-          const el = document.getElementById(id);
-          const current = el.value;
-          el.innerHTML = '<option value="">Select</option>' + _columns.map(c => `<option value="${dpEscapeHtml(c)}">${dpEscapeHtml(c)}</option>`).join('');
-          if (current) el.value = current;
+        setCsvColumnOptions(_columns, {
+          x: document.getElementById('xCol').value,
+          y: document.getElementById('yCol').value,
         });
       }
     } catch (_) {}
@@ -49,6 +47,112 @@ window.dpApplyRunManifest = async manifest => {
 
 function baseName(path) {
   return (path || '').split('/').pop() || path;
+}
+
+function csvColumnKey(name) {
+  return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function csvIsMetadataColumn(name) {
+  const key = csvColumnKey(name);
+  return [
+    'segmentstart',
+    'segmentend',
+    'baselinesourcestart',
+    'baselinesourceend',
+    'sourcechannel',
+    'sourcekind',
+    'baselinefillseed',
+    'baselinerep',
+    'peakidx',
+    'peakindex',
+    'group',
+    'kind',
+    'channel',
+  ].some(fragment => key.includes(fragment));
+}
+
+function csvFindNamedColumn(columns, candidates, excluded) {
+  const excludedKeys = new Set((excluded || []).map(csvColumnKey));
+  for (const candidate of candidates) {
+    const target = csvColumnKey(candidate);
+    const exact = columns.find(col => csvColumnKey(col) === target && !excludedKeys.has(csvColumnKey(col)));
+    if (exact) return exact;
+  }
+  for (const candidate of candidates) {
+    const target = csvColumnKey(candidate);
+    const partial = columns.find(col => {
+      const key = csvColumnKey(col);
+      return target.length > 1 && !excludedKeys.has(key) && key.includes(target);
+    });
+    if (partial) return partial;
+  }
+  return '';
+}
+
+function suggestCsvColumns(columns) {
+  const available = (columns || []).filter(Boolean);
+  const xCandidates = [
+    'time_s',
+    't_rel_ms',
+    't_abs_s',
+    'time_ms',
+    'time',
+    't_s',
+    't',
+    'x',
+    'sample_index',
+    'sample',
+    'index',
+  ];
+  const yCandidates = [
+    'value_uV',
+    'value_uv',
+    'value',
+    'amplitude_uV',
+    'amplitude_uv',
+    'amplitude',
+    'voltage_mV',
+    'voltage',
+    'current',
+    'signal',
+    'mean',
+    'median',
+    'y',
+  ];
+
+  const xPool = available.filter(col => !csvIsMetadataColumn(col));
+  const x = csvFindNamedColumn(xPool, xCandidates) || xPool[0] || available[0] || '';
+  let y = csvFindNamedColumn(available, yCandidates, [x]);
+  if (!y) y = available.find(col => col !== x && !csvIsMetadataColumn(col)) || '';
+  if (!y) y = available.find(col => col !== x) || '';
+  return { x, y };
+}
+
+function setCsvColumnOptions(columns, preferred) {
+  const xSel = document.getElementById('xCol');
+  const ySel = document.getElementById('yCol');
+  const available = columns || [];
+  const suggested = suggestCsvColumns(available);
+  let xValue = preferred && available.includes(preferred.x) ? preferred.x : suggested.x;
+  let yValue = preferred && available.includes(preferred.y) ? preferred.y : suggested.y;
+  if (yValue === xValue) {
+    yValue = suggested.y !== xValue
+      ? suggested.y
+      : (available.find(col => col !== xValue) || '');
+  }
+
+  [xSel, ySel].forEach(el => {
+    el.innerHTML = '<option value="">Select</option>';
+    available.forEach(col => {
+      const option = document.createElement('option');
+      option.value = col;
+      option.textContent = col;
+      el.appendChild(option);
+    });
+  });
+  xSel.value = xValue || '';
+  ySel.value = yValue || '';
 }
 
 function valOrNull(id) {
@@ -141,27 +245,7 @@ function selectFile(el, path) {
       if (data.error) throw new Error(data.error);
       _columns = data.columns || [];
 
-      const xSel = document.getElementById('xCol');
-      const ySel = document.getElementById('yCol');
-      xSel.innerHTML = '<option value="">Select</option>';
-      ySel.innerHTML = '<option value="">Select</option>';
-
-      _columns.forEach(col => {
-        const o1 = document.createElement('option');
-        o1.value = col;
-        o1.textContent = col;
-        xSel.appendChild(o1);
-
-        const o2 = document.createElement('option');
-        o2.value = col;
-        o2.textContent = col;
-        ySel.appendChild(o2);
-      });
-
-      if (_columns.length >= 2) {
-        xSel.value = _columns[0];
-        ySel.value = _columns[1];
-      }
+      setCsvColumnOptions(_columns);
 
       loadGenericFileProfileForCurrent(true).finally(() => {
         updateSummaryCard();
@@ -181,6 +265,11 @@ function plot() {
   const x_col = document.getElementById('xCol').value;
   const y_col = document.getElementById('yCol').value;
   if (!x_col || !y_col) return;
+  if (x_col === y_col) {
+    setPlot('plotArea', null);
+    setStatus('status', 'Select different X and Y columns', 'error');
+    return;
+  }
 
   const payload = {
     path: _currentFile,
@@ -202,8 +291,25 @@ function plot() {
     api('/api/csv/trace_data', payload)
       .then(data => {
         if (data.error) throw new Error(data.error);
+        if (
+          data.n_full > 0 &&
+          Object.prototype.hasOwnProperty.call(data, 'x_unique_count') &&
+          Number(data.x_unique_count) < 2
+        ) {
+          if (window.dpDestroyTrace) window.dpDestroyTrace('plotArea');
+          setPlot('plotArea', null);
+          setStatus(
+            'status',
+            `Selected X column "${x_col}" has only one distinct numeric value; choose time_s, t_abs_s, or t_rel_ms.`,
+            'error'
+          );
+          return;
+        }
         if (!window.dpRenderTrace('plotArea', data)) throw new Error('uplot-render-failed');
-        setStatus('status', 'Ready', 'ok');
+        const notes = [];
+        if (data.x_sorted) notes.push('sorted X');
+        if (data.x_duplicates_collapsed) notes.push('averaged duplicate X');
+        setStatus('status', notes.length ? `Ready · ${notes.join(' · ')}` : 'Ready', 'ok');
       })
       .catch(() => plotPng(payload));
     return;

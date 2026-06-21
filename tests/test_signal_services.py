@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 from services import abf, abf_batch, csv_tools, echem, echem_lineshape, emg, rhd
-from services.emg_peaks import EmgPeaksService
+from services.csv_viewer import CsvViewerService
+from services.emg_peaks import EMG_TRACE_MAX_POINTS, EmgPeaksService
 
 
 def _fake_find_peaks(signal, height=None, distance=None, **_kwargs):
@@ -28,6 +29,17 @@ def _fake_peak_widths(_signal, peaks, rel_height=0.5):
     return widths, None, None, None
 
 
+def _csv_viewer_service() -> CsvViewerService:
+    return CsvViewerService(
+        float_or=lambda value, default: default if value in (None, "") else float(value),
+        int_or=lambda value, default: default if value in (None, "") else int(value),
+        apply_axes_limits=lambda *_args, **_kwargs: None,
+        fig_to_b64=lambda _fig: "",
+        clean_trace_svg=lambda *_args, **_kwargs: b"",
+        line_color="#3E6AE1",
+    )
+
+
 class CsvToolsServiceTests(unittest.TestCase):
     def test_load_window_and_merge_tables(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_csv_service_") as tmp:
@@ -45,6 +57,46 @@ class CsvToolsServiceTests(unittest.TestCase):
             merged = csv_tools.merge_xy_tables([first, second], "time", "value")
             self.assertEqual(merged["time"].tolist(), [0, 1, 2, 3])
             self.assertEqual(csv_tools.default_merge_name(), "merged_preview_auto-auto.csv")
+
+    def test_trace_data_sorts_and_collapses_duplicate_x_for_uplot(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_csv_trace_") as tmp:
+            path = Path(tmp) / "trace.csv"
+            path.write_text("x,value\n2,20\n1,10\n1,14\n3,30\n", encoding="utf-8")
+
+            payload = _csv_viewer_service().trace_data_payload(
+                {"path": str(path), "x_col": "x", "y_col": "value"},
+                max_points=50,
+            )
+
+        np.testing.assert_allclose(payload["x"], [1, 2, 3])
+        np.testing.assert_allclose(payload["y"], [12, 20, 30])
+        self.assertEqual(payload["n_full"], 4)
+        self.assertEqual(payload["n_prepared"], 3)
+        self.assertEqual(payload["x_unique_count"], 3)
+        self.assertEqual(payload["x_duplicate_count"], 1)
+        self.assertFalse(payload["x_strictly_increasing"])
+        self.assertTrue(payload["x_sorted"])
+        self.assertTrue(payload["x_duplicates_collapsed"])
+
+    def test_trace_data_reports_constant_x_column(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_csv_constant_x_") as tmp:
+            path = Path(tmp) / "segment.csv"
+            path.write_text(
+                "segment_start_s,value_uV\n5,10\n5,20\n5,30\n",
+                encoding="utf-8",
+            )
+
+            payload = _csv_viewer_service().trace_data_payload(
+                {"path": str(path), "x_col": "segment_start_s", "y_col": "value_uV"},
+                max_points=50,
+            )
+
+        np.testing.assert_allclose(payload["x"], [5])
+        np.testing.assert_allclose(payload["y"], [20])
+        self.assertEqual(payload["x_unique_count"], 1)
+        self.assertEqual(payload["x_duplicate_count"], 2)
+        self.assertTrue(payload["x_duplicates_collapsed"])
+        self.assertIn("only one distinct numeric value", payload["warnings"][0])
 
 
 class AbfBatchServiceTests(unittest.TestCase):
@@ -754,6 +806,30 @@ class EmgServiceTests(unittest.TestCase):
         self.assertEqual(payload["y_label"], "value_uV")
         self.assertEqual(payload["n_full"], 21)
         self.assertLessEqual(payload["n_points"], 8)
+
+    def test_emg_trace_data_default_preview_budget_matches_legacy_plot_density(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_trace_budget_") as tmp:
+            path = Path(tmp) / "channel.csv"
+            rows = ["time_s,value_uV"]
+            rows.extend(f"{i * 0.001},{float(np.sin(i / 12.0) * 1000.0)}" for i in range(60000))
+            path.write_text("\n".join(rows) + "\n", encoding="utf-8")
+
+            service = EmgPeaksService(
+                has_scipy=False,
+                find_peaks=None,
+                peak_widths=None,
+                fig_to_b64=lambda _fig: "",
+                float_or=lambda value, default: float(value)
+                if value not in (None, "")
+                else default,
+                line_color="#3E6AE1",
+                mode_is_save=lambda _mode: False,
+            )
+            payload = service.trace_data_payload({"path": str(path)})
+
+        self.assertEqual(payload["n_full"], 60000)
+        self.assertGreater(payload["n_points"], 4000)
+        self.assertLessEqual(payload["n_points"], EMG_TRACE_MAX_POINTS)
 
     def test_emg_signal_inversion_applies_to_trace_and_grouped_export(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_invert_") as tmp:

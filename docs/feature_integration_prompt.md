@@ -12,8 +12,8 @@ RHD/EMG, electrochemistry, fluorescence imaging, histology naming, CSV viewing,
 and project-specific analysis pipelines.
 
 Treat the WebGUI as the canonical user surface. Desktop bte-* commands should
-open the matching WebGUI route by default, with legacy Tkinter behavior kept
-only as a compatibility fallback when needed.
+open the matching WebGUI route or call a shared service; do not add new
+long-lived Tkinter analysis paths.
 
 When integrating a new feature or migrating an existing workflow, follow these
 rules:
@@ -50,7 +50,8 @@ rules:
    - Long operations should expose job/progress/status feedback instead of
      leaving a disabled button as the only signal.
    - Destructive file operations need a clear confirmation, a dry-run mode when
-     feasible, and an operation log under .dataprocess_cache/.
+     feasible, and a small operation log only when files are actually moved,
+     renamed, or deleted.
 
 4. Use the API and job contracts consistently.
    - Return api_ok/api_error-style envelopes from Web API routes.
@@ -71,8 +72,8 @@ rules:
 6. Keep desktop launchers thin.
    - Update desktop_apps/web_launcher.py for any new or renamed user workflow.
    - Add console scripts in pyproject.toml only for real user-facing commands.
-   - If a legacy GUI remains, place it under desktop_apps/legacy/ and avoid
-     adding new root-level GUI scripts.
+   - Native desktop helpers in desktop_apps/ should call shared services and
+     avoid adding new root-level GUI scripts.
 
 7. Add tests at the right level.
    - Service behavior: unit tests under tests/ that do not require a browser.

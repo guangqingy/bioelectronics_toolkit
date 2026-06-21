@@ -61,6 +61,13 @@
     return Number.isFinite(value) ? value : 0;
   }
 
+  function inlineStylePixels(el, prop) {
+    const raw = (el && el.style && el.style.getPropertyValue(prop) || '').trim();
+    if (!raw || !raw.endsWith('px')) return 0;
+    const value = parseFloat(raw);
+    return Number.isFinite(value) ? value : 0;
+  }
+
   function chartWidth(el) {
     const outer = el.getBoundingClientRect().width || el.clientWidth || 760;
     const pad = cssPixels(el, 'padding-left') + cssPixels(el, 'padding-right');
@@ -69,11 +76,14 @@
 
   function chartHeight(el, width, opts) {
     if (opts && opts.height) return Math.max(220, opts.height);
-    const outer = el.getBoundingClientRect().height || el.clientHeight || 0;
     const pad = cssPixels(el, 'padding-top') + cssPixels(el, 'padding-bottom');
-    const explicitHeight = Math.floor(outer - pad);
+    const explicitHeight = inlineStylePixels(el, 'height') - pad;
     if (explicitHeight > 0) return Math.max(220, explicitHeight);
-    return Math.max(220, Math.min(420, Math.round(width * 0.46)));
+    const minHeight = Math.max(0, cssPixels(el, 'min-height') - pad);
+    const aspectHeight = Math.round(width * ((opts && opts.aspect) || 0.46));
+    const min = Math.max(220, minHeight);
+    const max = Math.max(min, (opts && opts.maxHeight) || 520);
+    return Math.min(max, Math.max(min, aspectHeight));
   }
 
   function formatCursorValue(value) {
@@ -98,6 +108,15 @@
   function updateCursorReadout(readout, x, y) {
     if (!readout) return;
     readout.textContent = 'x ' + formatCursorValue(x) + ', y ' + formatCursorValue(y);
+  }
+
+  function cursorInsidePlot(u, left, top) {
+    if (!Number.isFinite(left) || !Number.isFinite(top)) return false;
+    const over = u && u.root ? u.root.querySelector('.u-over') : null;
+    const width = over ? over.clientWidth : (u.bbox && u.bbox.width);
+    const height = over ? over.clientHeight : (u.bbox && u.bbox.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height)) return true;
+    return left >= 0 && top >= 0 && left <= width && top <= height;
   }
 
   function resizeChart(containerId, el, opts) {
@@ -221,6 +240,10 @@
             const left = u.cursor.left;
             const top = u.cursor.top;
             if (left == null || top == null) return;
+            if (!cursorInsidePlot(u, left, top)) {
+              updateCursorReadout(cursorReadout, NaN, NaN);
+              return;
+            }
             const cursor = {
               x: u.posToVal(left, 'x'),
               y: u.posToVal(top, 'y'),

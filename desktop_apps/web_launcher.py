@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import importlib
 import os
 import subprocess
 import sys
@@ -29,22 +28,7 @@ TOOL_ROUTES = {
     "fluorescence_lut": "/fluorescence",
     "fluorescence_roi": "/fluorescence/roi",
     "histology": "/histology/naming",
-}
-
-LEGACY_MODULES = {
-    "abf_batch": "desktop_apps.legacy.abf_batch_processor_gui",
-    "abf_peaks": "desktop_apps.legacy.abf_peak_detection_gui",
-    "abf_pc_figure": "desktop_apps.legacy.abf_photocurrent_figure_gui",
-    "abf_pc_viewer": "desktop_apps.legacy.abf_photocurrent_viewer_gui",
-    "abf_sweep": "desktop_apps.legacy.abf_sweep_viewer_gui",
-    "csv_viewer": "desktop_apps.legacy.csv_folder_viewer_gui",
-    "echem_pc": "desktop_apps.legacy.echem_photocurrent_gui",
-    "echem_pv": "desktop_apps.legacy.echem_photovoltage_gui",
-    "emg_peaks": "desktop_apps.legacy.emg_peak_selector_gui",
-    "emg_rhd": "desktop_apps.legacy.emg_rhd_viewer_gui",
-    "fluorescence_lut": "desktop_apps.legacy.fluorescence_lut_gui",
-    "fluorescence_roi": "desktop_apps.legacy.fluorescence_roi_gui",
-    "histology": "desktop_apps.legacy.histology_naming_gui",
+    "histology_analysis": "/histology/analysis",
 }
 
 
@@ -78,28 +62,13 @@ def _wait_for_server(timeout_s: float = 12.0) -> bool:
     return False
 
 
-def _run_legacy(tool: str, passthrough_args: list[str]) -> int:
-    module_name = LEGACY_MODULES[tool]
-    module = importlib.import_module(module_name)
-    main_func = getattr(module, "main", None)
-    if not callable(main_func):
-        raise RuntimeError(f"Legacy module has no callable main(): {module_name}")
-    sys.argv = [f"{module_name.rsplit('.', 1)[-1]}.py", *passthrough_args]
-    main_func()
-    return 0
-
-
 def main_for_tool(tool: str, argv: list[str] | None = None) -> int:
     if tool not in TOOL_ROUTES:
         raise ValueError(f"Unknown desktop tool: {tool}")
 
     parser = argparse.ArgumentParser(
-        description=(
-            "Open the canonical DataProcess WebGUI page for this tool. "
-            "Use --legacy to run the old Tkinter window."
-        )
+        description="Open the canonical DataProcess WebGUI page for this tool."
     )
-    parser.add_argument("--legacy", action="store_true", help="Run the legacy Tkinter GUI.")
     parser.add_argument(
         "--no-start",
         action="store_true",
@@ -112,8 +81,8 @@ def main_for_tool(tool: str, argv: list[str] | None = None) -> int:
     )
     args, passthrough = parser.parse_known_args(argv)
 
-    if args.legacy:
-        return _run_legacy(tool, passthrough)
+    if passthrough:
+        parser.error(f"unrecognized arguments: {' '.join(passthrough)}")
 
     if not args.no_start and not _server_alive():
         _start_webgui()
@@ -148,3 +117,4 @@ emg_peaks_main = _entry("emg_peaks")
 fluorescence_lut_main = _entry("fluorescence_lut")
 fluorescence_roi_main = _entry("fluorescence_roi")
 histology_main = _entry("histology")
+histology_analysis_main = _entry("histology_analysis")

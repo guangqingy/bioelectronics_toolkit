@@ -53,6 +53,7 @@ function updatePeaksTable() {
     tr.querySelector('button').addEventListener('click', () => togglePeakRemoved(idx));
     tbody.appendChild(tr);
   });
+  if (typeof refreshProcessedPeakOverlay === 'function') refreshProcessedPeakOverlay();
 }
 
 function togglePeakSelection(idx, event) {

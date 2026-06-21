@@ -10,11 +10,6 @@ notes live under `docs/pipelines/`.
 - [WebGUI architecture](webgui.md): Flask route layout, API response contract,
   background jobs, local safety assumptions, and browser assets.
 - [Changelog](CHANGELOG.md): notable release and unreleased changes.
-- [Desktop and WebGUI parity](desktop_web_parity.md): feature comparison across
-  desktop launcher commands and WebGUI routes, with WebGUI treated as the
-  canonical reference.
-- [Desktop strategy](desktop_strategy.md): how desktop launcher modules should
-  stay thin Web launchers or service-backed clients.
 - [Pipeline registry](pipeline_registry.md): how the WebGUI Pipeline Runner
   discovers categories, scripts, parameters, and local availability.
 - [Pipeline methods notes](pipelines/methods.md): concise algorithm and unit
@@ -30,7 +25,8 @@ notes live under `docs/pipelines/`.
 
 Update these docs when:
 
-- A desktop launcher or legacy GUI gains or loses a major feature.
+- A desktop launcher or service-backed desktop helper gains or loses a major
+  feature.
 - A WebGUI route becomes the canonical implementation for a workflow.
 - Shared analysis logic is extracted into a new service module.
 - The package layout, console entry points, or local cache paths change.

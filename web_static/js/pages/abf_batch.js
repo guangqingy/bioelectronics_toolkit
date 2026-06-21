@@ -175,7 +175,7 @@ async function runBatch(options) {
         <ul>
           <li>Move destination pattern: <code>${escHtml(folder)}/${escHtml(main)}_${escHtml(treat)}/sample_{id}/</code></li>
           <li>Sequence renumbering: <strong>${reindex_seq ? 'enabled' : 'disabled'}</strong></li>
-          <li>An operation log will be written under <code>.dataprocess_cache/operation_logs/</code>.</li>
+          <li>A small operation log is written only when files are moved or renamed.</li>
         </ul>
       `,
     });
@@ -205,7 +205,7 @@ async function runBatch(options) {
         document.getElementById('resultBody').innerHTML = `
           ${renderOperationPlan(r.plan || [])}
           <div class="status-bar status-ok" style="padding-top:8px">
-            <span class="status-text">Operation log: ${r.operation_log_path || 'not written'}</span>
+            <span class="status-text">Dry run does not write an operation log.</span>
           </div>
         `;
         document.getElementById('resultCard').style.display = 'block';

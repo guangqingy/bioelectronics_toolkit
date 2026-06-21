@@ -58,7 +58,6 @@ DataProcess/
 ├── desktop_apps/
 │   ├── launchers/              # thin source-tree launchers
 │   ├── web_launcher.py         # maps tools to WebGUI routes
-│   └── legacy/                 # historical Tkinter apps
 ├── services/                   # Shared processing logic used by Web and desktop
 ├── web_api/                    # Domain API modules
 │   ├── context.py              # Explicit route registration context
@@ -178,6 +177,9 @@ be reused from any browser on the same machine.
   This is local cache and is gitignored. `web_gui_settings.example.json`
   documents the shape.
 - `.dataprocess_cache/file_profiles.json`: per-project, per-file UI settings.
+  This cache is written under the selected project/data folder so reopening the
+  same file can restore named profiles, ROI geometry, queues, display settings,
+  and export parameters from any browser on the same machine.
 - `.dataprocess_cache/runs/*.json`: durable run records for generated
   outputs and later packaging/reporting.
 - `.dataprocess_cache/exports/<view>/`: canonical output area for new

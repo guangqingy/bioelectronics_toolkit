@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import csv
 import json
 import os
 import struct
@@ -121,6 +122,7 @@ class HistologyServiceSplitTests(unittest.TestCase):
         self.assertTrue(histology.parse_bool("yes"))
         self.assertEqual(histology.normalize_rotate_deg("90"), 90)
         self.assertEqual(histology.normalize_rotate_deg("45"), 0)
+        self.assertTrue(callable(histology.debug_histology_data_project_roi))
 
     def test_discovery_finds_overview_cases(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_discovery_") as tmp:
@@ -322,6 +324,251 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertEqual(preview["preview_height"], 256)
             self.assertTrue(preview["img"])
 
+    def test_histology_project_preview_preserves_single_rgb_tiled_image_color(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+            from PIL import Image
+        except ImportError as exc:
+            self.skipTest(f"histology preview optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_rgb_preview_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            yy, xx = np.indices((64, 64))
+            arr = np.zeros((64, 64, 3), dtype=np.uint8)
+            arr[..., 0] = (xx * 4).astype(np.uint8)
+            arr[..., 1] = (yy * 4).astype(np.uint8)
+            arr[..., 2] = 40
+            tifffile.imwrite(exported / "1-CB.tif", arr, tile=(16, 16), compression="deflate")
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            entry_id = created["entries"][0]["entry_id"]
+
+            preview = histology_project.load_histology_data_project_image_preview(project, entry_id)
+
+            self.assertEqual(preview["backend"], "composite_preview:tifffile_tiled_preview")
+            with Image.open(BytesIO(base64.b64decode(preview["img"]))) as preview_img:
+                preview_arr = np.asarray(preview_img.convert("RGB"))
+            self.assertTrue(np.any(preview_arr[..., 0] != preview_arr[..., 1]))
+            self.assertTrue(np.any(preview_arr[..., 1] != preview_arr[..., 2]))
+
+    def test_histology_project_preview_warns_for_monochrome_rgb_brightfield(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+            from PIL import Image
+        except ImportError as exc:
+            self.skipTest(f"histology preview optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_mono_rgb_preview_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            yy, xx = np.indices((64, 64))
+            gray = ((xx + yy) * 2).astype(np.uint8)
+            arr = np.repeat(gray[..., None], 3, axis=-1)
+            tifffile.imwrite(exported / "1-CB_Brightfield.tif", arr, tile=(16, 16), compression="deflate")
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            entry_id = created["entries"][0]["entry_id"]
+
+            preview = histology_project.load_histology_data_project_image_preview(project, entry_id)
+
+            self.assertEqual(preview["preview_channels"], ["Brightfield"])
+            warning_text = " ".join(preview["warnings"])
+            self.assertIn("RGB channels are identical", warning_text)
+            self.assertIn("only a brightfield/transmitted image is indexed", warning_text)
+            self.assertIn("display-only pseudocolor/contrast", warning_text)
+            with Image.open(BytesIO(base64.b64decode(preview["img"]))) as preview_img:
+                preview_arr = np.asarray(preview_img.convert("RGB"))
+            self.assertTrue(np.any(preview_arr[..., 0] != preview_arr[..., 1]))
+            self.assertLessEqual(int(preview_arr.max()), 235)
+
+    def test_histology_project_preview_suppresses_expected_rgb_channel_warning(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology preview optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_rgb_channel_warning_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            yy, xx = np.indices((32, 32))
+            arr = np.zeros((32, 32, 3), dtype=np.uint8)
+            arr[..., 1] = ((xx + yy) * 4).astype(np.uint8)
+            tifffile.imwrite(exported / "1-CB_FITC.tif", arr)
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            entry_id = created["entries"][0]["entry_id"]
+
+            preview = histology_project.load_histology_data_project_image_preview(
+                project,
+                entry_id,
+                selected_channels=["FITC"],
+            )
+
+            self.assertEqual(preview["preview_channels"], ["FITC"])
+            warning_text = " ".join(preview["warnings"])
+            self.assertNotIn("Multi-channel/color image stored in one file", warning_text)
+            self.assertNotIn("TIFF is not 16-bit", warning_text)
+            self.assertIn("Fluorescence TIFFs are 8-bit", warning_text)
+
+    def test_histology_project_flags_legacy_multiz_brightfield_conversion(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology preview optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_legacy_multiz_") as tmp:
+            tmp_root = Path(tmp)
+            image = tmp_root / "5-CB_Brightfield.tif"
+            tifffile.imwrite(image, np.zeros((12, 12), dtype=np.uint8))
+            project = tmp_root / "study.dphistology"
+            project.write_text(
+                json.dumps(
+                    {
+                        "version": 1,
+                        "protocol": "dataprocess-tiff-histology",
+                        "kind": "dataprocess_histology_project",
+                        "project_name": "study",
+                        "project_path": str(project),
+                        "images": [
+                            {
+                                "entry_id": "sample_5cb",
+                                "record_type": "sample",
+                                "sample_id": "5-CB",
+                                "image_name": "5-CB",
+                                "image_path": str(image),
+                                "source_path": str(image),
+                                "image_files": {"Brightfield": str(image)},
+                                "converted_from_ets": [
+                                    {
+                                        "source_path": str(tmp_root / "frame_t_0.ets"),
+                                        "output_path": str(image),
+                                        "role": "brightfield",
+                                        "status": "skipped_existing",
+                                        "z_plane_count": 3,
+                                        "selected_z": 2,
+                                    }
+                                ],
+                                "warnings": ["Missing expected fluorescence channel."],
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            loaded = histology_project.load_histology_data_project(project)
+            entry = loaded["entries"][0]
+            preview = histology_project.load_histology_data_project_image_preview(project, "sample_5cb")
+
+            self.assertIn("Brightfield", entry["image_files"])
+            warning_text = " ".join(entry["warnings"])
+            self.assertIn("Legacy ETS conversion collapsed a multi-channel ETS", warning_text)
+            self.assertIn("selected z=2", warning_text)
+            self.assertIn("Legacy ETS conversion collapsed a multi-channel ETS", " ".join(preview["warnings"]))
+
+    def test_histology_project_analysis_reports_channel_read_failures(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology analysis optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_channel_error_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            tifffile.imwrite(exported / "1-CB_Hoechst.tif", np.zeros((12, 12), dtype=np.uint8))
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            entry_id = created["entries"][0]["entry_id"]
+            rois = [
+                {
+                    "id": "roi_1",
+                    "label": "ROI 1",
+                    "points": [{"x": 1, "y": 1}, {"x": 10, "y": 1}, {"x": 10, "y": 10}, {"x": 1, "y": 10}],
+                }
+            ]
+
+            with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_IMAGE_PIXELS": "10"}):
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "No readable exported image channels.*Hoechst: Image is too large.*DP_HISTOLOGY_MAX_IMAGE_PIXELS",
+                ):
+                    histology_project.analyze_histology_data_project_rois(project, entry_id, rois)
+
+    def test_histology_project_analysis_uses_native_tiff_region_for_preview_roi(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology region analysis optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_region_analysis_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            arr = np.zeros((64, 64, 3), dtype=np.uint8)
+            arr[20:44, 20:44, 0] = 240
+            arr[20:44, 20:44, 1] = 230
+            tifffile.imwrite(
+                exported / "1-CB.tif",
+                arr,
+                tile=(16, 16),
+                compression="deflate",
+                resolution=(20000, 20000),
+                resolutionunit="CENTIMETER",
+            )
+            project = tmp_root / "project_home" / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            entry_id = created["entries"][0]["entry_id"]
+            rois = [
+                {
+                    "id": "roi_native",
+                    "label": "Native ROI",
+                    "coordinate_space": "native",
+                    "points": [{"x": 20, "y": 20}, {"x": 43, "y": 20}, {"x": 43, "y": 43}, {"x": 20, "y": 43}],
+                }
+            ]
+
+            with mock.patch.dict(os.environ, {"DP_HISTOLOGY_MAX_IMAGE_PIXELS": "10"}):
+                result = histology_project.analyze_histology_data_project_rois(
+                    project,
+                    entry_id,
+                    rois,
+                    {
+                        "sma_channel": "green",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 200,
+                        "macrophage_channel": "red",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 200,
+                        "background_mode": "none",
+                        "smooth_sigma": 0,
+                        "min_positive_area_px": 1,
+                    },
+                )
+
+            self.assertEqual(result["width"], 64)
+            self.assertEqual(result["height"], 64)
+            self.assertIn("region", result["backend"])
+            self.assertGreater(result["results"][0]["sma_positive_px"], 0)
+            self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
+            self.assertLess(result["analysis"]["analysis_region"]["width"], 64)
+            self.assertAlmostEqual(result["analysis"]["calibration"]["pixel_width_um"], 0.5)
+            self.assertAlmostEqual(
+                result["results"][0]["area_um2"],
+                result["results"][0]["area_px"] * 0.25,
+            )
+            self.assertGreater(result["results"][0]["sma_object_density_per_mm2"], 0)
+
     def test_ets_index_respects_tile_memory_guard(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_guard_") as tmp:
             ets = Path(tmp) / "5-CB" / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets"
@@ -353,6 +600,61 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertGreater(float(arr.std()), 40.0)
             self.assertEqual(payload["converter_version"], CONVERTER_VERSION)
             self.assertEqual(payload["index"]["selected_z"], 1)
+
+    def test_histology_scan_expands_multiz_ets_into_fluorescence_channels(self) -> None:
+        try:
+            import tifffile  # noqa: F401
+        except ImportError as exc:
+            self.skipTest(f"histology ETS conversion optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_channels_") as tmp:
+            root = Path(tmp) / "04-01-2026"
+            case = root / "5-CB"
+            case.mkdir(parents=True)
+            (case / "Tray04_Slide01_01.vsi").write_text("vsi", encoding="utf-8")
+            _write_fake_multiz_ets(case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets")
+
+            scanned = histology.scan_exported_tiff_project(root)
+
+            image_files = scanned["samples"][0]["image_files"]
+            self.assertIn("Hoechst", image_files)
+            self.assertIn("FITC", image_files)
+            self.assertIn("Cy5", image_files)
+            self.assertNotIn("Brightfield", image_files)
+            self.assertTrue((case / "5-CB_Hoechst.tif").is_file())
+            self.assertTrue((case / "5-CB_FITC.tif").is_file())
+            self.assertTrue((case / "5-CB_Cy5.tif").is_file())
+            roles = {
+                item["role"]
+                for item in scanned["ets_conversions"]
+                if item["status"] in {"converted", "skipped_existing", "skipped_existing_tiff"}
+            }
+            self.assertTrue({"Hoechst", "FITC", "Cy5"} <= roles)
+
+    def test_histology_scan_adds_multiz_channels_next_to_legacy_brightfield(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology ETS conversion optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_ets_existing_bf_") as tmp:
+            root = Path(tmp) / "04-01-2026"
+            case = root / "5-CB"
+            case.mkdir(parents=True)
+            tifffile.imwrite(case / "5-CB_Brightfield.tif", np.zeros((16, 16), dtype=np.uint8))
+            _write_fake_multiz_ets(case / "_Tray04_Slide01_01_" / "stack1" / "frame_t_0.ets")
+            project = root / "histology_project.dphistology"
+
+            scanned = histology.scan_exported_tiff_project(root)
+            created = histology.create_project_from_exported_tiff(project, root)
+
+            image_files = scanned["samples"][0]["image_files"]
+            self.assertIn("Brightfield", image_files)
+            self.assertIn("Hoechst", image_files)
+            self.assertIn("FITC", image_files)
+            self.assertIn("Cy5", image_files)
+            self.assertTrue(str(created["entries"][0]["image_path"]).endswith("5-CB_Hoechst.tif"))
 
     def test_histology_data_project_indexes_raw_files_and_analyzes_exported_tiffs(self) -> None:
         try:
@@ -441,10 +743,17 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(loaded["entries"][0]["parameters_path"]).is_file())
             self.assertEqual(renamed["renamed_entry"]["image_name"], "5-CB SMA macrophage")
             self.assertEqual(preview["width"], 22)
-            self.assertIn("FITC", preview["preview_channels"])
+            self.assertEqual(preview["preview_channels"], ["FITC"])
+            self.assertNotIn("analysis uses the indexed fluorescence channels", " ".join(preview["warnings"]))
+            multi_preview = histology_project.load_histology_data_project_image_preview(
+                project,
+                entry_id,
+                selected_channels=["Hoechst", "FITC", "Cy5"],
+            )
+            self.assertEqual(multi_preview["preview_channels"], ["Hoechst", "FITC", "Cy5"])
             with Image.open(BytesIO(base64.b64decode(preview["img"]))) as preview_img:
                 preview_arr = np.asarray(preview_img.convert("RGB"))
-            self.assertTrue(np.any(preview_arr[..., 0] != preview_arr[..., 1]))
+            self.assertEqual(preview_arr.shape[:2], (22, 22))
             self.assertGreater(result["results"][0]["sma_positive_px"], 0)
             self.assertGreater(result["results"][0]["macrophage_positive_px"], 0)
             self.assertTrue(Path(result["analysis_path"]).exists())
@@ -452,6 +761,136 @@ class HistologyServiceSplitTests(unittest.TestCase):
             self.assertTrue(Path(result["project_path"]).exists())
             self.assertIn("project_home", result["analysis_path"])
             self.assertFalse((raw_root / ".dataprocess_histology").exists())
+
+    def test_histology_project_saved_roi_batch_outputs_normalized_tables_and_plots(self) -> None:
+        try:
+            import numpy as np
+            import tifffile
+        except ImportError as exc:
+            self.skipTest(f"histology saved ROI batch optional dependency missing: {exc}")
+
+        with tempfile.TemporaryDirectory(prefix="dataprocess_histology_batch_") as tmp:
+            tmp_root = Path(tmp)
+            exported = tmp_root / "exported"
+            exported.mkdir()
+            for group in range(1, 4):
+                hoechst = np.zeros((32, 32), dtype=np.uint16)
+                fitc = np.zeros((32, 32), dtype=np.uint16)
+                cy5 = np.zeros((32, 32), dtype=np.uint16)
+                hoechst[2:30, 2:30] = 1200
+                fitc[4 : 4 + 5 * group, 4:22] = 50000
+                cy5[8 : 8 + 4 * group, 8:24] = 45000
+                tifffile.imwrite(exported / f"{group}-CB_Hoechst.tif", hoechst)
+                tifffile.imwrite(exported / f"{group}-CB_FITC.tif", fitc)
+                tifffile.imwrite(exported / f"{group}-CB_Cy5.tif", cy5)
+
+            project = tmp_root / "study.dphistology"
+            created = histology.create_project_from_exported_tiff(project, exported)
+            rois = [
+                {
+                    "id": "roi_A",
+                    "label": "A",
+                    "points": [{"x": 2, "y": 2}, {"x": 29, "y": 2}, {"x": 29, "y": 29}, {"x": 2, "y": 29}],
+                },
+                {
+                    "id": "roi_B",
+                    "label": "B",
+                    "points": [{"x": 6, "y": 6}, {"x": 25, "y": 6}, {"x": 25, "y": 25}, {"x": 6, "y": 25}],
+                },
+            ]
+            for entry in created["entries"]:
+                Path(entry["rois_path"]).write_text(json.dumps(rois), encoding="utf-8")
+            loaded_with_external_rois = histology_project.load_histology_data_project(project)
+            self.assertTrue(all(entry["roi_count"] == 2 for entry in loaded_with_external_rois["entries"]))
+
+            params = {
+                "sma_channel": "green",
+                "sma_threshold_method": "manual",
+                "sma_threshold": 100,
+                "macrophage_channel": "red",
+                "macrophage_threshold_method": "manual",
+                "macrophage_threshold": 100,
+                "background_mode": "none",
+                "smooth_sigma": 0,
+                "min_positive_area_px": 1,
+                "summary_normalize_to_group": "1",
+            }
+            preview = histology_project.analyze_histology_data_project_saved_rois(
+                project,
+                params,
+                write_outputs=False,
+            )
+
+            self.assertFalse(preview["write_outputs"])
+            self.assertEqual(preview["roi_count"], 6)
+            self.assertEqual(preview["observation_count"], 3)
+            self.assertEqual(preview["run_dir"], "")
+            self.assertEqual(preview["plots"], [])
+            self.assertFalse((project.with_name("study.dataprocess_histology") / "project_analysis").exists())
+            first_entry_id = str(created["entries"][0]["entry_id"])
+            overridden = histology_project.analyze_histology_data_project_saved_rois(
+                project,
+                {
+                    **params,
+                    "roi_parameter_overrides": {
+                        f"{first_entry_id}::roi_id::roi_A": {
+                            **params,
+                            "sma_threshold_method": "manual",
+                            "sma_threshold": 999999,
+                        }
+                    },
+                },
+                write_outputs=False,
+            )
+
+            overridden_roi = next(
+                row
+                for row in overridden["roi_rows"]
+                if row["entry_id"] == first_entry_id and row["roi_id"] == "roi_A"
+            )
+            sibling_roi = next(
+                row
+                for row in overridden["roi_rows"]
+                if row["entry_id"] == first_entry_id and row["roi_id"] == "roi_B"
+            )
+            self.assertEqual(overridden["roi_parameter_override_count"], 1)
+            self.assertEqual(overridden_roi["roi_parameter_override_key"], f"{first_entry_id}::roi_id::roi_A")
+            self.assertEqual(overridden_roi["sma_positive_area_ratio"], 0)
+            self.assertGreater(sibling_roi["sma_positive_area_ratio"], 0)
+
+            result = histology_project.analyze_histology_data_project_saved_rois(
+                project,
+                params,
+            )
+
+            self.assertTrue(result["write_outputs"])
+            self.assertEqual(result["roi_count"], 6)
+            self.assertEqual(result["observation_level"], "image")
+            self.assertEqual(result["observation_count"], 3)
+            self.assertEqual(result["sample_count"], 3)
+            self.assertEqual(result["normalization"]["normalize_to_group"], "1")
+            self.assertTrue(Path(result["roi_table_path"]).is_file())
+            self.assertTrue(Path(result["image_table_path"]).is_file())
+            self.assertTrue(Path(result["summary_table_path"]).is_file())
+            self.assertTrue(Path(result["statistics_path"]).is_file())
+            self.assertTrue(Path(result["manifest_path"]).is_file())
+            self.assertTrue(all(item["roi_source"] != "project" for item in result["analyzed_entries"]))
+            self.assertEqual(len(result["plots"]), 4)
+            self.assertTrue(all(Path(plot["path"]).is_file() for plot in result["plots"]))
+            self.assertTrue(all(Path(plot["svg_path"]).is_file() for plot in result["plots"]))
+            with Path(result["roi_table_path"]).open(newline="", encoding="utf-8") as handle:
+                rows = list(csv.DictReader(handle))
+            group_1 = [row for row in rows if row["sample_group"] == "1"]
+            self.assertEqual(len(group_1), 2)
+            mean_group_1 = sum(float(row["sma_positive_area_ratio_normalized"]) for row in group_1) / len(group_1)
+            self.assertAlmostEqual(mean_group_1, 1.0)
+            with Path(result["image_table_path"]).open(newline="", encoding="utf-8") as handle:
+                image_rows = list(csv.DictReader(handle))
+            self.assertEqual(len(image_rows), 3)
+            self.assertEqual(len([row for row in image_rows if row["sample_group"] == "1"]), 1)
+            self.assertEqual(image_rows[0]["roi_count"], "2")
+            self.assertIn("sma", result["statistics"])
+            self.assertIn("macrophage", result["statistics"])
 
     def test_histology_data_project_folder_path_creates_reusable_local_file(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_project_file_") as tmp:
@@ -483,6 +922,22 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 histology_project.load_histology_data_project(image)
             with self.assertRaisesRegex(ValueError, "not valid UTF-8 JSON"):
                 histology_project.load_histology_data_project(broken_project)
+
+    def test_analysis_region_scale_keeps_object_area_threshold_in_native_pixels(self) -> None:
+        params = {
+            "min_positive_area_px": 12,
+            "macrophage_min_area_px": 20,
+            "macrophage_max_area_px": 800,
+        }
+
+        scaled = histology_project._analysis_params_for_region_scale(params, 0.05)
+
+        self.assertEqual(scaled["sma_min_area_px_native"], 12)
+        self.assertEqual(scaled["sma_min_area_px"], 1)
+        self.assertEqual(scaled["macrophage_min_area_px_native"], 20)
+        self.assertEqual(scaled["macrophage_min_area_px"], 1)
+        self.assertEqual(scaled["macrophage_max_area_px_native"], 800)
+        self.assertEqual(scaled["macrophage_max_area_px"], 2)
 
 
 if __name__ == "__main__":

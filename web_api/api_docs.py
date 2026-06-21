@@ -50,7 +50,7 @@ def build_openapi_spec(app) -> dict:
         "openapi": "3.1.0",
         "info": {
             "title": "bioelectronics_toolkit Web API",
-            "version": getattr(app, "config", {}).get("APP_VERSION", "0.6.0"),
+            "version": getattr(app, "config", {}).get("APP_VERSION", "0.7.0"),
         },
         "paths": paths,
         "components": {"schemas": _schema_components()},

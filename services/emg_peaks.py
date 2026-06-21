@@ -8,7 +8,13 @@ import pandas as pd
 
 from services import emg as emg_service
 from services.matplotlib_utils import new_subplots
-from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
+from services.trace_decimate import decimate_xy
+
+# EMG/RHD traces are dense high-frequency waveforms. The generic 4k-point
+# envelope preview is fine for slow traces, but it turns full-window burst
+# trains into barcode-like min/max columns. Match the legacy PNG path's
+# approximate 50k rendered-sample budget for this page.
+EMG_TRACE_MAX_POINTS = 50000
 
 
 class EmgPeaksService:
@@ -149,7 +155,7 @@ class EmgPeaksService:
         return {"img": self.fig_to_b64(fig)}
 
     def trace_data_payload(
-        self, data: dict[str, Any], max_points: int = DEFAULT_MAX_POINTS
+        self, data: dict[str, Any], max_points: int = EMG_TRACE_MAX_POINTS
     ) -> dict[str, Any]:
         """Return decimated EMG samples for client-side interactive plotting."""
         path = data.get("path", "")

@@ -82,7 +82,8 @@ function currentProcessingPayload(extra) {
   }, currentViewParams(), currentProcessingParams(), currentFigureParams(), extra || {});
 }
 
-function scanFolder() {
+function scanFolder(options) {
+  const opts = options || {};
   const folder = document.getElementById('folderPath').value.trim();
   if (!folder) {
     setStatus('status', 'Please enter a folder path', 'error');
@@ -95,7 +96,13 @@ function scanFolder() {
       if (data.error) throw new Error(data.error);
       const filePaths = (data.files || []).map((f) => typeof f === 'string' ? f : (f.path || ''));
       _rhdFiles = filePaths.slice();
-      renderRhdFileList({preserveChannel: false, loadProfile: true});
+      if (opts.selectedPath && _rhdFiles.includes(opts.selectedPath)) {
+        _currentFile = opts.selectedPath;
+      }
+      renderRhdFileList({
+        preserveChannel: opts.preserveChannel || false,
+        loadProfile: opts.loadProfile !== false,
+      });
     })
     .catch(e => setStatus('status', 'Error: ' + e.message, 'error'));
 }

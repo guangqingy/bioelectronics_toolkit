@@ -202,7 +202,7 @@ function clearRunOutputs(message) {
   document.getElementById('outputFigs').innerHTML = '';
   const manifest = document.getElementById('outputManifest');
   manifest.className = 'artifact-empty';
-  manifest.textContent = message || 'Run a script to preview figures and inspect generated data files.';
+  manifest.textContent = message || 'Run a pipeline to preview figures and inspect generated data files.';
   document.getElementById('outputCount').textContent = 'No files yet';
 }
 
@@ -231,11 +231,11 @@ function switchCat(cat, opts = {}) {
     selectScript(preferredExists ? preferred : firstScript.id, opts);
   } else {
     document.getElementById('paramForm').innerHTML = '';
-    document.getElementById('scriptTitleBar').textContent = 'Select a script';
-    document.getElementById('scriptDesc').textContent = 'Choose a category and script to configure parameters.';
+    document.getElementById('scriptTitleBar').textContent = 'Pipelines';
+    document.getElementById('scriptDesc').textContent = 'Choose a category and pipeline to configure parameters.';
     document.getElementById('scriptBadges').innerHTML = '';
     clearRunOutputs();
-    setRunSummary('', 'Idle', 'No script has been run in this session.');
+    setRunSummary('', 'Idle', 'No pipeline has been run in this session.');
   }
 
   const targetPath = `/scripts/${cat}`;
@@ -276,7 +276,7 @@ function selectScript(id, opts = {}) {
   document.getElementById('scriptDesc').textContent = _curScript.desc;
   const modelBadge = ((_curScript.script || '').startsWith('model_'))
     ? '<span class="pipeline-badge ok">model entry</span>'
-    : '<span class="pipeline-badge">script entry</span>';
+    : '<span class="pipeline-badge">pipeline entry</span>';
   const availabilityBadge = `<span class="pipeline-badge ${scriptAvailabilityClass(_curScript)}">${escapeHtml(scriptAvailabilityText(_curScript))}</span>`;
   const docBadge = CATEGORY_DOCS[_curCat]
     ? `<span class="pipeline-badge mono">${escapeHtml(CATEGORY_DOCS[_curCat])}</span>`
@@ -293,7 +293,7 @@ function selectScript(id, opts = {}) {
     clearRunOutputs(msg);
     setRunSummary('warning', 'Local Script Missing', msg);
   } else {
-    clearRunOutputs('Ready. Set parameters and run the selected script.');
+    clearRunOutputs('Ready. Set parameters and run the selected pipeline.');
     setRunSummary('', 'Ready', `${_curScript.params.length} configurable parameter${_curScript.params.length === 1 ? '' : 's'}.`);
   }
   renderContextOptions();
@@ -307,7 +307,7 @@ function renderParamForm(params) {
   const form = document.getElementById('paramForm');
   const body = params.length
     ? `<div class="pipeline-param-grid">${params.map(p => renderParam(p)).join('')}</div>`
-    : '<div class="artifact-empty">This script is self-contained and does not require panel parameters.</div>';
+    : '<div class="artifact-empty">This pipeline is self-contained and does not require panel parameters.</div>';
   form.innerHTML = `
     <div class="result-card pipeline-param-card">
       <div class="result-card-header">
@@ -405,7 +405,7 @@ function setParamValues(params) {
 }
 
 async function saveCurrentDefaults() {
-  if (!_curScript) { toast('Select a script first', true); return; }
+  if (!_curScript) { toast('Select a pipeline first', true); return; }
   const params = collectParams();
   _scriptPrefs.script_defaults[_curScript.id] = {
     params,
@@ -413,7 +413,7 @@ async function saveCurrentDefaults() {
   };
   rememberLastSession(params);
   await persistScriptPreferences();
-  toast('Defaults saved for this script');
+  toast('Defaults saved for this pipeline');
 }
 
 async function resetCurrentDefaults() {
@@ -428,7 +428,7 @@ async function resetCurrentDefaults() {
 }
 
 async function saveCurrentContext() {
-  if (!_curScript) { toast('Select a script first', true); return; }
+  if (!_curScript) { toast('Select a pipeline first', true); return; }
   const params = collectParams();
   applySharedPaths(params);
   const primary = primaryPathFromParams(params);
@@ -491,7 +491,7 @@ function applySharedPaths(params) {
 }
 
 async function runScript() {
-  if (!_curScript) { toast('Select a script first', true); return; }
+  if (!_curScript) { toast('Select a pipeline first', true); return; }
   if (_curScript.available === false) {
     const msg = _curScript.availability_message || 'This registered pipeline needs local project scripts before it can run.';
     setStatus('status', msg, 'warning');
@@ -513,7 +513,7 @@ async function runScript() {
   renderContextOptions();
   await persistScriptPreferences(true);
   btnBusy('btnRun', true, 'Running…');
-  setStatus('status', 'Running script…');
+  setStatus('status', 'Running pipeline…');
   setRunSummary('running', 'Running', _curScript.name);
   clearRunOutputs('Waiting for output files...');
   try {
@@ -523,21 +523,21 @@ async function runScript() {
       params
     });
     if (d.error) {
-      btnBusy('btnRun', false, 'Run Script');
+      btnBusy('btnRun', false, 'Run Pipeline');
       setStatus('status', 'Error: ' + d.error, 'err');
       setRunSummary('error', 'Failed', d.error);
-      toast('Script error', true);
+      toast('Pipeline error', true);
       return;
     }
     if (d.running) {
       renderRunResult(d);
-      setStatus('status', 'Script is still running. Output panel will refresh automatically.', 'loading');
+      setStatus('status', 'Pipeline is still running. Output panel will refresh automatically.', 'loading');
       pollJob(d.job_id, 0);
       return;
     }
     finishRun(d);
   } catch(e) {
-    btnBusy('btnRun', false, 'Run Script');
+    btnBusy('btnRun', false, 'Run Pipeline');
     setStatus('status', 'Network error', 'err');
     setRunSummary('error', 'Network error', e.message || 'Request failed');
     toast('Network error', true);
@@ -545,29 +545,29 @@ async function runScript() {
 }
 
 function finishRun(d) {
-  btnBusy('btnRun', false, 'Run Script');
+  btnBusy('btnRun', false, 'Run Pipeline');
   renderRunResult(d);
   if (d.ok === false) {
-    const msg = d.stderr || d.message || 'Script finished with errors.';
+    const msg = d.stderr || d.message || 'Pipeline finished with errors.';
     setStatus('status', 'Error: ' + msg, 'err');
     setRunSummary('error', 'Finished with errors', msg);
-    toast('Script finished with errors', true);
+    toast('Pipeline finished with errors', true);
     recordPipelineRun(d);
     return;
   }
   setStatus('status', d.message || 'Done.', 'ok');
   setRunSummary('ok', 'Completed', `${(d.artifacts || []).length} output file${(d.artifacts || []).length === 1 ? '' : 's'} detected.`);
-  toast('Script completed');
+  toast('Pipeline completed');
   recordPipelineRun(d);
 }
 
 function pollJob(jobId, attempt) {
   if (!jobId) {
-    btnBusy('btnRun', false, 'Run Script');
+    btnBusy('btnRun', false, 'Run Pipeline');
     return;
   }
   if (attempt > 170) {
-    btnBusy('btnRun', false, 'Run Script');
+    btnBusy('btnRun', false, 'Run Pipeline');
     setStatus('status', 'Still running after several minutes. Check the output folder.', 'warning');
     setRunSummary('running', 'Still running', 'The script may still be working in Python.');
     return;
@@ -577,20 +577,20 @@ function pollJob(jobId, attempt) {
     try {
       const d = await api('/api/scripts/status', {job_id: jobId});
       if (d.error) {
-        btnBusy('btnRun', false, 'Run Script');
+        btnBusy('btnRun', false, 'Run Pipeline');
         setStatus('status', d.error, 'err');
         setRunSummary('error', 'Status unavailable', d.error);
         return;
       }
       if (!d.done) {
         renderRunResult(d);
-        setStatus('status', 'Running script…', 'loading');
+        setStatus('status', 'Running pipeline…', 'loading');
         pollJob(jobId, attempt + 1);
         return;
       }
       finishRun(d);
     } catch (e) {
-      btnBusy('btnRun', false, 'Run Script');
+      btnBusy('btnRun', false, 'Run Pipeline');
       setStatus('status', 'Network error while checking status', 'err');
       setRunSummary('error', 'Status check failed', e.message || 'Request failed');
     }

@@ -150,7 +150,7 @@
     <input type="text" id="outPrefix" value="roi_analysis" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Scale bar um</div>
+    <div class="param-label">Scale bar µm</div>
     <input type="number" id="scaleBarUm" value="200" min="0" step="any" style="font-size:11.5px">
   </div>
   <div class="param-row">
@@ -158,12 +158,12 @@
     <input type="number" id="gifFrameMs" value="2000" min="20" step="10" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Pixel um/px</div>
+    <div class="param-label">Pixel size µm/px</div>
   <input type="number" id="pixelSizeUm" placeholder="auto from TIFF metadata" min="0" step="any" onchange="onRingWidthChange()" style="font-size:11.5px">
   </div>
   <div class="param-row">
     <div class="param-label">Scale text</div>
-    <input type="text" id="scaleLabel" placeholder="auto: {Scale bar um} um" style="font-size:11.5px">
+    <input type="text" id="scaleLabel" placeholder="auto: {Scale bar µm} µm" style="font-size:11.5px">
   </div>
   <div class="param-row">
     <div class="param-label">Label scale</div>
@@ -185,7 +185,7 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
 <details class="ctrl-section ctrl-details">
-  <summary class="ctrl-label">Advanced: Saved Settings</summary>
+  <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="input-group">
     <select id="roiContextSelect" onchange="restoreRoiContext()">
       <option value="">Saved contexts</option>

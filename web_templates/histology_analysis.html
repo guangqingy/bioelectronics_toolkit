@@ -72,6 +72,33 @@
   min-width: 48px;
   text-align: right;
 }
+.histology-channel-view {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-left: 4px;
+}
+.histology-channel-view[hidden] {
+  display: none;
+}
+.histology-channel-chip {
+  align-items: center;
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  color: var(--graphite);
+  display: inline-flex;
+  font-size: 11.5px;
+  font-weight: 650;
+  gap: 4px;
+  line-height: 1;
+  min-height: 28px;
+  padding: 4px 7px;
+}
+.histology-channel-chip input {
+  accent-color: var(--blue);
+  margin: 0;
+}
 .histology-roi-count {
   color: var(--silver);
   font-size: 12px;
@@ -80,6 +107,43 @@
 .histology-roi-list {
   max-height: 180px;
   margin-bottom: 12px;
+}
+.histology-debug-panel {
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+.histology-debug-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.histology-debug-title {
+  font-size: 12px;
+  font-weight: 750;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.histology-debug-preview {
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  margin-top: 8px;
+  min-height: 120px;
+  overflow: hidden;
+}
+.histology-debug-preview img {
+  display: block;
+  max-width: 100%;
+}
+.histology-debug-metrics {
+  margin-top: 8px;
+}
+.histology-debug-metrics .data-table td,
+.histology-debug-metrics .data-table th {
+  white-space: nowrap;
 }
 .histology-roi-item {
   display: flex;
@@ -206,6 +270,7 @@
     <div class="btn-row histology-stack-gap">
       <button class="btn-secondary" type="button" onclick="DP.folder.pick('projectPath','loadHistologyDataProject')">Open Folder</button>
       <button class="btn-primary" id="btnLoadHistologyAnalysisProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load Project</button>
+      <button class="btn-secondary" id="btnAnalyzeHistologyProject" type="button" onclick="DP.page.analyzeHistologyProjectSavedRois()" disabled>Analyze Saved ROI (all)</button>
     </div>
   </div>
 
@@ -328,6 +393,22 @@
         <div class="param-label">DAPI dilate</div>
         <input type="number" id="dapiDilatePx" class="input-sm" min="0" max="30" step="1" value="2">
       </div>
+      <div class="param-row">
+        <div class="param-label">ROI shrink</div>
+        <input type="number" id="roiShrinkPercent" class="input-sm" min="0" max="80" step="1" value="0">
+      </div>
+      <div class="param-row">
+        <div class="param-label">Group</div>
+        <select id="histologySummaryGroupBy" class="input-sm histology-select-wide">
+          <option value="treatment" selected>Treatment</option>
+          <option value="sample">Sample #</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <div class="param-label">Normalize to</div>
+        <input type="text" id="histologyNormalizeGroup" class="input-sm" value="CB">
+      </div>
+      <label class="checkbox-row"><input type="checkbox" id="histologyExcludeZeroObservations" checked><span>Skip non-detect points</span></label>
     </details>
   </div>
 </details>
@@ -369,6 +450,7 @@
           <button class="btn-icon" id="btnHistologyRotateLeft" type="button" title="Rotate left" onclick="DP.page.histologyRotatePreview(-90)" disabled>↺</button>
           <button class="btn-icon" id="btnHistologyRotateRight" type="button" title="Rotate right" onclick="DP.page.histologyRotatePreview(90)" disabled>↻</button>
           <button class="btn-icon" id="btnHistologyPan" type="button" title="Lock hand tool" aria-pressed="false" onclick="DP.page.histologyTogglePanMode()" disabled>Pan</button>
+          <div id="histologyChannelView" class="histology-channel-view" hidden></div>
         </div>
         <div id="histologyAnalysisPlotArea" class="plot-area histology-plot-area">
           <div id="histologyAnalysisEmpty" class="plot-placeholder">Load a project image to begin ROI analysis</div>
@@ -388,7 +470,24 @@
       </div>
       <div class="result-card-body">
         <div id="histologyRoiList" class="file-list histology-roi-list"></div>
+        <div id="histologyRoiDebugWorkbench" class="histology-debug-panel">
+          <div class="histology-debug-head">
+            <span class="histology-debug-title">ROI Tuning</span>
+            <label class="checkbox-row"><input type="checkbox" id="histologyRoiDebugAuto" checked><span>Auto</span></label>
+          </div>
+          <div class="param-row">
+            <div class="param-label">ROI</div>
+            <select id="histologyDebugRoiSelect" class="input-sm histology-grow"></select>
+          </div>
+          <div class="btn-row">
+            <button class="btn-secondary" id="btnPreviewHistologyRoiDebug" type="button" onclick="DP.page.previewHistologyRoiDebug()">Preview ROI tuning</button>
+          </div>
+          <div id="histologyRoiDebugMeta" class="histology-results-meta">Select a project image and ROI to inspect parameter effects.</div>
+          <div id="histologyRoiDebugPreview" class="histology-debug-preview plot-placeholder">No ROI tuning preview yet.</div>
+          <div id="histologyRoiDebugMetrics" class="histology-debug-metrics"></div>
+        </div>
         <div id="histologyAnalysisResults" class="histology-results"></div>
+        <div id="histologyProjectBatchResults" class="histology-results histology-stack-gap"></div>
       </div>
     </div>
   </div>

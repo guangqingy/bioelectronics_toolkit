@@ -42,6 +42,30 @@ class ConsoleEntrypointTests(unittest.TestCase):
             "desktop_apps.web_launcher:emg_rhd_main",
         )
 
+    def test_service_backed_temporary_tools_have_integrated_commands(self) -> None:
+        scripts = project_scripts()
+
+        self.assertEqual(
+            scripts.get("bte-fl-preview-export"),
+            "desktop_apps.fluorescence_preview_export_gui:main",
+        )
+        self.assertEqual(
+            scripts.get("bte-fl-manual-roi"),
+            "desktop_apps.fluorescence_manual_roi_gui:main",
+        )
+        self.assertEqual(
+            scripts.get("bte-fl-marker-roi"),
+            "desktop_apps.fluorescence_marker_roi_analysis:main",
+        )
+        self.assertEqual(
+            scripts.get("bte-histology-line-measure"),
+            "desktop_apps.histology_line_measure_gui:main",
+        )
+        self.assertEqual(
+            scripts.get("bte-histology-analysis"),
+            "desktop_apps.web_launcher:histology_analysis_main",
+        )
+
     def test_all_project_scripts_import_callable_main(self) -> None:
         scripts = project_scripts()
         self.assertGreaterEqual(len(scripts), 1)

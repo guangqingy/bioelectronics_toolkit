@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Fluorescence TIFF Viewer{% endblock %}
+{% block title %}TIFF Stack Browser{% endblock %}
 
 {% block controls %}
 <div class="ctrl-section">
@@ -110,7 +110,7 @@
 </details>
 
 <details class="ctrl-section ctrl-details">
-  <summary class="ctrl-label">Advanced: Saved Settings</summary>
+  <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="btn-row">
     <button class="btn-secondary" type="button" onclick="DP.page.saveTiffDefaults()">Save Defaults</button>
     <button class="btn-secondary" type="button" onclick="DP.page.resetTiffDefaults()">Reset</button>
@@ -124,7 +124,7 @@
 {% block main %}
 <div class="view-main">
   <div class="view-header">
-    <div class="view-title">TIFF Browser & Adjustment</div>
+    <div class="view-title">TIFF Stack Browser</div>
     <div class="view-sub" id="tiffMeta">Browse TIFF stacks, tune contrast/LUT, inspect slices or projections, then export adjusted stacks.</div>
   </div>
 

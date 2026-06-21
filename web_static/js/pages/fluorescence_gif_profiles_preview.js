@@ -29,7 +29,7 @@ async function pickTiffFile(id) {
 }
 
 function toggleScaleMode() {
-  const auto = document.getElementById('gifAutoScale')?.checked ?? true;
+  const auto = gifChecked('gifAutoScale', true);
   const row = document.getElementById('manualScaleRow');
   const input = document.getElementById('gifPxPerUm');
   if (row) row.style.opacity = auto ? '0.55' : '1';
@@ -80,7 +80,7 @@ function getPreviewEntry() {
 }
 
 function gifProjectRoot() {
-  return document.getElementById('folderPath')?.value.trim() || '';
+  return gifTrimmedValue('folderPath');
 }
 
 function gifPrimaryFile() {
@@ -139,7 +139,8 @@ window.dpApplyRunManifest = manifest => {
       .filter(rec => rec.path)
       .map((rec, i) => ({id: 'manifest_' + i, path: rec.path, frames: null, slices: rec.slices || '', scale: null}));
     _entryCounter = _tiffEntries.length + 1;
-    if (_tiffEntries.length) document.getElementById('folderPath').value = manifest.project_root || dpPathDir(_tiffEntries[0].path);
+    const folderEl = gifElement('folderPath');
+    if (_tiffEntries.length && folderEl) folderEl.value = manifest.project_root || dpPathDir(_tiffEntries[0].path);
     renderTiffList();
     scanFrameCounts(false);
   }
@@ -188,7 +189,7 @@ async function loadGifProfileForCurrent(auto, includeQueue = false) {
 async function loadSelectedGifFileProfile(auto) {
   const file = gifPrimaryFile();
   if (!file) { setStatus('gifFileProfileStatus', 'Select or queue a TIFF first.', 'error'); return; }
-  const name = document.getElementById('gifFileProfileSelect').value;
+  const name = gifValue('gifFileProfileSelect');
   if (!name) { setStatus('gifFileProfileStatus', 'No profile selected.', 'error'); return; }
   try {
     const data = await loadFileProfile('fluorescence_gif', file, gifProjectRoot(), name);
@@ -207,7 +208,7 @@ async function loadSelectedGifFileProfile(auto) {
 async function saveGifFileProfile(saveAs) {
   const file = gifPrimaryFile();
   if (!file) { setStatus('gifFileProfileStatus', 'Select or queue a TIFF first.', 'error'); return; }
-  let name = document.getElementById('gifFileProfileSelect').value || 'default';
+  let name = gifValue('gifFileProfileSelect') || 'default';
   if (saveAs) {
     name = await promptProfileName(name);
     if (!name) return;
@@ -224,7 +225,7 @@ async function saveGifFileProfile(saveAs) {
 
 async function deleteSelectedGifFileProfile() {
   const file = gifPrimaryFile();
-  const name = document.getElementById('gifFileProfileSelect').value;
+  const name = gifValue('gifFileProfileSelect');
   if (!file || !name) return;
   const confirmed = await DP.dom.confirm({
     title: 'Delete file profile?',
@@ -304,11 +305,11 @@ async function refreshGifPreview() {
     const d = await api('/api/fluorescence/gif_preview', {
       input_path: entry.path.trim(),
       slice_spec: (entry.slices || '').trim(),
-      fps: parseFloat(document.getElementById('gifFps').value) || 5,
-      lut: document.getElementById('gifLut').value,
-      scale_bar_um: parseFloat(document.getElementById('gifBarUm').value) || 0,
-      px_per_um: parseFloat(document.getElementById('gifPxPerUm').value) || 3.45,
-      auto_scale: document.getElementById('gifAutoScale').checked,
+      fps: gifNumber('gifFps', 5) || 5,
+      lut: gifValue('gifLut', 'Gray'),
+      scale_bar_um: gifNumber('gifBarUm', 0),
+      px_per_um: gifNumber('gifPxPerUm', 3.45) || 3.45,
+      auto_scale: gifChecked('gifAutoScale', true),
       add_timestamp: gifLabelMode() !== 'none',
       label_mode: gifLabelMode(),
       show_roi_overlay: gifShowRoiOverlay(),

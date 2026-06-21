@@ -272,6 +272,13 @@ def _preflight(changes: list[dict[str, Any]]) -> None:
             raise ValueError(f"Target already exists: {target}")
 
 
+def _updated_root(root: str, changes: list[dict[str, Any]]) -> str:
+    for change in changes:
+        if change.get("source_path") == root:
+            return str(change.get("target_path") or root)
+    return root
+
+
 def apply_payload(data: dict[str, Any], job_ctx: JobContext | None = None) -> dict[str, Any]:
     plan = preview_payload(data)
     changes = list(plan["changes"])
@@ -313,6 +320,7 @@ def apply_payload(data: dict[str, Any], job_ctx: JobContext | None = None) -> di
     return {
         "ok": True,
         "root": plan["root"],
+        "updated_root": _updated_root(plan["root"], changes),
         "renamed_count": len(renamed),
         "changes": renamed,
         "outputs": outputs,

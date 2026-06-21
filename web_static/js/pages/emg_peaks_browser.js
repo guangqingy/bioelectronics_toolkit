@@ -2,6 +2,8 @@ let _emgPlotDrag = null;
 let _emgTraceDuration = null;
 let _availableChannels = [];
 let _linkedChannels = new Set();
+let _processedPeakPlotSeq = 0;
+let _processedPeakOverlayCleanup = null;
 
 function formatEmgNumber(value, digits) {
   if (!Number.isFinite(value)) return '--';
@@ -25,14 +27,162 @@ function updateEmgWindowReadout() {
 }
 
 function clearProcessedPeakPlot() {
+  _processedPeakPlotSeq += 1;
+  if (_processedPeakOverlayCleanup) {
+    try { _processedPeakOverlayCleanup(); } catch (_) {}
+    _processedPeakOverlayCleanup = null;
+  }
+  if (window.dpDestroyTrace) window.dpDestroyTrace('processedPlotArea');
   const card = document.getElementById('processedPlotCard');
   if (card) card.hidden = true;
   setPlot('processedPlotArea', null);
 }
 
+function processedPeakPlotPayload() {
+  const path = currentPath();
+  if (!path) return null;
+  return {
+    path,
+    x_min: document.getElementById('xMin')?.value ? parseFloat(document.getElementById('xMin').value) : null,
+    x_max: document.getElementById('xMax')?.value ? parseFloat(document.getElementById('xMax').value) : null,
+    invert_signal: typeof isEmgSignalInverted === 'function' ? isEmgSignalInverted() : false,
+  };
+}
+
+function peakMarkerColor(peak, selected) {
+  if (peak?.removed) return '#8b9098';
+  if (selected) return '#3E6AE1';
+  if (typeof isBaselinePeak === 'function' && isBaselinePeak(peak)) return '#8b5cf6';
+  return '#e06c00';
+}
+
+function refreshProcessedPeakOverlay() {
+  if (!window.dpGetTrace) return;
+  const chart = window.dpGetTrace('processedPlotArea');
+  const over = chart && chart.root ? chart.root.querySelector('.u-over') : null;
+  if (!chart || !over) return;
+  over.querySelectorAll('.emg-peak-overlay').forEach(node => node.remove());
+  if (!_peaks.length) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'emg-peak-overlay';
+  const xScale = chart.scales?.x || {};
+  const yScale = chart.scales?.y || {};
+  const xMin = Number(xScale.min);
+  const xMax = Number(xScale.max);
+  const yMin = Number(yScale.min);
+  const yMax = Number(yScale.max);
+  const overWidth = over.clientWidth || 1;
+  const overHeight = over.clientHeight || 1;
+
+  _peaks.forEach((peak, idx) => {
+    const x = typeof peakTime === 'function' ? peakTime(peak) : Number(peak?.time_s || peak?.time || NaN);
+    const y = typeof peakHeight === 'function' ? peakHeight(peak) : Number(peak?.height_uV || peak?.height || NaN);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (Number.isFinite(xMin) && x < xMin) return;
+    if (Number.isFinite(xMax) && x > xMax) return;
+    if (Number.isFinite(yMin) && y < Math.min(yMin, yMax)) return;
+    if (Number.isFinite(yMax) && y > Math.max(yMin, yMax)) return;
+
+    const left = chart.valToPos(x, 'x');
+    const top = chart.valToPos(y, 'y');
+    if (!Number.isFinite(left) || !Number.isFinite(top)) return;
+
+    const selected = _selected && _selected.has(idx);
+    const color = peakMarkerColor(peak, selected);
+    const removed = !!peak?.removed;
+
+    const line = document.createElement('div');
+    line.className = 'emg-peak-marker-line' + (removed ? ' is-removed' : '');
+    line.style.left = `${left}px`;
+    line.style.height = `${overHeight}px`;
+    line.style.borderLeftColor = color;
+    overlay.appendChild(line);
+
+    const dot = document.createElement('div');
+    dot.className = 'emg-peak-marker-dot' + (removed ? ' is-removed' : '');
+    dot.style.left = `${left - 4}px`;
+    dot.style.top = `${top - 4}px`;
+    dot.style.backgroundColor = color;
+    overlay.appendChild(dot);
+
+    const labelText = String(idx);
+    const labelWidth = Math.min(56, Math.max(20, labelText.length * 7 + 10));
+    const label = document.createElement('div');
+    const labelLeft = Math.min(Math.max(0, left + 5), Math.max(0, overWidth - labelWidth));
+    const labelTop = Math.min(Math.max(0, top - 18), Math.max(0, overHeight - 18));
+    label.textContent = labelText;
+    label.title = `Peak ${idx}${removed ? ' removed' : ''}`;
+    label.className = [
+      'emg-peak-marker-label',
+      removed ? 'is-removed' : '',
+      selected ? 'is-selected' : '',
+    ].filter(Boolean).join(' ');
+    label.style.left = `${labelLeft}px`;
+    label.style.top = `${labelTop}px`;
+    label.style.width = `${labelWidth}px`;
+    label.style.backgroundColor = color;
+    overlay.appendChild(label);
+  });
+
+  over.appendChild(overlay);
+}
+
+function bindProcessedPeakOverlayRefresh() {
+  if (_processedPeakOverlayCleanup) {
+    try { _processedPeakOverlayCleanup(); } catch (_) {}
+  }
+  const area = document.getElementById('processedPlotArea');
+  let raf = null;
+  const schedule = () => {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => {
+      raf = null;
+      refreshProcessedPeakOverlay();
+    });
+  };
+  let observer = null;
+  if (area && typeof ResizeObserver !== 'undefined') {
+    observer = new ResizeObserver(schedule);
+    observer.observe(area);
+  }
+  window.addEventListener('resize', schedule);
+  _processedPeakOverlayCleanup = () => {
+    if (raf) cancelAnimationFrame(raf);
+    if (observer) observer.disconnect();
+    window.removeEventListener('resize', schedule);
+  };
+}
+
 function showProcessedPeakPlot(img, label) {
   const card = document.getElementById('processedPlotCard');
   if (card) card.hidden = false;
+  const payload = processedPeakPlotPayload();
+  const area = document.getElementById('processedPlotArea');
+  if (payload && window.dpUplotAvailable && window.dpUplotAvailable()) {
+    const seq = ++_processedPeakPlotSeq;
+    if (area) area.innerHTML = '<div class="plot-placeholder">Rendering processed preview...</div>';
+    api('/api/emg/trace_data', payload)
+      .then(data => {
+        if (seq !== _processedPeakPlotSeq) return;
+        if (data.error) throw new Error(data.error);
+        const tracePayload = Object.assign({}, data, { title: label || data.title || 'Processed peak detection preview' });
+        if (!window.dpRenderTrace('processedPlotArea', tracePayload, {
+          dragZoom: false,
+          cursorReadout: true,
+          color: '#3E6AE1',
+        })) throw new Error('uplot-render-failed');
+        bindProcessedPeakOverlayRefresh();
+        refreshProcessedPeakOverlay();
+      })
+      .catch(() => {
+        if (seq !== _processedPeakPlotSeq) return;
+        if (window.dpDestroyTrace) window.dpDestroyTrace('processedPlotArea');
+        setPlot('processedPlotArea', img, 'png', label || 'Processed peak detection preview');
+      });
+    return;
+  }
+  if (window.dpDestroyTrace) window.dpDestroyTrace('processedPlotArea');
   setPlot('processedPlotArea', img, 'png', label || 'Processed peak detection preview');
 }
 
@@ -336,6 +486,7 @@ window.DP.page = window.DP.page || {};
   'selectSubfolder',
   'clearProcessedPeakPlot',
   'showProcessedPeakPlot',
+  'refreshProcessedPeakOverlay',
   'installEmgPlotInteractions',
   'collectLinkedChannelNames',
   'renderLinkedChannelList',

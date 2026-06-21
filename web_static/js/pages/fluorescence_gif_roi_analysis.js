@@ -36,22 +36,23 @@ async function generateGif() {
 
   btnBusy('btnGenerate', true, 'Generating…');
   setStatus('status', 'Generating GIF…', 'loading');
-  document.getElementById('resultArea').innerHTML = '';
+  const resultArea = gifElement('resultArea');
+  if (resultArea) resultArea.innerHTML = '';
 
   const payload = {
     tiff_paths:    paths,
     slice_specs:   _tiffEntries.filter(e => e.path.trim()).map(e => (e.slices || '').trim()),
-    fps:           parseFloat(document.getElementById('gifFps').value) || 5,
-    lut:           document.getElementById('gifLut').value,
-    scale_bar_um:  parseFloat(document.getElementById('gifBarUm').value) || 0,
-    px_per_um:     parseFloat(document.getElementById('gifPxPerUm').value) || 3.45,
-    auto_scale:    document.getElementById('gifAutoScale').checked,
+    fps:           gifNumber('gifFps', 5) || 5,
+    lut:           gifValue('gifLut', 'Gray'),
+    scale_bar_um:  gifNumber('gifBarUm', 0),
+    px_per_um:     gifNumber('gifPxPerUm', 3.45) || 3.45,
+    auto_scale:    gifChecked('gifAutoScale', true),
     add_timestamp: gifLabelMode() !== 'none',
     label_mode:    gifLabelMode(),
     show_roi_overlay: gifShowRoiOverlay(),
     roi_polygons:  getClosedRoiPolygons(),
     ...gifCropPayload(),
-    output_path:   document.getElementById('gifOutput').value.trim(),
+    output_path:   gifTrimmedValue('gifOutput'),
   };
 
   try {
@@ -60,8 +61,7 @@ async function generateGif() {
 
     if (d.error) {
       setStatus('status', 'Error: ' + d.error, 'error');
-      document.getElementById('resultArea').innerHTML =
-        `<pre class="log-box">${escHtml(d.error)}</pre>`;
+      if (resultArea) resultArea.innerHTML = `<pre class="log-box">${escHtml(d.error)}</pre>`;
       return;
     }
 
@@ -76,7 +76,7 @@ async function generateGif() {
 
     /* Result card */
     const outDir = d.output_path ? d.output_path.replace(/\/[^\/]+$/, '') : '';
-    document.getElementById('resultArea').innerHTML = `
+    if (resultArea) resultArea.innerHTML = `
       <div class="result-card" style="padding:12px 16px;background:var(--surface-panel);border:1px solid var(--border-muted);border-radius:6px">
         <div style="font-weight:600;margin-bottom:6px">GIF Generated</div>
         <div style="font-size:12px;color:#555;margin-bottom:4px">Frames: <b>${d.n_frames}</b></div>
@@ -147,6 +147,7 @@ function buildGifRoiReferencePrefix(entry) {
 
 function upsertGifResultCard(cardId, headerHtml, bodyHtml) {
   const area = document.getElementById('resultArea');
+  if (!area) return;
   area.style.display = 'flex';
   let card = document.getElementById(cardId);
   if (!card) {
@@ -179,10 +180,10 @@ async function exportGifRoiPreview() {
       input_path: entry.path.trim(),
       slice_spec: (entry.slices || '').trim(),
       roi_polygons: rois,
-      lut: document.getElementById('gifLut').value,
-      scale_bar_um: parseFloat(document.getElementById('gifBarUm').value) || 0,
-      px_per_um: parseFloat(document.getElementById('gifPxPerUm').value) || 3.45,
-      auto_scale: document.getElementById('gifAutoScale').checked,
+      lut: gifValue('gifLut', 'Gray'),
+      scale_bar_um: gifNumber('gifBarUm', 0),
+      px_per_um: gifNumber('gifPxPerUm', 3.45) || 3.45,
+      auto_scale: gifChecked('gifAutoScale', true),
       show_name: true,
       show_scale_bar: true,
       ...gifCropPayload(),
@@ -231,6 +232,9 @@ async function exportGifRoiPreview() {
 }
 
 function buildGifRoiAnalysisPayload() {
+  if (!gifElement('gifRoiMetric') || !gifElement('gifRoiPlotMetric')) {
+    throw new Error('ROI time-analysis controls are not available on this page');
+  }
   const entries = gifAnalysisEntries();
   if (!entries.length) {
     throw new Error('Add at least one TIFF to the queue, or select a preview TIFF');
@@ -241,9 +245,9 @@ function buildGifRoiAnalysisPayload() {
     throw new Error('Draw and close at least one polygon ROI first');
   }
 
-  const bgMode = document.getElementById('gifBgMode').value;
+  const bgMode = gifValue('gifBgMode', 'none') || 'none';
   const bgLabel = gifBgLabel();
-  const plotMetric = document.getElementById('gifRoiPlotMetric').value;
+  const plotMetric = gifValue('gifRoiPlotMetric', 'delta_f_over_f0') || 'delta_f_over_f0';
   let bgRoi = null;
   let signalRois = allPolys.slice();
 
@@ -260,15 +264,15 @@ function buildGifRoiAnalysisPayload() {
     throw new Error('Choose a BG mode before using BG Subtracted or F / F_BG');
   }
 
-  const fps = parseFloat(document.getElementById('gifFps').value) || 5;
-  const refFrame = parseInt(document.getElementById('gifRoiRefFrame').value, 10) || 1;
+  const fps = gifNumber('gifFps', 5) || 5;
+  const refFrame = gifInteger('gifRoiRefFrame', 1) || 1;
   return {
     tiff_paths: entries.map(e => e.path),
     slice_specs: entries.map(e => e.slices),
     rois: signalRois,
     bg_mode: bgMode,
     bg_roi: bgRoi || undefined,
-    metric: document.getElementById('gifRoiMetric').value,
+    metric: gifValue('gifRoiMetric', 'mean') || 'mean',
     plot_metric: plotMetric,
     fps,
     ref_frame: Math.max(1, refFrame),
@@ -310,7 +314,7 @@ async function runGifRoiAnalysis() {
       <img class="gif-result-img" src="data:image/png;base64,${d.img}" alt="GIF ROI time analysis plot"/>
       ${warnText}`;
     upsertGifResultCard('gifRoiTimeResultCard', header, body);
-    document.getElementById('gifRoiExportSection').style.display = '';
+    gifSetDisplay('gifRoiExportSection', '');
     setStatus('status', `ROI time analysis complete: ${d.n_frames} frame(s)`, 'ok');
     toast('ROI time analysis complete');
   } catch(ex) {

@@ -74,17 +74,17 @@ function updateGifCropControls() {
 }
 
 function gifLabelMode() {
-  return document.getElementById('gifLabelMode')?.value || 'frame';
+  return gifValue('gifLabelMode', 'frame') || 'frame';
 }
 
 function gifShowRoiOverlay() {
-  return !!document.getElementById('gifShowRoiOverlay')?.checked;
+  return gifChecked('gifShowRoiOverlay');
 }
 
 function gifCropPayload() {
-  const mode = document.getElementById('gifCropMode')?.value || 'full';
-  const rectLabel = document.getElementById('gifCropRoiSelect')?.value || '';
-  const padding = parseInt(document.getElementById('gifCropPadding')?.value, 10);
+  const mode = gifValue('gifCropMode', 'full') || 'full';
+  const rectLabel = gifValue('gifCropRoiSelect');
+  const padding = gifInteger('gifCropPadding', 0);
   return {
     crop_mode: mode,
     crop_rect_label: mode === 'selected_rect' ? rectLabel : '',
@@ -132,7 +132,7 @@ function startPolygon() {
     points: [],
   };
   _nextPolygonIdx = idx + 1;
-  document.getElementById('polygonHint').textContent = 'Click preview to add polygon points, then Done Drawing.';
+  gifSetText('polygonHint', 'Click preview to add polygon points, then Done Drawing.');
   renderPolygonList();
   drawPolygons();
 }
@@ -148,7 +148,7 @@ function closePolygon() {
   }
   _roiPolygons.push(_draftPolygon);
   _draftPolygon = null;
-  document.getElementById('polygonHint').textContent = `${_roiPolygons.length} polygon ROI marker(s) ready · drawing complete`;
+  gifSetText('polygonHint', `${_roiPolygons.length} polygon ROI marker(s) ready · drawing complete`);
   renderPolygonList();
   drawPolygons();
 }
@@ -159,7 +159,7 @@ function finishPolygonDrawing() {
     return;
   }
   if (_roiPolygons.length) {
-    document.getElementById('polygonHint').textContent = `${_roiPolygons.length} polygon ROI marker(s) ready · drawing complete`;
+    gifSetText('polygonHint', `${_roiPolygons.length} polygon ROI marker(s) ready · drawing complete`);
     setStatus('status', 'ROI drawing complete', 'ok');
   } else {
     setStatus('status', 'No ROI has been drawn yet', 'error');
@@ -189,7 +189,7 @@ function clearPolygons() {
   _roiPolygons = [];
   _draftPolygon = null;
   _nextPolygonIdx = 1;
-  document.getElementById('polygonHint').textContent = 'Click + Polygon, then click the preview image to add points.';
+  gifSetText('polygonHint', 'Click + Polygon, then click the preview image to add points.');
   renderPolygonList();
   drawPolygons();
 }
@@ -264,7 +264,7 @@ function startCropRect() {
   };
   _cropRectDragStart = null;
   _nextCropRectIdx = idx + 1;
-  document.getElementById('cropRectHint').textContent = 'Drag on the preview image to define a rectangular crop ROI2.';
+  gifSetText('cropRectHint', 'Drag on the preview image to define a rectangular crop ROI2.');
   renderCropRectList();
   drawPolygons();
 }
@@ -289,7 +289,7 @@ function finishCropRect() {
   _draftCropRect = null;
   _cropRectDragStart = null;
   if (rect.width < 2 || rect.height < 2) {
-    document.getElementById('cropRectHint').textContent = 'ROI2 rectangle was too small; drag a larger rectangle.';
+    gifSetText('cropRectHint', 'ROI2 rectangle was too small; drag a larger rectangle.');
     renderCropRectList();
     drawPolygons();
     return;
@@ -297,7 +297,7 @@ function finishCropRect() {
   _cropRects.push(rect);
   const modeEl = document.getElementById('gifCropMode');
   if (modeEl) modeEl.value = 'selected_rect';
-  document.getElementById('cropRectHint').textContent = `${_cropRects.length} ROI2 crop rectangle(s) ready`;
+  gifSetText('cropRectHint', `${_cropRects.length} ROI2 crop rectangle(s) ready`);
   renderCropRectList();
   drawPolygons();
   scheduleGifPreview();
@@ -318,7 +318,7 @@ function clearCropRects() {
   _nextCropRectIdx = 1;
   const modeEl = document.getElementById('gifCropMode');
   if (modeEl) modeEl.value = 'full';
-  document.getElementById('cropRectHint').textContent = 'Click + Rectangle, then drag on the preview image.';
+  gifSetText('cropRectHint', 'Click + Rectangle, then drag on the preview image.');
   renderCropRectList();
   drawPolygons();
   scheduleGifPreview();

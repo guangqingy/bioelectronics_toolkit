@@ -181,6 +181,51 @@ def _bool_param(params: dict[str, Any], key: str, default: bool = False) -> bool
     return default
 
 
+def _text_param(params: dict[str, Any], key: str, default: str = "") -> str:
+    value = params.get(key, default)
+    return str(value if value is not None else default).strip().lower()
+
+
+def _auto_invert_signal(values: np.ndarray) -> bool:
+    data = np.asarray(values, dtype=np.float32)
+    finite = data[np.isfinite(data)]
+    if finite.size == 0:
+        return False
+    p0, p1, p50, p90, p95, p99, p100 = np.percentile(finite, [0, 1, 50, 90, 95, 99, 100])
+    bright_background = p50 >= 170.0 and p90 >= 240.0 and p95 >= 245.0
+    sparse_dark_signal = (p1 <= p50 - 20.0) or (p0 <= p50 - 35.0)
+    display_inverted = p50 > 170.0 and p95 > 230.0 and p99 > p50
+    return bool((bright_background and sparse_dark_signal) or display_inverted or (p100 <= p50 + 1.0 and sparse_dark_signal))
+
+
+def _maybe_invert_signal(values: np.ndarray, params: dict[str, Any], prefix: str) -> tuple[np.ndarray, bool, str]:
+    mode = _text_param(
+        params,
+        f"{prefix}_invert_signal",
+        _text_param(params, f"{prefix}_invert", _text_param(params, "invert_fluorescence_signal", "off")),
+    )
+    if mode in {"1", "true", "yes", "y", "on", "invert"}:
+        should_invert = True
+        mode = "on"
+    elif mode in {"auto", "automatic", "detect"}:
+        should_invert = _auto_invert_signal(values)
+        mode = "auto"
+    else:
+        should_invert = False
+        mode = "off"
+    if not should_invert:
+        return np.asarray(values, dtype=np.float32), False, mode
+    data = np.asarray(values, dtype=np.float32)
+    finite = data[np.isfinite(data)]
+    if finite.size == 0:
+        return data, False, mode
+    lo = float(np.min(finite))
+    hi = float(np.max(finite))
+    if hi <= lo:
+        return data, False, mode
+    return (hi + lo - data).astype(np.float32, copy=False), True, mode
+
+
 def _otsu_threshold(values: np.ndarray) -> float:
     data = np.asarray(values, dtype=np.float32)
     data = data[np.isfinite(data)]
@@ -241,23 +286,33 @@ def _threshold_for(values: np.ndarray, mask: np.ndarray, params: dict[str, Any],
         return _float_param(params, f"{prefix}_threshold", _float_param(params, "threshold", 120.0)), "manual"
     if method in {"percentile", "quantile"}:
         percentile = _float_param(params, f"{prefix}_threshold_percentile", _float_param(params, "threshold_percentile", 97.5))
-        return float(np.percentile(roi_values, np.clip(percentile, 0, 100))), "percentile"
+        signal_values = roi_values[roi_values > 0]
+        threshold_values = signal_values if signal_values.size else roi_values
+        return float(np.percentile(threshold_values, np.clip(percentile, 0, 100))), "percentile"
     if method in {"mean_std", "mean+std", "z"}:
         k = _float_param(params, f"{prefix}_threshold_std_k", _float_param(params, "threshold_std_k", 2.0))
         return float(np.mean(roi_values) + k * np.std(roi_values)), "mean_std"
     return _otsu_threshold(roi_values), "otsu"
 
 
-def _filter_positive_mask(mask: np.ndarray, min_area_px: int) -> tuple[np.ndarray, int]:
+def _filter_positive_mask(
+    mask: np.ndarray,
+    min_area_px: int,
+    max_area_px: int = 0,
+    opening_px: int = 2,
+) -> tuple[np.ndarray, int]:
     positive = np.asarray(mask, dtype=bool)
     if ndi is None:
         return positive, int(np.count_nonzero(positive) > 0)
-    positive = ndi.binary_opening(positive, structure=np.ones((2, 2), dtype=bool))
+    if int(opening_px or 0) > 1:
+        positive = ndi.binary_opening(positive, structure=np.ones((int(opening_px), int(opening_px)), dtype=bool))
     labels, count = ndi.label(positive)
     if count <= 0:
         return np.zeros_like(positive, dtype=bool), 0
     sizes = np.bincount(labels.ravel())
     keep = sizes >= max(1, int(min_area_px))
+    if int(max_area_px or 0) > 0:
+        keep &= sizes <= int(max_area_px)
     keep[0] = False
     filtered = keep[labels]
     _, filtered_count = ndi.label(filtered)
@@ -274,12 +329,45 @@ def _marker_analysis(
 ) -> tuple[dict[str, Any], np.ndarray]:
     channel = str(params.get(f"{prefix}_channel") or default_channel)
     raw = _channel_values(arr, channel)
+    raw, signal_inverted, invert_mode = _maybe_invert_signal(raw, params, prefix)
     corrected, background = _background_correct(raw, params, prefix)
     smooth = _smooth_values(corrected, params, prefix)
     threshold, method = _threshold_for(smooth, analysis_mask, params, prefix)
-    positive_raw = analysis_mask & (smooth >= threshold)
-    min_area = _int_param(params, f"{prefix}_min_area_px", _int_param(params, "min_positive_area_px", 12))
-    positive, object_count = _filter_positive_mask(positive_raw, min_area)
+    positive_raw = analysis_mask & (smooth > threshold)
+    native_min_area = _int_param(
+        params,
+        f"{prefix}_min_area_px_native",
+        _int_param(
+            params,
+            f"{prefix}_min_positive_area_px_native",
+            _int_param(params, f"{prefix}_min_area_px", _int_param(params, "min_positive_area_px", 12)),
+        ),
+    )
+    min_area = _int_param(
+        params,
+        f"{prefix}_min_area_px",
+        _int_param(params, f"{prefix}_min_positive_area_px", _int_param(params, "min_positive_area_px", 12)),
+    )
+    native_max_area = _int_param(
+        params,
+        f"{prefix}_max_area_px_native",
+        _int_param(
+            params,
+            f"{prefix}_max_positive_area_px_native",
+            _int_param(params, f"{prefix}_max_area_px", _int_param(params, "max_positive_area_px", 0)),
+        ),
+    )
+    max_area = _int_param(
+        params,
+        f"{prefix}_max_area_px",
+        _int_param(params, f"{prefix}_max_positive_area_px", _int_param(params, "max_positive_area_px", 0)),
+    )
+    opening_px = _int_param(
+        params,
+        f"{prefix}_opening_px",
+        _int_param(params, f"{prefix}_positive_opening_px", _int_param(params, "positive_opening_px", 2)),
+    )
+    positive, object_count = _filter_positive_mask(positive_raw, min_area, max_area, opening_px)
     values = corrected[analysis_mask]
     pos_values = corrected[positive]
     analysis_area = int(np.count_nonzero(analysis_mask))
@@ -288,10 +376,16 @@ def _marker_analysis(
     return (
         {
             "channel": channel,
+            "invert_signal": invert_mode,
+            "signal_inverted": bool(signal_inverted),
             "background": background,
             "threshold": float(threshold),
             "threshold_method": method,
             "min_area_px": int(min_area),
+            "min_area_px_native": int(native_min_area),
+            "max_area_px": int(max_area),
+            "max_area_px_native": int(native_max_area),
+            "opening_px": int(opening_px),
             "mean_corrected": float(np.mean(values)) if values.size else 0.0,
             "max_corrected": float(np.max(values)) if values.size else 0.0,
             "integrated_density": float(np.sum(values)) if values.size else 0.0,

@@ -543,7 +543,6 @@ def process_payload(
             "warnings": warnings,
             "segment_csv_paths": [],
         }
-        log_path = _write_operation_log(root_dir, log_payload)
         return {
             "dry_run": True,
             "message": f"Dry run planned {len(operations)} filesystem operation(s)",
@@ -555,14 +554,14 @@ def process_payload(
             "moved_count": log_payload["planned_move_count"],
             "renamed_count": log_payload["planned_rename_count"],
             "warnings": warnings[:100],
-            "operation_log_path": log_path,
-            "outputs": [{"path": log_path, "type": "json", "role": "operation_log"}],
+            "operation_log_path": "",
+            "outputs": [],
         }
 
     if not records:
         log_path = ""
         outputs = []
-        if operations or warnings:
+        if moved_count or renamed_count:
             log_path = _write_operation_log(
                 root_dir,
                 {
@@ -629,7 +628,14 @@ def process_payload(
             "warnings": warnings,
             "segment_csv_paths": segment_paths,
         }
-        log_path = _write_operation_log(root_dir, log_payload)
+        log_path = ""
+        outputs = [
+            {"path": path, "type": "csv", "role": "abf_batch_segment"}
+            for path in segment_paths
+        ]
+        if moved_count or renamed_count:
+            log_path = _write_operation_log(root_dir, log_payload)
+            outputs.append({"path": log_path, "type": "json", "role": "operation_log"})
         return {
             "pure_csv": True,
             "message": f"Pure CSV conversion complete: saved {len(segment_paths)} segment CSV file(s).",
@@ -641,13 +647,7 @@ def process_payload(
             "renamed_count": renamed_count,
             "warnings": warnings[:100],
             "operation_log_path": log_path,
-            "outputs": [
-                *[
-                    {"path": path, "type": "csv", "role": "abf_batch_segment"}
-                    for path in segment_paths
-                ],
-                {"path": log_path, "type": "json", "role": "operation_log"},
-            ],
+            "outputs": outputs,
         }
 
     df = pd.DataFrame(records)
@@ -693,7 +693,20 @@ def process_payload(
         "warnings": warnings,
         "segment_csv_paths": segment_paths,
     }
-    log_path = _write_operation_log(root_dir, log_payload)
+    log_path = ""
+    outputs = [
+        *[
+            {"path": path, "type": "csv", "role": "abf_batch_summary"}
+            for path in summary_paths
+        ],
+        *[
+            {"path": path, "type": "csv", "role": "abf_batch_segment"}
+            for path in segment_paths
+        ],
+    ]
+    if moved_count or renamed_count:
+        log_path = _write_operation_log(root_dir, log_payload)
+        outputs.append({"path": log_path, "type": "json", "role": "operation_log"})
 
     return {
         "message": f"Processed {len(records)} files. Saved {len(summary_paths)} summary CSV file(s).",
@@ -706,15 +719,5 @@ def process_payload(
         "renamed_count": renamed_count,
         "warnings": warnings[:100],
         "operation_log_path": log_path,
-        "outputs": [
-            *[
-                {"path": path, "type": "csv", "role": "abf_batch_summary"}
-                for path in summary_paths
-            ],
-            *[
-                {"path": path, "type": "csv", "role": "abf_batch_segment"}
-                for path in segment_paths
-            ],
-            {"path": log_path, "type": "json", "role": "operation_log"},
-        ],
+        "outputs": outputs,
     }

@@ -896,32 +896,26 @@ def get_t_and_V(channel_name, result):
     if channel_found:
 
         if signal_type == "amplifier_channels":
-            ylabel = "Voltage (microVolts)"
             signal_data_name = "amplifier_data"
             t_vector = result["t_amplifier"]
 
         elif signal_type == "aux_input_channels":
-            ylabel = "Voltage (Volts)"
             signal_data_name = "aux_input_data"
             t_vector = result["t_aux_input"]
 
         elif signal_type == "supply_voltage_channels":
-            ylabel = "Voltage (Volts)"
             signal_data_name = "supply_voltage_data"
             t_vector = result["t_supply_voltage"]
 
         elif signal_type == "board_adc_channels":
-            ylabel = "Voltage (Volts)"
             signal_data_name = "board_adc_data"
             t_vector = result["t_board_adc"]
 
         elif signal_type == "board_dig_in_channels":
-            ylabel = "Digital In Events (High or Low)"
             signal_data_name = "board_dig_in_data"
             t_vector = result["t_dig"]
 
         elif signal_type == "board_dig_out_channels":
-            ylabel = "Digital Out Events (High or Low)"
             signal_data_name = "board_dig_out_data"
             t_vector = result["t_dig"]
 

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}RHD Viewer{% endblock %}
+{% block title %}RHD Viewer (Intan){% endblock %}
 
 {% block controls %}
 <div class="ctrl-section">
@@ -58,7 +58,7 @@
   </div>
   <label class="checkbox-row">
     <input type="checkbox" id="previewMergePair" checked onchange="onPreviewMergeChanged()">
-    <span>Auto merge folder recording</span>
+    <span>Auto merge folder recording for preview</span>
   </label>
   <details class="ctrl-details">
     <summary class="ctrl-label" title="Optional filtering applied to the preview and current-channel figure export">Filter</summary>
@@ -220,7 +220,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Export Options</div>
   <div class="param-row">
-    <label><input type="checkbox" id="mergePair" checked> Merge folder recording</label>
+    <label><input type="checkbox" id="mergePair" checked> Merge folder recording for export</label>
   </div>
   <div class="param-row">
     <label><input type="checkbox" id="wideCsv"> All channels in one file (wide TSV)</label>
@@ -312,7 +312,7 @@
 {% block main %}
 <div class="view-main">
   <div class="view-header">
-    <div class="view-title">RHD Viewer</div>
+    <div class="view-title">RHD Viewer (Intan)</div>
     <div class="view-sub">Channel trace preview and export</div>
   </div>
   <div class="view-preview">

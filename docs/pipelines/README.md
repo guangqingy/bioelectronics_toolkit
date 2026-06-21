@@ -10,15 +10,10 @@ This folder documents how each script pipeline category integrates with the GUI 
 - EChem curve pipelines: [echem_curve_pipeline_README.md](echem_curve_pipeline_README.md)
 - Viability pipelines: [viability_pipeline_README.md](viability_pipeline_README.md)
 - Methods notes: [methods.md](methods.md)
-- Web GUI run manifests: [webgui_run_manifest_2026-05-08.md](webgui_run_manifest_2026-05-08.md)
-- Web GUI file profiles: [webgui_file_profiles_2026-05-08.md](webgui_file_profiles_2026-05-08.md)
-- Web GUI job/API architecture pass: [webgui_second_priority_2026-05-08.md](webgui_second_priority_2026-05-08.md)
 
 ## Standards And Audits
 
 - Analysis script standard: [analysis_script_standard.md](analysis_script_standard.md)
-- Analysis script audit: [analysis_scripts_audit_2026-05-08.md](analysis_scripts_audit_2026-05-08.md)
-- GUI output stability audit: [gui_output_stability_2026-05-08.md](gui_output_stability_2026-05-08.md)
 
 ## Integration Summary
 
@@ -40,7 +35,7 @@ This folder documents how each script pipeline category integrates with the GUI 
 
 ## Dev Utilities
 
-- `dev_scripts/check_analysis_scripts.py` — audits project analysis scripts for import-safety conventions.
+- `dev_scripts/check_analysis_scripts.py` — checks project analysis scripts for import-safety conventions.
   Run from the repo root: `python3 dev_scripts/check_analysis_scripts.py`
 
 ## Maintenance Notes

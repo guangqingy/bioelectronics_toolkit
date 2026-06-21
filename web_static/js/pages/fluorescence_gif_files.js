@@ -30,6 +30,44 @@ let _gifKymoDefaultOutputDir = '';
 let _gifPrefs = {};
 let _gifFileProfileState = null;
 
+function gifElement(id) {
+  return document.getElementById(id);
+}
+
+function gifValue(id, fallback = '') {
+  const el = gifElement(id);
+  return el && el.value !== undefined ? el.value : fallback;
+}
+
+function gifTrimmedValue(id, fallback = '') {
+  return String(gifValue(id, fallback)).trim();
+}
+
+function gifNumber(id, fallback = 0) {
+  const n = parseFloat(gifValue(id, ''));
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function gifInteger(id, fallback = 0) {
+  const n = parseInt(gifValue(id, ''), 10);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function gifChecked(id, fallback = false) {
+  const el = gifElement(id);
+  return el ? !!el.checked : !!fallback;
+}
+
+function gifSetText(id, text) {
+  const el = gifElement(id);
+  if (el) el.textContent = text;
+}
+
+function gifSetDisplay(id, display) {
+  const el = gifElement(id);
+  if (el) el.style.display = display;
+}
+
 /* ---------- Folder browse / available TIFFs ---------- */
 
 function renderAvailableTiffList() {
@@ -81,40 +119,38 @@ function entryKey(path) {
 }
 
 function collectGifPrefs() {
-  const val = id => document.getElementById(id)?.value ?? '';
-  const checked = id => !!document.getElementById(id)?.checked;
   return {
-    folderPath: val('folderPath'),
-    gifFps: val('gifFps'),
-    gifLut: val('gifLut'),
-    gifBarUm: val('gifBarUm'),
-    gifAutoScale: checked('gifAutoScale'),
-    gifPxPerUm: val('gifPxPerUm'),
-    gifLabelMode: val('gifLabelMode'),
-    gifCropMode: val('gifCropMode'),
-    gifCropPadding: val('gifCropPadding'),
-    gifShowRoiOverlay: checked('gifShowRoiOverlay'),
-    gifOutput: val('gifOutput'),
-    gifBgMode: val('gifBgMode'),
-    gifRoiMetric: val('gifRoiMetric'),
-    gifRoiPlotMetric: val('gifRoiPlotMetric'),
-    gifRoiRefFrame: val('gifRoiRefFrame'),
-    gifRoiPrefix: val('gifRoiPrefix'),
-    gifKymoValueMode: val('gifKymoValueMode'),
-    gifKymoBins: val('gifKymoBins'),
-    gifKymoLowPct: val('gifKymoLowPct'),
-    gifKymoHighPct: val('gifKymoHighPct'),
-    gifKymoThresholds: val('gifKymoThresholds'),
-    gifKymoPercentiles: val('gifKymoPercentiles'),
-    gifKymoTopMeans: val('gifKymoTopMeans'),
-    gifKymoPeakLine: checked('gifKymoPeakLine'),
-    gifKymoMeanLine: checked('gifKymoMeanLine'),
-    gifKymoSmoothIntensity: val('gifKymoSmoothIntensity'),
-    gifKymoSmoothTime: val('gifKymoSmoothTime'),
-    gifKymoSmoothLines: checked('gifKymoSmoothLines'),
-    gifKymoRefFrame: val('gifKymoRefFrame'),
-    gifKymoRefStat: val('gifKymoRefStat'),
-    gifKymoPrefix: val('gifKymoPrefix'),
+    folderPath: gifValue('folderPath'),
+    gifFps: gifValue('gifFps'),
+    gifLut: gifValue('gifLut'),
+    gifBarUm: gifValue('gifBarUm'),
+    gifAutoScale: gifChecked('gifAutoScale'),
+    gifPxPerUm: gifValue('gifPxPerUm'),
+    gifLabelMode: gifValue('gifLabelMode'),
+    gifCropMode: gifValue('gifCropMode'),
+    gifCropPadding: gifValue('gifCropPadding'),
+    gifShowRoiOverlay: gifChecked('gifShowRoiOverlay'),
+    gifOutput: gifValue('gifOutput'),
+    gifBgMode: gifValue('gifBgMode'),
+    gifRoiMetric: gifValue('gifRoiMetric'),
+    gifRoiPlotMetric: gifValue('gifRoiPlotMetric'),
+    gifRoiRefFrame: gifValue('gifRoiRefFrame'),
+    gifRoiPrefix: gifValue('gifRoiPrefix'),
+    gifKymoValueMode: gifValue('gifKymoValueMode'),
+    gifKymoBins: gifValue('gifKymoBins'),
+    gifKymoLowPct: gifValue('gifKymoLowPct'),
+    gifKymoHighPct: gifValue('gifKymoHighPct'),
+    gifKymoThresholds: gifValue('gifKymoThresholds'),
+    gifKymoPercentiles: gifValue('gifKymoPercentiles'),
+    gifKymoTopMeans: gifValue('gifKymoTopMeans'),
+    gifKymoPeakLine: gifChecked('gifKymoPeakLine'),
+    gifKymoMeanLine: gifChecked('gifKymoMeanLine'),
+    gifKymoSmoothIntensity: gifValue('gifKymoSmoothIntensity'),
+    gifKymoSmoothTime: gifValue('gifKymoSmoothTime'),
+    gifKymoSmoothLines: gifChecked('gifKymoSmoothLines'),
+    gifKymoRefFrame: gifValue('gifKymoRefFrame'),
+    gifKymoRefStat: gifValue('gifKymoRefStat'),
+    gifKymoPrefix: gifValue('gifKymoPrefix'),
   };
 }
 
@@ -186,7 +222,7 @@ function addCheckedTiffs() {
 }
 
 async function scanGifFolder() {
-  const folder = document.getElementById('folderPath').value.trim();
+  const folder = gifTrimmedValue('folderPath');
   if (!folder) {
     setStatus('status', 'Please choose a TIFF folder', 'error');
     return;
@@ -335,6 +371,14 @@ window.DP.page = window.DP.page || {};
   'collectGifPrefs',
   'entryKey',
   'escHtml',
+  'gifChecked',
+  'gifElement',
+  'gifInteger',
+  'gifNumber',
+  'gifSetDisplay',
+  'gifSetText',
+  'gifTrimmedValue',
+  'gifValue',
   'moveTiffEntry',
   'removeTiffEntry',
   'renderAvailableTiffList',

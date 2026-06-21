@@ -517,7 +517,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
         self.assertIn('onclick="logoutServer()"', html)
-        self.assertIn("v0.6.0", html)
+        self.assertIn("v0.7.0", html)
         self.assertNotIn("unknown", html.lower())
 
     def test_histology_naming_page_exposes_naming_controls(self) -> None:
@@ -581,6 +581,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("histology-analysis-workbench", html)
         self.assertIn("histologyAnalysisCanvas", html)
         self.assertIn("histologyViewToolbar", html)
+        self.assertIn("histologyChannelView", html)
         self.assertIn("btnHistologyRotateLeft", html)
         self.assertIn("histologyZoomSlider", html)
         self.assertIn("histologyRoiLabelInline", html)
@@ -588,6 +589,14 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('href="/histology/naming"', html)
         self.assertIn('href="/histology/analysis"', html)
         self.assertIn("Analyze SMA + Macrophage", html)
+        self.assertIn("Analyze Saved ROI (all)", html)
+        self.assertIn("histologyNormalizeGroup", html)
+        self.assertIn("histologySummaryGroupBy", html)
+        self.assertIn("histologyExcludeZeroObservations", html)
+        self.assertIn("roiShrinkPercent", html)
+        self.assertIn("histologyDebugRoiSelect", html)
+        self.assertIn("histologyRoiDebugPreview", html)
+        self.assertIn("histologyProjectBatchResults", html)
         self.assertIn("DAPI / Blue", html)
         self.assertIn("FITC / Green", html)
         self.assertIn("Cy5 / Red", html)
@@ -598,11 +607,22 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("/api/histology/file/image_preview", page_js)
         self.assertIn("/api/histology/file/image_region_preview", page_js)
         self.assertIn("/api/histology/project/image_region_preview", page_js)
+        self.assertIn("/api/histology/project/analysis/debug_roi", page_js)
         self.assertIn("/api/histology/file/analysis/run_job", page_js)
+        self.assertIn("/api/histology/project/analysis/run_saved_job", page_js)
+        self.assertIn("function previewHistologyRoiDebug", page_js)
+        self.assertIn("function renderHistologyRoiDebugResult", page_js)
+        self.assertIn("function analyzeHistologyProjectSavedRois", page_js)
+        self.assertIn("function renderHistologyProjectBatchResults", page_js)
         self.assertIn("function histologyRotatePreview", page_js)
         self.assertIn("function histologyFitPreview", page_js)
         self.assertIn("function histologyViewportToLocal", page_js)
         self.assertIn("function histologyRoisForApi", page_js)
+        self.assertIn("function histologyPreviewWarningText", page_js)
+        self.assertIn("function histologyPreviewMetaText", page_js)
+        self.assertIn("function histologyHandleViewChannelChanged", page_js)
+        self.assertIn("selected_channels: histologySelectedViewChannels()", page_js)
+        self.assertIn("warning ? 'warning' : 'ok'", page_js)
         self.assertIn("function histologyScheduleDetailPreview", page_js)
         self.assertIn("function histologyHandleWheel", page_js)
         self.assertIn("function histologyPointerShouldPan", page_js)
@@ -702,6 +722,51 @@ class WebAppSmokeTests(unittest.TestCase):
                     },
                 },
             )
+            debug_response = self.client.post(
+                "/api/histology/project/analysis/debug_roi",
+                json={
+                    "project_path": project_payload["project_path"],
+                    "entry_id": entry_id,
+                    "roi_index": 0,
+                    "parameters": {
+                        "sma_channel": "green",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 100,
+                        "macrophage_channel": "red",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 100,
+                        "background_mode": "none",
+                        "roi_shrink_percent": 20,
+                    },
+                    "before_parameters": {
+                        "sma_channel": "green",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 100,
+                        "macrophage_channel": "red",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 100,
+                        "background_mode": "none",
+                        "roi_shrink_percent": 0,
+                    },
+                    "selected_channels": ["FITC", "Cy5", "Hoechst"],
+                },
+            )
+            batch_response = self.client.post(
+                "/api/histology/project/analysis/run_saved",
+                json={
+                    "project_path": project_payload["project_path"],
+                    "parameters": {
+                        "sma_channel": "green",
+                        "sma_threshold_method": "manual",
+                        "sma_threshold": 100,
+                        "macrophage_channel": "red",
+                        "macrophage_threshold_method": "manual",
+                        "macrophage_threshold": 100,
+                        "background_mode": "none",
+                        "summary_normalize_to_group": "1",
+                    },
+                },
+            )
             file_preview_response = self.client.post(
                 "/api/histology/file/image_preview",
                 json={"image_path": str(image)},
@@ -731,6 +796,8 @@ class WebAppSmokeTests(unittest.TestCase):
             preview_payload = preview_response.get_json()
             project_region_payload = project_region_response.get_json()
             analysis_payload = analysis_response.get_json()
+            debug_payload = debug_response.get_json()
+            batch_payload = batch_response.get_json()
             file_preview_payload = file_preview_response.get_json()
             file_region_payload = file_region_response.get_json()
             file_analysis_payload = file_analysis_response.get_json()
@@ -759,6 +826,23 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(Path(analysis_payload["analysis_path"]).exists())
             self.assertTrue(Path(analysis_payload["project_path"]).exists())
             self.assertTrue(Path(analysis_payload["cache_dir"]).is_dir())
+            self.assertEqual(debug_response.status_code, 200)
+            self.assertTrue(debug_payload["ok"])
+            self.assertEqual(debug_payload["kind"], "histology_roi_debug")
+            self.assertEqual(debug_payload["roi_index"], 0)
+            self.assertEqual(debug_payload["roi_shrink_percent"], 20)
+            self.assertTrue(debug_payload["img"])
+            self.assertIn("sma", debug_payload["before"])
+            self.assertLess(debug_payload["after"]["area_px"], debug_payload["before"]["area_px"])
+            self.assertEqual(batch_response.status_code, 200)
+            self.assertTrue(batch_payload["ok"])
+            self.assertEqual(batch_payload["kind"], "histology_saved_roi_batch_analysis")
+            self.assertTrue(Path(batch_payload["roi_table_path"]).exists())
+            self.assertTrue(Path(batch_payload["image_table_path"]).exists())
+            self.assertTrue(Path(batch_payload["summary_table_path"]).exists())
+            self.assertTrue(Path(batch_payload["statistics_path"]).exists())
+            self.assertEqual(len(batch_payload["plots"]), 4)
+            self.assertTrue(all(Path(plot["path"]).exists() for plot in batch_payload["plots"]))
             self.assertEqual(file_preview_response.status_code, 200)
             self.assertTrue(file_preview_payload["ok"])
             self.assertEqual(file_preview_payload["width"], 20)
@@ -828,6 +912,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function useSelectedRhdToken", source)
         self.assertIn("function previewQuickRhdRename", source)
         self.assertIn("autoFillRhdRenameToken(path)", source)
+        self.assertIn("function remapRhdPathAfterRename(path, changes)", source)
+        self.assertIn("selectedPath: _currentFile", source)
+        self.assertIn("updatedRoot || data.root || payload.root", source)
         self.assertIn("function currentRhdBatchPaths", source)
         self.assertIn("_metadata.source_paths", source)
         self.assertIn("function currentProcessingPayload(extra)", source)
@@ -934,6 +1021,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function installEmgPlotInteractions()", js_source)
         self.assertIn("dragZoom: false", js_source)
         self.assertIn("onCursor: pos => updateEmgPlotReadouts(pos.x, pos.y)", js_source)
+        self.assertIn("function refreshProcessedPeakOverlay()", js_source)
+        self.assertIn("dpRenderTrace('processedPlotArea'", js_source)
+        self.assertIn("refreshProcessedPeakOverlay();", js_source)
+        self.assertIn("emg-peak-marker-label", js_source)
         self.assertIn("event.shiftKey", js_source)
         self.assertIn("function resetPeakSelectionAnchor()", js_source)
         self.assertIn("showProcessedPeakPlot(data.img", detection_source)
@@ -962,10 +1053,33 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("opts.dragZoom !== false", source)
         self.assertIn("opts.onCursor", source)
         self.assertIn("plot-cursor-readout", source)
+        self.assertIn("function cursorInsidePlot(u, left, top)", source)
+        self.assertIn("updateCursorReadout(cursorReadout, NaN, NaN)", source)
+        self.assertIn("function inlineStylePixels(el, prop)", source)
+        self.assertIn("const explicitHeight = inlineStylePixels(el, 'height') - pad", source)
         self.assertIn(".plot-cursor-readout", style)
         self.assertIn(".u-legend", style)
         self.assertIn("chartHeight(el, width, opts)", source)
+        self.assertNotIn("getBoundingClientRect().height", source)
+        self.assertIn("cssPixels(el, 'min-height')", source)
+        self.assertIn("opts.maxHeight", source)
         self.assertIn(".plot-area.is-uplot", style)
+
+    def test_csv_viewer_prefers_time_columns_and_guards_constant_x(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "web_static" / "js" / "pages" / "csv_viewer.js").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("function suggestCsvColumns(columns)", source)
+        self.assertIn("'time_s'", source)
+        self.assertIn("'t_abs_s'", source)
+        self.assertIn("'t_rel_ms'", source)
+        self.assertIn("'value_uV'", source)
+        self.assertIn("'segmentstart'", source)
+        self.assertIn("setCsvColumnOptions(_columns)", source)
+        self.assertIn("x_unique_count", source)
+        self.assertIn("has only one distinct numeric value", source)
 
     def test_lineshape_selection_supports_shift_ranges(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1325,6 +1439,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertFalse(root.exists())
             self.assertTrue((renamed_root / "clean_session_A-000.rhd").exists())
             self.assertEqual(job["data"]["renamed_count"], 2)
+            self.assertEqual(job["data"]["updated_root"], str(renamed_root))
 
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")
@@ -1332,8 +1447,8 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.6.0")
-        self.assertTrue(payload["label"].startswith("v0.6.0"))
+        self.assertEqual(payload["version"], "0.7.0")
+        self.assertTrue(payload["label"].startswith("v0.7.0"))
         self.assertNotIn("unknown", payload["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
@@ -1360,7 +1475,8 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(payload["data"]["dry_run"])
             self.assertGreaterEqual(payload["data"]["planned_count"], 1)
             self.assertTrue(source.exists())
-            self.assertTrue(Path(payload["data"]["operation_log_path"]).exists())
+            self.assertEqual(payload["data"]["operation_log_path"], "")
+            self.assertFalse((root / ".dataprocess_cache" / "operation_logs").exists())
 
     def test_abf_batch_run_button_surfaces_confirmation_and_empty_results(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -1471,12 +1587,12 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Advanced: File Profile", generic)
         self.assertIn("Advanced: Page Settings", generic)
         self.assertIn("Advanced: File Profile", fluorescence)
-        self.assertIn("Advanced: Saved Settings", fluorescence)
+        self.assertIn("Advanced: Page Settings", fluorescence)
         self.assertIn("Advanced: File Profile", gif)
-        self.assertIn("Advanced: Saved Settings", gif)
+        self.assertIn("Advanced: Page Settings", gif)
         self.assertIn("Advanced: File Profile", roi)
-        self.assertIn("Advanced: Saved Settings", roi)
-        self.assertIn("Advanced: Saved Settings", scripts)
+        self.assertIn("Advanced: Page Settings", roi)
+        self.assertIn("Advanced: Page Settings", scripts)
 
     def test_windows_picker_failure_returns_error_without_tk_fallback(self) -> None:
         with (
@@ -1812,6 +1928,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "HistologyDataProjectImageRegionPreviewRequest",
             "HistologyDataProjectLoadRequest",
             "HistologyDataProjectRenameEntryRequest",
+            "HistologyDataProjectRoiDebugRequest",
             "HistologyDataProjectSaveRoisRequest",
             "HistologyFileAnalyzeRoisRequest",
             "HistologyFileImagePreviewRequest",
@@ -1875,6 +1992,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/project/image_preview": "#/components/schemas/HistologyDataProjectImagePreviewRequest",
             "/api/histology/project/analysis/save_rois": "#/components/schemas/HistologyDataProjectSaveRoisRequest",
             "/api/histology/project/analysis/run_job": "#/components/schemas/HistologyDataProjectAnalyzeRoisRequest",
+            "/api/histology/project/analysis/debug_roi": "#/components/schemas/HistologyDataProjectRoiDebugRequest",
             "/api/histology/file/image_preview": "#/components/schemas/HistologyFileImagePreviewRequest",
             "/api/histology/project/image_region_preview": "#/components/schemas/HistologyDataProjectImageRegionPreviewRequest",
             "/api/histology/file/image_region_preview": "#/components/schemas/HistologyFileImageRegionPreviewRequest",

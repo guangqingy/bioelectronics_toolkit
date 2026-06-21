@@ -152,6 +152,45 @@ function rhdRenamePayloadKey(payload) {
   return JSON.stringify(copy);
 }
 
+function rhdPathHasPrefix(path, prefix) {
+  const text = String(path || '');
+  const root = String(prefix || '').replace(/[\\/]+$/, '');
+  if (!text || !root) return false;
+  return text === root || text.startsWith(root + '/') || text.startsWith(root + '\\');
+}
+
+function remapRhdPathAfterRename(path, changes) {
+  const text = String(path || '');
+  if (!text || !Array.isArray(changes) || !changes.length) return text;
+
+  const exact = changes.find(row => row && row.source_path === text && row.target_path);
+  if (exact) return exact.target_path;
+
+  const folders = changes
+    .filter(row => row && row.kind === 'folder' && row.source_path && row.target_path)
+    .sort((a, b) => String(b.source_path).length - String(a.source_path).length);
+  for (const row of folders) {
+    const source = String(row.source_path).replace(/[\\/]+$/, '');
+    if (rhdPathHasPrefix(text, source)) {
+      return String(row.target_path).replace(/[\\/]+$/, '') + text.slice(source.length);
+    }
+  }
+  return text;
+}
+
+function remapRhdPathListAfterRename(paths, changes) {
+  const seen = new Set();
+  const out = [];
+  (paths || []).forEach(path => {
+    const mapped = remapRhdPathAfterRename(path, changes);
+    if (mapped && !seen.has(mapped)) {
+      seen.add(mapped);
+      out.push(mapped);
+    }
+  });
+  return out;
+}
+
 function rhdRenameStatusClass(status) {
   if (status === 'ready' || status === 'renamed') return 'ok';
   if (status === 'target_exists' || status === 'duplicate_target' || status === 'invalid') return 'bad';
@@ -272,14 +311,24 @@ async function applyRhdRenames(options) {
     .then(data => {
       if (data.error) throw new Error(data.error);
       const changes = data.changes || [];
-      const rootChange = changes.find(row => row.source_path === payload.root);
-      if (rootChange?.target_path) {
-        document.getElementById('folderPath').value = rootChange.target_path;
-        document.getElementById('renameFind').value = rhdDirName(rootChange.target_path);
+      const updatedRoot = data.updated_root || remapRhdPathAfterRename(payload.root, changes);
+      if (updatedRoot) {
+        document.getElementById('folderPath').value = updatedRoot;
       }
-      scanFolder();
+      if (updatedRoot && updatedRoot !== payload.root) {
+        document.getElementById('renameFind').value = rhdDirName(updatedRoot);
+      }
+      _currentFile = remapRhdPathAfterRename(_currentFile, changes);
+      _rhdFiles = remapRhdPathListAfterRename(_rhdFiles, changes);
+      _queueFiles = remapRhdPathListAfterRename(_queueFiles, changes);
+      queueRender();
+      scanFolder({
+        preserveChannel: true,
+        loadProfile: true,
+        selectedPath: _currentFile,
+      });
       renderRhdRenamePreview({
-        root: document.getElementById('folderPath').value.trim(),
+        root: updatedRoot || document.getElementById('folderPath').value.trim(),
         scanned_count: changes.length,
         changed_count: changes.length,
         ready_count: changes.length,
@@ -291,10 +340,13 @@ async function applyRhdRenames(options) {
         view: 'rhd_viewer',
         title: 'RHD Recording Rename',
         status: 'ok',
-        project_root: data.root || payload.root,
-        input_files: [{path: data.root || payload.root, role: 'rhd_recording_folder'}],
+        project_root: updatedRoot || data.root || payload.root,
+        input_files: [{path: updatedRoot || data.root || payload.root, role: 'rhd_recording_folder'}],
         outputs: data.outputs || [],
-        parameters: payload,
+        parameters: Object.assign({}, payload, {
+          original_root: payload.root,
+          root: updatedRoot || payload.root,
+        }),
         metadata: {renamed_count: data.renamed_count || 0},
       });
       _lastRhdRenamePreview = null;

@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-21
+
 ### Added
 - Add `bte-web --self-check` to validate runtime dependencies and bundled ABF,
   electrochemistry CSV, and fluorescence TIFF examples after installation.
@@ -51,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warning instead of logging a traceback for every later write attempt.
 - Serve the favicon through Flask's managed `send_file` path and add a coverage
   floor for the services test suite.
+- Retire the old Tkinter source tree and outdated audit/migration notes;
+  keep maintained desktop entry points as WebGUI launchers or service-backed
+  helpers.
 
 ## [0.6.0] - 2026-05-14
 
@@ -175,8 +180,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   scripts, parameters, documentation links, and local availability checks.
 - WebGUI version/commit display, keyboard-shortcut help, persistent error
   banner, generic file-list filters, and status progress bars.
-- ABF batch dry-run mode with custom confirmation for filesystem changes and
-  operation logs under `.dataprocess_cache/operation_logs/`.
+- ABF batch dry-run mode with custom confirmation for filesystem changes; apply
+  runs that move or rename files record a small operation log under
+  `.dataprocess_cache/operation_logs/`.
 
 ### Changed
 - Pipeline documentation moved under `docs/pipelines/`, and maintainer scripts
@@ -207,8 +213,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `services/fluorescence/` shared service layer for stack export, ROI
   metrics, and TIFF-to-GIF rendering.
-- Web-first desktop launcher package under `desktop_apps/`, with legacy
-  Tkinter applications preserved under `desktop_apps/legacy/`.
+- Web-first desktop launcher package under `desktop_apps/`, with the older
+  Tkinter applications temporarily retained during the transition.
 - Thin source-tree launcher modules grouped under `desktop_apps/launchers/` so
   the repository root stays focused on project-level entry points.
 - Focused fluorescence route modules for stack, 3D, GIF, and ROI endpoints.
@@ -227,14 +233,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `tests/__init__.py` so unittest modules are also importable as a package.
 
 ### Changed
-- Desktop GUI launchers now act as thin WebGUI launchers by default; pass
-  `--legacy` to open the historical Tkinter implementation.
+- Desktop GUI launchers now act as thin WebGUI launchers by default, while the
+  older Tkinter implementation remained available during the transition window.
 - CI, packaging metadata, and README now target Python 3.10 - 3.12.
 - Ruff is used as a baseline correctness gate for syntax and undefined-name
-  issues while legacy scripts are gradually cleaned up.
+  issues while older scripts are gradually cleaned up.
 - CI now applies stricter `E/F/W/I` lint to maintained `services/`, `tests/`,
-  and desktop launcher code while keeping legacy Tkinter outside that strict
-  gate.
+  and desktop launcher code.
 - Web API modules now run an all-module `F` lint gate for unused imports and
   undefined/unused names.
 - WebGUI API responses, job records, run manifests, settings, and file-profile
@@ -254,11 +259,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Removed a Python 2-era `unichr` branch from `importrhdutilities.py`.
-
-### Known Migration Notes
-- `bte-fl-lut` opens the WebGUI fluorescence page by default, but the dedicated
-  LUT editor still lives in `desktop_apps.legacy.fluorescence_lut_gui` until
-  `services/fluorescence/lut.py` is added.
 
 ## [0.1.0] - 2026-05-09
 
@@ -285,7 +285,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI workflow (lint + unittest + compileall).
 - Local `dev_scripts/local/sync_to_github.sh` helper script for quick chore-style syncs.
 
-[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/guangqingy/bioelectronics_toolkit/compare/v0.3.0...v0.4.0

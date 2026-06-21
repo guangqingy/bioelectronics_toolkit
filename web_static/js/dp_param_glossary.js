@@ -42,6 +42,7 @@
     'Ref seq': 'Reference sequence used for normalization.',
     'Ring px': 'Outer ring radius for concentric ROI analysis, in pixels.',
     'Ring um': 'Outer ring radius for concentric ROI analysis, in micrometers.',
+    'Scale bar \u00b5m': 'Scale bar length in micrometers.',
     'Scale bar um': 'Scale bar length in micrometers.',
     'SG poly': 'Savitzky-Golay smoothing polynomial order.',
     'SG win (ms)': 'Savitzky-Golay smoothing window size in milliseconds.',

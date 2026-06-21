@@ -14,6 +14,9 @@ function parseGifKymoPercentList(raw, maxItems = 8) {
 }
 
 function buildGifKymoPayload() {
+  if (!gifElement('gifKymoValueMode') || !gifElement('gifKymoRoiSelect')) {
+    throw new Error('Kymograph controls are not available on this page');
+  }
   const entries = gifAnalysisEntries();
   if (!entries.length) {
     throw new Error('Add at least one TIFF to the queue, or select a preview TIFF');
@@ -30,7 +33,7 @@ function buildGifKymoPayload() {
     throw new Error('Choose one signal ROI for kymography');
   }
 
-  const bgMode = document.getElementById('gifBgMode').value;
+  const bgMode = gifValue('gifBgMode', 'none') || 'none';
   const bgLabel = gifBgLabel();
   const bgRoi = bgMode === 'roi' ? (polys.find(p => p.label === bgLabel) || null) : null;
   if (bgMode === 'roi' && !bgRoi) {
@@ -40,23 +43,23 @@ function buildGifKymoPayload() {
     throw new Error('Kymography ROI cannot also be the background ROI');
   }
 
-  const valueMode = document.getElementById('gifKymoValueMode').value;
+  const valueMode = gifValue('gifKymoValueMode', 'delta_f_over_f0') || 'delta_f_over_f0';
   if (valueMode === 'bg_subtracted' && bgMode === 'none') {
     throw new Error('Choose a BG mode before using BG Subtracted');
   }
 
-  const bins = parseInt(document.getElementById('gifKymoBins').value, 10) || 80;
-  const lowPct = parseFloat(document.getElementById('gifKymoLowPct').value);
-  const highPct = parseFloat(document.getElementById('gifKymoHighPct').value);
-  const smoothIntensity = parseFloat(document.getElementById('gifKymoSmoothIntensity').value);
-  const smoothTime = parseFloat(document.getElementById('gifKymoSmoothTime').value);
-  const thresholdsRaw = document.getElementById('gifKymoThresholds')?.value || '';
+  const bins = gifInteger('gifKymoBins', 80) || 80;
+  const lowPct = gifNumber('gifKymoLowPct', NaN);
+  const highPct = gifNumber('gifKymoHighPct', NaN);
+  const smoothIntensity = gifNumber('gifKymoSmoothIntensity', NaN);
+  const smoothTime = gifNumber('gifKymoSmoothTime', NaN);
+  const thresholdsRaw = gifValue('gifKymoThresholds');
   const thresholdLines = thresholdsRaw
     .split(/[,;\s]+/)
     .map(x => parseFloat(x))
     .filter(x => Number.isFinite(x));
-  const overlayPercentiles = parseGifKymoPercentList(document.getElementById('gifKymoPercentiles')?.value || '', 8);
-  const overlayTopMeans = parseGifKymoPercentList(document.getElementById('gifKymoTopMeans')?.value || '', 6);
+  const overlayPercentiles = parseGifKymoPercentList(gifValue('gifKymoPercentiles'), 8);
+  const overlayTopMeans = parseGifKymoPercentList(gifValue('gifKymoTopMeans'), 6);
   if (!Number.isFinite(lowPct) || !Number.isFinite(highPct) || highPct <= lowPct) {
     throw new Error('Range percentiles must be valid and high > low');
   }
@@ -71,9 +74,9 @@ function buildGifKymoPayload() {
     bg_mode: bgMode,
     bg_roi: bgRoi || undefined,
     value_mode: valueMode,
-    fps: parseFloat(document.getElementById('gifFps').value) || 5,
-    ref_frame: Math.max(1, parseInt(document.getElementById('gifKymoRefFrame').value, 10) || 1),
-    ref_stat: document.getElementById('gifKymoRefStat').value,
+    fps: gifNumber('gifFps', 5) || 5,
+    ref_frame: Math.max(1, gifInteger('gifKymoRefFrame', 1) || 1),
+    ref_stat: gifValue('gifKymoRefStat', 'median') || 'median',
     bins: Math.max(8, Math.min(240, bins)),
     range_low_pct: lowPct,
     range_high_pct: highPct,
@@ -137,7 +140,7 @@ async function runGifKymograph() {
       <div style="font-size:11px;color:var(--silver);margin-top:6px">Intensity range: ${Number(d.range_min).toPrecision(4)} to ${Number(d.range_max).toPrecision(4)}${thresholdText}${overlayText} · heatmap CSV includes raw and smoothed bin percentages</div>
       ${warnText}`;
     upsertGifResultCard('gifKymoResultCard', header, body);
-    document.getElementById('gifKymoExportSection').style.display = '';
+    gifSetDisplay('gifKymoExportSection', '');
     setStatus('status', `Kymograph complete: ${d.n_frames} frame(s), ${d.bins} bins`, 'ok');
     toast('ROI kymograph complete');
   } catch(ex) {

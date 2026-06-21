@@ -1,8 +1,8 @@
 # Onboarding for Maintainers
 
-This project is a local-lab data processing toolkit with two surfaces:
-WebGUI-first workflows and legacy Tkinter desktop tools. New behavior should
-prefer the WebGUI and shared service modules.
+This project is a local-lab data processing toolkit with a WebGUI-first surface
+and thin desktop launchers. New behavior should prefer the WebGUI and shared
+service modules.
 
 ## Key Files
 
@@ -14,7 +14,7 @@ prefer the WebGUI and shared service modules.
 - `services/`: reusable numerical and file-processing logic.
 - `pipelines/`: catalog of project-specific data workflows.
 - `desktop_apps/launchers/`: thin command launchers that open WebGUI pages.
-- `desktop_apps/legacy/`: historical Tkinter applications kept for fallback.
+- `desktop_apps/`: service-backed native helpers that still need a desktop UI.
 - `tests/`: service and WebGUI contract tests.
 
 ## Development Setup
@@ -35,10 +35,8 @@ python -m py_compile $(git ls-files '*.py')
 
 ## Current Technical Debt
 
-- `fluorescence_lut` still opens the legacy editor; add
-  `services/fluorescence/lut.py` before retiring it.
-- `desktop_apps/legacy/` is intentionally retained, but most new work should
-  land in `services/` plus `web_api/`.
+- Some workflows still have native desktop helper windows. Keep them thin and
+  move analysis behavior into `services/` before expanding them.
 - Pipeline registry entries point to local project trees; public clones can see
   the catalog but cannot run every workflow without the matching local data.
 - Some WebGUI templates still contain page-local JavaScript. Prefer extracting

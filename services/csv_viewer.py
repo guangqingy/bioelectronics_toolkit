@@ -4,6 +4,7 @@ import io
 from pathlib import Path
 from typing import Any, Callable
 
+import numpy as np
 import pandas as pd
 
 from services import csv_tools
@@ -31,6 +32,54 @@ class CsvViewerService:
         self.fig_to_b64 = fig_to_b64
         self.clean_trace_svg = clean_trace_svg
         self.line_color = line_color
+
+    @staticmethod
+    def _prepare_uplot_xy(
+        x: np.ndarray, y: np.ndarray
+    ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
+        """Sort and de-duplicate x values before handing data to uPlot."""
+        x = np.asarray(x, dtype=float)
+        y = np.asarray(y, dtype=float)
+        n_in = int(x.shape[0])
+        if n_in == 0:
+            return x, y, {
+                "n_prepared": 0,
+                "x_unique_count": 0,
+                "x_duplicate_count": 0,
+                "x_strictly_increasing": True,
+                "x_sorted": False,
+                "x_duplicates_collapsed": False,
+            }
+
+        x_strictly_increasing = bool(np.all(np.diff(x) > 0)) if n_in > 1 else True
+        unique_count = int(np.unique(x).shape[0])
+        x_sorted = False
+        x_duplicates_collapsed = False
+
+        if n_in > 1:
+            order = np.argsort(x, kind="mergesort")
+            x_sorted = bool(np.any(order != np.arange(n_in)))
+            if x_sorted:
+                x = x[order]
+                y = y[order]
+
+            unique_x, inverse, counts = np.unique(
+                x, return_inverse=True, return_counts=True
+            )
+            if int(unique_x.shape[0]) != int(x.shape[0]):
+                sums = np.bincount(inverse, weights=y)
+                y = sums / counts
+                x = unique_x
+                x_duplicates_collapsed = True
+
+        return x, y, {
+            "n_prepared": int(x.shape[0]),
+            "x_unique_count": unique_count,
+            "x_duplicate_count": n_in - unique_count,
+            "x_strictly_increasing": x_strictly_increasing,
+            "x_sorted": x_sorted,
+            "x_duplicates_collapsed": x_duplicates_collapsed,
+        }
 
     def plot_preview_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         path = data.get("path", "")
@@ -75,8 +124,19 @@ class CsvViewerService:
 
         x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=downsample)
         n_full = int(x.shape[0])
+        x, y, x_meta = self._prepare_uplot_xy(x, y)
         xd, yd = decimate_xy(x, y, max_points=max_points)
-        return {
+        warnings = []
+        if x_meta["x_unique_count"] < 2 and n_full > 0:
+            warnings.append(
+                "Selected X column has only one distinct numeric value; choose a time column."
+            )
+        elif x_meta["x_duplicates_collapsed"]:
+            warnings.append("Duplicate X values were averaged before plotting.")
+        if x_meta["x_sorted"]:
+            warnings.append("X values were sorted before plotting.")
+
+        payload = {
             "x": xd.tolist(),
             "y": yd.tolist(),
             "x_label": x_col,
@@ -87,7 +147,11 @@ class CsvViewerService:
             "n_full": n_full,
             "n_points": int(xd.shape[0]),
             "decimated": int(xd.shape[0]) < n_full,
+            **x_meta,
         }
+        if warnings:
+            payload["warnings"] = warnings
+        return payload
 
     def merge_preview_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         paths = data.get("paths", [])

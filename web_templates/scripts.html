@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Script Panels{% endblock %}
+{% block title %}Pipelines{% endblock %}
 
 {% block controls %}
 <div class="ctrl-section pipeline-ctrl-intro">
@@ -20,7 +20,7 @@
 </div>
 
 <div class="ctrl-section">
-  <div class="ctrl-label">Scripts</div>
+  <div class="ctrl-label">Pipelines</div>
   <div class="file-list script-list" id="scriptList"></div>
 </div>
 
@@ -37,12 +37,12 @@
 
 <div class="ctrl-section">
   <div class="ctrl-label">Run</div>
-  <button class="btn-primary" id="btnRun" onclick="DP.page.runScript()">Run Script</button>
+  <button class="btn-primary" id="btnRun" onclick="DP.page.runScript()">Run Pipeline</button>
   <div id="status" class="status-bar"></div>
 </div>
 
 <details class="ctrl-section ctrl-details">
-  <summary class="ctrl-label">Advanced: Saved Settings</summary>
+  <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="input-group">
     <select id="contextSelect" onchange="restoreSelectedContext()">
       <option value="">No saved context</option>
@@ -68,15 +68,15 @@
 <div class="pipeline-shell">
   <section class="pipeline-hero">
     <div class="pipeline-hero-main">
-      <div class="page-eyebrow">Selected Pipeline</div>
-      <h1 class="pipeline-title" id="scriptTitleBar">Select a script</h1>
-      <p class="pipeline-desc" id="scriptDesc">Choose a category and script to configure parameters.</p>
+      <div class="page-eyebrow">Pipeline Runner</div>
+      <h1 class="pipeline-title" id="scriptTitleBar">Pipelines</h1>
+      <p class="pipeline-desc" id="scriptDesc">Choose a category and pipeline to configure parameters.</p>
       <div class="pipeline-badges" id="scriptBadges"></div>
     </div>
     <div class="pipeline-run-summary" id="runSummary">
       <div class="pipeline-summary-k">Run Status</div>
       <div class="pipeline-summary-v">Idle</div>
-      <div class="pipeline-summary-sub">No script has been run in this session.</div>
+      <div class="pipeline-summary-sub">No pipeline has been run in this session.</div>
     </div>
   </section>
 
@@ -89,7 +89,7 @@
     </div>
     <div class="result-card-body pipeline-output-body">
       <div id="outputFigs" class="figure-grid"></div>
-      <div id="outputManifest" class="artifact-empty">Run a script to preview figures and inspect generated data files.</div>
+      <div id="outputManifest" class="artifact-empty">Run a pipeline to preview figures and inspect generated data files.</div>
     </div>
   </section>
 </div>

@@ -739,7 +739,7 @@ def _analysis_root(project_path: Path, analysis_dir: str | Path | None) -> Path:
 
 
 def _primary_display_image(sample: SampleRecord) -> str:
-    for preferred in ("Brightfield", "Hoechst", "Mito"):
+    for preferred in ("Hoechst", "FITC", "Cy5", "Mito", "Brightfield"):
         if preferred in sample.image_files:
             return sample.image_files[preferred]
     if sample.image_files:

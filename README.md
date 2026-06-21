@@ -40,15 +40,16 @@ flowchart LR
     launcher --> api
     api --> services[services algorithms]
     services --> outputs[CSV / PNG / SVG / manifests]
-    legacy[legacy Tkinter] --> services
+    desktop[thin desktop launchers] --> launcher
 ```
 
 ## Features
 
-The commands below are stable user entry points after `pip install -e .`. GUI
-commands open the corresponding WebGUI page by default; the older Tkinter
-windows remain available with `--legacy` and live under `desktop_apps/legacy/`.
-The source launcher modules are grouped under `desktop_apps/launchers/`.
+The commands below are stable user entry points after `pip install -e .`. Most
+GUI commands open the corresponding WebGUI page; desktop helpers that remain as
+native windows call shared `services/` modules instead of carrying their own
+analysis engines. Source launcher modules are grouped under
+`desktop_apps/launchers/`.
 
 ### Patch-clamp / `.abf` analysis
 
@@ -85,6 +86,9 @@ Intan `.rhd` parsing is provided by the vendored reference parser under
 | `bte-fl-roi` | ROI-based intensity analysis on TIFF stacks. |
 | `bte-fl-lut` | Lookup-table editor / preview. |
 | `bte-fl-gif` | Convert multi-page TIFFs to GIFs for sharing. |
+| `bte-fl-preview-export` | Service-backed fluorescence TIFF preview/export helper. |
+| `bte-fl-manual-roi` | English manual polygon ROI desktop tool using shared ROI services. |
+| `bte-fl-marker-roi` | CLI analysis for manual fluorescence ROIs with DAPI/SMA/macrophage outputs. |
 
 ### Misc utilities
 
@@ -92,6 +96,8 @@ Intan `.rhd` parsing is provided by the vendored reference parser under
 | --- | --- |
 | `bte-csv-viewer` | Browse and overlay CSV traces in a folder. |
 | `bte-histology` | Standardize histology naming and run direct ETS ROI marker analysis. |
+| `bte-histology-analysis` | Open the Web histology ROI analysis and tuning page. |
+| `bte-histology-line-measure` | English service-backed line measurement tool for histology images. |
 
 ### Web app
 
@@ -184,29 +190,17 @@ bte-fl-roi
 # ...etc
 ```
 
-To run the old Tkinter window for one-off legacy work, add `--legacy`:
-
-```bash
-bte-fl-roi --legacy
-```
-
 For source-tree execution without installing entry points, run launcher modules
 with `python3 -m`, for example:
 
 ```bash
 python3 -m desktop_apps.launchers.fluorescence_roi_gui
-python3 -m desktop_apps.launchers.fluorescence_roi_gui --legacy
 ```
-
-If a legacy tool complains about missing dependencies (e.g. `pyabf`,
-`pyserial`), make sure your virtualenv is active and `pip install -e .` ran
-without errors.
 
 Installed commands include normal CLI help:
 
 ```bash
 bte-abf-batch --help      # WebGUI launcher options
-bte-abf-batch --legacy    # force the old Tkinter window when available
 bte-web --help            # Flask/WebGUI entry point
 ```
 
@@ -259,7 +253,7 @@ bioelectronics_toolkit/
 ├── web_api/                        # Flask JSON/page routes
 ├── web_templates/                  # Jinja pages and partials
 ├── web_static/                     # CSS, JS, icons, vendored browser assets
-├── desktop_apps/                   # installed bte-* launchers and legacy GUIs
+├── desktop_apps/                   # installed bte-* launchers and service-backed helpers
 ├── pipelines/                      # WebGUI Pipeline Runner registry
 ├── tests/                          # pytest and Playwright tests
 ├── docs/                           # architecture, release, changelog, WebGUI docs
@@ -273,18 +267,15 @@ bioelectronics_toolkit/
 - The web app is layered into thin `register_*_routes(app, ctx)` modules under
   `web_api/`. New tools should follow the contract documented in
   [`docs/webgui.md`](./docs/webgui.md).
-- Repository organization and desktop/Web parity notes are indexed in
+- Repository organization and maintainer notes are indexed in
   [`docs/README.md`](./docs/README.md).
 - Shared algorithms should live under `services/` before they are reused by
   both WebGUI routes and desktop entry points. Fluorescence stack export, ROI
   metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
   parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
   channel/merge helpers now use this layer. Thin user-facing launchers live in
-  `desktop_apps/launchers/`; large historical Tkinter apps live under
-  `desktop_apps/legacy/`.
-- `bte-fl-lut` opens the WebGUI fluorescence page by default, but its dedicated
-  LUT editor still lives in `desktop_apps.legacy.fluorescence_lut_gui` until
-  `services/fluorescence/lut.py` is added.
+  `desktop_apps/launchers/`; temporary desktop tools must call shared services
+  rather than carrying processing logic in Tk callbacks.
 - Pipeline metadata lives in [`pipelines/`](./pipelines/). Pipeline-level
   documentation (per analysis flow) lives under
   [`docs/pipelines/`](./docs/pipelines/).
@@ -304,9 +295,7 @@ bioelectronics_toolkit/
 - CI intentionally applies two lint levels: a whole-repository baseline for
   fatal syntax/undefined-name issues, and a stricter gate for maintained
   `services/`, `tests/`, and desktop launcher code. Web API modules also run a
-  stricter unused-name/import gate. Historical Tkinter files under
-  `desktop_apps/legacy/` are kept out of the strict style gate until they are
-  ported or retired.
+  stricter unused-name/import gate.
 
 ## Contributing
 

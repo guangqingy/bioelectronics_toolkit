@@ -56,15 +56,19 @@ function renderHistologyProjectImageList() {
   el.innerHTML = _histologyProjectEntries.map(entry => {
     const active = String(entry.entry_id) === String(_selectedHistologyProjectEntryId) ? ' active' : '';
     const title = histologySimpleEntryName(entry);
-    const channelCount = entry.image_files ? Object.keys(entry.image_files).length : 0;
-    const counts = channelCount ? `${channelCount} file(s)` : 'case folder';
+    const channels = Object.keys(histologyProjectChannelFiles(entry));
+    const counts = channels.length ? `channels: ${channels.join(', ')}` : 'case folder';
     const missing = entry.exists ? '' : ' · missing source';
+    const warnings = Array.isArray(entry.warnings) ? entry.warnings : [];
+    const rebuild = warnings.some(item => String(item || '').includes('Legacy ETS conversion'))
+      ? ' · channel rebuild needed'
+      : '';
     const vsi = histologyEntryVsiPath(entry);
     const detail = vsi ? vsi.split(/[\\/]/).pop() : (entry.case_dir || entry.source_name || entry.image_path || '');
     return `
       <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
         <div class="histology-file-title">${escHtml(title)}</div>
-        <div class="histology-file-subline">${escHtml(counts + missing)}</div>
+        <div class="histology-file-subline">${escHtml(counts + missing + rebuild)}</div>
         <div class="histology-file-path">${escHtml(detail)}</div>
       </div>`;
   }).join('');
