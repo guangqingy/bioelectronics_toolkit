@@ -100,7 +100,7 @@ function updatePeaksTable() {
       + `<td>${n(p.time, 6)}</td>`
       + `<td>${n(p.amplitude, 6)}</td>`
       + `<td>${n(p.prominence, 6)}</td>`
-      + `<td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" onclick="togglePeakRemoved(${i})">${btnLabel}</button></td>`
+      + `<td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" data-dp-click="togglePeakRemoved(${i})">${btnLabel}</button></td>`
       + `</tr>`;
   }).join('');
 
@@ -154,7 +154,7 @@ async function scanFolder(options) {
     }
 
     fileList.innerHTML = files.map((f, i) => {
-      return `<div class="file-item" data-idx="${i}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" onclick="selectFile(this)">${escHtml(f.name)}</div>`;
+      return `<div class="file-item" data-idx="${i}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" data-dp-click="selectFile(this)">${escHtml(f.name)}</div>`;
     }).join('');
     DP.liveFolder.markNewItems('fileList', diff.addedPaths);
 

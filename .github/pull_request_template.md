@@ -24,7 +24,7 @@
 - [ ] Any page with > 18 visible user-facing controls includes a UX review note
 - [ ] New web routes use Pydantic request schemas and appear in OpenAPI docs
 - [ ] docs/CHANGELOG.md updated under `[Unreleased]`
-- [ ] README / pipeline docs updated if behavior changed
+- [ ] README / docs updated if behavior changed
 
 ## Baseline / architecture notes
 

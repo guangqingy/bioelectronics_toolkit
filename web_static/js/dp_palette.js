@@ -4,10 +4,6 @@ const DP_STATIC_COMMANDS = [
   {label: 'Fluorescence ROI demo data', url: '/fluorescence/roi?demo=fluorescence', section: 'Demo', keywords: 'sample tiff stack fluorescence roi example'},
   {label: 'Histology naming', url: '/histology/naming', section: 'Tool', keywords: 'histology dataprocess project exported tiff raw olympus naming'},
   {label: 'Histology ROI analysis', url: '/histology/analysis', section: 'Tool', keywords: 'histology dataprocess project tiff roi sma macrophage dapi fitc cy5 threshold analysis'},
-  {label: 'Photocurrent pipelines', url: '/scripts/photocurrent', section: 'Pipeline', keywords: 'pipeline script photocurrent intensity response peak overlay heatmap decay'},
-  {label: 'EMG pipelines', url: '/scripts/emg', section: 'Pipeline', keywords: 'pipeline script emg waveform overlay bar heatmap'},
-  {label: 'EChem curve pipelines', url: '/scripts/echem_curves', section: 'Pipeline', keywords: 'pipeline script electrochemistry curve photovoltage photocurrent'},
-  {label: 'Cell viability pipelines', url: '/scripts/viability', section: 'Pipeline', keywords: 'pipeline script live dead viability stardist watershed'},
   {label: 'Run history', url: '/runs', section: 'Workflow', keywords: 'manifest previous outputs history'},
   {label: 'Version API', url: '/api/version', section: 'Developer', keywords: 'version commit api metadata'},
 ];

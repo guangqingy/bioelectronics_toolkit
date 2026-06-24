@@ -7,7 +7,7 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/csv/folder">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanFolder')">Browse</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Browse</button>
   </div>
 </div>
 
@@ -20,13 +20,13 @@
   <div class="ctrl-label">Columns</div>
   <div class="param-row">
     <div class="param-label">X</div>
-    <select id="xCol" class="input-group" onchange="plot()">
+    <select id="xCol" class="input-group" data-dp-change="plot()">
       <option value="">Select</option>
     </select>
   </div>
   <div class="param-row">
     <div class="param-label">Y</div>
-    <select id="yCol" class="input-group" onchange="plot()">
+    <select id="yCol" class="input-group" data-dp-change="plot()">
       <option value="">Select</option>
     </select>
   </div>
@@ -36,25 +36,25 @@
   <div class="ctrl-label">View Window</div>
   <div class="param-row">
     <div class="param-label">X Min</div>
-    <input type="number" id="xMin" class="input-sm" step="any" onchange="plot()">
+    <input type="number" id="xMin" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <div class="param-row">
     <div class="param-label">X Max</div>
-    <input type="number" id="xMax" class="input-sm" step="any" onchange="plot()">
+    <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <div class="param-row">
     <div class="param-label">Y Min</div>
-    <input type="number" id="yMin" class="input-sm" step="any" onchange="plot()">
+    <input type="number" id="yMin" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <div class="param-row">
     <div class="param-label">Y Max</div>
-    <input type="number" id="yMax" class="input-sm" step="any" onchange="plot()">
+    <input type="number" id="yMax" class="input-sm" step="any" data-dp-change="plot()">
   </div>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Downsample</div>
-  <select id="dsf" class="input-group" onchange="plot()">
+  <select id="dsf" class="input-group" data-dp-change="plot()">
     <option value="1">1 (none)</option>
     <option value="2">2</option>
     <option value="5">5</option>
@@ -70,21 +70,21 @@
     <span>Drop first row for each file after first</span>
   </label>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.addToMergeQueue()" style="flex:1;">Add</button>
-    <button class="btn-secondary" onclick="DP.page.clearMergeQueue()" style="flex:1;">Clear</button>
+    <button class="btn-secondary" data-dp-click="DP.page.addToMergeQueue()" style="flex:1;">Add</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.clearMergeQueue()" style="flex:1;">Clear</button>
   </div>
   <div class="btn-row" style="margin-top:8px;">
-    <button id="btnMerge" class="btn-primary" onclick="DP.page.mergePlot()" style="flex:1;">Merge and Plot</button>
-    <button id="btnMergeExport" class="btn-secondary" onclick="DP.page.exportMergePreview()" style="flex:1;">Export Merge</button>
+    <button id="btnMerge" class="btn-primary" data-dp-click="DP.page.mergePlot()" style="flex:1;">Merge and Plot</button>
+    <button id="btnMergeExport" class="btn-secondary" data-dp-click="DP.page.exportMergePreview()" style="flex:1;">Export Merge</button>
   </div>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.exportFig('png')" style="flex:1;">PNG</button>
-    <button class="btn-secondary" onclick="DP.page.exportFig('svg')" style="flex:1;">SVG</button>
-    <button class="btn-secondary" onclick="DP.page.exportCSV()" style="flex:1;">CSV</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFig('png')" style="flex:1;">PNG</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFig('svg')" style="flex:1;">SVG</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportCSV()" style="flex:1;">CSV</button>
   </div>
 </div>
 

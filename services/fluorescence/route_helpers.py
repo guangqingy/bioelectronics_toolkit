@@ -138,8 +138,8 @@ def normalize_hex_color(color: object, fallback: str = "#f2f2f2") -> str:
     return text.lower()
 
 
-def infer_pixel_size_um_from_tiff(path: str, *, has_tiff: bool, tifflib) -> float | None:
-    if not has_tiff or not path:
+def infer_pixel_size_um_from_tiff(path: str, *, tifflib) -> float | None:
+    if not path:
         return None
     try:
         with tifflib.TiffFile(str(path)) as tf:

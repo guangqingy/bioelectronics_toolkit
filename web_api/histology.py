@@ -136,8 +136,8 @@ class HistologyFileAnalyzeRoisRequest(RequestModel):
 
 
 def register_histology_routes(app, ctx):
-    err = ctx["err"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    jobs = ctx.jobs
 
     def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
         job_ctx.set_progress(0.2, message)

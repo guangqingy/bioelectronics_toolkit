@@ -51,7 +51,7 @@ function renderAvailable() {
     return;
   }
   subList.innerHTML = _available.map((sf, i) =>
-    `<div class="file-item${_selectedAvailIdx === i ? ' active' : ''}" onclick="selectAvailable(${i})">${escapeHtml(sf.name)}</div>`
+    `<div class="file-item${_selectedAvailIdx === i ? ' active' : ''}" data-dp-click="selectAvailable(${i})">${escapeHtml(sf.name)}</div>`
   ).join('');
 }
 
@@ -98,7 +98,7 @@ function renderQueue() {
   }
 
   qList.innerHTML = _queue.map((item, i) =>
-    `<div class="file-item${_selectedQueueIdx === i ? ' active' : ''}" onclick="selectQueueItem(${i})">${escapeHtml(item.folder_name || item.label)} -> ${escapeHtml(item.label)}</div>`
+    `<div class="file-item${_selectedQueueIdx === i ? ' active' : ''}" data-dp-click="selectQueueItem(${i})">${escapeHtml(item.folder_name || item.label)} -> ${escapeHtml(item.label)}</div>`
   ).join('');
 }
 

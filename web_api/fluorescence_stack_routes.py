@@ -32,8 +32,6 @@ def register_fluorescence_stack_routes(app, fl):
     browse_files = fl["browse_files"]
     int_or = fl["int_or"]
     float_or = fl["float_or"]
-    has_tiff = fl["has_tiff"]
-    has_pil = fl["has_pil"]
     tifflib = fl["tifflib"]
     jobs = fl["jobs"]
 
@@ -54,8 +52,6 @@ def register_fluorescence_stack_routes(app, fl):
     _fl_tiff_gif_frame_count = fl["_fl_tiff_gif_frame_count"]
 
     def _stack_export_payload(d: dict) -> dict:
-        if not has_tiff:
-            raise ValueError("tifffile not installed")
         input_path_str = str(d.get("input_path", "") or "").strip()
         raw_settings = d.get("settings")
         p_in = Path(input_path_str)
@@ -70,8 +66,6 @@ def register_fluorescence_stack_routes(app, fl):
         return _stack_export_payload(body)
 
     def _stack_export_batch_payload(d: dict, job_ctx=None) -> dict:
-        if not has_tiff:
-            raise ValueError("tifffile not installed")
         paths_raw = d.get("paths") or []
         use_template = _fl_bool(d.get("use_template", True), True)
         lock_ranges = _fl_bool(d.get("lock_ranges", False), False)
@@ -118,8 +112,6 @@ def register_fluorescence_stack_routes(app, fl):
         return _stack_export_batch_payload(body, job_ctx=job_ctx)
 
     def _normalize_payload(d: dict) -> dict:
-        if not has_tiff:
-            raise ValueError("tifffile not installed")
         input_path_str = d.get("input_path", "")
         output_path_str = d.get("output_path", "")
         low_pct = float_or(d.get("low_pct", 1.0), 1.0)
@@ -163,9 +155,7 @@ def register_fluorescence_stack_routes(app, fl):
         )
         out_dtype = str(out_frames[0].dtype)
 
-        preview_b64 = ""
-        if has_pil:
-            preview_b64 = _fl_frame_to_b64(out_frames[0], "Gray", 0.5, 99.5)
+        preview_b64 = _fl_frame_to_b64(out_frames[0], "Gray", 0.5, 99.5)
 
         return {
             "ok": True,
@@ -205,8 +195,6 @@ def register_fluorescence_stack_routes(app, fl):
     @app.route("/api/fluorescence/info", methods=["POST"])
     @request_schema(FluorescencePathRequest)
     def api_fl_info():
-        if not has_tiff:
-            return err("tifffile not installed. Run: pip install tifffile")
         try:
             path = parse_json_payload(FluorescencePathRequest).path
             info = fl_stack.tiff_stack_info(path, tifflib)
@@ -230,10 +218,6 @@ def register_fluorescence_stack_routes(app, fl):
     @app.route("/api/fluorescence/preview_frame", methods=["POST"])
     @request_schema(FluorescencePreviewFrameRequest)
     def api_fl_preview_frame():
-        if not has_tiff:
-            return err("tifffile not installed")
-        if not has_pil:
-            return err("Pillow not installed. Run: pip install Pillow")
         try:
             d = parse_json_payload(FluorescencePreviewFrameRequest)
             path = d.path
@@ -261,8 +245,6 @@ def register_fluorescence_stack_routes(app, fl):
     @app.route("/api/fluorescence/stack_defaults", methods=["POST"])
     @request_schema(FluorescencePathRequest)
     def api_fl_stack_defaults():
-        if not has_tiff:
-            return err("tifffile not installed")
         try:
             path = parse_json_payload(FluorescencePathRequest).path.strip()
             p = Path(path)
@@ -288,8 +270,6 @@ def register_fluorescence_stack_routes(app, fl):
     @app.route("/api/fluorescence/stack_auto_range", methods=["POST"])
     @request_schema(FluorescenceStackAutoRangeRequest)
     def api_fl_stack_auto_range():
-        if not has_tiff:
-            return err("tifffile not installed")
         try:
             d = parse_json_payload(FluorescenceStackAutoRangeRequest)
             path = d.path.strip()
@@ -407,8 +387,6 @@ def register_fluorescence_stack_routes(app, fl):
         Request body: { paths: list[str] }
         Response:     { info: { path: { n_frames, height, width } } }
         """
-        if not has_tiff:
-            return err("tifffile is required")
         try:
             paths = parse_json_payload(FluorescenceTiffInfoBatchRequest).paths
         except ValidationError as exc:

@@ -4,15 +4,15 @@
 <details class="ctrl-section ctrl-details generic-file-profile-section" id="genericFileProfileSection">
   <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
-    <select id="genericFileProfileSelect" onchange="DP.page.loadSelectedGenericFileProfile(false)">
+    <select id="genericFileProfileSelect" data-dp-change="DP.page.loadSelectedGenericFileProfile(false)">
       <option value="">No file selected</option>
     </select>
     <div class="btn-row">
-      <button class="btn-secondary" type="button" onclick="DP.page.loadSelectedGenericFileProfile(false)">Load</button>
-      <button class="btn-secondary" type="button" onclick="DP.page.saveGenericFileProfile(false)">Save</button>
-      <button class="btn-secondary" type="button" onclick="DP.page.saveGenericFileProfile(true)">Save As</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.loadSelectedGenericFileProfile(false)">Load</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGenericFileProfile(false)">Save</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGenericFileProfile(true)">Save As</button>
     </div>
-    <button class="btn-secondary btn-block" type="button" onclick="DP.page.deleteSelectedGenericFileProfile()">Delete Profile</button>
+    <button class="btn-tertiary btn-block" type="button" data-dp-click="DP.page.deleteSelectedGenericFileProfile()">Delete Profile</button>
     <label class="checkbox-row">
       <input type="checkbox" id="genericAutoLoadProfile" checked>
       <span>Auto-load saved profile for selected file</span>
@@ -25,10 +25,10 @@
 <details class="ctrl-section ctrl-details generic-settings-section" id="genericSettingsSection">
   <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="btn-row">
-    <button class="btn-secondary" type="button" onclick="DP.page.saveGenericPageDefaults()">Save Defaults</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.restoreGenericPageDefaults()">Restore</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGenericPageDefaults()">Save Defaults</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.restoreGenericPageDefaults()">Restore</button>
   </div>
-  <button class="btn-secondary btn-block" type="button" onclick="DP.page.resetGenericPageDefaults()" style="margin-top:6px">Reset Page Defaults</button>
+  <button class="btn-tertiary btn-block" type="button" data-dp-click="DP.page.resetGenericPageDefaults()" style="margin-top:6px">Reset Page Defaults</button>
   <div class="status-bar" id="genericPrefsStatus"></div>
 </details>
 {% endif %}

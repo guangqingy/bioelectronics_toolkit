@@ -46,18 +46,16 @@ class AbfBatchProcessRequest(RequestModel):
 
 
 def register_abf_batch_routes(app, ctx):
-    err = ctx["err"]
-    browse_files_recursive = ctx["browse_files_recursive"]
-    float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
-    has_abf = ctx["HAS_ABF"]
-    pyabf_mod = ctx.get("pyabf")
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    browse_files_recursive = ctx.browse_files_recursive
+    float_or = ctx.float_or
+    int_or = ctx.int_or
+    pyabf_mod = ctx.pyabf
+    jobs = ctx.jobs
 
     def _abf_batch_process_payload(d: dict) -> dict:
         return abf_batch_service.process_payload(
             d,
-            has_abf=has_abf,
             pyabf_mod=pyabf_mod,
             float_or=float_or,
             int_or=int_or,

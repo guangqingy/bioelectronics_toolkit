@@ -26,9 +26,6 @@
   .stacking-layout { grid-template-columns: 1fr; }
   .lif-table-wrap, .lif-preview { min-height: 320px; max-height: none; }
   .lif-3d-viewport { min-height: 420px; height: 62vh; }
-  .pipeline-shell { max-width: none; }
-  .pipeline-hero { grid-template-columns: 1fr; }
-  .pipeline-run-summary { min-height: auto; }
   .prefs-layout { grid-template-columns: 1fr; }
   .prefs-form-grid { max-height: none; }
 }
@@ -70,8 +67,6 @@
   .prefs-form-head { flex-direction: column; }
   .prefs-actions { justify-content: stretch; }
   .prefs-actions button { flex: 1; }
-  .pipeline-title { font-size: 20px; }
-  .pipeline-param-grid,
   .figure-grid { grid-template-columns: 1fr; }
   .path-field { flex-direction: column; align-items: stretch; }
   .artifact-row { grid-template-columns: 48px minmax(0, 1fr); }

@@ -6,7 +6,7 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/echem/data">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanFolder')">Browse</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Browse</button>
   </div>
 </div>
 
@@ -18,7 +18,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Analysis Window (s)</div>
   <label class="checkbox-row" style="margin-bottom:7px">
-    <input type="checkbox" id="useAll" onchange="toggleWindow(this.checked)">
+    <input type="checkbox" id="useAll" data-dp-change="toggleWindow(this.checked)">
     <span>Use full file</span>
   </label>
   <div id="windowRow">
@@ -84,19 +84,19 @@
   <label class="checkbox-row" style="margin-top:4px"><input type="checkbox" id="showDetrended"><span>Show detrended trace</span></label>
 </div>
 
-<button class="btn-primary" id="btnDetect" data-label="Detect Pulses" onclick="DP.page.detect()">Detect Pulses</button>
+<button class="btn-primary" id="btnDetect" data-label="Detect Pulses" data-dp-click="DP.page.detect()">Detect Pulses</button>
 
 <hr class="sep">
 
 <div class="ctrl-section">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.restoreAllPulses()">Undo All Removals</button>
-    <button class="btn-secondary" onclick="DP.page.exportFigure('png')">PNG</button>
-    <button class="btn-secondary" onclick="DP.page.exportFigure('svg')">SVG Signal</button>
-    <button class="btn-secondary" onclick="DP.page.exportCSV()">Pulses CSV</button>
-    <button class="btn-secondary" onclick="DP.page.exportSegments()">Summary + Pulse Files</button>
-    <button class="btn-secondary" onclick="DP.page.openWaveformAverager()">Open Waveform Averager</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.restoreAllPulses()">Undo All Removals</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFigure('png')">PNG</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFigure('svg')">SVG Signal</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportCSV()">Pulses CSV</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportSegments()">Summary + Pulse Files</button>
+    <button class="btn-secondary" data-dp-click="DP.page.openWaveformAverager()">Open Waveform Averager</button>
   </div>
 </div>
 

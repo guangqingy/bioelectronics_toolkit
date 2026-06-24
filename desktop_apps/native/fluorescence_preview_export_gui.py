@@ -4,12 +4,14 @@ import argparse
 import json
 import math
 import tkinter as tk
+from functools import partial
 from pathlib import Path
 from tkinter import colorchooser, filedialog, messagebox, ttk
 from typing import Iterable, Sequence
 
 import numpy as np
 from PIL import Image, ImageTk
+
 from services.fluorescence.preview_export import (
     DEFAULT_CHANNEL_COLORS,
     DEFAULT_FOLDER,
@@ -22,15 +24,21 @@ from services.fluorescence.preview_export import (
     ChannelBC,
     composite_preview_image,
     find_tiff_files,
-    fmt_float as _fmt_float,
     load_tiff_channels,
     natural_sort_key,
     rotate_image_for_preview,
     single_channel_preview_image,
 )
+from services.fluorescence.preview_export import (
+    fmt_float as _fmt_float,
+)
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SETTINGS_PATH = PROJECT_ROOT / "temp" / "fluorescence_preview_export_settings.json"
+
+
+def _default_folder() -> Path:
+    return DEFAULT_FOLDER if DEFAULT_FOLDER.exists() else PROJECT_ROOT
 
 
 class BrightnessContrastWindow(tk.Toplevel):
@@ -195,7 +203,7 @@ class FluorescencePreviewExportApp:
         self.pan_start: tuple[int, int] | None = None
         self.settings_path = SETTINGS_PATH
 
-        self.folder_var = tk.StringVar(value=str(DEFAULT_FOLDER if DEFAULT_FOLDER.exists() else Path.cwd()))
+        self.folder_var = tk.StringVar(value=str(_default_folder()))
         self.status_var = tk.StringVar(value="Load an FL folder to start adjusting previews.")
         self.info_var = tk.StringVar(value="No image loaded")
         self.rotation_var = tk.StringVar(value="0")
@@ -357,7 +365,7 @@ class FluorescencePreviewExportApp:
             if degrees is None:
                 command = self.reset_rotation
             else:
-                command = lambda amount=degrees: self.rotate_by(amount)
+                command = partial(self.rotate_by, degrees)
             ttk.Button(rotate_row, text=label, command=command).grid(row=0, column=idx, sticky="ew", padx=2)
 
         pixel_frame = ttk.LabelFrame(transform, text="Output Pixels / Scale", padding=8)
@@ -415,7 +423,7 @@ class FluorescencePreviewExportApp:
         self.root.bind("<Control-b>", lambda _event: self.open_bc_window())
 
     def browse_folder(self) -> None:
-        folder = filedialog.askdirectory(initialdir=self.folder_var.get() or str(Path.cwd()))
+        folder = filedialog.askdirectory(initialdir=self.folder_var.get() or str(_default_folder()))
         if folder:
             self.folder_var.set(folder)
             self.load_images([folder])

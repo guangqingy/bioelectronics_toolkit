@@ -9,11 +9,11 @@ import numpy as np
 from services.fluorescence import route_helpers as fl_helpers
 
 
-def build_tiff_metadata_context(*, tifflib, has_tiff: bool) -> dict:
+def build_tiff_metadata_context(*, tifflib) -> dict:
     _fl_unit_to_um_scale = fl_helpers.unit_to_um_scale
 
     def _fl_infer_pixel_size_um_from_tiff(path: str) -> float | None:
-        return fl_helpers.infer_pixel_size_um_from_tiff(path, has_tiff=has_tiff, tifflib=tifflib)
+        return fl_helpers.infer_pixel_size_um_from_tiff(path, tifflib=tifflib)
 
     def _fl_positive_float(v) -> float | None:
         try:

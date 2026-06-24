@@ -86,15 +86,14 @@ class EmgExportPeaksRequest(RequestModel):
 
 
 def register_emg_peaks_routes(app, ctx):
-    err = ctx["err"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    jobs = ctx.jobs
     service = emg_peaks_service.EmgPeaksService(
-        has_scipy=ctx["HAS_SCIPY"],
-        find_peaks=ctx.get("find_peaks"),
-        peak_widths=ctx.get("peak_widths"),
-        fig_to_b64=ctx["fig_to_b64"],
-        float_or=ctx["float_or"],
-        line_color=ctx["LINE_COLOR"],
+        find_peaks=ctx.find_peaks,
+        peak_widths=ctx.peak_widths,
+        fig_to_b64=ctx.fig_to_b64,
+        float_or=ctx.float_or,
+        line_color=ctx.LINE_COLOR,
         mode_is_save=mode_is_save,
     )
 

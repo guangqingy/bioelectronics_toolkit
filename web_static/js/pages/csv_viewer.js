@@ -364,7 +364,7 @@ function updateMergeListUI() {
     const item = document.createElement('div');
     item.className = 'file-item';
     item.innerHTML = '<span>' + baseName(file) + '</span>' +
-      '<button class="btn-icon" style="margin-left:auto;" onclick="removeMergeItem(' + idx + '); event.stopPropagation();">x</button>';
+      '<button class="btn-icon" style="margin-left:auto;" data-dp-click="removeMergeItem(' + idx + '); event.stopPropagation();">x</button>';
     list.appendChild(item);
   });
 }

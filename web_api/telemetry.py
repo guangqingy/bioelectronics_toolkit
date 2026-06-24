@@ -98,8 +98,8 @@ def _record_telemetry_event(
 
 
 def register_telemetry_routes(app, ctx) -> None:
-    base_dir = Path(ctx["BASE_DIR"])
-    err = ctx["err"]
+    base_dir = Path(ctx.BASE_DIR)
+    err = ctx.err
     prefs_path = preferences_path(base_dir)
     telemetry_path = base_dir / ".dataprocess_cache" / "telemetry.json"
 

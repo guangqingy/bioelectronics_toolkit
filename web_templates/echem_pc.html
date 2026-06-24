@@ -8,16 +8,16 @@
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/echem/data">
   </div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.openLatestFile()">Latest</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.openLatestFile()">Latest</button>
   </div>
   <div class="folder-live-row">
     <label class="checkbox-row">
-      <input type="checkbox" id="folderAutoRefresh" onchange="DP.page.configureFolderAutoRefresh()">
+      <input type="checkbox" id="folderAutoRefresh" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <span>Auto refresh</span>
     </label>
-    <select id="folderRefreshSeconds" onchange="DP.page.configureFolderAutoRefresh()">
+    <select id="folderRefreshSeconds" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <option value="3">3 s</option>
       <option value="5" selected>5 s</option>
       <option value="10">10 s</option>
@@ -38,7 +38,7 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Analysis Window (s)</div>
   <label class="checkbox-row" style="margin-bottom:7px">
-    <input type="checkbox" id="useAll" onchange="toggleWindow(this.checked)">
+    <input type="checkbox" id="useAll" data-dp-change="toggleWindow(this.checked)">
     <span>Use full file</span>
   </label>
   <div id="windowRow">
@@ -77,19 +77,19 @@
   </div>
 </div>
 
-<button class="btn-primary" id="btnDetect" data-label="Detect Pairs" onclick="DP.page.detect()">Detect Pairs</button>
+<button class="btn-primary" id="btnDetect" data-label="Detect Pairs" data-dp-click="DP.page.detect()">Detect Pairs</button>
 
 <hr class="sep">
 
 <div class="ctrl-section">
   <div class="ctrl-label">Export</div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.restoreAllPairs()">Undo All Removals</button>
-    <button class="btn-secondary" onclick="DP.page.exportFigure('png')">PNG</button>
-    <button class="btn-secondary" onclick="DP.page.exportFigure('svg')">SVG Signal</button>
-    <button class="btn-secondary" onclick="DP.page.exportCSV()">Pairs CSV</button>
-    <button class="btn-secondary" onclick="DP.page.exportSegments()">Summary + Pair Files</button>
-    <button class="btn-secondary" onclick="DP.page.openWaveformAverager()">Open Waveform Averager</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.restoreAllPairs()">Undo All Removals</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFigure('png')">PNG</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportFigure('svg')">SVG Signal</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportCSV()">Pairs CSV</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportSegments()">Summary + Pair Files</button>
+    <button class="btn-secondary" data-dp-click="DP.page.openWaveformAverager()">Open Waveform Averager</button>
   </div>
 </div>
 

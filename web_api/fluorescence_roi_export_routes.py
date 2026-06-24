@@ -22,8 +22,6 @@ def register_fluorescence_roi_export_routes(app, fl):
     err = fl["err"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_pil = fl["has_pil"]
-    has_tiff = fl["has_tiff"]
     jobs = fl["jobs"]
 
     _fl_bool = fl["_fl_bool"]
@@ -166,9 +164,6 @@ def register_fluorescence_roi_export_routes(app, fl):
     @request_schema(FluorescenceRoiExportSequenceGifRequest)
     def api_fl_roi_export_sequence_gif(payload=None):
         """Save a sequence GIF from selected ROI records with ROI overlays and scale bar."""
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
-
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceRoiExportSequenceGifRequest).model_dump()

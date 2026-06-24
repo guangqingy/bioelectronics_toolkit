@@ -245,7 +245,7 @@ function renderRunHistoryList(runs) {
     return;
   }
   list.innerHTML = runs.slice(0, 20).map(run => `
-    <div class="run-history-row" data-manifest="${dpEscapeHtml(run.manifest_path || '')}" onclick="loadRunManifestDetails(this.dataset.manifest)">
+    <div class="run-history-row" data-manifest="${dpEscapeHtml(run.manifest_path || '')}" data-dp-click="loadRunManifestDetails(this.dataset.manifest)">
       <div class="run-history-title">${dpEscapeHtml(run.title || run.view || 'Run')}</div>
       <div class="run-history-meta">${dpEscapeHtml(run.completed_at || '')} · ${dpEscapeHtml(run.status || '')} · ${Number(run.output_count || 0)} output file(s)</div>
     </div>

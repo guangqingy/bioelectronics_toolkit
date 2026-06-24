@@ -82,7 +82,7 @@ function renderSubdirs(subdirs) {
   }
   section.style.display = "block";
   list.innerHTML = subdirs.map(d =>
-    `<div class="file-item" data-path="${d.path}" onclick="openSubdir(this)">${d.name}</div>`
+    `<div class="file-item" data-path="${d.path}" data-dp-click="openSubdir(this)">${d.name}</div>`
   ).join("");
 }
 
@@ -99,7 +99,7 @@ function renderFiles(files) {
     return;
   }
   list.innerHTML = files.map((f, idx) =>
-    `<div class="file-item" data-index="${idx}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" onclick="selectFile(this)">${escHtml(f.name)}</div>`
+    `<div class="file-item" data-index="${idx}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" data-dp-click="selectFile(this)">${escHtml(f.name)}</div>`
   ).join("");
 }
 
@@ -161,7 +161,7 @@ function renderQueue() {
   }
   list.innerHTML = exportQueue.map((p, i) => {
     const active = i === queueActiveIndex ? " active" : "";
-    return `<div class="file-item${active}" onclick="queueSelect(${i})" title="${p}">${baseName(p)}</div>`;
+    return `<div class="file-item${active}" data-dp-click="queueSelect(${i})" title="${p}">${baseName(p)}</div>`;
   }).join("");
 }
 

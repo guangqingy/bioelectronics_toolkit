@@ -25,7 +25,6 @@ def register_fluorescence_roi_sequence_routes(app, fl):
     fig_to_b64 = fl["fig_to_b64"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_tiff = fl["has_tiff"]
 
     _fl_bool = fl["_fl_bool"]
     _fl_decode_base64_payload = fl["_fl_decode_base64_payload"]
@@ -63,9 +62,6 @@ def register_fluorescence_roi_sequence_routes(app, fl):
     @request_schema(FluorescenceRoiAnalyzeSequenceRequest)
     def api_fl_roi_analyze_sequence():
         """Sequence-style ROI analysis across selected stack pairs."""
-        if not has_tiff:
-            return err("tifffile not installed")
-
         try:
             d = parse_json_payload(FluorescenceRoiAnalyzeSequenceRequest).model_dump()
         except ValidationError as exc:

@@ -13,16 +13,12 @@ def resolve_output_dir(
     default_suffix: str = "outputs",
 ) -> Path:
     """Resolve a user-provided output directory relative to a source file."""
-    source = Path(str(source_path or "")).expanduser()
-    raw_output = str(output_dir or "").strip()
-    if raw_output:
-        resolved = Path(raw_output).expanduser()
-        if not resolved.is_absolute() and source.parent:
-            resolved = source.parent / resolved
-        return resolved
-    if source.name:
-        return source.with_name(f"{source.stem}_{default_suffix}")
-    return Path.cwd() / default_suffix
+    return output_naming.resolve_output_dir(
+        source_path,
+        output_dir,
+        default_suffix=default_suffix,
+        project_root=Path(__file__).resolve().parents[1],
+    )
 
 
 def ensure_output_parent(path: Path) -> Path:

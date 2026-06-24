@@ -264,13 +264,13 @@
       <div class="param-label">Project</div>
       <div class="input-row histology-grow">
         <input type="text" id="projectPath" class="input-path histology-grow" placeholder="/path/to/histology_project.dphistology or containing folder">
-        <button class="btn-icon" type="button" onclick="DP.folder.pickFile('projectPath','loadHistologyDataProject')">Open Project</button>
+        <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('projectPath','loadHistologyDataProject')">Open Project</button>
       </div>
     </div>
     <div class="btn-row histology-stack-gap">
-      <button class="btn-secondary" type="button" onclick="DP.folder.pick('projectPath','loadHistologyDataProject')">Open Folder</button>
-      <button class="btn-primary" id="btnLoadHistologyAnalysisProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load Project</button>
-      <button class="btn-secondary" id="btnAnalyzeHistologyProject" type="button" onclick="DP.page.analyzeHistologyProjectSavedRois()" disabled>Analyze Saved ROI (all)</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('projectPath','loadHistologyDataProject')">Open Folder</button>
+      <button class="btn-primary" id="btnLoadHistologyAnalysisProject" type="button" data-dp-click="DP.page.loadHistologyDataProject()">Load Project</button>
+      <button class="btn-secondary" id="btnAnalyzeHistologyProject" type="button" data-dp-click="DP.page.analyzeHistologyProjectSavedRois()" disabled>Analyze Saved ROI (all)</button>
     </div>
   </div>
 
@@ -280,10 +280,10 @@
       <div class="param-label">Image</div>
       <div class="input-row histology-grow">
         <input type="text" id="histologyImagePath" class="input-path histology-grow" placeholder="/path/to/exported TIFF for quick testing">
-        <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyImagePath','loadHistologyFileImage')">Open File</button>
+        <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyImagePath','loadHistologyFileImage')">Open File</button>
       </div>
     </div>
-    <button class="btn-secondary btn-block histology-stack-gap" id="btnLoadHistologyFileImage" type="button" onclick="DP.page.loadHistologyFileImage()">Load Image</button>
+    <button class="btn-secondary btn-block histology-stack-gap" id="btnLoadHistologyFileImage" type="button" data-dp-click="DP.page.loadHistologyFileImage()">Load Image</button>
   </div>
 
   <div class="ctrl-section" id="histologyImageControls">
@@ -432,24 +432,24 @@
       <div class="result-card-body">
         <div id="histologyRoiToolbar" class="histology-roi-toolbar">
           <input type="text" id="histologyRoiLabelInline" class="input-sm" value="ROI 1">
-          <button class="btn-secondary" id="btnStartHistologyRoi" type="button" onclick="DP.page.startHistologyPolygon()" disabled>Start ROI</button>
-          <button class="btn-secondary" id="btnFinishHistologyRoi" type="button" onclick="DP.page.finishHistologyPolygon()" disabled>Finish</button>
-          <button class="btn-secondary" id="btnUndoHistologyRoi" type="button" onclick="DP.page.undoHistologyPoint()" disabled>Undo</button>
-          <button class="btn-secondary btn-danger" id="btnClearHistologyRois" type="button" onclick="DP.page.clearHistologyRois()" disabled>Clear</button>
-          <button class="btn-secondary" id="btnSaveHistologyRois" type="button" onclick="DP.page.saveHistologyRois()" disabled>Save ROI</button>
-          <button class="btn-primary" id="btnAnalyzeHistology" type="button" onclick="DP.page.analyzeHistologyRois()" disabled>Analyze SMA + Macrophage</button>
+          <button class="btn-secondary" id="btnStartHistologyRoi" type="button" data-dp-click="DP.page.startHistologyPolygon()" disabled>Start ROI</button>
+          <button class="btn-secondary" id="btnFinishHistologyRoi" type="button" data-dp-click="DP.page.finishHistologyPolygon()" disabled>Finish</button>
+          <button class="btn-tertiary" id="btnUndoHistologyRoi" type="button" data-dp-click="DP.page.undoHistologyPoint()" disabled>Undo</button>
+          <button class="btn-secondary btn-danger" id="btnClearHistologyRois" type="button" data-dp-click="DP.page.clearHistologyRois()" disabled>Clear</button>
+          <button class="btn-secondary" id="btnSaveHistologyRois" type="button" data-dp-click="DP.page.saveHistologyRois()" disabled>Save ROI</button>
+          <button class="btn-primary" id="btnAnalyzeHistology" type="button" data-dp-click="DP.page.analyzeHistologyRois()" disabled>Analyze SMA + Macrophage</button>
           <span id="histologyRoiInlineCount" class="histology-roi-count">0 ROI</span>
         </div>
         <div id="histologyViewToolbar" class="histology-view-toolbar">
-          <button class="btn-icon" id="btnHistologyZoomOut" type="button" title="Zoom out" onclick="DP.page.histologyZoomStep(0.8)" disabled>-</button>
-          <input type="range" id="histologyZoomSlider" class="histology-zoom-slider" min="5" max="800" step="1" value="100" oninput="DP.page.histologySetZoomFromSlider()" disabled>
-          <button class="btn-icon" id="btnHistologyZoomIn" type="button" title="Zoom in" onclick="DP.page.histologyZoomStep(1.25)" disabled>+</button>
+          <button class="btn-icon" id="btnHistologyZoomOut" type="button" title="Zoom out" data-dp-click="DP.page.histologyZoomStep(0.8)" disabled>-</button>
+          <input type="range" id="histologyZoomSlider" class="histology-zoom-slider" min="5" max="800" step="1" value="100" data-dp-input="DP.page.histologySetZoomFromSlider()" disabled>
+          <button class="btn-icon" id="btnHistologyZoomIn" type="button" title="Zoom in" data-dp-click="DP.page.histologyZoomStep(1.25)" disabled>+</button>
           <span id="histologyZoomLabel" class="histology-zoom-label">100%</span>
-          <button class="btn-icon" id="btnHistologyFit" type="button" title="Fit image" onclick="DP.page.histologyFitPreview()" disabled>Fit</button>
-          <button class="btn-icon" id="btnHistologyActual" type="button" title="Actual preview size" onclick="DP.page.histologyActualSize()" disabled>1:1</button>
-          <button class="btn-icon" id="btnHistologyRotateLeft" type="button" title="Rotate left" onclick="DP.page.histologyRotatePreview(-90)" disabled>↺</button>
-          <button class="btn-icon" id="btnHistologyRotateRight" type="button" title="Rotate right" onclick="DP.page.histologyRotatePreview(90)" disabled>↻</button>
-          <button class="btn-icon" id="btnHistologyPan" type="button" title="Lock hand tool" aria-pressed="false" onclick="DP.page.histologyTogglePanMode()" disabled>Pan</button>
+          <button class="btn-icon" id="btnHistologyFit" type="button" title="Fit image" data-dp-click="DP.page.histologyFitPreview()" disabled>Fit</button>
+          <button class="btn-icon" id="btnHistologyActual" type="button" title="Actual preview size" data-dp-click="DP.page.histologyActualSize()" disabled>1:1</button>
+          <button class="btn-icon" id="btnHistologyRotateLeft" type="button" title="Rotate left" data-dp-click="DP.page.histologyRotatePreview(-90)" disabled>↺</button>
+          <button class="btn-icon" id="btnHistologyRotateRight" type="button" title="Rotate right" data-dp-click="DP.page.histologyRotatePreview(90)" disabled>↻</button>
+          <button class="btn-icon" id="btnHistologyPan" type="button" title="Lock hand tool" aria-pressed="false" data-dp-click="DP.page.histologyTogglePanMode()" disabled>Pan</button>
           <div id="histologyChannelView" class="histology-channel-view" hidden></div>
         </div>
         <div id="histologyAnalysisPlotArea" class="plot-area histology-plot-area">
@@ -480,7 +480,7 @@
             <select id="histologyDebugRoiSelect" class="input-sm histology-grow"></select>
           </div>
           <div class="btn-row">
-            <button class="btn-secondary" id="btnPreviewHistologyRoiDebug" type="button" onclick="DP.page.previewHistologyRoiDebug()">Preview ROI tuning</button>
+            <button class="btn-secondary" id="btnPreviewHistologyRoiDebug" type="button" data-dp-click="DP.page.previewHistologyRoiDebug()">Preview ROI tuning</button>
           </div>
           <div id="histologyRoiDebugMeta" class="histology-results-meta">Select a project image and ROI to inspect parameter effects.</div>
           <div id="histologyRoiDebugPreview" class="histology-debug-preview plot-placeholder">No ROI tuning preview yet.</div>

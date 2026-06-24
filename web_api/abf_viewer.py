@@ -81,24 +81,22 @@ class AbfExportRequest(AbfPlotRequest):
 
 
 def register_abf_viewer_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    jobs = ctx.jobs
 
     service = abf_viewer_service.AbfViewerService(
-        has_abf=ctx["HAS_ABF"],
-        has_scipy=ctx["HAS_SCIPY"],
-        pyabf_mod=ctx.get("pyabf"),
-        find_peaks=ctx.get("find_peaks"),
-        fig_to_b64=ctx["fig_to_b64"],
-        float_or=ctx["float_or"],
-        int_or=ctx["int_or"],
+        pyabf_mod=ctx.pyabf,
+        find_peaks=ctx.find_peaks,
+        fig_to_b64=ctx.fig_to_b64,
+        float_or=ctx.float_or,
+        int_or=ctx.int_or,
         as_bool=as_bool,
         mode_is_save=mode_is_save,
-        apply_axes_limits=ctx["apply_axes_limits"],
+        apply_axes_limits=ctx.apply_axes_limits,
         clean_trace_svg=clean_trace_svg,
         next_numbered_path=next_numbered_path,
-        line_color=ctx["LINE_COLOR"],
+        line_color=ctx.LINE_COLOR,
     )
 
     def _download_or_save(result: dict):

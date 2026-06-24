@@ -14,10 +14,10 @@ function renderPairList() {
     const checked = _checkedPairIndices.has(i) ? 'checked' : '';
     const active = i === _currentPairIndex ? 'active' : '';
     return `
-      <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" onclick="selectPair(${i})">
-        <input type="checkbox" ${checked} onclick="event.stopPropagation()" onchange="togglePairCheck(${i}, this.checked)">
+      <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" data-dp-click="selectPair(${i})">
+        <input type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="togglePairCheck(${i}, this.checked)">
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
-        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" onclick="event.stopPropagation();addPairByIndex(${i})">Add</button>
+        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addPairByIndex(${i})">Add</button>
       </div>`;
   }).join('');
 }
@@ -33,9 +33,9 @@ function renderAnalysisList() {
   el.innerHTML = _analysisPairs.map((p, i) => {
     const active = i === _analysisActiveIndex ? 'active' : '';
     return `
-      <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" onclick="selectAnalysisPair(${i})">
+      <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" data-dp-click="selectAnalysisPair(${i})">
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
-        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" onclick="event.stopPropagation();removeAnalysisPair(${i})">X</button>
+        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();removeAnalysisPair(${i})">X</button>
       </div>`;
   }).join('');
 

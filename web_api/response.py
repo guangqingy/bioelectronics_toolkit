@@ -13,11 +13,16 @@ LOG = logging.getLogger(__name__)
 
 def make_envelope(payload: Any = None, *, ok: bool = True, error: Any = None) -> dict[str, Any]:
     if is_envelope(payload):
-        if payload.get("ok") is not False and not payload.get("outputs"):
-            enriched = dict(payload)
-            enriched["outputs"] = infer_outputs(payload)
-            return enriched
-        return payload
+        data = payload.get("data") if isinstance(payload.get("data"), dict) else {}
+        is_ok = bool(payload.get("ok", ok))
+        outputs = as_list(payload.get("outputs")) or (infer_outputs(data) if is_ok else [])
+        return {
+            "ok": is_ok,
+            "data": data,
+            "outputs": outputs,
+            "warnings": as_list(payload.get("warnings")),
+            "error": None if is_ok else str(payload.get("error") or error or "Request failed"),
+        }
 
     if payload is None:
         payload = {}
@@ -26,7 +31,14 @@ def make_envelope(payload: Any = None, *, ok: bool = True, error: Any = None) ->
 
     legacy_error = payload.get("error")
     is_ok = bool(ok) and legacy_error in (None, "")
-    data = {} if not is_ok else dict(payload)
+    if is_ok:
+        data = dict(payload)
+    else:
+        data = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"error", "ok", "outputs", "warnings"}
+        }
     outputs = infer_outputs(payload) if is_ok else as_list(payload.get("outputs"))
     warnings = as_list(payload.get("warnings"))
     envelope = {
@@ -36,12 +48,6 @@ def make_envelope(payload: Any = None, *, ok: bool = True, error: Any = None) ->
         "warnings": warnings,
         "error": None if is_ok else str(error or legacy_error or "Request failed"),
     }
-
-    # Temporary compatibility layer: existing pages still read fields such as
-    # saved_path/files/img directly from the response object.
-    for key, value in payload.items():
-        if key not in envelope:
-            envelope[key] = value
     return envelope
 
 
@@ -58,7 +64,9 @@ def api_ok(
         payload["outputs"] = outputs
     if warnings is not None:
         payload["warnings"] = warnings
-    return jsonify(make_envelope(payload, ok=True))
+    response = jsonify(make_envelope(payload, ok=True))
+    response.headers["X-DP-Envelope"] = "1"
+    return response
 
 
 def _debug_errors_enabled() -> bool:
@@ -108,13 +116,17 @@ def api_error(
         payload["technical_details"] = technical_details
     if warnings is not None:
         payload["warnings"] = warnings
-    return jsonify(make_envelope(payload, ok=False, error=message)), code
+    response = jsonify(make_envelope(payload, ok=False, error=message))
+    response.headers["X-DP-Envelope"] = "1"
+    return response, code
 
 
 def register_api_envelope(app) -> None:
     @app.after_request
     def _wrap_api_json_response(response):
         if not request.path.startswith("/api/") or not response.is_json:
+            return response
+        if request.path == "/api/openapi.json":
             return response
         if response.headers.get("X-DP-Envelope") == "1":
             return response

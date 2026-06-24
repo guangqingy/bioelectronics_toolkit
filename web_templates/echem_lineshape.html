@@ -74,9 +74,9 @@
   <div class="ctrl-label">Source Folder</div>
   <div class="input-row">
     <input type="text" id="sourceFolder" class="input-path" placeholder="/path/to/Photocurrent">
-    <button class="btn-icon" type="button" onclick="DP.folder.pick('sourceFolder','scanSourceFolder')">Browse</button>
+    <button class="btn-icon" type="button" data-dp-click="DP.folder.pick('sourceFolder','scanSourceFolder')">Browse</button>
   </div>
-  <button class="btn-secondary btn-block" type="button" onclick="DP.page.scanSourceFolder()" style="margin-top:6px">Scan Files</button>
+  <button class="btn-secondary btn-block" type="button" data-dp-click="DP.page.scanSourceFolder()" style="margin-top:6px">Scan Files</button>
 </div>
 
 <div class="ctrl-section">
@@ -86,16 +86,16 @@
   </div>
   <div id="sourceFileList" class="file-list" style="max-height:210px"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary" type="button" onclick="DP.page.selectAllSources(true)">All</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.selectAllSources(false)">None</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.selectAllSources(true)">All</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.selectAllSources(false)">None</button>
   </div>
   <details style="margin-top:8px">
     <summary class="ctrl-label">Add Single File</summary>
     <div class="input-row" style="margin-top:8px">
       <input type="text" id="sourcePath" class="input-path" placeholder="/path/to/ATAT_photocurrent_1_1.txt">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('sourcePath','addSourceFromPath')">Choose</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('sourcePath','addSourceFromPath')">Choose</button>
     </div>
-    <button class="btn-secondary btn-block" type="button" onclick="DP.page.addSourceFromPath()" style="margin-top:6px">Add File</button>
+    <button class="btn-secondary btn-block" type="button" data-dp-click="DP.page.addSourceFromPath()" style="margin-top:6px">Add File</button>
   </details>
 </div>
 
@@ -104,7 +104,7 @@
   <div style="margin-top:10px">
     <div class="input-row">
       <input type="text" id="baseDir" class="input-path" placeholder="/path/to/electrochemistry/date">
-      <button class="btn-icon" type="button" onclick="DP.folder.pick('baseDir','browseBase')">Browse</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pick('baseDir','browseBase')">Browse</button>
     </div>
   </div>
   <div class="param-row">
@@ -151,12 +151,12 @@
     <input type="number" id="yMax" class="input-sm" placeholder="auto" step="any">
   </div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.page.applyAutoY()">Auto Y</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.resetX()">Reset X</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.applyAutoY()">Auto Y</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.resetX()">Reset X</button>
   </div>
 </div>
 
-<button class="btn-primary" id="btnLoad" data-label="3 Load & Average" type="button" onclick="DP.page.loadSamples()">3 Load & Average</button>
+<button class="btn-primary" id="btnLoad" data-label="3 Load & Average" type="button" data-dp-click="DP.page.loadSamples()">3 Load & Average</button>
 
 <div class="ctrl-section" id="sampleListSection" style="display:none">
   <div class="ctrl-label" style="display:flex;justify-content:space-between">
@@ -165,8 +165,8 @@
   </div>
   <div id="sampleList" class="file-list" style="max-height:200px"></div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.page.selectAll(true)">All</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.selectAll(false)">None</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.selectAll(true)">All</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.selectAll(false)">None</button>
   </div>
 </div>
 
@@ -180,8 +180,8 @@
     <div class="param-label">DPI</div>
     <input type="number" id="exportDpi" class="input-sm" value="300" min="72" max="600" step="1">
   </div>
-  <button class="btn-primary" id="btnExportFiles" data-label="Export CSV + PNG + SVG + Sources" type="button" onclick="DP.page.exportFiles()" style="display:none">Export CSV + PNG + SVG + Sources</button>
-  <button class="btn-secondary btn-block" id="btnDownloadPNG" type="button" onclick="DP.page.downloadPNG()" style="display:none;margin-top:6px">Download PNG</button>
+  <button class="btn-primary" id="btnExportFiles" data-label="Export CSV + PNG + SVG + Sources" type="button" data-dp-click="DP.page.exportFiles()" style="display:none">Export CSV + PNG + SVG + Sources</button>
+  <button class="btn-secondary btn-block" id="btnDownloadPNG" type="button" data-dp-click="DP.page.downloadPNG()" style="display:none;margin-top:6px">Download PNG</button>
 </div>
 
 <div id="status" class="status-bar"></div>
@@ -211,9 +211,9 @@
       <div class="result-card-header">
         <span>Preview</span>
         <div class="lineshape-pager">
-          <button class="btn-secondary" type="button" onclick="DP.page.prevPage()">Prev</button>
+          <button class="btn-tertiary" type="button" data-dp-click="DP.page.prevPage()">Prev</button>
           <span id="pageLabel">Page 1 / 1</span>
-          <button class="btn-secondary" type="button" onclick="DP.page.nextPage()">Next</button>
+          <button class="btn-tertiary" type="button" data-dp-click="DP.page.nextPage()">Next</button>
         </div>
       </div>
       <div class="result-card-body">

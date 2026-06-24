@@ -190,8 +190,6 @@ class AbfViewerRegressionTests(unittest.TestCase):
             return "plot"
 
         return AbfViewerService(
-            has_abf=True,
-            has_scipy=True,
             pyabf_mod=pyabf,
             find_peaks=find_peaks,
             fig_to_b64=fake_fig_to_b64,

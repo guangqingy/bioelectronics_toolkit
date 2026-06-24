@@ -2,9 +2,9 @@
 
 ## Context
 
-Analysis code is reused by WebGUI routes, desktop launchers, tests, and some
-pipeline scripts. A plugin system could make extension points explicit, but it
-would add registration, discovery, versioning, and packaging complexity.
+Analysis code is reused by WebGUI routes, desktop launchers, and tests. A
+plugin system could make extension points explicit, but it would add
+registration, discovery, versioning, and packaging complexity.
 
 ## Decision
 
@@ -15,5 +15,4 @@ plugin system.
 
 The code remains easy to inspect and test. Route modules can import concrete
 service functions without runtime discovery. The tradeoff is that external
-extensions need normal Python changes or pipeline registry entries rather than
-installable plugins.
+extensions need normal Python changes rather than installable plugins.

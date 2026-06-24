@@ -26,7 +26,7 @@ function renderRunList() {
   list.innerHTML = _runs.map((run, i) => {
     const active = i === _selectedRunIndex ? ' active' : '';
     return `
-      <div class="run-page-row${active}" onclick="selectRun(${i})">
+      <div class="run-page-row${active}" data-dp-click="selectRun(${i})">
         <div class="run-page-title">${dpEscapeHtml(run.title || run.view || 'Run')}</div>
         <div class="run-page-meta">${dpEscapeHtml(settingsViewLabel(run.view || ''))} · ${dpEscapeHtml(run.status || '')}</div>
         <div class="run-page-meta">${dpEscapeHtml(run.completed_at || '')} · ${Number(run.output_count || 0)} output(s)</div>
@@ -111,14 +111,14 @@ function renderManifest(manifest, manifestPath) {
 
   document.getElementById('runDetailBody').innerHTML = `
     <div class="run-action-row">
-      <button class="btn-primary" type="button" onclick="openSelectedManifestView()">Open Interface With Parameters</button>
-      <button class="btn-secondary" type="button" onclick="openSelectedManifestForRerun()">Prepare Manual Rerun</button>
-      <button class="btn-secondary" type="button" onclick="checkSelectedManifestFiles()">Check Files</button>
-      <button class="btn-secondary" type="button" onclick="setCompareBase()">Use As Compare Base</button>
-      <button class="btn-secondary" type="button" onclick="compareSelectedWithBase()">Compare With Base</button>
-      <button class="btn-secondary" type="button" onclick="writeSelectedManifestReport()">Write Markdown Report</button>
-      <button class="btn-secondary" type="button" onclick="packageSelectedManifest()">Create Output Archive</button>
-      <button class="btn-secondary" type="button" onclick="copySelectedManifestPath()">Copy Manifest Path</button>
+      <button class="btn-primary" type="button" data-dp-click="openSelectedManifestView()">Open Interface With Parameters</button>
+      <button class="btn-secondary" type="button" data-dp-click="openSelectedManifestForRerun()">Prepare Manual Rerun</button>
+      <button class="btn-secondary" type="button" data-dp-click="checkSelectedManifestFiles()">Check Files</button>
+      <button class="btn-tertiary" type="button" data-dp-click="setCompareBase()">Use As Compare Base</button>
+      <button class="btn-secondary" type="button" data-dp-click="compareSelectedWithBase()">Compare With Base</button>
+      <button class="btn-secondary" type="button" data-dp-click="writeSelectedManifestReport()">Write Markdown Report</button>
+      <button class="btn-secondary" type="button" data-dp-click="packageSelectedManifest()">Create Output Archive</button>
+      <button class="btn-tertiary" type="button" data-dp-click="copySelectedManifestPath()">Copy Manifest Path</button>
     </div>
     <div id="runCompareBody"></div>
     <div id="runPreflightBody"></div>

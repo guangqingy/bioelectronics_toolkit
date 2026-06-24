@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Organize `desktop_apps/` into `launchers/`, `native/`, and `cli/` subpackages,
+  and remove the duplicate `histology_roi_tuner.py` compatibility launcher.
+
+### Removed
+- Remove the WebGUI Pipeline Runner, its private-project registry, script
+  execution API, page assets, and maintainer checks. Run History and run
+  manifests remain part of the app.
+
 ## [0.7.0] - 2026-06-21
 
 ### Added

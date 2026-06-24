@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from services.output_naming import PROJECT_ROOT
 from services.run_history_paths import abs_path, as_path, fingerprint, path_from_record, rel_path
 
 
@@ -87,7 +88,7 @@ def combine_check_summary(*parts: dict[str, int]) -> dict[str, int]:
 
 
 def check_manifest_files(manifest: dict[str, Any]) -> dict[str, Any]:
-    project_root = abs_path(as_path(manifest.get("project_root")) or Path.cwd())
+    project_root = abs_path(as_path(manifest.get("project_root")) or PROJECT_ROOT)
     input_rows, input_summary = check_file_records(
         manifest.get("input_files"), "input", project_root
     )

@@ -3,20 +3,14 @@
 {% block title %}ABF Batch Processor{% endblock %}
 
 {% block controls %}
-{% if not has_abf %}
-<div class="status-bar status-error">
-  <strong>PyABF not installed.</strong><br>Run: <code>pip install pyabf</code>
-</div>
-{% endif %}
-
 <div class="ctrl-section">
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/files">
   </div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder()">Refresh</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.scanFolder()">Refresh</button>
   </div>
   <div id="folderRefreshInfo" class="folder-refresh-info"></div>
 </div>
@@ -38,12 +32,12 @@
     <input type="text" id="treatToken" class="input-path" placeholder="MOS, T1" list="treatTokenSuggestions">
     <datalist id="treatTokenSuggestions"></datalist>
   </div>
-  <button class="btn-secondary" onclick="DP.page.suggestTokens()" style="width:100%; margin-top:8px;">Auto-detect Tokens</button>
+  <button class="btn-secondary" data-dp-click="DP.page.suggestTokens()" style="width:100%; margin-top:8px;">Auto-detect Tokens</button>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Power Series</div>
-  <select id="powerPreset" class="input-group" onchange="applyPowerPreset()" style="margin-bottom:8px;">
+  <select id="powerPreset" class="input-group" data-dp-change="applyPowerPreset()" style="margin-bottom:8px;">
     <option value="10-step-normal">10-step (normal)</option>
     <option value="10-step-20x">10-step (20x)</option>
     <option value="12-step-old">12-step (old)</option>
@@ -73,7 +67,7 @@
   <div class="ctrl-label">Segment Selection</div>
   <div class="param-row">
     <div class="param-label">Mode</div>
-    <select id="segmentMode" class="input-xs" onchange="DP.page.syncSegmentControls()">
+    <select id="segmentMode" class="input-xs" data-dp-change="DP.page.syncSegmentControls()">
       <option value="auto" selected>Auto</option>
       <option value="manual">Manual</option>
     </select>
@@ -104,8 +98,8 @@
   </label>
 </div>
 
-<button id="btnRun" class="btn-primary" onclick="DP.page.runBatch()">Run Batch</button>
-<button id="btnPureCsv" class="btn-secondary" onclick="DP.page.runBatch({pureCsv:true})" style="width:100%; margin-top:8px;">Pure CSV Conversion</button>
+<button id="btnRun" class="btn-primary" data-dp-click="DP.page.runBatch()">Run Batch</button>
+<button id="btnPureCsv" class="btn-secondary" data-dp-click="DP.page.runBatch({pureCsv:true})" style="width:100%; margin-top:8px;">Pure CSV Conversion</button>
 <div id="status" class="status-bar"></div>
 {% endblock %}
 

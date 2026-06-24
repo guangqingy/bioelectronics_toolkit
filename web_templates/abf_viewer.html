@@ -9,17 +9,17 @@
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/folder" value="{{ default_data_dir }}"/>
   </div>
   <div class="btn-row abf-folder-actions">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.openLatestFile()">Latest</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.goUpFolder()">Up</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.openLatestFile()">Latest</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.goUpFolder()">Up</button>
   </div>
   <div class="folder-live-row">
     <label class="checkbox-row">
-      <input type="checkbox" id="folderAutoRefresh" onchange="DP.page.configureFolderAutoRefresh()">
+      <input type="checkbox" id="folderAutoRefresh" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <span>Auto refresh</span>
     </label>
-    <select id="folderRefreshSeconds" onchange="DP.page.configureFolderAutoRefresh()">
+    <select id="folderRefreshSeconds" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <option value="3">3 s</option>
       <option value="5" selected>5 s</option>
       <option value="10">10 s</option>
@@ -46,17 +46,17 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Batch Export</summary>
   <div class="btn-row">
-    <button class="btn-secondary" type="button" onclick="DP.page.queueAddCurrent()">Add Current</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.queueAddAll()">Add All</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.queueAddCurrent()">Add Current</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.queueAddAll()">Add All</button>
   </div>
   <div id="queueList" class="file-list abf-list-sm" style="margin-top:8px"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary" type="button" onclick="DP.page.queueMove(-1)">Up</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.queueMove(1)">Down</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.queueRemoveActive()">Remove</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.queueClear()">Clear</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.queueMove(-1)">Up</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.queueMove(1)">Down</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.queueRemoveActive()">Remove</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.queueClear()">Clear</button>
   </div>
-  <button class="btn-primary btn-block" type="button" onclick="DP.page.queueExportAllCsv()" style="margin-top:8px">Export Queue CSV</button>
+  <button class="btn-primary btn-block" type="button" data-dp-click="DP.page.queueExportAllCsv()" style="margin-top:8px">Export Queue CSV</button>
   <a class="btn-secondary btn-block" href="/abf/batch" style="margin-top:8px;text-align:center;text-decoration:none">Open ABF Batch Processor</a>
 </details>
 
@@ -76,11 +76,11 @@
   <div class="ctrl-label">Sweep and Channel</div>
   <div class="param-row">
     <div class="param-label abf-narrow">Sweep</div>
-    <input type="number" id="sweepNum" class="input-sm" value="0" min="0" onchange="plot()"/>
+    <input type="number" id="sweepNum" class="input-sm" value="0" min="0" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
     <div class="param-label abf-narrow">Channel</div>
-    <select id="channel" class="abf-select" onchange="plot()">
+    <select id="channel" class="abf-select" data-dp-change="plot()">
       <option value="">Select channel</option>
     </select>
   </div>
@@ -89,18 +89,18 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Clamp Mode</div>
   <label class="checkbox-row">
-    <input type="checkbox" id="rNorm" onchange="updateAbfParameterGroups(); plot()"/>
+    <input type="checkbox" id="rNorm" data-dp-change="updateAbfParameterGroups(); plot()"/>
     <span>R normalization</span>
   </label>
   <div class="param-row" id="iChRow" data-rnorm-state="checked" hidden>
     <div class="param-label abf-narrow">I Ch</div>
-    <select id="iCh" class="abf-select" onchange="plot()">
+    <select id="iCh" class="abf-select" data-dp-change="plot()">
       <option value="">None</option>
     </select>
   </div>
   <div class="param-row" id="vChRow" data-rnorm-state="checked" hidden>
     <div class="param-label abf-narrow">V Ch</div>
-    <select id="vCh" class="abf-select" onchange="plot()">
+    <select id="vCh" class="abf-select" data-dp-change="plot()">
       <option value="">None</option>
     </select>
   </div>
@@ -110,11 +110,11 @@
   <div class="ctrl-label">Baseline (ms)</div>
   <div class="param-row">
     <div class="param-label abf-narrow">Start</div>
-    <input type="number" id="blPre0" class="input-sm" value="0" step="any" onchange="plot()"/>
+    <input type="number" id="blPre0" class="input-sm" value="0" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
     <div class="param-label abf-narrow">End</div>
-    <input type="number" id="blPre1" class="input-sm" value="100" step="any" onchange="plot()"/>
+    <input type="number" id="blPre1" class="input-sm" value="100" step="any" data-dp-change="plot()"/>
   </div>
 </div>
 
@@ -122,25 +122,25 @@
   <div class="ctrl-label">View Window</div>
   <div class="param-row">
     <div class="param-label abf-narrow">X Min</div>
-    <input type="number" id="xMin" class="input-sm" step="any" onchange="plot()"/>
+    <input type="number" id="xMin" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
     <div class="param-label abf-narrow">X Max</div>
-    <input type="number" id="xMax" class="input-sm" step="any" onchange="plot()"/>
+    <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
     <div class="param-label abf-narrow">Y Min</div>
-    <input type="number" id="yMin" class="input-sm" step="any" onchange="plot()"/>
+    <input type="number" id="yMin" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
     <div class="param-label abf-narrow">Y Max</div>
-    <input type="number" id="yMax" class="input-sm" step="any" onchange="plot()"/>
+    <input type="number" id="yMax" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Downsample</div>
-  <select id="dsf" class="abf-select" onchange="plot()">
+  <select id="dsf" class="abf-select" data-dp-change="plot()">
     <option value="1">1x (no downsample)</option>
     <option value="2">2x</option>
     <option value="3">3x</option>
@@ -154,9 +154,9 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
   <div class="btn-row">
-    <button class="btn-secondary" type="button" onclick="DP.page.exportFig('png')">PNG</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.exportFig('svg')">SVG</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.exportCSV()">CSV</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.exportFig('png')">PNG</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.exportFig('svg')">SVG</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.exportCSV()">CSV</button>
   </div>
 </details>
 

@@ -12,19 +12,14 @@ from services.fluorescence import stack as fl_stack
 from services.fluorescence import tiff_metadata_context as fl_tiff_metadata_context
 
 
-def build_tiff_volume_context(
-    *, tifflib, has_tiff: bool, int_or, float_or, denoise_options: list[str]
-) -> dict:
+def build_tiff_volume_context(*, tifflib, int_or, float_or, denoise_options: list[str]) -> dict:
     _FL_DENOISE_OPTIONS = list(denoise_options or [])
     _fl_clean_choice = fl_stack.clean_choice
     _fl_apply_optional_denoise = fl_stack.apply_optional_denoise
     _fl_bool = fl_helpers.parse_bool
     _fl_unit_to_um_scale = fl_helpers.unit_to_um_scale
 
-    _fl_tiff_metadata = fl_tiff_metadata_context.build_tiff_metadata_context(
-        tifflib=tifflib,
-        has_tiff=has_tiff,
-    )
+    _fl_tiff_metadata = fl_tiff_metadata_context.build_tiff_metadata_context(tifflib=tifflib)
     _fl_positive_float = _fl_tiff_metadata["_fl_positive_float"]
     _fl_tiff_plane_from_array = _fl_tiff_metadata["_fl_tiff_plane_from_array"]
     _fl_tiff_read_array = _fl_tiff_metadata["_fl_tiff_read_array"]

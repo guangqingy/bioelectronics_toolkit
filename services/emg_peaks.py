@@ -8,6 +8,7 @@ import pandas as pd
 
 from services import emg as emg_service
 from services.matplotlib_utils import new_subplots
+from services.output_naming import resolve_output_dir
 from services.trace_decimate import decimate_xy
 
 # EMG/RHD traces are dense high-frequency waveforms. The generic 4k-point
@@ -23,7 +24,6 @@ class EmgPeaksService:
     def __init__(
         self,
         *,
-        has_scipy: bool,
         find_peaks: Callable | None,
         peak_widths: Callable | None,
         fig_to_b64: Callable[[Any], str],
@@ -31,7 +31,6 @@ class EmgPeaksService:
         line_color: str,
         mode_is_save: Callable[[Any], bool],
     ):
-        self.has_scipy = has_scipy
         self.find_peaks = find_peaks
         self.peak_widths = peak_widths
         self.fig_to_b64 = fig_to_b64
@@ -40,7 +39,7 @@ class EmgPeaksService:
         self.mode_is_save = mode_is_save
 
     def _require_scipy(self) -> None:
-        if not self.has_scipy or self.find_peaks is None or self.peak_widths is None:
+        if self.find_peaks is None or self.peak_widths is None:
             raise ValueError("scipy not installed")
 
     @staticmethod
@@ -373,7 +372,7 @@ class EmgPeaksService:
             out_path = (
                 src.with_name(f"{src.stem}_peaks.csv")
                 if src is not None
-                else Path.cwd() / "emg_peaks.csv"
+                else resolve_output_dir(default_suffix="emg") / "emg_peaks.csv"
             )
             out_path.write_bytes(payload)
             return {
@@ -405,7 +404,7 @@ class EmgPeaksService:
             out_path = (
                 src.with_name(f"{src.stem}_peaks_grouped.csv")
                 if src is not None
-                else Path.cwd() / f"{stem}_peaks_grouped.csv"
+                else resolve_output_dir(default_suffix="emg") / f"{stem}_peaks_grouped.csv"
             )
             out_path.write_bytes(payload)
             return {

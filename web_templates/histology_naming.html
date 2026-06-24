@@ -78,23 +78,23 @@
     <div class="param-label">Source</div>
     <div class="input-row histology-grow">
       <input type="text" id="histologyExportedTiffPath" class="input-path histology-grow" placeholder="/path/to/source folder, .tif, or .ets">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">Open File</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">Open File</button>
     </div>
   </div>
   <div class="btn-row histology-stack-gap">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyExportedTiffPath','scanHistologyTiffProject')">Open Folder</button>
-    <button class="btn-primary" id="btnScanHistologyTiffProject" type="button" onclick="DP.page.scanHistologyTiffProject()">Scan Source</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('histologyExportedTiffPath','scanHistologyTiffProject')">Open Folder</button>
+    <button class="btn-primary" id="btnScanHistologyTiffProject" type="button" data-dp-click="DP.page.scanHistologyTiffProject()">Scan Source</button>
   </div>
   <label class="checkbox-row histology-stack-gap"><input type="checkbox" id="histologyConvertEts" checked><span>Convert ETS to TIFF in case folder</span></label>
   <details class="ctrl-details histology-stack-gap">
     <summary>Optional Traceability</summary>
     <div class="input-row histology-stack-gap">
       <input type="text" id="histologyRawOlympusPath" class="input-path histology-grow" placeholder="/path/to/raw_olympus (optional)">
-      <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyRawOlympusPath')">Raw Olympus</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pick('histologyRawOlympusPath')">Raw Olympus</button>
     </div>
     <div class="input-row histology-stack-gap">
       <input type="text" id="histologyAnalysisPath" class="input-path histology-grow" placeholder="/path/to/analysis (optional)">
-      <button class="btn-icon" type="button" onclick="DP.folder.pick('histologyAnalysisPath')">Analysis</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pick('histologyAnalysisPath')">Analysis</button>
     </div>
   </details>
 </div>
@@ -105,13 +105,13 @@
     <div class="param-label">Project</div>
     <div class="input-row histology-grow">
       <input type="text" id="histologyProjectPath" class="input-path histology-grow" placeholder="save folder or histology_project.dphistology">
-      <button class="btn-icon" type="button" onclick="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
     </div>
   </div>
   <div class="btn-row histology-stack-gap">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('histologyProjectPath')">Open Folder</button>
-    <button class="btn-secondary" id="btnLoadHistologyProject" type="button" onclick="DP.page.loadHistologyDataProject()">Load Existing</button>
-    <button class="btn-primary" id="btnCreateHistologyProject" type="button" onclick="DP.page.createHistologyTiffProject()">Create Analysis Project</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('histologyProjectPath')">Open Folder</button>
+    <button class="btn-secondary" id="btnLoadHistologyProject" type="button" data-dp-click="DP.page.loadHistologyDataProject()">Load Existing</button>
+    <button class="btn-primary" id="btnCreateHistologyProject" type="button" data-dp-click="DP.page.createHistologyTiffProject()">Create Analysis Project</button>
   </div>
 </div>
 
@@ -122,7 +122,7 @@
     <div class="param-label">Name</div>
     <input type="text" id="histologyProjectEntryName" class="input-sm" placeholder="Sample / case name">
   </div>
-  <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" onclick="DP.page.renameHistologyDataProjectEntry()">Rename Case</button>
+  <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" data-dp-click="DP.page.renameHistologyDataProjectEntry()">Rename Case</button>
 </div>
 
 <div id="status" class="status-bar"></div>

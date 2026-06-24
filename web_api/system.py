@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -9,7 +10,6 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from services import scripts_panel as script_service
 from services import system_picker
 from services.system_picker import (
     PickerUnavailableError,
@@ -28,6 +28,10 @@ from .response import api_ok
 
 class PickerRequest(RequestModel):
     start: str = ""
+
+
+class OpenFolderRequest(RequestModel):
+    path: str
 
 
 _windows_picker_error = system_picker._windows_picker_error
@@ -63,10 +67,6 @@ def _shutdown_current_process(jobs, delay_seconds: float = 0.35) -> None:
     time.sleep(max(0.0, float(delay_seconds)))
     try:
         _cancel_running_jobs(jobs)
-    except Exception:
-        pass
-    try:
-        script_service.shutdown_running_scripts(grace_seconds=1.0)
     except Exception:
         pass
     os._exit(0)
@@ -105,9 +105,9 @@ def _choose_file(default_dir: Path) -> str:
 
 
 def register_system_routes(app, ctx) -> None:
-    err = ctx["err"]
-    base_dir = Path(ctx["BASE_DIR"])
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    base_dir = Path(ctx.BASE_DIR)
+    jobs = ctx.jobs
 
     @app.route("/api/system/select_folder", methods=["POST"])
     @request_schema(PickerRequest)
@@ -136,6 +136,26 @@ def register_system_routes(app, ctx) -> None:
             return validation_error_response(exc)
         except PickerUnavailableError as exc:
             return err(str(exc))
+        except Exception:
+            return err(traceback.format_exc())
+
+    @app.route("/api/system/open_folder", methods=["POST"])
+    @request_schema(OpenFolderRequest)
+    def api_system_open_folder():
+        try:
+            payload = parse_json_payload(OpenFolderRequest)
+            path = Path(payload.path).expanduser()
+            if not path.is_dir():
+                return err(f"Not a directory: {payload.path}")
+            if sys.platform == "darwin":
+                subprocess.Popen(["open", str(path)])
+            elif sys.platform.startswith("linux"):
+                subprocess.Popen(["xdg-open", str(path)])
+            else:
+                subprocess.Popen(["explorer", str(path)])
+            return api_ok({"path": str(path)})
+        except ValidationError as exc:
+            return validation_error_response(exc)
         except Exception:
             return err(traceback.format_exc())
 

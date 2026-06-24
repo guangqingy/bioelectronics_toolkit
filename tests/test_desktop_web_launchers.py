@@ -15,6 +15,15 @@ class DesktopWebLauncherTests(unittest.TestCase):
         self.assertEqual(root_launchers, [])
         self.assertFalse((project_root / "fluorescence_tiff_to_gif.py").exists())
 
+    def test_desktop_apps_root_stays_small(self) -> None:
+        desktop_root = Path(__file__).resolve().parents[1] / "desktop_apps"
+        root_modules = sorted(path.name for path in desktop_root.glob("*.py"))
+
+        self.assertEqual(root_modules, ["__init__.py", "web_launcher.py"])
+        self.assertTrue((desktop_root / "launchers").is_dir())
+        self.assertTrue((desktop_root / "native").is_dir())
+        self.assertTrue((desktop_root / "cli").is_dir())
+
     def test_every_launcher_has_web_route(self) -> None:
         for tool, route in web_launcher.TOOL_ROUTES.items():
             with self.subTest(tool=tool):
@@ -51,8 +60,8 @@ class DesktopWebLauncherTests(unittest.TestCase):
                 module = importlib.import_module(module_name)
                 self.assertTrue(callable(getattr(module, "main", None)))
 
-    def test_standalone_histology_roi_tuner_is_web_launcher(self) -> None:
-        module = importlib.import_module("desktop_apps.histology_roi_tuner")
+    def test_histology_analysis_launcher_is_web_launcher(self) -> None:
+        module = importlib.import_module("desktop_apps.launchers.histology_analysis_gui")
 
         self.assertTrue(callable(getattr(module, "main", None)))
         self.assertFalse(hasattr(module, "HistologyRoiTunerApp"))

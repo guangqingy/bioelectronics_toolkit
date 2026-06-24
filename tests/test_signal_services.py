@@ -148,7 +148,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "move_files": False,
                     "dry_run": False,
                 },
-                has_abf=True,
                 pyabf_mod=FakePyabf,
                 float_or=lambda value, _default: float(value),
                 int_or=lambda value, _default: int(value),
@@ -201,7 +200,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "dry_run": False,
                     "segment_mode": "auto",
                 },
-                has_abf=True,
                 pyabf_mod=FakePyabf,
                 float_or=lambda value, _default: float(value),
                 int_or=lambda value, _default: int(value),
@@ -261,7 +259,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "segment_t1": 0.7,
                     "pure_csv": True,
                 },
-                has_abf=True,
                 pyabf_mod=FakePyabf,
                 float_or=lambda value, _default: float(value),
                 int_or=lambda value, _default: int(value),
@@ -318,7 +315,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "dry_run": False,
                     "segment_mode": "auto",
                 },
-                has_abf=True,
                 pyabf_mod=FakePyabf,
                 float_or=lambda value, _default: float(value),
                 int_or=lambda value, _default: int(value),
@@ -375,7 +371,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "dry_run": False,
                     "segment_mode": "auto",
                 },
-                has_abf=True,
                 pyabf_mod=FakePyabf,
                 float_or=lambda value, _default: float(value),
                 int_or=lambda value, _default: int(value),
@@ -787,7 +782,6 @@ class EmgServiceTests(unittest.TestCase):
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
             service = EmgPeaksService(
-                has_scipy=False,
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -815,7 +809,6 @@ class EmgServiceTests(unittest.TestCase):
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
             service = EmgPeaksService(
-                has_scipy=False,
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -842,7 +835,6 @@ class EmgServiceTests(unittest.TestCase):
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
             service = EmgPeaksService(
-                has_scipy=False,
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -895,7 +887,6 @@ class EmgServiceTests(unittest.TestCase):
             linked_path.write_text("\n".join(rows1) + "\n", encoding="utf-8")
 
             service = EmgPeaksService(
-                has_scipy=False,
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -943,7 +934,6 @@ class EmgServiceTests(unittest.TestCase):
             detect_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
             service = EmgPeaksService(
-                has_scipy=False,
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",

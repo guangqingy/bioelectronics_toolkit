@@ -97,8 +97,8 @@ def _write_preferences(path: Path, data: dict[str, Any]) -> None:
 
 
 def register_preferences_routes(app, ctx):
-    err = ctx["err"]
-    prefs_path = preferences_path(Path(ctx["BASE_DIR"]))
+    err = ctx.err
+    prefs_path = preferences_path(Path(ctx.BASE_DIR))
 
     @app.route("/api/preferences/get", methods=["POST"])
     @request_schema(PreferencesGetRequest)

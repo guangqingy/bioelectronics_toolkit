@@ -208,7 +208,7 @@ function renderPolygonList() {
     <div class="gif-roi-item">
       <span class="gif-roi-swatch" style="background:${p.color}"></span>
       <span class="gif-roi-name">${escHtml(p.label)}${p.label === bgLabel ? ' · BG' : ''} · ${p.points.length} pts</span>
-      <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" onclick="removePolygon(${i})">×</button>
+      <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" data-dp-click="removePolygon(${i})">×</button>
     </div>`);
   if (_draftPolygon) {
     rows.push(`
@@ -332,7 +332,7 @@ function renderCropRectList() {
     <div class="gif-roi-item">
       <span class="gif-roi-swatch" style="background:${r.color}"></span>
       <span class="gif-roi-name">${escHtml(r.label)} · ${Math.round(r.width)}×${Math.round(r.height)} px</span>
-      <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" onclick="removeCropRect(${i})">×</button>
+      <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" data-dp-click="removeCropRect(${i})">×</button>
     </div>`);
   if (_draftCropRect) {
     const r = normalizeRectObject(_draftCropRect);

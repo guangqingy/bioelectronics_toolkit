@@ -25,8 +25,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
     err = fl["err"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_pil = fl["has_pil"]
-    has_tiff = fl["has_tiff"]
     jobs = fl["jobs"]
 
     _fl_apply_gif_crop = fl["_fl_apply_gif_crop"]
@@ -63,8 +61,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
     @app.route("/api/fluorescence/gif_preview", methods=["POST"])
     @request_schema(FluorescenceGifPreviewRequest)
     def api_fl_gif_preview():
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
         try:
             d = parse_json_payload(FluorescenceGifPreviewRequest).model_dump()
         except ValidationError as exc:
@@ -153,9 +149,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
     @request_schema(FluorescenceGifExportPreviewRequest)
     def api_fl_gif_roi_export_preview(payload=None):
         """Save one GIF preview frame with polygon ROI overlays and a labeled scale bar."""
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
-
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceGifExportPreviewRequest).model_dump()
@@ -273,8 +266,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
     @app.route("/api/fluorescence/make_gif", methods=["POST"])
     @request_schema(FluorescenceGifRenderRequest)
     def api_fl_make_gif(payload=None):
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceGifRenderRequest).model_dump()
@@ -428,8 +419,6 @@ def register_fluorescence_gif_basic_routes(app, fl):
             show_roi_overlay: bool    — draw polygon ROI overlays when true
             output_path : str         — destination .gif path (optional)
         """
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceGifMergeRequest).model_dump()

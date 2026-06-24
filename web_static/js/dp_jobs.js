@@ -35,7 +35,7 @@ function renderBackgroundJobs(jobs) {
         </div>
         <div class="run-history-meta">${dpEscapeHtml(job.message || job.error || job.job_id || '')}</div>
         ${outputLine}
-        ${canCancel ? `<button class="btn-secondary btn-block" style="margin-top:6px" type="button" onclick="cancelBackgroundJob('${dpEscapeHtml(job.job_id || '')}')">Cancel</button>` : ''}
+        ${canCancel ? `<button class="btn-tertiary btn-block" style="margin-top:6px" type="button" data-dp-click="cancelBackgroundJob('${dpEscapeHtml(job.job_id || '')}')">Cancel</button>` : ''}
       </div>
     `;
   }).join('');

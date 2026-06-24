@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Sequence
 
 if __package__ in {None, ""}:
-    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from services.fluorescence.marker_roi import (  # noqa: F401 - compatibility re-export
     DEFAULT_OUTPUT_DIRNAME,
@@ -13,8 +13,10 @@ from services.fluorescence.marker_roi import (  # noqa: F401 - compatibility re-
     MarkerParams,
     analyze,
     build_arg_parser,
-    main as _service_main,
     run_parameter_tuning,
+)
+from services.fluorescence.marker_roi import (
+    main as _service_main,
 )
 
 

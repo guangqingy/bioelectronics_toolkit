@@ -161,12 +161,8 @@ function upsertResultCard(cardId, title, bodyHtml) {
 }
 
 window.addEventListener('load', () => {
-  if (!HAS_TIFF || !HAS_PIL) {
-    setStatus('status', 'tifffile and Pillow are required', 'error');
-  } else {
-    setStatus('status', 'Ready', 'ok');
-    renderAvailableTiffList();
-  }
+  setStatus('status', 'Ready', 'ok');
+  renderAvailableTiffList();
 });
 
 // DP.page exports for template event handlers.

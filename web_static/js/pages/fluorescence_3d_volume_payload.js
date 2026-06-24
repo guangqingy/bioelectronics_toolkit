@@ -88,7 +88,7 @@ window.dpApplyRunManifest = async manifest => {
     document.getElementById('volumeDensityMin').value = params.density_min_neighbors;
   }
   if (params.output_name) document.getElementById('outputName').value = params.output_name;
-  if (inputPath && HAS_TIFF) {
+  if (inputPath) {
     await loadTiffStack();
     if (params.channel_ranges && typeof params.channel_ranges === 'object') {
       Object.entries(params.channel_ranges).forEach(([idx, rec]) => {

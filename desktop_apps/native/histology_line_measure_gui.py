@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import argparse
 import sys
+import tkinter as tk
 from dataclasses import replace
 from pathlib import Path
+from tkinter import filedialog, messagebox, ttk
 from typing import Sequence
 
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-
 from PIL import Image, ImageOps, ImageTk
+
 from services.histology_line_measure import (
     Calibration,
     ImageMeasurements,
@@ -17,11 +17,12 @@ from services.histology_line_measure import (
     default_export_path,
     distance_px,
     find_image_files,
-    fmt_float as _fmt_float,
     measurement_rows,
     write_measurements_csv,
 )
-
+from services.histology_line_measure import (
+    fmt_float as _fmt_float,
+)
 
 ZOOM_MIN = 0.05
 ZOOM_MAX = 8.0
@@ -29,6 +30,13 @@ SHIFT_MASK = 0x0001
 LOCK_MASK = 0x0002
 SCROLL_PIXELS_PER_NOTCH = 80.0
 TRACKPAD_SCROLL_MULTIPLIER = 3.0
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _default_input_dir() -> Path:
+    examples_dir = PROJECT_ROOT / "examples"
+    return examples_dir if examples_dir.exists() else PROJECT_ROOT
 
 
 class HistologyLineMeasureApp:
@@ -227,13 +235,13 @@ class HistologyLineMeasureApp:
         return None
 
     def browse_folder(self) -> None:
-        folder = filedialog.askdirectory(initialdir=str(Path.cwd()))
+        folder = filedialog.askdirectory(initialdir=str(_default_input_dir()))
         if folder:
             self.load_images([folder])
 
     def browse_images(self) -> None:
         filenames = filedialog.askopenfilenames(
-            initialdir=str(Path.cwd()),
+            initialdir=str(_default_input_dir()),
             filetypes=[
                 ("Image files", "*.jpg *.jpeg *.png *.tif *.tiff *.bmp"),
                 ("All files", "*.*"),

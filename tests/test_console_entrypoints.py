@@ -47,19 +47,19 @@ class ConsoleEntrypointTests(unittest.TestCase):
 
         self.assertEqual(
             scripts.get("bte-fl-preview-export"),
-            "desktop_apps.fluorescence_preview_export_gui:main",
+            "desktop_apps.native.fluorescence_preview_export_gui:main",
         )
         self.assertEqual(
             scripts.get("bte-fl-manual-roi"),
-            "desktop_apps.fluorescence_manual_roi_gui:main",
+            "desktop_apps.native.fluorescence_manual_roi_gui:main",
         )
         self.assertEqual(
             scripts.get("bte-fl-marker-roi"),
-            "desktop_apps.fluorescence_marker_roi_analysis:main",
+            "desktop_apps.cli.fluorescence_marker_roi_analysis:main",
         )
         self.assertEqual(
             scripts.get("bte-histology-line-measure"),
-            "desktop_apps.histology_line_measure_gui:main",
+            "desktop_apps.native.histology_line_measure_gui:main",
         )
         self.assertEqual(
             scripts.get("bte-histology-analysis"),

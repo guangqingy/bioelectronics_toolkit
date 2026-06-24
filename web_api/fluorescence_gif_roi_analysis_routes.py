@@ -19,6 +19,7 @@ from .fluorescence_request_schemas import (
     FluorescenceGifRoiExportRequest,
 )
 from .jobs import route_response_to_payload, submit_json_task
+from .path_policy import resolve_output_dir
 from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
@@ -27,8 +28,6 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
     fig_to_b64 = fl["fig_to_b64"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_pil = fl["has_pil"]
-    has_tiff = fl["has_tiff"]
     jobs = fl["jobs"]
 
     _fl_apply_gif_crop = fl["_fl_apply_gif_crop"]
@@ -66,9 +65,6 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
     @request_schema(FluorescenceGifRoiAnalyzeRequest)
     def api_fl_gif_roi_analyze(payload=None):
         """Analyze polygon ROI fluorescence across the GIF queue timeline."""
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
-
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceGifRoiAnalyzeRequest).model_dump()
@@ -244,7 +240,11 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             df_out.to_csv(buf, index=False)
             csv_str = buf.getvalue()
 
-            default_output_dir = str(paths[0].parent) if paths else str(Path.cwd())
+            default_output_dir = (
+                str(paths[0].parent)
+                if paths
+                else str(resolve_output_dir("", "", "fluorescence_gif_roi"))
+            )
             return jsonify(
                 {
                     "ok": True,
@@ -319,9 +319,9 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
             if output_dir_raw:
                 out_dir = Path(output_dir_raw).expanduser()
                 if not out_dir.is_absolute():
-                    out_dir = (anchor or Path.cwd()) / out_dir
+                    out_dir = (anchor / out_dir) if anchor is not None else resolve_output_dir("", out_dir, "fluorescence_gif_roi")
             else:
-                out_dir = anchor or Path.cwd()
+                out_dir = anchor or resolve_output_dir("", "", "fluorescence_gif_roi")
             out_dir.mkdir(parents=True, exist_ok=True)
 
             saved_paths = []

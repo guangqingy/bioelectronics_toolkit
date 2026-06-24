@@ -58,9 +58,9 @@ class RunPackageRequest(RunManifestRequest):
 
 
 def register_run_history_routes(app, ctx):
-    err = ctx["err"]
-    base_dir = Path(ctx["BASE_DIR"])
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    base_dir = Path(ctx.BASE_DIR)
+    jobs = ctx.jobs
 
     def _json_or_error(func, *args):
         try:

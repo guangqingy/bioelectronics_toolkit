@@ -85,7 +85,7 @@ async function generateGif() {
         ${d.crop && d.crop.mode && d.crop.mode !== 'full' ? `<div style="font-size:12px;color:#555;margin-bottom:4px">Crop: <b>${escHtml(d.crop.width)}×${escHtml(d.crop.height)} px</b> from (${escHtml(d.crop.x)}, ${escHtml(d.crop.y)})</div>` : ''}
         <div style="font-size:12px;color:#555;margin-bottom:4px">Scale: <b>${escHtml(formatScaleInfo(d))}</b></div>
         <div style="font-size:12px;color:#555;margin-bottom:8px;word-break:break-all">Path: <code>${escHtml(d.output_path)}</code></div>
-        ${outDir ? `<button class="btn-secondary" onclick="openFolder('${escHtml(outDir)}')">Open Folder</button>` : ''}
+        ${outDir ? `<button class="btn-secondary" data-dp-click="openFolder('${escHtml(outDir)}')">Open Folder</button>` : ''}
       </div>`;
     recordRunHistory({
       view: 'fluorescence_gif',
@@ -194,7 +194,7 @@ async function exportGifRoiPreview() {
     _gifRoiDefaultOutputDir = d.output_dir || _gifRoiDefaultOutputDir;
 
     const openButton = d.output_dir
-      ? `<button class="btn-secondary" data-folder="${escHtml(d.output_dir)}" onclick="openFolder(this.dataset.folder)">Open Folder</button>`
+      ? `<button class="btn-secondary" data-folder="${escHtml(d.output_dir)}" data-dp-click="openFolder(this.dataset.folder)">Open Folder</button>`
       : '';
     const header =
       `ROI Preview <span style="font-weight:400;color:var(--silver)">` +

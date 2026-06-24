@@ -34,7 +34,7 @@ function dpTryGlobalAction(kind) {
       '#btnAnalyze',
       '#btnMergeExport',
       '#btnStackExport',
-      '[onclick="exportCSV()"]',
+      '[data-dp-click="exportCSV()"]',
     ];
     for (const sel of exportSelectors) {
       const btn = document.querySelector(sel);

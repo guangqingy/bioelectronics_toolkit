@@ -190,7 +190,7 @@ function updateTable() {
     const amp = (p.amp_det_V !== undefined) ? p.amp_det_V : (p.amplitude ?? p.height);
     const width = (p.width_ms !== undefined) ? p.width_ms : p.duration;
     const pol = p.polarity_label ?? ((p.polarity ?? 1) >= 0 ? 'Pos' : 'Neg');
-    return `<tr${rowStyle}><td>${i+1}</td><td>${num(p.time ?? p.t, 3)}</td><td>${pol}</td><td>${num(amp, 4)}</td><td>${num(width, 3)}</td><td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" onclick="togglePulseRemoved(${i})">${btnLabel}</button></td></tr>`;
+    return `<tr${rowStyle}><td>${i+1}</td><td>${num(p.time ?? p.t, 3)}</td><td>${pol}</td><td>${num(amp, 4)}</td><td>${num(width, 3)}</td><td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" data-dp-click="togglePulseRemoved(${i})">${btnLabel}</button></td></tr>`;
   }).join('');
 }
 

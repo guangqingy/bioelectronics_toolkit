@@ -2,7 +2,7 @@
 
 DataProcess Web is the Flask browser interface for the desktop-oriented
 bioelectronics toolkit. It wraps CSV, ABF, RHD, EMG, electrochemistry,
-fluorescence, histology, and pipeline scripts behind a consistent local UI.
+fluorescence, histology, and run history behind a consistent local UI.
 
 The app is intended to run on a trusted local machine:
 
@@ -23,9 +23,6 @@ This WebGUI is designed for **single-user local use** only.
 - The server binds to 127.0.0.1 by default, and the host browser is trusted.
 - The server process can read and write any file available to the running user.
 - One person uses one server instance at a time.
-- The Scripts panel executes local Python scripts with the same permissions as
-  the server process. Do not run scripts from untrusted sources.
-
 ### Non-assumptions
 
 - Do not bind to 0.0.0.0; there is no authentication layer.
@@ -39,14 +36,13 @@ access, request rate limiting, CORS review, and export-path restrictions.
 
 - Background jobs run through a bounded worker pool. Set
   `DP_JOB_MAX_WORKERS` to tune local concurrency; the default is `2`.
-- TIFF and image decode paths perform a pre-flight size estimate before loading.
-  Use `DP_MAX_IMAGE_PIXELS` and `DP_MAX_TIFF_BYTES` to raise limits deliberately
-  for a large trusted workstation.
+- TIFF and image decode paths perform a pre-flight size estimate before loading
+  and reject stacks above fixed local limits. Downsample or split unusually large
+  trusted files before loading them.
 - Fluorescence TIFF previews cache a small number of decoded pages by
   `(path, mtime, size, frame)`. Tune with `DP_TIFF_PAGE_CACHE_ITEMS` and
   `DP_TIFF_PAGE_CACHE_BYTES`.
-- CSV readers reject unexpectedly large files before full reads. Use
-  `DP_MAX_CSV_BYTES` when a known-large local export is intentional.
+- CSV readers reject unexpectedly large files before full reads.
 - Export routes default to non-overwrite behavior where supported; repeated runs
   create numbered filenames unless the caller explicitly requests overwrite.
 
@@ -57,6 +53,8 @@ DataProcess/
 ├── web_app.py                  # Flask composition root and page routes
 ├── desktop_apps/
 │   ├── launchers/              # thin source-tree launchers
+│   ├── native/                 # service-backed Tk helper windows
+│   ├── cli/                    # command-line compatibility wrappers
 │   ├── web_launcher.py         # maps tools to WebGUI routes
 ├── services/                   # Shared processing logic used by Web and desktop
 ├── web_api/                    # Domain API modules
@@ -105,16 +103,17 @@ Every JSON response under `/api/*` is wrapped by `web_api.response`:
 }
 ```
 
-The compatibility layer also copies old top-level fields such as `saved_path`
-or `img` so older pages keep working while newer code reads from `data`,
-`outputs`, `warnings`, and `error`.
+Legacy route payload fields such as `saved_path` or `img` stay inside `data`;
+the response root is reserved for envelope fields only. The shared browser
+`api()` helper flattens `data` for older page modules while the network
+contract remains stable.
 
 Output records are inferred from common legacy fields:
 
 - Single paths: `saved_path`, `output_path`, `csv_path`, `plot_path`,
   `summary_path`, `manifest_path`, `package_path`, `combined_tiff`, `output_dir`.
 - Path lists: `saved_paths`, `generated_files`, `stack_files`, `segment_paths`.
-- Record lists: `outputs` and script `artifacts`.
+- Record lists: `outputs`.
 
 Ambiguous source metadata paths are not inferred automatically. If an export
 creates a metadata sidecar, the route should return it explicitly in
@@ -240,7 +239,7 @@ Run these before committing WebGUI changes:
 
 ```bash
 python3 -m ruff check .
-python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
+python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
 python3 -m ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 bte-web --self-check

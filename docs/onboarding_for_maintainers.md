@@ -12,9 +12,10 @@ service modules.
 - `web_templates/`: Jinja templates for WebGUI views.
 - `web_static/`: shared CSS and JavaScript for the browser UI.
 - `services/`: reusable numerical and file-processing logic.
-- `pipelines/`: catalog of project-specific data workflows.
 - `desktop_apps/launchers/`: thin command launchers that open WebGUI pages.
-- `desktop_apps/`: service-backed native helpers that still need a desktop UI.
+- `desktop_apps/native/`: service-backed native helpers that still need a
+  desktop UI.
+- `desktop_apps/cli/`: small command-line compatibility wrappers.
 - `tests/`: service and WebGUI contract tests.
 
 ## Development Setup
@@ -37,8 +38,6 @@ python -m py_compile $(git ls-files '*.py')
 
 - Some workflows still have native desktop helper windows. Keep them thin and
   move analysis behavior into `services/` before expanding them.
-- Pipeline registry entries point to local project trees; public clones can see
-  the catalog but cannot run every workflow without the matching local data.
 - Some WebGUI templates still contain page-local JavaScript. Prefer extracting
   larger scripts into `web_static/js/pages/` when touching those pages.
 

@@ -11,19 +11,13 @@
 {% endblock %}
 
 {% block controls %}
-{% if not has_tiff or not has_pil %}
-<div class="ctrl-section">
-  <div class="status-bar status-error">tifffile and/or Pillow not installed. Install with: pip install tifffile Pillow</div>
-</div>
-{% else %}
-
 <div class="ctrl-section">
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/tiff/folder">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanGifFolder')">Browse</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('folderPath','scanGifFolder')">Browse</button>
   </div>
-  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="DP.page.scanGifFolder()">Scan TIFF Folder</button>
+  <button class="btn-secondary" style="width:100%;margin-top:8px" data-dp-click="DP.page.scanGifFolder()">Scan TIFF Folder</button>
 </div>
 
 <details class="ctrl-section ctrl-details">
@@ -34,8 +28,8 @@
   </div>
   <div id="availableTiffList" class="file-list gif-available-list"></div>
   <div class="btn-row" style="margin-top:8px">
-    <button class="btn-secondary" onclick="DP.page.addCheckedTiffs()">Add Checked</button>
-    <button class="btn-secondary" onclick="DP.page.clearTiffChecks()">Clear</button>
+    <button class="btn-secondary" data-dp-click="DP.page.addCheckedTiffs()">Add Checked</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.clearTiffChecks()">Clear</button>
   </div>
 </details>
 
@@ -47,8 +41,8 @@
   </div>
   <div id="tiffList" class="gif-file-list"></div>
   <div class="gif-stack-actions">
-    <button class="btn-secondary" onclick="DP.page.addTiffEntry()">+ TIFF</button>
-    <button class="btn-secondary" onclick="DP.page.scanFrameCounts()">Scan Queue</button>
+    <button class="btn-secondary" data-dp-click="DP.page.addTiffEntry()">+ TIFF</button>
+    <button class="btn-secondary" data-dp-click="DP.page.scanFrameCounts()">Scan Queue</button>
   </div>
 </details>
 
@@ -56,11 +50,11 @@
   <div class="ctrl-label">{{ 'GIF Parameters' if gif_page_mode == 'gif' else 'Preview Parameters' }}</div>
   <div class="param-row">
     <div class="param-label">FPS</div>
-    <input type="number" id="gifFps" class="input-sm" value="5" step="0.5" min="0.1" onchange="scheduleGifPreview()">
+    <input type="number" id="gifFps" class="input-sm" value="5" step="0.5" min="0.1" data-dp-change="scheduleGifPreview()">
   </div>
   <div class="param-row">
     <div class="param-label">LUT</div>
-    <select id="gifLut" class="input-sm" onchange="scheduleGifPreview()">
+    <select id="gifLut" class="input-sm" data-dp-change="scheduleGifPreview()">
       <option>Gray</option>
       <option>Red</option>
       <option>Green</option>
@@ -71,21 +65,21 @@
   </div>
   <div class="param-row">
     <div class="param-label">Bar µm</div>
-    <input type="number" id="gifBarUm" class="input-sm" value="10" step="1" min="0" onchange="scheduleGifPreview()">
+    <input type="number" id="gifBarUm" class="input-sm" value="10" step="1" min="0" data-dp-change="scheduleGifPreview()">
   </div>
   <label class="checkbox-row" style="margin-bottom:6px">
-    <input type="checkbox" id="gifAutoScale" checked onchange="toggleScaleMode(); scheduleGifPreview();">
+    <input type="checkbox" id="gifAutoScale" checked data-dp-change="toggleScaleMode(); scheduleGifPreview();">
     <span>Auto scale from JSON</span>
   </label>
   <div class="param-row" id="manualScaleRow">
     <div class="param-label">Manual px/µm</div>
-    <input type="number" id="gifPxPerUm" class="input-sm" value="3.45" step="0.01" min="0.01" onchange="scheduleGifPreview()">
+    <input type="number" id="gifPxPerUm" class="input-sm" value="3.45" step="0.01" min="0.01" data-dp-change="scheduleGifPreview()">
   </div>
   <details class="ctrl-details">
     <summary class="ctrl-label">Preview Label</summary>
     <div class="param-row">
       <div class="param-label">Label</div>
-      <select id="gifLabelMode" class="input-sm" onchange="scheduleGifPreview()">
+      <select id="gifLabelMode" class="input-sm" data-dp-change="scheduleGifPreview()">
         <option value="frame" selected>Frame #</option>
         <option value="time">Time (s)</option>
         <option value="none">None</option>
@@ -95,36 +89,36 @@
   {% if gif_page_mode == 'gif' %}
   <div class="param-row">
     <div class="param-label">Crop</div>
-    <select id="gifCropMode" class="input-sm" onchange="updateGifCropControls(); scheduleGifPreview()">
+    <select id="gifCropMode" class="input-sm" data-dp-change="updateGifCropControls(); scheduleGifPreview()">
       <option value="full" selected>Full frame</option>
       <option value="selected_rect">ROI2 rectangle</option>
     </select>
   </div>
   <div class="param-row" id="gifCropRoiRow" style="display:none">
     <div class="param-label">Crop ROI2</div>
-    <select id="gifCropRoiSelect" class="input-sm" onchange="scheduleGifPreview()"></select>
+    <select id="gifCropRoiSelect" class="input-sm" data-dp-change="scheduleGifPreview()"></select>
   </div>
   <div class="param-row" id="gifCropPadRow" style="display:none">
     <div class="param-label">Padding px</div>
-    <input type="number" id="gifCropPadding" class="input-sm" value="8" step="1" min="0" onchange="scheduleGifPreview()">
+    <input type="number" id="gifCropPadding" class="input-sm" value="8" step="1" min="0" data-dp-change="scheduleGifPreview()">
   </div>
   <label class="checkbox-row" style="margin-bottom:6px">
-    <input type="checkbox" id="gifShowRoiOverlay" onchange="scheduleGifPreview()">
+    <input type="checkbox" id="gifShowRoiOverlay" data-dp-change="scheduleGifPreview()">
     <span>Mark ROI in GIF</span>
   </label>
   <div class="param-row">
     <div class="param-label">Output</div>
     <input type="text" id="gifOutput" placeholder="(auto — based on first TIFF)" style="font-size:11.5px">
   </div>
-  <button class="btn-primary" id="btnGenerate" onclick="DP.page.generateGif()" style="width:100%;margin-top:8px">Generate GIF</button>
+  <button class="btn-primary" id="btnGenerate" data-dp-click="DP.page.generateGif()" style="width:100%;margin-top:8px">Generate GIF</button>
   {% endif %}
 </div>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Advanced: Page Settings</summary>
   <div class="btn-row">
-    <button class="btn-secondary" type="button" onclick="DP.page.saveGifDefaults()">Save Defaults</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.resetGifDefaults()">Reset</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGifDefaults()">Save Defaults</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.resetGifDefaults()">Reset</button>
   </div>
   <div class="status-bar" id="gifPrefsStatus"></div>
 </details>
@@ -132,15 +126,15 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Advanced: File Profile</summary>
   <div class="input-group">
-    <select id="gifFileProfileSelect" onchange="loadSelectedGifFileProfile(false)">
+    <select id="gifFileProfileSelect" data-dp-change="loadSelectedGifFileProfile(false)">
       <option value="">No file selected</option>
     </select>
     <div class="btn-row">
-      <button class="btn-secondary" type="button" onclick="DP.page.loadSelectedGifFileProfile(false)">Load</button>
-      <button class="btn-secondary" type="button" onclick="DP.page.saveGifFileProfile(false)">Save</button>
-      <button class="btn-secondary" type="button" onclick="DP.page.saveGifFileProfile(true)">Save As</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.loadSelectedGifFileProfile(false)">Load</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGifFileProfile(false)">Save</button>
+      <button class="btn-secondary" type="button" data-dp-click="DP.page.saveGifFileProfile(true)">Save As</button>
     </div>
-    <button class="btn-secondary btn-block" type="button" onclick="DP.page.deleteSelectedGifFileProfile()">Delete Profile</button>
+    <button class="btn-tertiary btn-block" type="button" data-dp-click="DP.page.deleteSelectedGifFileProfile()">Delete Profile</button>
     <label class="checkbox-row">
       <input type="checkbox" id="gifAutoLoadProfile" checked>
       <span>Auto-load profile for selected TIFF</span>
@@ -154,15 +148,15 @@
   <summary class="ctrl-label">ROI Polygon</summary>
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI Polygon</span>
-    <button class="btn-secondary" style="font-size:11px;padding:2px 8px" onclick="DP.page.startPolygon()">+ Polygon</button>
+    <button class="btn-secondary" style="font-size:11px;padding:2px 8px" data-dp-click="DP.page.startPolygon()">+ Polygon</button>
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.finishPolygonDrawing()">Done Drawing</button>
-    <button class="btn-secondary" onclick="DP.page.undoPolygonPoint()">Undo Point</button>
+    <button class="btn-secondary" data-dp-click="DP.page.finishPolygonDrawing()">Done Drawing</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.undoPolygonPoint()">Undo Point</button>
   </div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" onclick="DP.page.clearPolygons()">Clear ROI</button>
-    <button class="btn-secondary" id="btnExportGifRoiPreview" onclick="DP.page.exportGifRoiPreview()">Export ROI Preview</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.clearPolygons()">Clear ROI</button>
+    <button class="btn-secondary" id="btnExportGifRoiPreview" data-dp-click="DP.page.exportGifRoiPreview()">Export ROI Preview</button>
   </div>
   <div id="polygonHint" class="status-bar" style="padding-top:6px">Click + Polygon, then click the preview image to add points.</div>
   <div id="polygonList" class="gif-roi-list"></div>
@@ -174,10 +168,10 @@
   <summary class="ctrl-label">ROI2 Crop Rectangle</summary>
   <div class="ctrl-label" style="display:flex;justify-content:space-between;align-items:center">
     <span>ROI2 Crop Rectangle</span>
-    <button class="btn-secondary" style="font-size:11px;padding:2px 8px" onclick="DP.page.startCropRect()">+ Rectangle</button>
+    <button class="btn-secondary" style="font-size:11px;padding:2px 8px" data-dp-click="DP.page.startCropRect()">+ Rectangle</button>
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.clearCropRects()">Clear ROI2</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.clearCropRects()">Clear ROI2</button>
   </div>
   <div id="cropRectHint" class="status-bar" style="padding-top:6px">Click + Rectangle, then drag on the preview image.</div>
   <div id="cropRectList" class="gif-roi-list"></div>
@@ -189,7 +183,7 @@
   <div class="ctrl-label">ROI Time Analysis</div>
   <div class="param-row">
     <div class="param-label">BG mode</div>
-    <select id="gifBgMode" onchange="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
+    <select id="gifBgMode" data-dp-change="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
       <option value="none">None</option>
       <option value="corner_br">Corner (bottom-right)</option>
       <option value="corner_tl">Corner (top-left)</option>
@@ -198,7 +192,7 @@
   </div>
   <div id="gifBgRoiRow" class="param-row" style="display:none">
     <div class="param-label">BG ROI</div>
-    <select id="gifBgRoiSelect" onchange="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
+    <select id="gifBgRoiSelect" data-dp-change="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
   </div>
   <div class="param-row">
     <div class="param-label">Metric</div>
@@ -227,13 +221,13 @@
     <div class="param-label">Prefix</div>
     <input type="text" id="gifRoiPrefix" value="gif_roi_time_analysis" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
-  <button class="btn-secondary" id="btnAnalyzeGifRoi" onclick="DP.page.runGifRoiAnalysis()" style="width:100%;margin-top:4px">Analyze ROI Time</button>
+  <button class="btn-secondary" id="btnAnalyzeGifRoi" data-dp-click="DP.page.runGifRoiAnalysis()" style="width:100%;margin-top:4px">Analyze ROI Time</button>
   <div id="gifRoiExportSection" style="display:none;margin-top:8px">
     <div class="btn-row">
-      <button class="btn-secondary" onclick="DP.page.exportGifRoiCSV()">Export CSV</button>
-      <button class="btn-secondary" onclick="DP.page.exportGifRoiPlotPNG()">Export PNG</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifRoiCSV()">Export CSV</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifRoiPlotPNG()">Export PNG</button>
     </div>
-    <button class="btn-secondary" onclick="DP.page.exportGifRoiAll()" style="width:100%;margin-top:6px">Export Both</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportGifRoiAll()" style="width:100%;margin-top:6px">Export Both</button>
   </div>
 </div>
 {% endif %}
@@ -243,7 +237,7 @@
   <div class="ctrl-label">Background</div>
   <div class="param-row">
     <div class="param-label">BG mode</div>
-    <select id="gifBgMode" onchange="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
+    <select id="gifBgMode" data-dp-change="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
       <option value="none">None</option>
       <option value="corner_br">Corner (bottom-right)</option>
       <option value="corner_tl">Corner (top-left)</option>
@@ -252,7 +246,7 @@
   </div>
   <div id="gifBgRoiRow" class="param-row" style="display:none">
     <div class="param-label">BG ROI</div>
-    <select id="gifBgRoiSelect" onchange="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
+    <select id="gifBgRoiSelect" data-dp-change="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
   </div>
 </div>
 
@@ -331,15 +325,15 @@
     <div class="param-label">Prefix</div>
     <input type="text" id="gifKymoPrefix" value="gif_roi_kymograph" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
-  <button class="btn-secondary" id="btnRunGifKymo" onclick="DP.page.runGifKymograph()" style="width:100%;margin-top:4px">Run Kymograph</button>
+  <button class="btn-secondary" id="btnRunGifKymo" data-dp-click="DP.page.runGifKymograph()" style="width:100%;margin-top:4px">Run Kymograph</button>
   <div id="gifKymoExportSection" style="display:none;margin-top:8px">
     <div class="btn-row">
-      <button class="btn-secondary" onclick="DP.page.exportGifKymoPlotPNG()">Export Plot</button>
-      <button class="btn-secondary" onclick="DP.page.exportGifKymoHeatmapCSV()">Export Heatmap CSV</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifKymoPlotPNG()">Export Plot</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifKymoHeatmapCSV()">Export Heatmap CSV</button>
     </div>
     <div class="btn-row" style="margin-top:6px">
-      <button class="btn-secondary" onclick="DP.page.exportGifKymoSummaryCSV()">Export Summary CSV</button>
-      <button class="btn-secondary" onclick="DP.page.exportGifKymoAll()">Export All</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifKymoSummaryCSV()">Export Summary CSV</button>
+      <button class="btn-secondary" data-dp-click="DP.page.exportGifKymoAll()">Export All</button>
     </div>
   </div>
   <div class="status-bar" style="padding-top:6px">Uses the background setting above.</div>
@@ -347,7 +341,6 @@
 {% endif %}
 
 <div id="status" class="status-bar"></div>
-{% endif %}
 {% endblock %}
 
 {% block main %}

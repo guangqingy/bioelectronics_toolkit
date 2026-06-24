@@ -29,8 +29,6 @@ def register_fluorescence_roi_basic_routes(app, fl):
     fig_to_b64 = fl["fig_to_b64"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_pil = fl["has_pil"]
-    has_tiff = fl["has_tiff"]
     tifflib = fl["tifflib"]
 
     _fl_bool = fl["_fl_bool"]
@@ -68,8 +66,6 @@ def register_fluorescence_roi_basic_routes(app, fl):
     @app.route("/api/fluorescence/roi/browse", methods=["POST"])
     @request_schema(FluorescenceRoiBrowseRequest)
     def api_fl_roi_browse():
-        if not has_tiff:
-            return err("tifffile not installed")
         try:
             folder = parse_json_payload(FluorescenceRoiBrowseRequest).folder
         except ValidationError as exc:
@@ -83,8 +79,6 @@ def register_fluorescence_roi_basic_routes(app, fl):
     @app.route("/api/fluorescence/roi/load_stack", methods=["POST"])
     @request_schema(FluorescenceRoiLoadStackRequest)
     def api_fl_roi_load_stack():
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
         try:
             payload = parse_json_payload(FluorescenceRoiLoadStackRequest)
             stack_path = payload.stack_path
@@ -111,8 +105,6 @@ def register_fluorescence_roi_basic_routes(app, fl):
     @app.route("/api/fluorescence/roi/analyze", methods=["POST"])
     @request_schema(FluorescenceRoiAnalyzeRequest)
     def api_fl_roi_analyze():
-        if not has_tiff:
-            return err("tifffile not installed")
         try:
             d = parse_json_payload(FluorescenceRoiAnalyzeRequest).model_dump()
         except ValidationError as exc:

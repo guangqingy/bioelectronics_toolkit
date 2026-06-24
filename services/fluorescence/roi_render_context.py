@@ -8,12 +8,12 @@ from matplotlib.patches import Circle, Rectangle
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
 from services.matplotlib_utils import new_subplots
+from services.output_naming import resolve_output_dir
 
 
 def build_roi_render_context(
     *,
     tifflib,
-    has_pil: bool,
     image_mod,
     image_draw_mod,
     image_font_mod,
@@ -51,12 +51,12 @@ def build_roi_render_context(
             if not p_out.is_absolute() and anchor is not None:
                 p_out = anchor / p_out
             elif not p_out.is_absolute():
-                p_out = Path.cwd() / p_out
+                p_out = resolve_output_dir(default_suffix="fluorescence_roi") / p_out
             return p_out
 
         if anchor is not None:
             return anchor
-        return Path.cwd()
+        return resolve_output_dir(default_suffix="fluorescence_roi")
 
     def _fl_roi_render_reference_preview(
         preview_path: str,
@@ -198,7 +198,7 @@ def build_roi_render_context(
         }
 
     def _fl_get_pil_font(size_px: int):
-        if not has_pil or image_font_mod is None:
+        if image_font_mod is None:
             return None
         size_px = max(10, int(size_px))
         for font_name in ["DejaVuSans-Bold.ttf", "Arial.ttf"]:

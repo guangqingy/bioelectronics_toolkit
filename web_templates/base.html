@@ -26,7 +26,7 @@
       <pre id="errorBannerDetailsText"></pre>
     </details>
   </div>
-  <button class="btn-icon error-banner-close" type="button" onclick="DP.dom.dismissErrorBanner()">Dismiss</button>
+  <button class="btn-icon error-banner-close" type="button" data-dp-click="DP.dom.dismissErrorBanner()">Dismiss</button>
 </div>
 
 <!-- ─── Page body ─── -->
@@ -54,7 +54,7 @@
         <div class="modal-title" id="shortcutTitle">Keyboard Shortcuts</div>
         <div class="prefs-sub">Available everywhere unless a text field has focus.</div>
       </div>
-      <button class="btn-icon" type="button" onclick="DP.dom.closeShortcutModal()">Close</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.dom.closeShortcutModal()">Close</button>
     </div>
     <div class="modal-body">
       <div class="shortcut-grid">
@@ -70,17 +70,17 @@
   </div>
 </div>
 
-<div id="commandPalette" class="modal-overlay" aria-hidden="true" onclick="if(event.target===this) DP.palette.close()">
+<div id="commandPalette" class="modal-overlay" aria-hidden="true" data-dp-click="if(event.target===this) DP.palette.close()">
   <div class="modal-card command-card" role="dialog" aria-modal="true" aria-labelledby="commandTitle">
     <div class="modal-header">
       <div>
         <div class="modal-title" id="commandTitle">Command Palette</div>
-        <div class="prefs-sub">Jump to tools, demos, pipeline categories, and repository utilities.</div>
+      <div class="prefs-sub">Jump to tools, demos, run history, and repository utilities.</div>
       </div>
-      <button class="btn-icon" type="button" onclick="DP.palette.close()">Close</button>
+      <button class="btn-icon" type="button" data-dp-click="DP.palette.close()">Close</button>
     </div>
     <div class="modal-body">
-      <input id="commandSearch" class="command-search" type="search" placeholder="Search tools, demos, or pipelines" autocomplete="off">
+      <input id="commandSearch" class="command-search" type="search" placeholder="Search tools, demos, or history" autocomplete="off">
       <div id="commandList" class="command-list" role="listbox"></div>
     </div>
   </div>
@@ -98,7 +98,7 @@ const CURRENT_VIEW = {{ (active|default('index')) | tojson }};
 const DEFAULT_DATA_DIR = {{ default_data_dir | tojson }};
 const DEFAULT_EXAMPLES_DIR = {{ default_examples_dir | tojson }};
 const DEMO_MODE = new URLSearchParams(window.location.search).get('demo') || '';
-const GENERIC_SETTINGS_ENABLED = {{ ((active|default('index')) not in ['scripts', 'run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph']) | tojson }} && !DEMO_MODE;
+const GENERIC_SETTINGS_ENABLED = {{ ((active|default('index')) not in ['run_history', 'fluorescence', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph']) | tojson }} && !DEMO_MODE;
 const GENERIC_FILE_PROFILE_ENABLED = {{ ((active|default('index')) in ['csv_viewer', 'abf_viewer', 'echem_pc', 'echem_pv', 'rhd_viewer', 'emg_peaks']) | tojson }} && !DEMO_MODE;
 let _prefsCache = null;
 let _prefsPath = '';
@@ -107,6 +107,7 @@ let _genericFileProfileState = null;
 
 </script>
 <script defer src="{{ static_asset('js/dp_settings_schema.js') }}"></script>
+<script defer src="{{ static_asset('js/dp_events.js') }}"></script>
 <script defer src="{{ static_asset('js/dp_dom.js') }}"></script>
 <script defer src="{{ static_asset('js/dp_live_folder.js') }}"></script>
 <script defer src="{{ static_asset('js/dp_telemetry.js') }}"></script>

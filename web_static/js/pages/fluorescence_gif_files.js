@@ -86,11 +86,11 @@ function renderAvailableTiffList() {
     const info = f.info || {};
     const meta = info.n_frames ? `${info.n_frames}f · ${shortScaleInfo(info) || 'scale pending'}` : 'not scanned';
     return `
-      <div class="file-item gif-available-item ${active}" onclick="selectAvailableTiff(${i})">
-        <input type="checkbox" ${checked} onclick="event.stopPropagation()" onchange="toggleTiffCheck(${i}, this.checked)">
+      <div class="file-item gif-available-item ${active}" data-dp-click="selectAvailableTiff(${i})">
+        <input type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="toggleTiffCheck(${i}, this.checked)">
         <span class="gif-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
         <span class="gif-available-meta">${escHtml(meta)}</span>
-        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" onclick="event.stopPropagation();addAvailableByIndex(${i})">Add</button>
+        <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addAvailableByIndex(${i})">Add</button>
       </div>`;
   }).join('');
 }
@@ -332,18 +332,18 @@ function renderTiffList() {
         <span class="gif-mini-label">File</span>
         <input type="text" value="${escHtml(e.path)}"
                placeholder="/path/to/file.tif"
-               oninput="updateTiffPath('${e.id}', this.value)">
-        <button class="btn-icon" title="Choose TIFF" onclick="pickTiffFile('${e.id}')">⌕</button>
+ data-dp-input="updateTiffPath('${e.id}', this.value)">
+        <button class="btn-icon" title="Choose TIFF" data-dp-click="pickTiffFile('${e.id}')">⌕</button>
       </div>
       <div class="gif-slice-row">
         <span class="gif-mini-label">Slices</span>
         <input type="text" value="${escHtml(e.slices || '')}"
                placeholder="all or 1-20,25,30-40:2"
-               oninput="updateSliceSpec('${e.id}', this.value)">
+ data-dp-input="updateSliceSpec('${e.id}', this.value)">
         <div class="gif-row-actions">
-          <button class="btn-icon" title="Move up"   onclick="moveTiffEntry('${e.id}', -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button class="btn-icon" title="Move down" onclick="moveTiffEntry('${e.id}', +1)" ${i === _tiffEntries.length-1 ? 'disabled' : ''}>↓</button>
-          <button class="btn-icon btn-danger" title="Remove" onclick="removeTiffEntry('${e.id}')">×</button>
+          <button class="btn-icon" title="Move up" data-dp-click="moveTiffEntry('${e.id}', -1)" ${i === 0 ? 'disabled' : ''}>↑</button>
+          <button class="btn-icon" title="Move down" data-dp-click="moveTiffEntry('${e.id}', +1)" ${i === _tiffEntries.length-1 ? 'disabled' : ''}>↓</button>
+          <button class="btn-icon btn-danger" title="Remove" data-dp-click="removeTiffEntry('${e.id}')">×</button>
         </div>
       </div>
     </div>`;

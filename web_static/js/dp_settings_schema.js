@@ -21,7 +21,6 @@ const SETTINGS_VIEW_ORDER = [
   'fluorescence_kymograph',
   'histology_naming',
   'histology_analysis',
-  'scripts',
   'run_history',
 ];
 
@@ -47,7 +46,6 @@ const SETTINGS_VIEW_LABELS = {
   fluorescence_kymograph: 'Fluorescence Kymograph',
   histology_naming: 'Histology Naming',
   histology_analysis: 'Histology ROI Analysis',
-  scripts: 'Pipelines',
   run_history: 'Run History',
 };
 
@@ -71,7 +69,6 @@ const VIEW_URLS = {
   fluorescence_kymograph: '/fluorescence/kymograph',
   histology_naming: '/histology/naming',
   histology_analysis: '/histology/analysis',
-  scripts: '/scripts',
   run_history: '/runs',
 };
 
@@ -190,9 +187,5 @@ const SETTINGS_SCHEMAS = {
     {section: 'Channels'}, {id: 'dapiChannel', label: 'DAPI channel', type: 'select'}, {id: 'smaChannel', label: 'SMA channel', type: 'select'}, {id: 'macrophageChannel', label: 'Macrophage channel', type: 'select'},
     {section: 'Detection'}, {id: 'smaThresholdMethod', label: 'SMA threshold method', type: 'select'}, {id: 'smaThreshold', label: 'SMA threshold', type: 'number'}, {id: 'macrophageThresholdMethod', label: 'Mac threshold method', type: 'select'}, {id: 'macrophageThreshold', label: 'Mac threshold', type: 'number'}, {id: 'dapiThresholdMethod', label: 'DAPI threshold method', type: 'select'}, {id: 'dapiThreshold', label: 'DAPI threshold', type: 'number'}, {id: 'dapiMaskEnabled', label: 'Restrict to DAPI mask', type: 'checkbox'},
     {section: 'Advanced Detection'}, {id: 'backgroundMode', label: 'Background correction', type: 'select'}, {id: 'backgroundPercentile', label: 'Background percentile', type: 'number'}, {id: 'smoothSigma', label: 'Smooth sigma', type: 'number'}, {id: 'minPositiveArea', label: 'Minimum positive area', type: 'number'}, {id: 'thresholdPercentile', label: 'Threshold percentile', type: 'number'}, {id: 'thresholdStdK', label: 'Threshold SD k', type: 'number'}, {id: 'dapiDilatePx', label: 'DAPI dilate px', type: 'number'},
-  ],
-  scripts: [
-    {section: 'Paths'}, {id: 'dataDir', label: 'Default pipeline data folder', type: 'path'}, {id: 'outputDir', label: 'Default output folder', type: 'path'},
-    {section: 'Browsing'}, {id: 'catSelect', label: 'Default pipeline group', type: 'select', options: [['photocurrent', 'Photocurrent'], ['emg', 'EMG'], ['echem_curves', 'Echem Curves'], ['viability', 'Viability']]},
   ],
 };

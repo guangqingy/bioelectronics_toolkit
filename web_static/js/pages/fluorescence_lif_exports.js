@@ -49,10 +49,6 @@ function exportSelectedTiff() {
     setStatus('status', 'No subfile selected', 'error');
     return;
   }
-  if (!HAS_TIFF) {
-    setStatus('status', 'tifffile is not installed', 'error');
-    return;
-  }
   const outputName = syncRenameFromInput();
   renderLifBrowser();
   btnBusy('btnExportTiff', true, 'Exporting...');
@@ -91,10 +87,6 @@ function exportSelectedTiff() {
 function exportAllTiff() {
   if (!_lifPath || !_lifDisplayRecords.length) {
     setStatus('status', 'No LIF project loaded', 'error');
-    return;
-  }
-  if (!HAS_TIFF) {
-    setStatus('status', 'tifffile is not installed', 'error');
     return;
   }
   syncRenameFromInput();
@@ -168,15 +160,7 @@ function upsertResultCard(cardId, title, bodyHtml) {
 }
 
 window.addEventListener('load', () => {
-  if (!HAS_READLIF) {
-    setStatus('status', 'readlif is not installed: python -m pip install readlif', 'error');
-  } else if (!HAS_PIL) {
-    setStatus('status', 'Pillow is not installed', 'error');
-  } else if (!HAS_TIFF) {
-    setStatus('status', 'tifffile is not installed: TIFF export is disabled', 'error');
-  } else {
-    setStatus('status', 'Ready', 'ok');
-  }
+  setStatus('status', 'Ready', 'ok');
 });
 
 // DP.page exports for template event handlers.

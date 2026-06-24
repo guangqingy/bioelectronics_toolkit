@@ -38,7 +38,7 @@ Run locally:
 
 ```bash
 ruff check .
-ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
+ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
 ruff check web_api --select F --ignore E402
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 bte-web --self-check
@@ -93,8 +93,6 @@ into the planning or coding session.
 11. Send blocking errors through the persistent error banner, use toast messages
    for short-lived success feedback, and prefer `setStatus(...)` for inline
    page state.
-12. For Pipeline Runner entries, use stable `snake_case` script IDs and do not
-   rename them once saved settings or run manifests may exist.
 
 ## Adding a new web blueprint
 

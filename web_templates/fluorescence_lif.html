@@ -6,9 +6,9 @@
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/lif/data">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','scanLifFolder')">Browse Folder</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('folderPath','scanLifFolder')">Browse Folder</button>
   </div>
-  <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="DP.page.scanLifFolder()">Scan .lif Files</button>
+  <button class="btn-secondary" style="width:100%;margin-top:8px" data-dp-click="DP.page.scanLifFolder()">Scan .lif Files</button>
 </div>
 
 <div class="ctrl-section">
@@ -20,24 +20,24 @@
   <div class="ctrl-label">Selected Project</div>
   <div class="input-row">
     <input type="text" id="lifPath" class="input-path" placeholder="/path/to/project.lif">
-    <button class="btn-icon" onclick="DP.folder.pickFile('lifPath','loadLifProject')">Browse File</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pickFile('lifPath','loadLifProject')">Browse File</button>
   </div>
-  <button class="btn-primary" id="btnLoadLif" data-label="Load Project" onclick="DP.page.loadLifProject()" style="margin-top:8px">Load Project</button>
+  <button class="btn-primary" id="btnLoadLif" data-label="Load Project" data-dp-click="DP.page.loadLifProject()" style="margin-top:8px">Load Project</button>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Project Order</div>
   <div class="param-row">
     <div class="param-label">Sort</div>
-    <select id="sortMode" onchange="onSortChange()" style="flex:1">
+    <select id="sortMode" data-dp-change="onSortChange()" style="flex:1">
       <option value="time" selected>Acquisition time</option>
       <option value="original">Leica project order</option>
       <option value="name">Name</option>
     </select>
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" id="btnManifest" onclick="DP.page.exportLifManifest()" disabled>Export CSV</button>
-    <button class="btn-secondary" id="btnExportAllTiff" onclick="DP.page.exportAllTiff()" disabled>Export All TIFF</button>
+    <button class="btn-secondary" id="btnManifest" data-dp-click="DP.page.exportLifManifest()" disabled>Export CSV</button>
+    <button class="btn-secondary" id="btnExportAllTiff" data-dp-click="DP.page.exportAllTiff()" disabled>Export All TIFF</button>
   </div>
 </div>
 
@@ -53,7 +53,7 @@
   <div class="ctrl-label">Preview</div>
   <div class="param-row">
     <div class="param-label">LUT</div>
-    <select id="lutSelect" class="input-sm" onchange="refreshLifPreview()">
+    <select id="lutSelect" class="input-sm" data-dp-change="refreshLifPreview()">
       <option>Gray</option>
       <option>Red</option>
       <option>Green</option>
@@ -65,30 +65,30 @@
   </div>
   <div class="param-row">
     <div class="param-label" title="Lower percentile for contrast stretching">Lo %</div>
-    <input type="number" id="pLow" class="input-sm" value="1" step="0.5" min="0" max="49" onchange="refreshLifPreview()">
+    <input type="number" id="pLow" class="input-sm" value="1" step="0.5" min="0" max="49" data-dp-change="refreshLifPreview()">
   </div>
   <div class="param-row">
     <div class="param-label" title="Upper percentile for contrast stretching">Hi %</div>
-    <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" onchange="refreshLifPreview()">
+    <input type="number" id="pHigh" class="input-sm" value="99" step="0.5" min="51" max="100" data-dp-change="refreshLifPreview()">
   </div>
   <div class="lif-slider-row">
     <span>C</span>
-    <input type="range" id="cSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <input type="range" id="cSlider" min="0" max="0" value="0" data-dp-input="onLifDimSlide()">
     <span id="cLabel">1 / 1</span>
   </div>
   <div class="lif-slider-row">
     <span>Z</span>
-    <input type="range" id="zSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <input type="range" id="zSlider" min="0" max="0" value="0" data-dp-input="onLifDimSlide()">
     <span id="zLabel">1 / 1</span>
   </div>
   <div class="lif-slider-row">
     <span>T</span>
-    <input type="range" id="tSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <input type="range" id="tSlider" min="0" max="0" value="0" data-dp-input="onLifDimSlide()">
     <span id="tLabel">1 / 1</span>
   </div>
   <div class="lif-slider-row">
     <span>M</span>
-    <input type="range" id="mSlider" min="0" max="0" value="0" oninput="onLifDimSlide()">
+    <input type="range" id="mSlider" min="0" max="0" value="0" data-dp-input="onLifDimSlide()">
     <span id="mLabel">1 / 1</span>
   </div>
   <div id="extraDimControls"></div>
@@ -130,13 +130,6 @@
 {% endblock %}
 
 {% block scripts %}
-<script>
-window.LIF_VIEWER_FLAGS = {
-  hasReadlif: {{ has_readlif | tojson }},
-  hasPil: {{ has_pil | tojson }},
-  hasTiff: {{ has_tiff | tojson }},
-};
-</script>
 <script defer src="{{ static_asset('js/pages/fluorescence_lif_state.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/fluorescence_lif_files.js') }}"></script>
 <script defer src="{{ static_asset('js/pages/fluorescence_lif_preview.js') }}"></script>

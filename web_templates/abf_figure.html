@@ -7,33 +7,33 @@
   <div class="ctrl-label">Main Folder</div>
   <div class="input-row">
     <input type="text" id="mainFolder" class="input-path" placeholder="/path/to/parent/folder">
-    <button class="btn-icon" onclick="DP.folder.pick('mainFolder','browseMain')" title="Browse folder">Browse</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('mainFolder','browseMain')" title="Browse folder">Browse</button>
   </div>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Available Subfolders</div>
   <div id="subList" class="file-list" style="max-height:150px; overflow-y:auto;"></div>
-  <button class="btn-secondary" onclick="DP.page.addSelectedSubfolder()" style="width:100%; margin-top:8px;">Add To Queue</button>
+  <button class="btn-secondary" data-dp-click="DP.page.addSelectedSubfolder()" style="width:100%; margin-top:8px;">Add To Queue</button>
 </div>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Queue</div>
   <div id="queueList" class="file-list" style="max-height:120px;"></div>
   <div class="input-row" style="margin-top:8px; gap:6px;">
-    <button class="btn-secondary" onclick="DP.page.removeSelectedQueue()" style="flex:1;">Remove</button>
-    <button class="btn-secondary" onclick="DP.page.moveQueue(-1)" style="flex:1;">Up</button>
-    <button class="btn-secondary" onclick="DP.page.moveQueue(1)" style="flex:1;">Down</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.removeSelectedQueue()" style="flex:1;">Remove</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.moveQueue(-1)" style="flex:1;">Up</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.moveQueue(1)" style="flex:1;">Down</button>
   </div>
-  <button class="btn-secondary" onclick="DP.page.clearQueue()" style="width:100%; margin-top:8px;">Clear Queue</button>
+  <button class="btn-tertiary" data-dp-click="DP.page.clearQueue()" style="width:100%; margin-top:8px;">Clear Queue</button>
 </div>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Queue Label</summary>
   <input type="text" id="queueLabel" class="input-path" placeholder="Custom label for selected queue item">
   <div class="input-row" style="margin-top:8px; gap:6px;">
-    <button class="btn-secondary" onclick="DP.page.setLabel()" style="flex:1;">Set Label</button>
-    <button class="btn-secondary" onclick="DP.page.useFolderName()" style="flex:1;">Use Folder Name</button>
+    <button class="btn-secondary" data-dp-click="DP.page.setLabel()" style="flex:1;">Set Label</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.useFolderName()" style="flex:1;">Use Folder Name</button>
   </div>
 </details>
 
@@ -58,10 +58,10 @@
   <input type="text" id="xLog" class="input-path" placeholder="0.01-1; 0.01-100" value="0.01-1; 0.01-100">
 </div>
 
-<button id="btnPreview" class="btn-secondary" onclick="DP.page.previewPlots()" style="width:100%; margin-bottom:8px;">Preview Plot</button>
-<button id="btnAnalyze" class="btn-primary" onclick="DP.page.runExportAction('analyze')" style="margin-bottom:8px;">Analyze Queue</button>
-<button id="btnNormalize" class="btn-secondary" onclick="DP.page.runExportAction('normalize')" style="width:100%; margin-bottom:8px;">Normalize</button>
-<button id="btnSvg" class="btn-secondary" onclick="DP.page.runExportAction('svg')" style="width:100%;">Export SVG</button>
+<button id="btnPreview" class="btn-secondary" data-dp-click="DP.page.previewPlots()" style="width:100%; margin-bottom:8px;">Preview Plot</button>
+<button id="btnAnalyze" class="btn-primary" data-dp-click="DP.page.runExportAction('analyze')" style="margin-bottom:8px;">Analyze Queue</button>
+<button id="btnNormalize" class="btn-secondary" data-dp-click="DP.page.runExportAction('normalize')" style="width:100%; margin-bottom:8px;">Normalize</button>
+<button id="btnSvg" class="btn-secondary" data-dp-click="DP.page.runExportAction('svg')" style="width:100%;">Export SVG</button>
 <div id="status" class="status-bar"></div>
 {% endblock %}
 

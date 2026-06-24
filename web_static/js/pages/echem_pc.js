@@ -277,7 +277,7 @@ function updateTable() {
     const removed = !!p._removed;
     const rowStyle = removed ? ' style="opacity:0.45;text-decoration:line-through"' : '';
     const btnLabel = removed ? 'Undo' : 'Remove';
-    return `<tr${rowStyle}><td>${i+1}</td><td>${num(t,3)}</td><td>${num(pos,2)}</td><td>${num(neg,2)}</td><td>${num(dur,2)}</td><td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" onclick="togglePairRemoved(${i})">${btnLabel}</button></td></tr>`;
+    return `<tr${rowStyle}><td>${i+1}</td><td>${num(t,3)}</td><td>${num(pos,2)}</td><td>${num(neg,2)}</td><td>${num(dur,2)}</td><td><button class="btn-secondary" style="padding:2px 8px;min-height:24px" data-dp-click="togglePairRemoved(${i})">${btnLabel}</button></td></tr>`;
   }).join('');
 }
 

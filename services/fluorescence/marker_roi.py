@@ -28,7 +28,7 @@ from services.matplotlib_utils import close_figure, new_subplots
 
 PIXEL_SIZE_UM = 1.62
 PIXEL_AREA_UM2 = PIXEL_SIZE_UM**2
-DEFAULT_ROI_JSON = Path("/Users/guangqing/Desktop/UChicago/DataProcess/temp/fl/fluorescence_manual_rois.json")
+DEFAULT_ROI_JSON = Path("fluorescence_manual_rois.json")
 DEFAULT_OUTPUT_DIRNAME = "fluorescence_marker_roi_analysis"
 
 CHANNEL_NAMES = {

@@ -81,13 +81,13 @@ bte-emg-peaks      = "desktop_apps.web_launcher:emg_peaks_main"
 bte-fl-roi         = "desktop_apps.web_launcher:fluorescence_roi_main"
 bte-fl-lut         = "desktop_apps.web_launcher:fluorescence_lut_main"
 bte-fl-gif         = "desktop_apps.launchers.fluorescence_tiff_to_gif:main"
-bte-fl-preview-export = "desktop_apps.fluorescence_preview_export_gui:main"
-bte-fl-manual-roi = "desktop_apps.fluorescence_manual_roi_gui:main"
-bte-fl-marker-roi = "desktop_apps.fluorescence_marker_roi_analysis:main"
+bte-fl-preview-export = "desktop_apps.native.fluorescence_preview_export_gui:main"
+bte-fl-manual-roi = "desktop_apps.native.fluorescence_manual_roi_gui:main"
+bte-fl-marker-roi = "desktop_apps.cli.fluorescence_marker_roi_analysis:main"
 bte-csv-viewer     = "desktop_apps.web_launcher:csv_viewer_main"
 bte-histology      = "desktop_apps.web_launcher:histology_main"
 bte-histology-analysis = "desktop_apps.web_launcher:histology_analysis_main"
-bte-histology-line-measure = "desktop_apps.histology_line_measure_gui:main"
+bte-histology-line-measure = "desktop_apps.native.histology_line_measure_gui:main"
 bte-web            = "web_app:main"
 
 # ---------------------------------------------------------------------------
@@ -103,7 +103,6 @@ py-modules = [
 include = [
     "desktop_apps*",
     "examples*",
-    "pipelines*",
     "services*",
     "vendor*",
     "web_api*",
@@ -117,7 +116,6 @@ examples = [
     "sample_fluorescence_stack.tif",
     "sample_patch_clamp.abf",
 ]
-pipelines = ["*.json"]
 web_static = ["**/*"]
 web_templates = ["**/*"]
 

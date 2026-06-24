@@ -61,7 +61,6 @@ from web_api.preferences import register_preferences_routes
 from web_api.response import api_error, register_api_envelope
 from web_api.rhd_viewer import register_rhd_viewer_routes
 from web_api.run_history import register_run_history_routes
-from web_api.scripts_panel import register_scripts_panel_routes
 from web_api.system import register_system_routes
 from web_api.telemetry import register_telemetry_routes
 from services.io_guards import configure_pillow_image_limit
@@ -78,8 +77,6 @@ configure_pillow_image_limit(Image)
 LINE_COLOR = "#3E6AE1"
 
 
-HAS_ABF = True
-
 rhd = None
 try:
     from vendor.intan import importrhdutilities as rhd
@@ -87,12 +84,6 @@ try:
     HAS_RHD = True
 except ImportError:
     HAS_RHD = False
-
-HAS_SCIPY = True
-HAS_STATSMODELS = True
-HAS_TIFF = True
-HAS_PIL = True
-HAS_READLIF = True
 
 
 def err(msg, code=400):
@@ -192,13 +183,7 @@ def create_app(
         apply_axes_limits=apply_axes_limits,
         BASE_DIR=base_dir,
         LINE_COLOR=LINE_COLOR,
-        HAS_ABF=HAS_ABF,
         HAS_RHD=HAS_RHD,
-        HAS_SCIPY=HAS_SCIPY,
-        HAS_STATSMODELS=HAS_STATSMODELS,
-        HAS_TIFF=HAS_TIFF,
-        HAS_PIL=HAS_PIL,
-        HAS_READLIF=HAS_READLIF,
         pyabf=pyabf,
         rhd=rhd,
         find_peaks=find_peaks,
@@ -228,7 +213,6 @@ def create_app(
     register_fluorescence_routes(flask_app, web_api_ctx)
     register_lif_viewer_routes(flask_app, web_api_ctx)
     register_histology_routes(flask_app, web_api_ctx)
-    register_scripts_panel_routes(flask_app, web_api_ctx)
     register_preferences_routes(flask_app, web_api_ctx)
     register_file_profile_routes(flask_app, web_api_ctx)
     register_run_history_routes(flask_app, web_api_ctx)
@@ -274,7 +258,6 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit(0 if report["ok"] else 1)
 
     PORT = int(args.port)
-    os.chdir(BASE_DIR)
     no_browser = os.environ.get("DATAPROCESS_WEB_NO_BROWSER", "").strip().lower()
     if not args.no_browser and no_browser not in {"1", "true", "yes", "on"}:
         threading.Thread(target=_open_browser, daemon=True).start()

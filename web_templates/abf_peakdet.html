@@ -3,28 +3,22 @@
 {% block title %}ABF Peak Detection{% endblock %}
 
 {% block controls %}
-{% if not has_abf %}
-<div class="status-bar status-error">
-  <strong>PyABF not installed.</strong><br>Run: <code>pip install pyabf</code>
-</div>
-{% endif %}
-
 <div class="ctrl-section">
   <div class="ctrl-label">Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/abf/files">
   </div>
   <div class="btn-row" style="margin-top:6px">
-    <button class="btn-secondary" type="button" onclick="DP.folder.pick('folderPath','scanFolder')">Choose</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
-    <button class="btn-secondary" type="button" onclick="DP.page.openLatestFile()">Latest</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.scanFolder({preserveSelection:true,reloadCurrent:false})">Refresh</button>
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.openLatestFile()">Latest</button>
   </div>
   <div class="folder-live-row">
     <label class="checkbox-row">
-      <input type="checkbox" id="folderAutoRefresh" onchange="DP.page.configureFolderAutoRefresh()">
+      <input type="checkbox" id="folderAutoRefresh" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <span>Auto refresh</span>
     </label>
-    <select id="folderRefreshSeconds" onchange="DP.page.configureFolderAutoRefresh()">
+    <select id="folderRefreshSeconds" data-dp-change="DP.page.configureFolderAutoRefresh()">
       <option value="3">3 s</option>
       <option value="5" selected>5 s</option>
       <option value="10">10 s</option>
@@ -101,7 +95,7 @@
   </div>
 </div>
 
-<button id="btnDetect" class="btn-primary" onclick="DP.page.detect()">Detect Peaks</button>
+<button id="btnDetect" class="btn-primary" data-dp-click="DP.page.detect()">Detect Peaks</button>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
@@ -110,12 +104,12 @@
     <input type="number" id="exportWinMs" class="input-xs" value="50" min="1" step="1">
   </div>
   <div class="btn-row">
-    <button class="btn-secondary" onclick="DP.page.restoreAllPeaks()" style="flex:1;">Undo All Removals</button>
-    <button class="btn-secondary" onclick="DP.page.exportPNG()" style="flex:1;">PNG</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.restoreAllPeaks()" style="flex:1;">Undo All Removals</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportPNG()" style="flex:1;">PNG</button>
   </div>
   <div class="btn-row" style="margin-top:6px;">
-    <button class="btn-secondary" onclick="DP.page.exportSVG()" style="flex:1;">SVG Signal</button>
-    <button class="btn-secondary" onclick="DP.page.exportCSV()" style="flex:1;">CSV + Segments</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportSVG()" style="flex:1;">SVG Signal</button>
+    <button class="btn-secondary" data-dp-click="DP.page.exportCSV()" style="flex:1;">CSV + Segments</button>
   </div>
 </details>
 

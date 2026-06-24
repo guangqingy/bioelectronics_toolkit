@@ -218,7 +218,7 @@ function exportGifKymoAll() {
 }
 
 async function openFolder(path) {
-  try { await api('/api/scripts/open_folder', { path }); }
+  try { await api('/api/system/open_folder', { path }); }
   catch(e) { toast('Could not open folder', true); }
 }
 

@@ -81,14 +81,13 @@ class EchemPcFigureExportRequest(RequestModel):
 
 
 def register_echem_pc_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    float_or = ctx["float_or"]
-    line_color = ctx["LINE_COLOR"]
-    jobs = ctx.get("jobs")
-    has_scipy = ctx["HAS_SCIPY"]
-    find_peaks = ctx.get("find_peaks")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    fig_to_b64 = ctx.fig_to_b64
+    float_or = ctx.float_or
+    line_color = ctx.LINE_COLOR
+    jobs = ctx.jobs
+    find_peaks = ctx.find_peaks
 
     _mode_is_save = mode_is_save
     _as_bool = as_bool
@@ -404,9 +403,8 @@ def register_echem_pc_routes(app, ctx):
     @app.route("/api/echem/detect", methods=["POST"])
     @request_schema(EchemPcDetectRequest)
     def api_echem_detect():
-        if not has_scipy or find_peaks is None:
+        if find_peaks is None:
             return err("scipy not installed")
-
         try:
             d = parse_json_payload(EchemPcDetectRequest).model_dump()
         except ValidationError as exc:

@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _clean_suffix(suffix: str) -> str:
@@ -67,3 +68,28 @@ def output_dir_for_project(project_root: Path, view: str) -> Path:
     """Return the canonical cache-backed export directory for one view."""
     view_slug = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(view or "exports")).strip("._-") or "exports"
     return Path(project_root) / ".dataprocess_cache" / "exports" / view_slug
+
+
+def resolve_output_dir(
+    source_path: object = "",
+    output_dir: object = "",
+    *,
+    default_suffix: str = "outputs",
+    project_root: Path | None = None,
+) -> Path:
+    """Resolve an output directory without depending on process cwd."""
+    root = Path(project_root).expanduser() if project_root is not None else PROJECT_ROOT
+    source_text = str(source_path or "").strip()
+    source = Path(source_text).expanduser() if source_text else None
+    anchor = source.parent if source is not None and source.name else root
+
+    raw_output = str(output_dir or "").strip()
+    if raw_output:
+        resolved = Path(raw_output).expanduser()
+        if not resolved.is_absolute():
+            resolved = anchor / resolved
+        return resolved
+
+    if source is not None and source.name:
+        return source.with_name(f"{source.stem}_{default_suffix}")
+    return root / default_suffix

@@ -38,9 +38,9 @@ class FigureRunRequest(FigurePlotRequest):
 
 
 def register_figure_generator_routes(app, ctx):
-    err = ctx["err"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    fig_to_b64 = ctx.fig_to_b64
+    jobs = ctx.jobs
 
     def _json(schema):
         return parse_json_payload(schema).model_dump()

@@ -20,6 +20,7 @@ from .fluorescence_request_schemas import (
     FluorescenceGifRoiKymographRequest,
 )
 from .jobs import route_response_to_payload, submit_json_task
+from .path_policy import resolve_output_dir
 from .request_validation import parse_json_payload, request_schema, validation_error_response
 
 
@@ -28,8 +29,6 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
     fig_to_b64 = fl["fig_to_b64"]
     float_or = fl["float_or"]
     int_or = fl["int_or"]
-    has_pil = fl["has_pil"]
-    has_tiff = fl["has_tiff"]
     jobs = fl["jobs"]
 
     _fl_apply_gif_crop = fl["_fl_apply_gif_crop"]
@@ -67,9 +66,6 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
     @request_schema(FluorescenceGifRoiKymographRequest)
     def api_fl_gif_roi_kymograph(payload=None):
         """Build a time-vs-intensity distribution kymograph for one polygon ROI."""
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
-
         try:
             if payload is None:
                 d = parse_json_payload(FluorescenceGifRoiKymographRequest).model_dump()
@@ -545,7 +541,11 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             summary_buf = io.StringIO()
             summary_df.to_csv(summary_buf, index=False)
 
-            default_output_dir = str(paths[0].parent) if paths else str(Path.cwd())
+            default_output_dir = (
+                str(paths[0].parent)
+                if paths
+                else str(resolve_output_dir("", "", "fluorescence_gif_kymograph"))
+            )
             return jsonify(
                 {
                     "ok": True,
@@ -634,9 +634,9 @@ def register_fluorescence_gif_kymograph_routes(app, fl):
             if output_dir_raw:
                 out_dir = Path(output_dir_raw).expanduser()
                 if not out_dir.is_absolute():
-                    out_dir = (anchor or Path.cwd()) / out_dir
+                    out_dir = (anchor / out_dir) if anchor is not None else resolve_output_dir("", out_dir, "fluorescence_gif_kymograph")
             else:
-                out_dir = anchor or Path.cwd()
+                out_dir = anchor or resolve_output_dir("", "", "fluorescence_gif_kymograph")
             out_dir.mkdir(parents=True, exist_ok=True)
 
             saved_paths = []

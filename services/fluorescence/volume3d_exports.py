@@ -16,8 +16,6 @@ from services.matplotlib_utils import new_subplots
 
 @dataclass(frozen=True)
 class Volume3DExportContext:
-    has_tiff: bool
-    has_pil: bool
     int_or: Callable[[Any, int], int]
     float_or: Callable[[Any, float], float]
     denoise_options: list[str]
@@ -36,8 +34,6 @@ class Volume3DExportContext:
 def volume_payload_from_body(
     d: dict, ctx: Volume3DExportContext, *, for_export: bool = False
 ) -> tuple[Path, dict]:
-    if not ctx.has_tiff:
-        raise ValueError("tifffile is required")
     path = str(d.get("path", "") or "").strip()
     c = ctx.int_or(d.get("c", 0), 0)
     t = ctx.int_or(d.get("t", 0), 0)
@@ -125,8 +121,6 @@ def rotation_gif_payload(
     preview: bool = False,
     cancel_check: Callable[[], None] | None = None,
 ) -> dict:
-    if not ctx.has_pil:
-        raise ValueError("Pillow is required")
     p, payload = volume_payload_from_body(d, ctx, for_export=not preview)
     axis_raw = str(d.get("rotation_axis", "z") or "z").strip()
     axis_vector, axis_label = rotation_axis_vector(axis_raw)
@@ -192,8 +186,6 @@ def rotation_gif_job_payload(d: dict, ctx: Volume3DExportContext, job_ctx) -> di
 
 
 def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
-    if not ctx.has_tiff:
-        raise ValueError("tifffile is required")
     path = str(d.get("path", "") or "").strip()
     p = Path(path)
     if not p.exists():

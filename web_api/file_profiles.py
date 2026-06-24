@@ -34,7 +34,7 @@ class FileProfileDeleteRequest(FileProfileGetRequest):
 
 
 def register_file_profile_routes(app, ctx):
-    err = ctx["err"]
+    err = ctx.err
 
     def _json_or_error(func, body):
         try:

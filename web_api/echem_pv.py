@@ -105,17 +105,16 @@ class EchemPvFigureExportRequest(RequestModel):
 
 
 def register_echem_pv_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
-    line_color = ctx["LINE_COLOR"]
-    jobs = ctx.get("jobs")
-    has_scipy = ctx["HAS_SCIPY"]
-    find_peaks = ctx.get("find_peaks")
-    peak_widths = ctx.get("peak_widths")
-    savgol_filter = ctx.get("savgol_filter")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    fig_to_b64 = ctx.fig_to_b64
+    float_or = ctx.float_or
+    int_or = ctx.int_or
+    line_color = ctx.LINE_COLOR
+    jobs = ctx.jobs
+    find_peaks = ctx.find_peaks
+    peak_widths = ctx.peak_widths
+    savgol_filter = ctx.savgol_filter
 
     _as_bool = as_bool
 
@@ -355,9 +354,8 @@ def register_echem_pv_routes(app, ctx):
     @app.route("/api/echem_pv/detect", methods=["POST"])
     @request_schema(EchemPvDetectRequest)
     def api_echem_pv_detect():
-        if not has_scipy or find_peaks is None or peak_widths is None:
+        if find_peaks is None or peak_widths is None:
             return err("scipy not installed")
-
         try:
             d = parse_json_payload(EchemPvDetectRequest).model_dump()
         except ValidationError as exc:

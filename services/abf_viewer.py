@@ -18,8 +18,6 @@ class AbfViewerService:
     def __init__(
         self,
         *,
-        has_abf: bool,
-        has_scipy: bool,
         pyabf_mod: Any,
         find_peaks: Callable | None,
         fig_to_b64: Callable[[Any], str],
@@ -32,8 +30,6 @@ class AbfViewerService:
         next_numbered_path: Callable[[Path], Path],
         line_color: str,
     ):
-        self.has_abf = has_abf
-        self.has_scipy = has_scipy
         self.pyabf_mod = pyabf_mod
         self.find_peaks = find_peaks
         self.fig_to_b64 = fig_to_b64
@@ -47,11 +43,11 @@ class AbfViewerService:
         self.line_color = line_color
 
     def _require_abf(self) -> None:
-        if not self.has_abf or self.pyabf_mod is None:
+        if self.pyabf_mod is None:
             raise ValueError("pyabf not installed")
 
     def _require_scipy(self) -> None:
-        if not self.has_scipy or self.find_peaks is None:
+        if self.find_peaks is None:
             raise ValueError("scipy not installed")
 
     @staticmethod

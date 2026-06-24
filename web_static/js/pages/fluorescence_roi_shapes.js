@@ -158,7 +158,7 @@ function renderRoiList() {
       <span style="width:12px;height:12px;border-radius:2px;background:${r.color};flex-shrink:0;display:inline-block"></span>
       <span style="flex:1;font-size:12px;color:var(--pewter)">${escapeHtml(r.label)}</span>
       ${r.drawn ? `<span style="font-size:10px;color:var(--silver)">${escapeHtml(roiSummary(r))}</span>` : ''}
-      <button onclick="removeRoi(${i})" style="background:none;border:none;color:var(--silver);cursor:pointer;font-size:13px;padding:0 2px;line-height:1">X</button>
+      <button data-dp-click="removeRoi(${i})" style="background:none;border:none;color:var(--silver);cursor:pointer;font-size:13px;padding:0 2px;line-height:1">X</button>
     </div>`).join('');
 
   const drawTarget = document.getElementById('drawTarget');

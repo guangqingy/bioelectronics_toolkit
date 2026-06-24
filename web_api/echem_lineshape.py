@@ -78,9 +78,9 @@ class LineshapeExportAvgRequest(RequestModel):
 
 
 def register_echem_lineshape_routes(app, ctx):
-    err = ctx["err"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    fig_to_b64 = ctx.fig_to_b64
+    jobs = ctx.jobs
 
     def _json_response(schema, handler):
         try:

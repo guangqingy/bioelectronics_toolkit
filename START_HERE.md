@@ -71,5 +71,5 @@ Then run the install script again.
 - `web_app.py`: the local Web app entry point, used by the scripts.
 
 You can safely ignore `services/`, `web_api/`, `web_static/`, `web_templates/`,
-`tests/`, `docs/`, `dev_scripts/`, `.github/`, and `pipelines/` unless you are
-developing the toolkit.
+`tests/`, `docs/`, `dev_scripts/`, and `.github/` unless you are developing the
+toolkit.

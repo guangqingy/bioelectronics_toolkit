@@ -13,7 +13,7 @@ function renderAvailableTiffList() {
     const stackTag = info.can_3d ? '3D' : 'flat';
     const meta = info.error ? info.error : `${formatDimText(info)} · ${info.axes || '?'}`;
     return `
-      <div class="file-item stack-available-item ${active}" onclick="selectAvailableTiff(${i})">
+      <div class="file-item stack-available-item ${active}" data-dp-click="selectAvailableTiff(${i})">
         <span class="stack-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
         <span class="stack-available-meta">${escHtml(meta)}</span>
         <span class="stack-pill ${info.can_3d ? '' : 'stack-pill-muted'}">${stackTag}</span>
@@ -183,7 +183,7 @@ function renderChannelRangeControls() {
       <div class="stack-channel-range-row">
         <span class="stack-channel-label"><i class="stack-channel-swatch" id="chanSwatch_${i}" style="background:${color}"></i>C${i + 1}</span>
         <input type="checkbox" id="chanEnabled_${i}" checked title="Render/export C${i + 1}">
-        <input type="color" id="chanColor_${i}" value="${color}" oninput="document.getElementById('chanSwatch_${i}').style.background=this.value">
+        <input type="color" id="chanColor_${i}" value="${color}" data-dp-input="document.getElementById('chanSwatch_${i}').style.background=this.value">
         <input type="number" id="chanLow_${i}" value="1" min="0" max="99" step="0.1">
         <input type="number" id="chanHigh_${i}" value="99.7" min="0.1" max="100" step="0.1">
         <input type="number" id="chanSignal_${i}" value="${signalDefault.toFixed(1)}" min="0" max="99.95" step="0.1">
@@ -234,7 +234,7 @@ function updateExtraControls() {
     return `
       <div class="lif-slider-row lif-extra-dim-row">
         <span>${label}</span>
-        <input type="range" id="extraAxis_${extra.index}" min="0" max="${count - 1}" value="0" oninput="onDimSlide()">
+        <input type="range" id="extraAxis_${extra.index}" min="0" max="${count - 1}" value="0" data-dp-input="onDimSlide()">
         <span id="extraAxisLabel_${extra.index}">1 / ${count}</span>
       </div>`;
   }).join('');

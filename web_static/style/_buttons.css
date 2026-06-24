@@ -39,6 +39,28 @@
 .btn-secondary:hover { border-color: var(--pewter); background: var(--ash); }
 .btn-block { width: 100%; }
 
+.btn-tertiary {
+  align-items: center;
+  background: transparent;
+  color: var(--pewter);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  text-decoration: none;
+  transition: color var(--trans), background var(--trans), border-color var(--trans);
+  min-height: 30px;
+}
+.btn-tertiary:hover {
+  background: var(--ash);
+  border-color: var(--cloud);
+  color: var(--graphite);
+}
+
 .btn-danger {
   background: var(--white);
   border-color: var(--error-border);
@@ -71,5 +93,5 @@
   gap: 6px;
   flex-wrap: wrap;
 }
-.btn-row .btn-secondary { flex: 1; font-size: 12px; padding: 5px 8px; }
-
+.btn-row .btn-secondary,
+.btn-row .btn-tertiary { flex: 1; font-size: 12px; padding: 5px 8px; }

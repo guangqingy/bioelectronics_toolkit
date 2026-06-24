@@ -49,7 +49,9 @@ The commands below are stable user entry points after `pip install -e .`. Most
 GUI commands open the corresponding WebGUI page; desktop helpers that remain as
 native windows call shared `services/` modules instead of carrying their own
 analysis engines. Source launcher modules are grouped under
-`desktop_apps/launchers/`.
+`desktop_apps/launchers/`, native Tk helper windows under
+`desktop_apps/native/`, and command-line compatibility wrappers under
+`desktop_apps/cli/`.
 
 ### Patch-clamp / `.abf` analysis
 
@@ -229,15 +231,6 @@ Additional screenshots:
 
 ![Fluorescence ROI screenshot](web_static/img/screenshot_fluorescence_roi.png)
 
-## Pipeline Runner
-
-The Pipeline Runner is catalog-driven by [`pipelines/registry.json`](./pipelines/registry.json).
-The default category is a runnable bundled example that reads only
-[`examples/`](./examples/) data and writes CSV/JSON/PNG artifacts. Additional
-categories catalog project-specific workflows; entries that require private
-local project data are marked `Local script missing` until that script tree is
-present.
-
 ## Project layout
 
 ```text
@@ -254,7 +247,6 @@ bioelectronics_toolkit/
 ├── web_templates/                  # Jinja pages and partials
 ├── web_static/                     # CSS, JS, icons, vendored browser assets
 ├── desktop_apps/                   # installed bte-* launchers and service-backed helpers
-├── pipelines/                      # WebGUI Pipeline Runner registry
 ├── tests/                          # pytest and Playwright tests
 ├── docs/                           # architecture, release, changelog, WebGUI docs
 ├── dev_scripts/                    # maintainer-only checks and helpers
@@ -274,21 +266,19 @@ bioelectronics_toolkit/
   metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
   parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
   channel/merge helpers now use this layer. Thin user-facing launchers live in
-  `desktop_apps/launchers/`; temporary desktop tools must call shared services
-  rather than carrying processing logic in Tk callbacks.
-- Pipeline metadata lives in [`pipelines/`](./pipelines/). Pipeline-level
-  documentation (per analysis flow) lives under
-  [`docs/pipelines/`](./docs/pipelines/).
+  `desktop_apps/launchers/`; native helper windows live in
+  `desktop_apps/native/`; command-line compatibility wrappers live in
+  `desktop_apps/cli/`. Temporary desktop tools must call shared services rather
+  than carrying processing logic in Tk callbacks.
 - Before committing Web GUI changes, run:
 
   ```bash
   python3 -m ruff check .
-  python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
+  python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
   python3 -m ruff check web_api --select F --ignore E402
   python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
   bte-web --self-check
   python3 -m pytest tests --ignore=tests/e2e
-  python3 dev_scripts/check_analysis_scripts.py
   python3 dev_scripts/check_no_pyplot.py
   ```
 

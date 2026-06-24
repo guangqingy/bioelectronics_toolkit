@@ -62,7 +62,7 @@ window.dpApplyRunManifest = manifest => {
     _lifRenameMap = params.rename_map;
     saveRenameMap();
   }
-  if (inputPath && HAS_READLIF && HAS_PIL) loadLifProject();
+  if (inputPath) loadLifProject();
   setStatus('status', 'LIF parameters loaded from run manifest', 'ok');
 };
 

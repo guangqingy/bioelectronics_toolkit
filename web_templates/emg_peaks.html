@@ -3,17 +3,11 @@
 {% block title %}RHD Peak Selector{% endblock %}
 
 {% block controls %}
-{% if not has_scipy %}
-<div class="status-bar status-error">
-  <strong>scipy not installed.</strong><br>Run: <code>pip install scipy</code>
-</div>
-{% endif %}
-
 <div class="ctrl-section">
   <div class="ctrl-label">Main Folder</div>
   <div class="input-row">
     <input type="text" id="folderPath" class="input-path" placeholder="/path/to/emg/data">
-    <button class="btn-icon" onclick="DP.folder.pick('folderPath','browseMain')">Browse</button>
+    <button class="btn-icon" data-dp-click="DP.folder.pick('folderPath','browseMain')">Browse</button>
   </div>
 </div>
 
@@ -31,15 +25,15 @@
   <div class="ctrl-label">Preview Window (s)</div>
   <div class="param-row">
     <div class="param-label">X Min</div>
-    <input type="number" id="xMin" class="input-sm" value="0" step="any" onchange="DP.page.plot()">
+    <input type="number" id="xMin" class="input-sm" value="0" step="any" data-dp-change="DP.page.plot()">
   </div>
   <div class="param-row">
     <div class="param-label">X Max</div>
-    <input type="number" id="xMax" class="input-sm" step="any" onchange="DP.page.plot()">
+    <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="DP.page.plot()">
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="DP.page.plot()" style="flex:1;">Preview</button>
-    <button class="btn-secondary" onclick="DP.page.resetPreviewWindow()" style="flex:1;">Full Range</button>
+    <button class="btn-secondary" data-dp-click="DP.page.plot()" style="flex:1;">Preview</button>
+    <button class="btn-secondary" data-dp-click="DP.page.resetPreviewWindow()" style="flex:1;">Full Range</button>
   </div>
 </div>
 
@@ -55,7 +49,7 @@
     </select>
   </div>
   <label class="checkbox-row emg-inline-check">
-    <input type="checkbox" id="invertSignal" onchange="DP.page.handleInvertSignalChanged()">
+    <input type="checkbox" id="invertSignal" data-dp-change="DP.page.handleInvertSignalChanged()">
     <span>Polarity inverse</span>
   </label>
   <div class="param-row">
@@ -99,7 +93,7 @@
     </select>
   </div>
 
-<button id="btnDetect" class="btn-primary" onclick="DP.page.detectPeaks()">Detect Peaks</button>
+<button id="btnDetect" class="btn-primary" data-dp-click="DP.page.detectPeaks()">Detect Peaks</button>
 </details>
 
 <details class="ctrl-section ctrl-details">
@@ -117,7 +111,7 @@
     <div class="param-label">Group start</div>
     <input type="number" id="grpStart" class="input-sm" value="0" step="1">
   </div>
-  <button class="btn-secondary" onclick="DP.page.autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
+  <button class="btn-secondary" data-dp-click="DP.page.autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
 
 <div class="ctrl-section">
   <div class="ctrl-label">Baseline Fill</div>
@@ -146,10 +140,10 @@
     <input type="number" id="baselineSeed" class="input-sm" step="1" placeholder="auto">
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="DP.page.usePreviewWindowForBaseline()" style="flex:1;">Use Window</button>
-    <button class="btn-secondary" onclick="DP.page.fillMissingGroupsWithBaseline()" style="flex:1;">Fill Missing</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.usePreviewWindowForBaseline()" style="flex:1;">Use Window</button>
+    <button class="btn-secondary" data-dp-click="DP.page.fillMissingGroupsWithBaseline()" style="flex:1;">Fill Missing</button>
   </div>
-  <button class="btn-secondary" onclick="DP.page.removeBaselineFillRows()" style="width:100%; margin-top:8px;">Remove Baseline Fills</button>
+  <button class="btn-tertiary" data-dp-click="DP.page.removeBaselineFillRows()" style="width:100%; margin-top:8px;">Remove Baseline Fills</button>
 </div>
 
 <div class="ctrl-section">
@@ -157,7 +151,7 @@
   <div class="input-row">
     <input type="text" id="groupInput" class="input-group" placeholder="Group label, e.g. A">
   </div>
-  <button class="btn-secondary" onclick="DP.page.setGroupForSelected()" style="width:100%; margin-top:8px;">Set Group for Selected</button>
+  <button class="btn-secondary" data-dp-click="DP.page.setGroupForSelected()" style="width:100%; margin-top:8px;">Set Group for Selected</button>
 </div>
 </details>
 
@@ -165,14 +159,14 @@
   <summary class="ctrl-label">Edit</summary>
   <div class="ctrl-label">Peak Operations</div>
   <div class="input-row" style="gap:6px;">
-    <button class="btn-secondary" onclick="DP.page.selectAllPeaks()" style="flex:1;">Select All</button>
-    <button class="btn-secondary" onclick="DP.page.clearPeakSelection()" style="flex:1;">Clear Selection</button>
+    <button class="btn-secondary" data-dp-click="DP.page.selectAllPeaks()" style="flex:1;">Select All</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.clearPeakSelection()" style="flex:1;">Clear Selection</button>
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
-    <button class="btn-secondary" onclick="DP.page.removeSelectedPeaks()" style="flex:1;">Remove Selected</button>
-    <button class="btn-secondary" onclick="DP.page.restoreSelectedPeaks()" style="flex:1;">Undo Removal</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.removeSelectedPeaks()" style="flex:1;">Remove Selected</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.restoreSelectedPeaks()" style="flex:1;">Undo Removal</button>
   </div>
-  <button class="btn-secondary" onclick="DP.page.resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
+  <button class="btn-tertiary" data-dp-click="DP.page.resetAllRemovals()" style="width:100%; margin-top:8px;">Reset Removal State</button>
 </details>
 
 <details class="ctrl-section ctrl-details linked-channel-picker" open>
@@ -183,14 +177,14 @@
   </label>
   <div id="linkedChannelList" class="file-list linked-channel-list"></div>
   <div class="linked-channel-actions">
-    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(true)">All</button>
-    <button class="btn-secondary" onclick="DP.page.setLinkedChannels(false)">None</button>
+    <button class="btn-secondary" data-dp-click="DP.page.setLinkedChannels(true)">All</button>
+    <button class="btn-tertiary" data-dp-click="DP.page.setLinkedChannels(false)">None</button>
   </div>
 </details>
 
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
-  <button id="btnExport" class="btn-secondary" onclick="DP.page.exportGrouped()" style="width:100%;">Export Grouped Peaks</button>
+  <button id="btnExport" class="btn-secondary" data-dp-click="DP.page.exportGrouped()" style="width:100%;">Export Grouped Peaks</button>
 </details>
 
 <div id="status" class="status-bar"></div>

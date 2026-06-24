@@ -66,7 +66,7 @@ function renderHistologyProjectImageList() {
     const vsi = histologyEntryVsiPath(entry);
     const detail = vsi ? vsi.split(/[\\/]/).pop() : (entry.case_dir || entry.source_name || entry.image_path || '');
     return `
-      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
+      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
         <div class="histology-file-title">${escHtml(title)}</div>
         <div class="histology-file-subline">${escHtml(counts + missing + rebuild)}</div>
         <div class="histology-file-path">${escHtml(detail)}</div>

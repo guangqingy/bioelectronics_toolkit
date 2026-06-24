@@ -15,19 +15,17 @@ from services.matplotlib_utils import new_subplots
 
 
 def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
+    err = ctx.err
+    browse_files = ctx.browse_files
+    fig_to_b64 = ctx.fig_to_b64
+    float_or = ctx.float_or
+    int_or = ctx.int_or
 
-    has_tiff = ctx["HAS_TIFF"]
-    has_pil = ctx["HAS_PIL"]
-    tifflib = ctx.get("tifflib")
-    image_mod = ctx.get("Image")
-    image_draw_mod = ctx.get("ImageDraw")
-    image_font_mod = ctx.get("ImageFont")
-    jobs = ctx.get("jobs")
+    tifflib = ctx.tifflib
+    image_mod = ctx.Image
+    image_draw_mod = ctx.ImageDraw
+    image_font_mod = ctx.ImageFont
+    jobs = ctx.jobs
 
     _fl_apply_lut = fl_helpers.apply_lut
     _fl_select_display_frame = fl_helpers.select_display_frame
@@ -42,7 +40,7 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         return fl_helpers.frame_to_b64(frame, lut, p_low, p_high, image_mod)
 
     def _fl_infer_pixel_size_um_from_tiff(path: str) -> float | None:
-        return fl_helpers.infer_pixel_size_um_from_tiff(path, has_tiff=has_tiff, tifflib=tifflib)
+        return fl_helpers.infer_pixel_size_um_from_tiff(path, tifflib=tifflib)
 
     _FL_LUT_OPTIONS = ["Red", "Blue", "Gray", "Green", "Magenta", "Cyan", "Yellow"]
     _FL_DENOISE_OPTIONS = ["Off", "Light", "Medium", "Strong"]
@@ -65,7 +63,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
 
     _fl_tiff_helpers = fl_tiff_volume_context.build_tiff_volume_context(
         tifflib=tifflib,
-        has_tiff=has_tiff,
         int_or=int_or,
         float_or=float_or,
         denoise_options=_FL_DENOISE_OPTIONS,
@@ -143,7 +140,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
 
     _fl_roi_render_helpers = fl_roi_render_context.build_roi_render_context(
         tifflib=tifflib,
-        has_pil=has_pil,
         image_mod=image_mod,
         image_draw_mod=image_draw_mod,
         image_font_mod=image_font_mod,
@@ -160,8 +156,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         "browse_files": browse_files,
         "int_or": int_or,
         "float_or": float_or,
-        "has_tiff": has_tiff,
-        "has_pil": has_pil,
         "tifflib": tifflib,
         "jobs": jobs,
         "_FL_BACKGROUND_OPTIONS": _FL_BACKGROUND_OPTIONS,
@@ -185,8 +179,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         "err": err,
         "int_or": int_or,
         "float_or": float_or,
-        "has_tiff": has_tiff,
-        "has_pil": has_pil,
         "jobs": jobs,
         "fig_to_b64": fig_to_b64,
         "_FL_DENOISE_OPTIONS": _FL_DENOISE_OPTIONS,
@@ -391,8 +383,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         "fig_to_b64": fig_to_b64,
         "float_or": float_or,
         "int_or": int_or,
-        "has_pil": has_pil,
-        "has_tiff": has_tiff,
         "jobs": jobs,
         "_fl_apply_gif_crop": _fl_apply_gif_crop,
         "_fl_bool": _fl_bool,
@@ -425,8 +415,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         "fig_to_b64": fig_to_b64,
         "float_or": float_or,
         "int_or": int_or,
-        "has_pil": has_pil,
-        "has_tiff": has_tiff,
         "jobs": jobs,
         "tifflib": tifflib,
         "_fl_bool": _fl_bool,

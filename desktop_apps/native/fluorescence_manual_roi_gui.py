@@ -3,18 +3,18 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tkinter as tk
 from datetime import datetime
 from pathlib import Path
+from tkinter import colorchooser, filedialog, messagebox, ttk
 from typing import Sequence
 
-import tkinter as tk
-from tkinter import colorchooser, filedialog, messagebox, ttk
-
-from PIL import Image, ImageDraw, ImageTk
 import numpy as np
+from PIL import Image, ImageDraw, ImageTk
+
 from services.fluorescence.manual_roi import (
-    ImageRois,
     ROI_COLORS,
+    ImageRois,
     RoiPolygon,
     analyze_image,
     summarize_measurements,
@@ -33,7 +33,6 @@ from services.fluorescence.preview_export import (
     RotationGeometry,
     display_image_for_channels,
     find_tiff_files,
-    fmt_float as _fmt_float,
     image_point_to_rotated_view,
     load_tiff_channels,
     natural_sort_key,
@@ -41,6 +40,16 @@ from services.fluorescence.preview_export import (
     rotate_image_for_preview,
     rotated_view_to_image_point,
 )
+from services.fluorescence.preview_export import (
+    fmt_float as _fmt_float,
+)
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _default_folder() -> Path:
+    return DEFAULT_FOLDER if DEFAULT_FOLDER.exists() else PROJECT_ROOT
 
 
 class FluorescenceManualRoiApp:
@@ -64,7 +73,7 @@ class FluorescenceManualRoiApp:
         self.pending_points: list[tuple[float, float]] = []
         self.preview_item: int | None = None
 
-        self.folder_var = tk.StringVar(value=str(DEFAULT_FOLDER if DEFAULT_FOLDER.exists() else Path.cwd()))
+        self.folder_var = tk.StringVar(value=str(_default_folder()))
         self.image_info_var = tk.StringVar(value="No image loaded")
         self.status_var = tk.StringVar(value="Load a TIFF folder to start drawing ROIs.")
         self.zoom_var = tk.StringVar(value="Zoom: 100%")
@@ -388,10 +397,10 @@ class FluorescenceManualRoiApp:
         if state is not None:
             return state.path.parent
         text = self.folder_var.get().strip()
-        return Path(text).expanduser() if text else Path.cwd()
+        return Path(text).expanduser() if text else _default_folder()
 
     def browse_folder(self) -> None:
-        folder = filedialog.askdirectory(initialdir=self.folder_var.get() or str(Path.cwd()))
+        folder = filedialog.askdirectory(initialdir=self.folder_var.get() or str(_default_folder()))
         if folder:
             self.folder_var.set(folder)
             self.load_images([folder])

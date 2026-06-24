@@ -9,7 +9,7 @@ implementation starts.
 ```text
 You are maintaining bioelectronics_toolkit, a research-lab toolkit for ABF,
 RHD/EMG, electrochemistry, fluorescence imaging, histology naming, CSV viewing,
-and project-specific analysis pipelines.
+and run-history-backed local analysis workflows.
 
 Treat the WebGUI as the canonical user surface. Desktop bte-* commands should
 open the matching WebGUI route or call a shared service; do not add new
@@ -39,9 +39,9 @@ rules:
 3. Keep WebGUI behavior professional and visitor-friendly.
    - Never hard-code developer-local absolute paths in tracked code, templates,
      docs, tests, or examples.
-   - Public clones should render pages cleanly. If local project data/scripts
-     are missing, show a clear "Local script missing" or equivalent state
-     instead of throwing a traceback or exposing a private path.
+   - Public clones should render pages cleanly. If local project data is
+     missing, show a clear user-facing state instead of throwing a traceback or
+     exposing a private path.
    - Use full user-facing names in navigation, cards, buttons, and docs.
      Abbreviations are acceptable only when the full name is nearby.
    - Make controls keyboard-navigable with visible focus states.
@@ -61,21 +61,15 @@ rules:
      Flask route by manufacturing test_request_context.
    - Keep run manifests and file profiles compatible with existing cache paths.
 
-5. Integrate pipelines through the registry.
-   - Pipeline Runner metadata belongs in pipelines/registry.json.
-   - Pipeline documentation belongs under docs/pipelines/.
-   - Pipeline script IDs must be stable snake_case keys. Do not rename them once
-     settings, run history, or manifests may reference them.
-   - If a registered script lives in a local project data tree, mark that state
-     clearly through availability metadata and docs.
-
-6. Keep desktop launchers thin.
+5. Keep desktop launchers thin.
    - Update desktop_apps/web_launcher.py for any new or renamed user workflow.
    - Add console scripts in pyproject.toml only for real user-facing commands.
-   - Native desktop helpers in desktop_apps/ should call shared services and
-     avoid adding new root-level GUI scripts.
+   - Native desktop helpers belong in desktop_apps/native/ and should call
+     shared services.
+   - Command-line compatibility wrappers belong in desktop_apps/cli/.
+   - Avoid adding new root-level GUI scripts.
 
-7. Add tests at the right level.
+6. Add tests at the right level.
    - Service behavior: unit tests under tests/ that do not require a browser.
    - Web route contracts: Flask test_client smoke/API tests.
    - Repository contracts: tests that prevent hard-coded local paths, broken
@@ -83,7 +77,7 @@ rules:
    - For migrations, add tests that prove old duplicate maps or wrapper
      patterns are gone when that is the goal.
 
-8. Update documentation and release notes.
+7. Update documentation and release notes.
    - Update README.md for user-visible workflows, examples, commands, or setup.
    - Update docs/webgui.md for web architecture/API contract changes.
    - Update docs/README.md or the relevant docs/*.md file for maintenance
@@ -92,17 +86,15 @@ rules:
    - If changing package version or release metadata, keep pyproject.toml,
      CITATION.cff, docs/CHANGELOG.md links, and version tests in sync.
 
-9. Run the validation chain before finishing.
+8. Run the validation chain before finishing.
    - python -m ruff check .
-   - python -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers --select E,F,W,I --ignore E402
+   - python -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
    - python -m ruff check web_api --select F --ignore E402
    - python -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
    - python -m pytest tests --ignore=tests/e2e -v
    - coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report
    - python dev_scripts/check_services_ratio.py --warn-only
-   - python dev_scripts/check_analysis_scripts.py when pipeline/script safety is touched
-
-10. Final response should say exactly what changed, what was validated, and any
+9. Final response should say exactly what changed, what was validated, and any
     remaining limitations. If a GitHub release or repository setting cannot be
     changed from code, say so explicitly.
 ```
@@ -115,13 +107,12 @@ meant to protect the current architecture from drifting back toward:
 - monolithic route files and heavy templates;
 - GUI-specific analysis logic that is hard to test;
 - local-only paths leaking into public code;
-- duplicate pipeline maps outside `pipelines/registry.json`;
 - WebGUI/desktop launcher naming drift;
 - silent long-running operations with no progress or manifest trail.
 
 When a future change is small, apply the spirit of the prompt without creating
 extra abstractions. When a future change touches a shared route, service,
-launcher, cache contract, or pipeline registry entry, apply the full checklist.
+launcher, or cache contract, apply the full checklist.
 
 ## Page Density Budget
 

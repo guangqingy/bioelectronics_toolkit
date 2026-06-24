@@ -170,7 +170,7 @@ function renderHistologyChannelView(channels, selected) {
     const checked = selectedSet.has(channel) ? ' checked' : '';
     return `
       <label class="histology-channel-chip" title="Show ${escHtml(channel)}">
-        <input type="checkbox" value="${escHtml(channel)}" onchange="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
+        <input type="checkbox" value="${escHtml(channel)}" data-dp-change="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
         <span>${escHtml(channel)}</span>
       </label>`;
   }).join('');
@@ -722,7 +722,7 @@ function renderHistologyAnalysisProjectImageList() {
     const detail = [entry.case_name || '', entry.case_relative_path || entry.relative_path || entry.source_path || '']
       .filter(Boolean).join(' · ');
     return `
-      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" onclick="DP.page.selectHistologyProjectImage('${escHtml(entry.entry_id)}')">
+      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectImage('${escHtml(entry.entry_id)}')">
         <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
         <div class="histology-file-subline">${escHtml(counts + role + missing + rebuild + channelText)}</div>
         <div class="histology-file-path">${escHtml(detail)}</div>
@@ -1455,7 +1455,7 @@ function renderHistologyRoiList() {
     <div class="file-item histology-roi-item">
       <span class="histology-roi-dot" style="--roi-color:${escHtml(roi.color || histologyRoiFallbackColor())}"></span>
       <span class="histology-roi-name">${escHtml(roi.label || ('ROI ' + (i + 1)))} · ${(roi.points || []).length} pt</span>
-      <button class="btn-secondary histology-roi-delete" type="button" onclick="DP.page.deleteHistologyRoi(${i})">X</button>
+      <button class="btn-secondary histology-roi-delete" type="button" data-dp-click="DP.page.deleteHistologyRoi(${i})">X</button>
     </div>`);
   if (_histologyActivePolygon) {
     saved.push(`<div class="file-item active">${escHtml(_histologyActivePolygon.label)} · drawing ${_histologyActivePolygon.points.length} pt</div>`);

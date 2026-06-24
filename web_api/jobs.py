@@ -99,7 +99,7 @@ def submit_json_task(
 
 
 def register_job_routes(app, ctx) -> None:
-    jobs: JobManager = ctx["jobs"]
+    jobs: JobManager = ctx.jobs
 
     @app.route("/api/jobs/list", methods=["POST"])
     @request_schema(JobListRequest)

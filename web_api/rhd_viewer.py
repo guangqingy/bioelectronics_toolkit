@@ -30,20 +30,20 @@ from .rhd_request_schemas import (
 
 
 def register_rhd_viewer_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    browse_files_recursive = ctx["browse_files_recursive"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    browse_files_recursive = ctx.browse_files_recursive
+    jobs = ctx.jobs
     service = rhd_viewer_service.RhdViewerService(
-        has_rhd=ctx["HAS_RHD"],
-        rhd_module=ctx.get("rhd"),
-        fig_to_b64=ctx["fig_to_b64"],
-        float_or=ctx["float_or"],
+        has_rhd=ctx.HAS_RHD,
+        rhd_module=ctx.rhd,
+        fig_to_b64=ctx.fig_to_b64,
+        float_or=ctx.float_or,
         bool_value=as_bool,
         mode_is_save=mode_is_save,
         clean_trace_svg=clean_trace_svg,
         next_numbered_path=next_numbered_path,
-        line_color=ctx["LINE_COLOR"],
+        line_color=ctx.LINE_COLOR,
     )
 
     def _json(schema):

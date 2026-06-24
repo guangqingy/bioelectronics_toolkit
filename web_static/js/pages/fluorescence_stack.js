@@ -299,15 +299,15 @@ function renderStackRows() {
     const idx = parseInt(s.page_index, 10) + 1;
     return `
       <div style="display:grid;grid-template-columns:18px 52px 78px 78px 78px 72px 72px 46px 50px;gap:4px;align-items:center;font-size:11px;border:1px solid var(--cloud);border-radius:6px;padding:4px 5px">
-        <input type="checkbox" id="stack_include_${i}" ${s.include ? 'checked' : ''} onchange="onStackSettingChange(${i})">
+        <input type="checkbox" id="stack_include_${i}" ${s.include ? 'checked' : ''} data-dp-change="onStackSettingChange(${i})">
         <div>Stack ${idx}</div>
-        <select id="stack_lut_${i}" onchange="onStackSettingChange(${i})">${_optHtml(STACK_LUT_OPTIONS, s.lut || 'Gray')}</select>
-        <select id="stack_bg_${i}" onchange="onStackPreprocessChange(${i})">${_optHtml(STACK_BG_OPTIONS, s.background || 'Off')}</select>
-        <select id="stack_dn_${i}" onchange="onStackPreprocessChange(${i})">${_optHtml(STACK_DENOISE_OPTIONS, s.denoise || 'Off')}</select>
-        <input type="number" id="stack_min_${i}" value="${Number(s.min || 0).toFixed(2)}" step="0.01" onchange="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
-        <input type="number" id="stack_max_${i}" value="${Number(s.max || 1).toFixed(2)}" step="0.01" onchange="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
-        <button type="button" class="btn-icon" style="height:24px" onclick="autoRangeStack(${i})">Auto</button>
-        <button type="button" class="btn-icon" style="height:24px" onclick="resetRangeStack(${i})">Reset</button>
+        <select id="stack_lut_${i}" data-dp-change="onStackSettingChange(${i})">${_optHtml(STACK_LUT_OPTIONS, s.lut || 'Gray')}</select>
+        <select id="stack_bg_${i}" data-dp-change="onStackPreprocessChange(${i})">${_optHtml(STACK_BG_OPTIONS, s.background || 'Off')}</select>
+        <select id="stack_dn_${i}" data-dp-change="onStackPreprocessChange(${i})">${_optHtml(STACK_DENOISE_OPTIONS, s.denoise || 'Off')}</select>
+        <input type="number" id="stack_min_${i}" value="${Number(s.min || 0).toFixed(2)}" step="0.01" data-dp-change="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
+        <input type="number" id="stack_max_${i}" value="${Number(s.max || 1).toFixed(2)}" step="0.01" data-dp-change="onStackSettingChange(${i})" style="font-size:11px;padding:3px 4px">
+        <button type="button" class="btn-icon" style="height:24px" data-dp-click="autoRangeStack(${i})">Auto</button>
+        <button type="button" class="btn-icon" style="height:24px" data-dp-click="resetRangeStack(${i})">Reset</button>
       </div>`;
   }).join('');
 }

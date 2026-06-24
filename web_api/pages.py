@@ -9,19 +9,11 @@ If a route in this file starts returning JSON, move it to the domain module.
 
 from __future__ import annotations
 
-from flask import render_template, request
-
-from pipelines.registry import default_category_id, pipeline_catalog, pipeline_category_ids
+from flask import render_template
 
 
 def register_page_routes(app, ctx) -> None:
-    base_dir = ctx["BASE_DIR"]
-    has_abf = ctx["HAS_ABF"]
-    has_rhd = ctx["HAS_RHD"]
-    has_scipy = ctx["HAS_SCIPY"]
-    has_tiff = ctx["HAS_TIFF"]
-    has_pil = ctx["HAS_PIL"]
-    has_readlif = ctx["HAS_READLIF"]
+    has_rhd = ctx.HAS_RHD
 
     @app.route("/")
     def index():
@@ -33,11 +25,11 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/abf/viewer")
     def abf_viewer():
-        return render_template("abf_viewer.html", active="abf_viewer", has_abf=has_abf)
+        return render_template("abf_viewer.html", active="abf_viewer")
 
     @app.route("/abf/batch")
     def abf_batch():
-        return render_template("abf_batch.html", active="abf_batch", has_abf=has_abf)
+        return render_template("abf_batch.html", active="abf_batch")
 
     @app.route("/abf/figure")
     def abf_figure():
@@ -45,7 +37,7 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/abf/peaks")
     def abf_peaks():
-        return render_template("abf_peakdet.html", active="abf_peaks", has_abf=has_abf)
+        return render_template("abf_peakdet.html", active="abf_peaks")
 
     @app.route("/echem/photocurrent")
     def echem_pc():
@@ -65,43 +57,23 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/emg/peaks")
     def emg_peaks():
-        return render_template("emg_peaks.html", active="emg_peaks", has_scipy=has_scipy)
+        return render_template("emg_peaks.html", active="emg_peaks")
 
     @app.route("/fluorescence")
     def fluorescence():
-        return render_template(
-            "fluorescence.html",
-            active="fluorescence",
-            has_tiff=has_tiff,
-            has_pil=has_pil,
-        )
+        return render_template("fluorescence.html", active="fluorescence")
 
     @app.route("/fluorescence/roi")
     def fluorescence_roi():
-        return render_template(
-            "fluorescence_roi.html",
-            active="fluorescence_roi",
-            has_tiff=has_tiff,
-        )
+        return render_template("fluorescence_roi.html", active="fluorescence_roi")
 
     @app.route("/fluorescence/lif")
     def fluorescence_lif():
-        return render_template(
-            "fluorescence_lif.html",
-            active="fluorescence_lif",
-            has_readlif=has_readlif,
-            has_pil=has_pil,
-            has_tiff=has_tiff,
-        )
+        return render_template("fluorescence_lif.html", active="fluorescence_lif")
 
     @app.route("/fluorescence/3d-stacking")
     def fluorescence_3d_stacking():
-        return render_template(
-            "fluorescence_3d_stacking.html",
-            active="fluorescence_3d_stacking",
-            has_tiff=has_tiff,
-            has_pil=has_pil,
-        )
+        return render_template("fluorescence_3d_stacking.html", active="fluorescence_3d_stacking")
 
     @app.route("/histology/naming")
     def histology_naming():
@@ -113,20 +85,13 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/fluorescence/gif")
     def fluorescence_gif():
-        return render_template(
-            "fluorescence_gif.html",
-            active="fluorescence_gif",
-            has_tiff=has_tiff,
-            has_pil=has_pil,
-        )
+        return render_template("fluorescence_gif.html", active="fluorescence_gif")
 
     @app.route("/fluorescence/timecourse")
     def fluorescence_timecourse():
         return render_template(
             "fluorescence_timecourse.html",
             active="fluorescence_timecourse",
-            has_tiff=has_tiff,
-            has_pil=has_pil,
         )
 
     @app.route("/fluorescence/kymograph")
@@ -134,24 +99,6 @@ def register_page_routes(app, ctx) -> None:
         return render_template(
             "fluorescence_kymograph.html",
             active="fluorescence_kymograph",
-            has_tiff=has_tiff,
-            has_pil=has_pil,
-        )
-
-    @app.route("/scripts")
-    @app.route("/scripts/<cat>")
-    def scripts(cat=None):
-        valid_categories = set(pipeline_category_ids())
-        fallback_category = default_category_id()
-        if cat not in valid_categories:
-            cat = fallback_category
-        return render_template(
-            "scripts.html",
-            active="scripts",
-            cat=cat,
-            cat_explicit=request.path != "/scripts",
-            pipeline_catalog=pipeline_catalog(base_dir, include_availability=True),
-            pipeline_default_category=fallback_category,
         )
 
     @app.route("/runs")

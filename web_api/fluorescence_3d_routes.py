@@ -35,8 +35,6 @@ def register_fluorescence_3d_routes(app, fl):
     err = fl["err"]
     int_or = fl["int_or"]
     float_or = fl["float_or"]
-    has_tiff = fl["has_tiff"]
-    has_pil = fl["has_pil"]
     jobs = fl["jobs"]
 
     _fl_frame_to_b64 = fl["_fl_frame_to_b64"]
@@ -45,8 +43,6 @@ def register_fluorescence_3d_routes(app, fl):
     _fl_tiff_series_info = fl["_fl_tiff_series_info"]
 
     volume_export_ctx = Volume3DExportContext(
-        has_tiff=has_tiff,
-        has_pil=has_pil,
         int_or=int_or,
         float_or=float_or,
         denoise_options=list(fl["_FL_DENOISE_OPTIONS"]),
@@ -72,8 +68,6 @@ def register_fluorescence_3d_routes(app, fl):
     @app.route("/api/fluorescence/3d/tiff_info", methods=["POST"])
     @request_schema(FluorescencePathRequest)
     def api_fl_3d_tiff_info():
-        if not has_tiff:
-            return err("tifffile is required")
         try:
             path = parse_json_payload(FluorescencePathRequest).path.strip()
             p = Path(path)
@@ -88,8 +82,6 @@ def register_fluorescence_3d_routes(app, fl):
     @app.route("/api/fluorescence/3d/tiff_info_batch", methods=["POST"])
     @request_schema(FluorescenceTiffInfoBatchRequest)
     def api_fl_3d_tiff_info_batch():
-        if not has_tiff:
-            return err("tifffile is required")
         try:
             paths = parse_json_payload(FluorescenceTiffInfoBatchRequest).paths
         except ValidationError as exc:
@@ -109,8 +101,6 @@ def register_fluorescence_3d_routes(app, fl):
     @app.route("/api/fluorescence/3d/preview_slice", methods=["POST"])
     @request_schema(Fluorescence3dPreviewSliceRequest)
     def api_fl_3d_preview_slice():
-        if not has_tiff or not has_pil:
-            return err("tifffile and Pillow are required")
         try:
             d = parse_json_payload(Fluorescence3dPreviewSliceRequest)
             path = d.path.strip()
@@ -138,8 +128,6 @@ def register_fluorescence_3d_routes(app, fl):
     @app.route("/api/fluorescence/3d/volume", methods=["POST"])
     @request_schema(Fluorescence3dVolumeRequest)
     def api_fl_3d_volume():
-        if not has_tiff:
-            return err("tifffile is required")
         try:
             body = parse_json_payload(Fluorescence3dVolumeRequest).model_dump()
             _path, payload = volume_payload_from_body(body, volume_export_ctx, for_export=False)

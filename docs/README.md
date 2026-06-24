@@ -1,7 +1,6 @@
 # Maintenance Docs
 
-These notes describe repository-level maintenance decisions. Pipeline workflow
-notes live under `docs/pipelines/`.
+These notes describe repository-level maintenance decisions.
 
 ## Index
 
@@ -10,14 +9,10 @@ notes live under `docs/pipelines/`.
 - [WebGUI architecture](webgui.md): Flask route layout, API response contract,
   background jobs, local safety assumptions, and browser assets.
 - [Changelog](CHANGELOG.md): notable release and unreleased changes.
-- [Pipeline registry](pipeline_registry.md): how the WebGUI Pipeline Runner
-  discovers categories, scripts, parameters, and local availability.
-- [Pipeline methods notes](pipelines/methods.md): concise algorithm and unit
-  notes for reproducible Methods sections.
 - [Release checklist](release.md): PyPI trusted publishing, lock refresh, and
   Zenodo DOI steps.
 - [Feature integration prompt](feature_integration_prompt.md): copy-paste
-  prompt for future WebGUI, service, launcher, and pipeline integration work.
+  prompt for future WebGUI, service, and launcher integration work.
 - [GitHub repository checklist](github_repository_checklist.md): web-UI settings
   that cannot be represented directly in code.
 

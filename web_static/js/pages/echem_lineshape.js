@@ -41,7 +41,7 @@ function renderSourceFiles() {
     const active = selected.has(sourceKey(file.path));
     const count = Number(file.segment_count || 0);
     const suffix = count ? ` · ${count}` : '';
-    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" onclick="DP.page.toggleSourceIndex(${i}, event)">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" data-dp-click="DP.page.toggleSourceIndex(${i}, event)">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
   }).join('');
   updateSourceCount();
   if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
@@ -257,7 +257,7 @@ function renderSampleList() {
   }
   el.innerHTML = _samples.map((s, i) => {
     const active = _selected.has(i);
-    return `<div class="file-item${active ? ' active' : ''}" onclick="DP.page.toggleSample(${i}, event)" data-idx="${i}" title="${escHtml(s.file || '')}">${active ? '✓ ' : ''}${escHtml(s.label || s.device || 'sample')}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-dp-click="DP.page.toggleSample(${i}, event)" data-idx="${i}" title="${escHtml(s.file || '')}">${active ? '✓ ' : ''}${escHtml(s.label || s.device || 'sample')}</div>`;
   }).join('');
 }
 
@@ -305,7 +305,7 @@ function renderPreviewPage() {
     const path = svgPathForSample(sample, axes, yLimits);
     const zeroX = 10 + ((0 - axes.crop_t0) / (axes.crop_t1 - axes.crop_t0 || 1)) * 280;
     cards.push(`
-      <button class="lineshape-mini${active ? ' active' : ''}" type="button" onclick="DP.page.toggleSample(${idx}, event)">
+      <button class="lineshape-mini${active ? ' active' : ''}" type="button" data-dp-click="DP.page.toggleSample(${idx}, event)">
         <div class="lineshape-mini-title">${active ? '✓ ' : ''}${escHtml(sample.label || 'sample')}</div>
         <svg viewBox="0 0 300 150" role="img" aria-label="${escHtml(sample.label || 'sample')}">
           <line x1="${zeroX.toFixed(2)}" x2="${zeroX.toFixed(2)}" y1="8" y2="142" stroke="#D0D1D2" stroke-width="1" stroke-dasharray="3 3"></line>

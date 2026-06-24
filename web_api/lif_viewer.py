@@ -93,18 +93,15 @@ class LifExportTiffBatchRequest(RequestModel):
 
 
 def register_lif_viewer_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
-    has_tiff = ctx["HAS_TIFF"]
-    has_pil = ctx["HAS_PIL"]
-    tifflib = ctx.get("tifflib")
-    image_mod = ctx.get("Image")
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    float_or = ctx.float_or
+    int_or = ctx.int_or
+    tifflib = ctx.tifflib
+    image_mod = ctx.Image
+    jobs = ctx.jobs
 
-    has_readlif = ctx.get("HAS_READLIF", False)
-    LifFile = ctx.get("LifFile")
+    LifFile = ctx.LifFile
     _lif_cache = {}
 
     def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
@@ -113,7 +110,7 @@ def register_lif_viewer_routes(app, ctx):
             return route_response_to_payload(handler(body or {}))
 
     def _lif_require_reader():
-        if not has_readlif or LifFile is None:
+        if LifFile is None:
             return "readlif is not installed. Run: python -m pip install readlif"
         return ""
 
@@ -205,10 +202,6 @@ def register_lif_viewer_routes(app, ctx):
     def _lif_export_image_as_tiff(
         lif, record: dict, output_dir: Path, output_name: str, overwrite: bool = False
     ) -> dict:
-        if not has_tiff or tifflib is None:
-            raise RuntimeError(
-                "tifffile is required for TIFF export. Run: python -m pip install tifffile"
-            )
         return lif_export.export_image_as_tiff(
             lif,
             record,
@@ -269,7 +262,7 @@ def register_lif_viewer_routes(app, ctx):
                     "timestamp_count": timestamp_count,
                     "records": sorted_records,
                     "sort": sort_mode,
-                    "readlif": has_readlif,
+                    "readlif": True,
                 }
             )
         except ValidationError as exc:
@@ -282,9 +275,6 @@ def register_lif_viewer_routes(app, ctx):
     @app.route("/api/fluorescence/lif/preview", methods=["POST"])
     @request_schema(LifPreviewRequest)
     def api_lif_preview():
-        if not has_pil or image_mod is None:
-            return err("Pillow is required for LIF previews. Run: python -m pip install Pillow")
-
         try:
             d = parse_json_payload(LifPreviewRequest)
             path = d.path.strip()

@@ -6,6 +6,7 @@ import threading
 import time
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from flask import Flask
@@ -15,12 +16,17 @@ from web_api.jobs import JobManager
 from web_api.response import api_error, make_envelope
 
 
+def _api_data(payload: dict) -> dict:
+    data = payload.get("data")
+    return data if isinstance(data, dict) else payload
+
+
 class ApiEnvelopeTests(unittest.TestCase):
-    def test_legacy_saved_path_is_exposed_as_output(self) -> None:
+    def test_legacy_saved_path_is_kept_in_data_and_inferred_as_output(self) -> None:
         envelope = make_envelope({"ok": True, "saved_path": "/tmp/result.csv", "rows": 3})
 
         self.assertTrue(envelope["ok"])
-        self.assertEqual(envelope["saved_path"], "/tmp/result.csv")
+        self.assertNotIn("saved_path", envelope)
         self.assertEqual(envelope["data"]["saved_path"], "/tmp/result.csv")
         self.assertEqual(envelope["outputs"], [{"path": "/tmp/result.csv", "type": "csv"}])
 
@@ -82,8 +88,10 @@ class ApiEnvelopeTests(unittest.TestCase):
         self.assertEqual(code, 500)
         self.assertIn("operation failed", payload["error"])
         self.assertNotIn("Traceback (most recent call last)", payload["error"])
-        self.assertRegex(payload["id"], r"^[0-9a-f]{8}$")
-        self.assertEqual(payload["technical_details"], "Traceback (most recent call last):\n  File x.py")
+        self.assertRegex(payload["data"]["id"], r"^[0-9a-f]{8}$")
+        self.assertEqual(
+            payload["data"]["technical_details"], "Traceback (most recent call last):\n  File x.py"
+        )
 
 
 class JobManagerContractTests(unittest.TestCase):
@@ -163,7 +171,6 @@ class WebAppSmokeTests(unittest.TestCase):
         "/histology/naming",
         "/histology/analysis",
         "/runs",
-        "/scripts",
     )
 
     @classmethod
@@ -270,7 +277,7 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_rendered_pages_do_not_expose_developer_absolute_paths(self) -> None:
         needles = ("/" + "Users/" + "guangqing", "Desktop" + "/" + "UChicago")
-        for route in ("/", "/scripts", "/abf/viewer", "/fluorescence/roi?demo=fluorescence"):
+        for route in ("/", "/runs", "/abf/viewer", "/fluorescence/roi?demo=fluorescence"):
             with self.subTest(route=route):
                 response = self.client.get(route)
                 html = response.data.decode("utf-8")
@@ -375,12 +382,6 @@ class WebAppSmokeTests(unittest.TestCase):
             ("fluorescence_roi.html", "fluorescence_roi_exports.js", "roiRadialResultCard"),
             ("run_history.html", "run_history.js", "runCompareBody"),
             ("run_history.html", "run_history.js", "runPreflightBody"),
-            ("scripts.html", "scripts_runner.js", "param_base_dir"),
-            ("scripts.html", "scripts_runner.js", "param_csv_path"),
-            ("scripts.html", "scripts_runner.js", "param_data_dir"),
-            ("scripts.html", "scripts_runner.js", "param_input_path"),
-            ("scripts.html", "scripts_runner.js", "param_model_dir"),
-            ("scripts.html", "scripts_runner.js", "param_peaks_dir"),
         }
         offenders = []
         for template in (root / "web_templates").rglob("*.html"):
@@ -416,10 +417,14 @@ class WebAppSmokeTests(unittest.TestCase):
 
         self.assertEqual([], offenders)
 
-    def test_inline_event_handlers_reference_available_functions(self) -> None:
+    def test_delegated_event_handlers_reference_available_functions(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        handler_re = re.compile(
+        inline_handler_re = re.compile(
             r"\bon(?:click|change|input|submit|mousedown|mouseup|mousemove|mouseleave|wheel)"
+            r"=['\"]([^'\"]+)['\"]"
+        )
+        delegated_handler_re = re.compile(
+            r"\bdata-dp-(?:click|change|input|submit|mousedown|mouseup|mousemove|mouseleave|wheel)"
             r"=['\"]([^'\"]+)['\"]"
         )
         call_re = re.compile(r"\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(")
@@ -450,6 +455,8 @@ class WebAppSmokeTests(unittest.TestCase):
         offenders = []
         for template in (root / "web_templates").rglob("*.html"):
             template_text = template.read_text(encoding="utf-8")
+            for handler in inline_handler_re.findall(template_text):
+                offenders.append(f"{template.name}: inline handler remains: {handler}")
             page_js = "\n".join(
                 (root / "web_static" / "js" / "pages" / script_name).read_text(
                     encoding="utf-8"
@@ -457,7 +464,7 @@ class WebAppSmokeTests(unittest.TestCase):
                 for script_name in self._page_script_refs(template_text)
             )
             source = f"{template_text}\n{page_js}\n{common_js}"
-            for handler in handler_re.findall(template_text):
+            for handler in delegated_handler_re.findall(template_text):
                 for name in call_re.findall(handler):
                     if name in allowed_names:
                         continue
@@ -516,7 +523,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('href="/histology/analysis"', html)
         self.assertIn("Command Palette", html)
         self.assertIn("commandPalette", html)
-        self.assertIn('onclick="logoutServer()"', html)
+        self.assertIn('data-dp-click="logoutServer()"', html)
         self.assertIn("v0.7.0", html)
         self.assertNotIn("unknown", html.lower())
 
@@ -688,15 +695,16 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             project_payload = project_response.get_json()
-            entry_id = project_payload["entries"][0]["entry_id"]
+            project_data = _api_data(project_payload)
+            entry_id = project_data["entries"][0]["entry_id"]
             preview_response = self.client.post(
                 "/api/histology/project/image_preview",
-                json={"project_path": project_payload["project_path"], "entry_id": entry_id},
+                json={"project_path": project_data["project_path"], "entry_id": entry_id},
             )
             project_region_response = self.client.post(
                 "/api/histology/project/image_region_preview",
                 json={
-                    "project_path": project_payload["project_path"],
+                    "project_path": project_data["project_path"],
                     "entry_id": entry_id,
                     "x": 2,
                     "y": 2,
@@ -708,7 +716,7 @@ class WebAppSmokeTests(unittest.TestCase):
             analysis_response = self.client.post(
                 "/api/histology/project/analysis/run",
                 json={
-                    "project_path": project_payload["project_path"],
+                    "project_path": project_data["project_path"],
                     "entry_id": entry_id,
                     "rois": rois,
                     "parameters": {
@@ -725,7 +733,7 @@ class WebAppSmokeTests(unittest.TestCase):
             debug_response = self.client.post(
                 "/api/histology/project/analysis/debug_roi",
                 json={
-                    "project_path": project_payload["project_path"],
+                    "project_path": project_data["project_path"],
                     "entry_id": entry_id,
                     "roi_index": 0,
                     "parameters": {
@@ -754,7 +762,7 @@ class WebAppSmokeTests(unittest.TestCase):
             batch_response = self.client.post(
                 "/api/histology/project/analysis/run_saved",
                 json={
-                    "project_path": project_payload["project_path"],
+                    "project_path": project_data["project_path"],
                     "parameters": {
                         "sma_channel": "green",
                         "sma_threshold_method": "manual",
@@ -801,58 +809,67 @@ class WebAppSmokeTests(unittest.TestCase):
             file_preview_payload = file_preview_response.get_json()
             file_region_payload = file_region_response.get_json()
             file_analysis_payload = file_analysis_response.get_json()
+            scan_data = _api_data(scan_payload)
+            preview_data = _api_data(preview_payload)
+            project_region_data = _api_data(project_region_payload)
+            analysis_data = _api_data(analysis_payload)
+            debug_data = _api_data(debug_payload)
+            batch_data = _api_data(batch_payload)
+            file_preview_data = _api_data(file_preview_payload)
+            file_region_data = _api_data(file_region_payload)
+            file_analysis_data = _api_data(file_analysis_payload)
             self.assertEqual(scan_response.status_code, 200)
             self.assertTrue(scan_payload["ok"])
-            self.assertEqual(scan_payload["sample_count"], 1)
-            self.assertEqual(scan_payload["raw_olympus_file_count"], 2)
+            self.assertEqual(scan_data["sample_count"], 1)
+            self.assertEqual(scan_data["raw_olympus_file_count"], 2)
             self.assertEqual(project_response.status_code, 200)
             self.assertTrue(project_payload["ok"])
-            self.assertEqual(project_payload["protocol"], "dataprocess-tiff-histology")
-            self.assertEqual(project_payload["entry_count"], 1)
-            self.assertTrue(Path(project_payload["raw_olympus_index_path"]).is_file())
-            self.assertIn("FITC", project_payload["entries"][0]["image_files"])
+            self.assertEqual(project_data["protocol"], "dataprocess-tiff-histology")
+            self.assertEqual(project_data["entry_count"], 1)
+            self.assertTrue(Path(project_data["raw_olympus_index_path"]).is_file())
+            self.assertIn("FITC", project_data["entries"][0]["image_files"])
             self.assertEqual(preview_response.status_code, 200)
             self.assertTrue(preview_payload["ok"])
-            self.assertEqual(preview_payload["width"], 20)
-            self.assertIn("FITC", preview_payload["preview_channels"])
+            self.assertEqual(preview_data["width"], 20)
+            self.assertIn("FITC", preview_data["preview_channels"])
             self.assertEqual(project_region_response.status_code, 200)
             self.assertTrue(project_region_payload["ok"])
-            self.assertEqual(project_region_payload["region_width"], 10)
-            self.assertTrue(project_region_payload["img"])
+            self.assertEqual(project_region_data["region_width"], 10)
+            self.assertTrue(project_region_data["img"])
             self.assertEqual(analysis_response.status_code, 200)
             self.assertTrue(analysis_payload["ok"])
-            self.assertGreater(analysis_payload["results"][0]["sma_positive_px"], 0)
-            self.assertGreaterEqual(analysis_payload["results"][0]["sma_object_count"], 1)
-            self.assertTrue(Path(analysis_payload["analysis_path"]).exists())
-            self.assertTrue(Path(analysis_payload["project_path"]).exists())
-            self.assertTrue(Path(analysis_payload["cache_dir"]).is_dir())
+            self.assertGreater(analysis_data["results"][0]["sma_positive_px"], 0)
+            self.assertGreaterEqual(analysis_data["results"][0]["sma_object_count"], 1)
+            self.assertTrue(Path(analysis_data["analysis_path"]).exists())
+            self.assertTrue(Path(analysis_data["project_path"]).exists())
+            self.assertTrue(Path(analysis_data["cache_dir"]).is_dir())
             self.assertEqual(debug_response.status_code, 200)
             self.assertTrue(debug_payload["ok"])
-            self.assertEqual(debug_payload["kind"], "histology_roi_debug")
-            self.assertEqual(debug_payload["roi_index"], 0)
-            self.assertEqual(debug_payload["roi_shrink_percent"], 20)
-            self.assertTrue(debug_payload["img"])
-            self.assertIn("sma", debug_payload["before"])
-            self.assertLess(debug_payload["after"]["area_px"], debug_payload["before"]["area_px"])
+            self.assertEqual(debug_data["kind"], "histology_roi_debug")
+            self.assertEqual(debug_data["roi_index"], 0)
+            self.assertEqual(debug_data["roi_shrink_percent"], 20)
+            self.assertTrue(debug_data["img"])
+            self.assertIn("sma", debug_data["before"])
+            self.assertLess(debug_data["after"]["area_px"], debug_data["before"]["area_px"])
             self.assertEqual(batch_response.status_code, 200)
             self.assertTrue(batch_payload["ok"])
-            self.assertEqual(batch_payload["kind"], "histology_saved_roi_batch_analysis")
-            self.assertTrue(Path(batch_payload["roi_table_path"]).exists())
-            self.assertTrue(Path(batch_payload["image_table_path"]).exists())
-            self.assertTrue(Path(batch_payload["summary_table_path"]).exists())
-            self.assertTrue(Path(batch_payload["statistics_path"]).exists())
-            self.assertEqual(len(batch_payload["plots"]), 4)
-            self.assertTrue(all(Path(plot["path"]).exists() for plot in batch_payload["plots"]))
+            self.assertEqual(batch_data["kind"], "histology_saved_roi_batch_analysis")
+            self.assertTrue(Path(batch_data["roi_table_path"]).exists())
+            self.assertTrue(Path(batch_data["image_table_path"]).exists())
+            self.assertTrue(Path(batch_data["summary_table_path"]).exists())
+            self.assertTrue(Path(batch_data["statistics_path"]).exists())
+            self.assertEqual(len(batch_data["plots"]), 4)
+            self.assertTrue(all(Path(plot["path"]).exists() for plot in batch_data["plots"]))
             self.assertEqual(file_preview_response.status_code, 200)
             self.assertTrue(file_preview_payload["ok"])
-            self.assertEqual(file_preview_payload["width"], 20)
+            self.assertEqual(file_preview_data["width"], 20)
             self.assertEqual(file_region_response.status_code, 200)
             self.assertTrue(file_region_payload["ok"])
-            self.assertEqual(file_region_payload["region_width"], 8)
+            self.assertEqual(file_region_data["region_width"], 8)
             self.assertEqual(file_analysis_response.status_code, 200)
             self.assertTrue(file_analysis_payload["ok"])
-            self.assertEqual(file_analysis_payload["kind"], "single_file_histology_analysis")
-            self.assertGreater(file_analysis_payload["results"][0]["macrophage_positive_px"], 0)
+            self.assertEqual(file_analysis_data["kind"], "single_file_histology_analysis")
+            self.assertGreater(file_analysis_data["results"][0]["macrophage_positive_px"], 0)
 
     def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -939,7 +956,7 @@ class WebAppSmokeTests(unittest.TestCase):
         for module in modules:
             self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
-        self.assertIn("window.LIF_VIEWER_FLAGS", template)
+        self.assertNotIn("window.LIF_VIEWER_FLAGS", template)
         self.assertNotIn("function loadLifPreview()", template)
 
     def test_fluorescence_3d_uses_page_specific_js_modules(self) -> None:
@@ -958,7 +975,7 @@ class WebAppSmokeTests(unittest.TestCase):
         for module in modules:
             self.assertIn(f"static_asset('js/pages/{module}')", template)
             self.assertTrue((root / "web_static" / "js" / "pages" / module).exists())
-        self.assertIn("window.FL3D_FLAGS", template)
+        self.assertNotIn("window.FL3D_FLAGS", template)
         self.assertNotIn("function renderVolume3D(volume)", template)
 
     def test_emg_peaks_uses_workflow_specific_js_modules(self) -> None:
@@ -1175,7 +1192,7 @@ class WebAppSmokeTests(unittest.TestCase):
                 json={"path": "/tmp/record_0100.rhd", "merge_pair": True},
             )
             loaded_payload = loaded.get_json()
-            loaded_data = loaded_payload.get("data", loaded_payload)
+            loaded_data = _api_data(loaded_payload)
             self.assertEqual(loaded.status_code, 200)
             self.assertTrue(loaded_data["merged_pair"])
             self.assertEqual(loaded_data["n_samples"], 120_000)
@@ -1191,7 +1208,7 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             plot_payload = plot.get_json()
-            plot_data = plot_payload.get("data", plot_payload)
+            plot_data = _api_data(plot_payload)
             self.assertEqual(plot.status_code, 200)
             self.assertTrue(plot_data["img"])
             self.assertEqual(plot_data["downsample"], 10)
@@ -1219,7 +1236,7 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             processed_payload = processed.get_json()
-            processed_data = processed_payload.get("data", processed_payload)
+            processed_data = _api_data(processed_payload)
             self.assertEqual(processed.status_code, 200)
             self.assertTrue(processed_data["img"])
             self.assertEqual(processed_data["process_type"], "fft")
@@ -1264,7 +1281,7 @@ class WebAppSmokeTests(unittest.TestCase):
                         },
                     )
                     payload = response.get_json()
-                    data = payload.get("data", payload)
+                    data = _api_data(payload)
                     self.assertEqual(response.status_code, 200)
                     self.assertTrue(payload["ok"])
                     out_path = Path(data["saved_path"])
@@ -1339,9 +1356,9 @@ class WebAppSmokeTests(unittest.TestCase):
             first_payload = first.get_json()
             second_payload = second.get_json()
             csv_payload = csv_response.get_json()
-            first_data = first_payload.get("data", first_payload)
-            second_data = second_payload.get("data", second_payload)
-            csv_data = csv_payload.get("data", csv_payload)
+            first_data = _api_data(first_payload)
+            second_data = _api_data(second_payload)
+            csv_data = _api_data(csv_payload)
             first_path = Path(first_data["saved_path"])
             second_path = Path(second_data["saved_path"])
             csv_path = Path(csv_data["saved_path"])
@@ -1377,9 +1394,10 @@ class WebAppSmokeTests(unittest.TestCase):
                     },
                 )
                 started_payload = started.get_json()
+                started_data = _api_data(started_payload)
                 self.assertEqual(started.status_code, 200)
                 self.assertTrue(started_payload["ok"])
-                job = self._wait_for_api_job(started_payload["job_id"])
+                job = self._wait_for_api_job(started_data["job_id"])
                 self.assertEqual(job["status"], "succeeded")
                 saved_paths.append(Path(job["outputs"][0]["path"]))
 
@@ -1430,9 +1448,10 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             started_payload = started.get_json()
+            started_data = _api_data(started_payload)
             self.assertEqual(started.status_code, 200)
             self.assertTrue(started_payload["ok"])
-            job = self._wait_for_api_job(started_payload["job_id"])
+            job = self._wait_for_api_job(started_data["job_id"])
             self.assertEqual(job["status"], "succeeded")
 
             renamed_root = Path(tmp) / "clean_session"
@@ -1444,12 +1463,13 @@ class WebAppSmokeTests(unittest.TestCase):
     def test_version_api_omits_unknown_commit_from_display_label(self) -> None:
         response = self.client.get("/api/version")
         payload = response.get_json()
+        data = _api_data(payload)
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(payload["ok"])
-        self.assertEqual(payload["version"], "0.7.0")
-        self.assertTrue(payload["label"].startswith("v0.7.0"))
-        self.assertNotIn("unknown", payload["label"].lower())
+        self.assertEqual(data["version"], "0.7.0")
+        self.assertTrue(data["label"].startswith("v0.7.0"))
+        self.assertNotIn("unknown", data["label"].lower())
 
     def test_abf_batch_dry_run_reports_plan_without_moving_files(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_abf_dry_run_") as tmp:
@@ -1486,7 +1506,7 @@ class WebAppSmokeTests(unittest.TestCase):
         )
         rendered = self.client.get("/abf/batch").data.decode("utf-8")
 
-        self.assertIn('onclick="DP.page.runBatch()"', template)
+        self.assertIn('data-dp-click="DP.page.runBatch()"', template)
         self.assertIn("static_asset('js/pages/abf_batch.js')", template)
         self.assertRegex(rendered, r"/static/js/pages/abf_batch\.js\?v=")
         self.assertIn("Waiting for confirmation before moving or renaming files", js_source)
@@ -1507,9 +1527,10 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             payload = started.get_json()
+            data = _api_data(payload)
             self.assertEqual(started.status_code, 200)
             self.assertTrue(payload["ok"])
-            job = self._wait_for_api_job(payload["job_id"])
+            job = self._wait_for_api_job(data["job_id"])
             self.assertEqual(job["status"], "succeeded")
             self.assertEqual(job["data"]["n"], 0)
             self.assertEqual(job["data"]["message"], "No matching files processed")
@@ -1579,7 +1600,6 @@ class WebAppSmokeTests(unittest.TestCase):
         fluorescence = (root / "web_templates" / "fluorescence.html").read_text(encoding="utf-8")
         gif = (root / "web_templates" / "fluorescence_gif.html").read_text(encoding="utf-8")
         roi = (root / "web_templates" / "fluorescence_roi.html").read_text(encoding="utf-8")
-        scripts = (root / "web_templates" / "scripts.html").read_text(encoding="utf-8")
 
         self.assertIn(
             '<details class="ctrl-section ctrl-details generic-file-profile-section"', generic
@@ -1592,7 +1612,6 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Advanced: Page Settings", gif)
         self.assertIn("Advanced: File Profile", roi)
         self.assertIn("Advanced: Page Settings", roi)
-        self.assertIn("Advanced: Page Settings", scripts)
 
     def test_windows_picker_failure_returns_error_without_tk_fallback(self) -> None:
         with (
@@ -1629,11 +1648,11 @@ class WebAppSmokeTests(unittest.TestCase):
         called = []
         system_api.register_system_routes(
             app,
-            {
-                "err": api_error,
-                "BASE_DIR": Path.cwd(),
-                "jobs": manager,
-            },
+            SimpleNamespace(
+                err=api_error,
+                BASE_DIR=Path(__file__).resolve().parents[1],
+                jobs=manager,
+            ),
         )
         app.config["DATAPROCESS_LOGOUT_HANDLER"] = lambda jobs: called.append(jobs)
 
@@ -1773,11 +1792,12 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             preview_payload = preview.get_json()
+            preview_data = _api_data(preview_payload)
             self.assertEqual(preview.status_code, 200)
             self.assertTrue(preview_payload["ok"])
-            self.assertTrue(preview_payload["gif_b64"])
-            self.assertIn("x", preview_payload["axis"])
-            self.assertIn("y", preview_payload["axis"])
+            self.assertTrue(preview_data["gif_b64"])
+            self.assertIn("x", preview_data["axis"])
+            self.assertIn("y", preview_data["axis"])
 
             volume = self.client.post(
                 "/api/fluorescence/3d/volume",
@@ -1795,9 +1815,10 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             volume_payload = volume.get_json()
+            volume_data = _api_data(volume_payload)
             self.assertEqual(volume.status_code, 200)
             self.assertTrue(volume_payload["ok"])
-            render = volume_payload["volume"]["render"]
+            render = volume_data["volume"]["render"]
             self.assertGreater(render["n_points"], 0)
             self.assertEqual(render["interlayer_level"], "high")
             self.assertEqual(render["interlayer_steps"], 3)
@@ -1814,11 +1835,12 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             distribution_payload = distribution.get_json()
+            distribution_data = _api_data(distribution_payload)
             self.assertEqual(distribution.status_code, 200)
             self.assertTrue(distribution_payload["ok"])
-            self.assertEqual(len(distribution_payload["rows"]), 4)
-            self.assertTrue(distribution_payload["plot"])
-            self.assertTrue(Path(distribution_payload["csv_path"]).exists())
+            self.assertEqual(len(distribution_data["rows"]), 4)
+            self.assertTrue(distribution_data["plot"])
+            self.assertTrue(Path(distribution_data["csv_path"]).exists())
 
     def test_csv_export_and_job_contracts(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_web_test_") as tmp:
@@ -1836,9 +1858,10 @@ class WebAppSmokeTests(unittest.TestCase):
 
             started = self.client.post("/api/csv/export_csv_job", json={"path": str(source)})
             started_payload = started.get_json()
+            started_data = _api_data(started_payload)
             self.assertTrue(started_payload["ok"])
 
-            job = self._wait_for_api_job(started_payload["job_id"])
+            job = self._wait_for_api_job(started_data["job_id"])
             self.assertEqual(job["status"], "succeeded")
             self.assertTrue(Path(job["outputs"][0]["path"]).exists())
             self.assertEqual(job["data"]["saved_path"], job["outputs"][0]["path"])
@@ -1876,18 +1899,20 @@ class WebAppSmokeTests(unittest.TestCase):
                 },
             )
             recorded_payload = recorded.get_json()
+            recorded_data = _api_data(recorded_payload)
             self.assertEqual(recorded.status_code, 200)
             self.assertTrue(recorded_payload["ok"])
 
             started = self.client.post(
                 "/api/run_history/package_job",
-                json={"manifest_path": recorded_payload["manifest_path"]},
+                json={"manifest_path": recorded_data["manifest_path"]},
             )
             started_payload = started.get_json()
+            started_data = _api_data(started_payload)
             self.assertEqual(started.status_code, 200)
             self.assertTrue(started_payload["ok"])
 
-            job = self._wait_for_api_job(started_payload["job_id"])
+            job = self._wait_for_api_job(started_data["job_id"])
             self.assertEqual(job["status"], "succeeded")
             self.assertTrue(Path(job["data"]["package_path"]).exists())
 
@@ -1952,7 +1977,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "RhdRenamePreviewRequest",
             "RhdViewRequest",
             "RunPackageRequest",
-            "ScriptRunRequest",
+            "OpenFolderRequest",
         ]:
             self.assertIn(schema_name, payload["components"]["schemas"])
 
@@ -2013,7 +2038,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/preferences/view_save": "#/components/schemas/ViewPreferencesSaveRequest",
             "/api/file_profiles/save": "#/components/schemas/FileProfileSaveRequest",
             "/api/run_history/package_job": "#/components/schemas/RunPackageRequest",
-            "/api/scripts/run": "#/components/schemas/ScriptRunRequest",
+            "/api/system/open_folder": "#/components/schemas/OpenFolderRequest",
         }
         for path, expected_ref in request_refs.items():
             operation = payload["paths"][path]["post"]
@@ -2089,7 +2114,7 @@ class WebAppSmokeTests(unittest.TestCase):
     def _wait_for_api_job(self, job_id: str) -> dict:
         for _ in range(80):
             response = self.client.post("/api/jobs/get", json={"job_id": job_id})
-            job = response.get_json()["job"]
+            job = _api_data(response.get_json())["job"]
             if job.get("status") in {"succeeded", "failed", "cancelled"}:
                 return job
             time.sleep(0.05)

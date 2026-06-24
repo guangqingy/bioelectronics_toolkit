@@ -154,7 +154,7 @@ function dpConfirmAction(options) {
           <div class="modal-body">
             <div class="confirm-detail" id="dpConfirmDetail"></div>
             <div class="modal-actions">
-              <button class="btn-secondary" type="button" data-confirm="cancel">Cancel</button>
+              <button class="btn-tertiary" type="button" data-confirm="cancel">Cancel</button>
               <button class="btn-primary" type="button" data-confirm="ok">Continue</button>
             </div>
           </div>
@@ -206,7 +206,7 @@ function dpPromptAction(options) {
             <label class="form-label" id="dpPromptLabel" for="dpPromptInput"></label>
             <input id="dpPromptInput" type="text" autocomplete="off">
             <div class="modal-actions">
-              <button class="btn-secondary" type="button" data-prompt="cancel">Cancel</button>
+              <button class="btn-tertiary" type="button" data-prompt="cancel">Cancel</button>
               <button class="btn-primary" type="button" data-prompt="ok">Save</button>
             </div>
           </div>
@@ -403,8 +403,8 @@ function dpRenderVirtualFileList(containerId) {
     <div class="file-list-meta" role="status">
       <span>${filtered.length}/${state.files.length} file(s)</span>
       <span>Page ${state.page + 1}/${totalPages}</span>
-      <button class="btn-secondary" type="button" data-file-page="prev"${state.page === 0 ? ' disabled' : ''}>Prev</button>
-      <button class="btn-secondary" type="button" data-file-page="next"${state.page >= totalPages - 1 ? ' disabled' : ''}>Next</button>
+      <button class="btn-tertiary" type="button" data-file-page="prev"${state.page === 0 ? ' disabled' : ''}>Prev</button>
+      <button class="btn-tertiary" type="button" data-file-page="next"${state.page >= totalPages - 1 ? ' disabled' : ''}>Next</button>
     </div>
   `;
   el.innerHTML = controls + pageItems.map(item =>

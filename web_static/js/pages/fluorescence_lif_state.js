@@ -1,8 +1,3 @@
-const LIF_VIEWER_FLAGS = window.LIF_VIEWER_FLAGS || {};
-const HAS_READLIF = !!LIF_VIEWER_FLAGS.hasReadlif;
-const HAS_PIL = !!LIF_VIEWER_FLAGS.hasPil;
-const HAS_TIFF = !!LIF_VIEWER_FLAGS.hasTiff;
-
 let _lifPath = '';
 let _lifFiles = [];
 let _lifRecords = [];

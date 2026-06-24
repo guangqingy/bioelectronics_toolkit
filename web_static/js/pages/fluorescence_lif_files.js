@@ -18,7 +18,7 @@ function renderLifFileList() {
     return;
   }
   el.innerHTML = _lifFiles.map((f, i) => `
-    <div class="file-item" data-idx="${i}" onclick="selectLifFile(${i})">${escapeHtml(f.name)}</div>
+    <div class="file-item" data-idx="${i}" data-dp-click="selectLifFile(${i})">${escapeHtml(f.name)}</div>
   `).join('');
 }
 
@@ -34,15 +34,6 @@ function selectLifFile(i) {
 function loadLifProject() {
   const path = document.getElementById('lifPath').value.trim();
   if (!path) { setStatus('status', 'Choose a .lif file', 'error'); return; }
-  if (!HAS_READLIF) {
-    setStatus('status', 'readlif is not installed: python -m pip install readlif', 'error');
-    return;
-  }
-  if (!HAS_PIL) {
-    setStatus('status', 'Pillow is not installed', 'error');
-    return;
-  }
-
   _lifPath = path;
   _lifActiveIndex = null;
   loadRenameMap(path);
@@ -61,7 +52,7 @@ function loadLifProject() {
     sortLifRecords();
     renderLifBrowser();
     document.getElementById('btnManifest').disabled = !_lifRecords.length;
-    document.getElementById('btnExportAllTiff').disabled = !_lifRecords.length || !HAS_TIFF;
+    document.getElementById('btnExportAllTiff').disabled = !_lifRecords.length;
     const timed = d.timestamp_count || 0;
     document.getElementById('lifMeta').textContent =
       `${d.name || 'LIF project'} · ${d.n_images || 0} subfiles · ${timed} with timestamp metadata`;
@@ -143,7 +134,7 @@ function renderLifSubfileList() {
     const active = Number(rec.index) === Number(_lifActiveIndex) ? 'active' : '';
     const customLine = hasCustomName(rec) ? `<span class="lif-subfile-original">Original: ${escapeHtml(rec.name || '')}</span>` : '';
     return `
-      <div class="file-item lif-subfile-item ${active}" onclick="selectLifRecord(${rec.index})">
+      <div class="file-item lif-subfile-item ${active}" data-dp-click="selectLifRecord(${rec.index})">
         <span class="lif-order">${i + 1}</span>
         <span class="lif-subfile-main">${escapeHtml(displayName(rec))}</span>
         <span class="lif-subfile-time">${escapeHtml(rec.acquired_at || 'Leica order')} · LIF ${rec.original_order || ''} · ${escapeHtml(dimText(rec))}</span>
@@ -196,11 +187,11 @@ function renderSelectedDetail() {
       <input type="text" id="renameInput" value="${escapeAttr(displayName(rec))}" placeholder="output name" style="font-size:12px">
     </div>
     <div class="btn-row">
-      <button class="btn-secondary" id="btnApplyRename" onclick="applySelectedRename()">Rename</button>
-      <button class="btn-secondary" onclick="resetSelectedRename()">Reset</button>
+      <button class="btn-secondary" id="btnApplyRename" data-dp-click="applySelectedRename()">Rename</button>
+      <button class="btn-tertiary" data-dp-click="resetSelectedRename()">Reset</button>
     </div>
     <div class="lif-export-note">${escapeHtml(stackLine)}</div>
-    <button class="btn-primary" id="btnExportTiff" data-label="Export Selected TIFF" onclick="exportSelectedTiff()" style="margin-top:10px" ${HAS_TIFF ? '' : 'disabled'}>Export Selected TIFF</button>
+    <button class="btn-primary" id="btnExportTiff" data-label="Export Selected TIFF" data-dp-click="exportSelectedTiff()" style="margin-top:10px">Export Selected TIFF</button>
   `;
 }
 
@@ -276,7 +267,7 @@ function renderExtraDimControls(rec) {
     return `
       <div class="lif-slider-row lif-extra-dim-row" data-dim-id="${id}">
         <span>${label}</span>
-        <input type="range" id="extraDimSlider_${id}" min="0" max="${count - 1}" value="${value}" oninput="onLifDimSlide()">
+        <input type="range" id="extraDimSlider_${id}" min="0" max="${count - 1}" value="${value}" data-dp-input="onLifDimSlide()">
         <span id="extraDimLabel_${id}">1 / ${count}</span>
       </div>`;
   }).join('');

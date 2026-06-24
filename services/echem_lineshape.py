@@ -7,7 +7,7 @@ from typing import Any, Callable
 import numpy as np
 import pandas as pd
 
-from services.output_naming import sanitize_name_part
+from services.output_naming import PROJECT_ROOT, sanitize_name_part
 from services.trace_decimate import DEFAULT_MAX_POINTS, decimate_xy
 
 DEFAULT_CHAMBERS = [1, 2, 3]
@@ -754,7 +754,7 @@ def _resolve_output_dir(base_dir: object, output_dir: object, source_path: objec
         return out
     if root is not None:
         return root / "plots_shape_average"
-    return Path.cwd() / "plots_shape_average"
+    return PROJECT_ROOT / "plots_shape_average"
 
 
 def export_base_name(

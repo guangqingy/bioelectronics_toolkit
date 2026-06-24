@@ -4,7 +4,7 @@
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
 {% set histology_active = active in ['histology_naming', 'histology_analysis'] %}
-{% set workflow_active = active in ['scripts', 'run_history'] %}
+{% set workflow_active = active in ['run_history'] %}
 <nav class="top-nav">
   <div class="nav-inner">
     <a class="nav-brand" href="{% if standalone_lif %}/fluorescence/lif{% else %}/{% endif %}">{% if standalone_lif %}Leica LIF Browser{% else %}DataProcess{% endif %}</a>
@@ -69,23 +69,15 @@
         </div>
       </div>
 
-      <div class="nav-menu {% if workflow_active %}active{% endif %}">
-        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">Workflows</button>
-        <div class="nav-dropdown nav-dropdown-right" role="menu">
-          <div class="nav-dropdown-label">Run</div>
-          <a class="nav-dropdown-item {% if active=='scripts' %}active{% endif %}" href="/scripts" title="General Script Pipelines">Pipelines</a>
-          <div class="nav-dropdown-label">Review</div>
-          <a class="nav-dropdown-item {% if active=='run_history' %}active{% endif %}" href="/runs" title="Run History and Manifests">Run History</a>
-        </div>
-      </div>
+      <a class="nav-item {% if workflow_active %}active{% endif %}" href="/runs" title="Run History and Manifests">Run History</a>
       {% endif %}
     </div>
     <div class="nav-right">
-      <button id="commandBtn" class="nav-settings" type="button" onclick="DP.palette.open()" title="Command palette">Search</button>
-      <button id="shortcutBtn" class="nav-settings" type="button" onclick="DP.dom.openShortcutModal()" title="Keyboard shortcuts">?</button>
-      <button id="prefsBtn" class="nav-settings" type="button" onclick="DP.settings.open()">Settings</button>
+      <button id="commandBtn" class="nav-settings" type="button" data-dp-click="DP.palette.open()" title="Command palette">Search</button>
+      <button id="shortcutBtn" class="nav-settings" type="button" data-dp-click="DP.dom.openShortcutModal()" title="Keyboard shortcuts">?</button>
+      <button id="prefsBtn" class="nav-settings" type="button" data-dp-click="DP.settings.open()">Settings</button>
       <span class="nav-version" title="bioelectronics_toolkit {{ app_version_label }}">{{ app_version_label }}</span>
-      <button id="logoutBtn" class="nav-logout" type="button" onclick="logoutServer()">Log Out</button>
+      <button id="logoutBtn" class="nav-logout" type="button" data-dp-click="logoutServer()">Log Out</button>
     </div>
   </div>
 </nav>

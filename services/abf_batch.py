@@ -275,14 +275,13 @@ def _write_operation_log(root_dir: Path, payload: dict[str, Any]) -> str:
 def process_payload(
     data: dict[str, Any],
     *,
-    has_abf: bool,
     pyabf_mod: Any,
     float_or: Callable[[Any, float | None], float | None],
     int_or: Callable[[Any, int], int],
     root_dir: Path,
 ) -> dict[str, Any]:
     """Process a batch of ABF files and return the web response payload."""
-    if not has_abf or pyabf_mod is None:
+    if pyabf_mod is None:
         raise ValueError("pyabf not installed")
 
     folder = data.get("folder", "")

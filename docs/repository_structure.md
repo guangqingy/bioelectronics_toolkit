@@ -1,10 +1,11 @@
 # Repository Structure
 
-This repository keeps desktop launchers under `desktop_apps/launchers/` and
-shared processing logic under `services/`. The WebGUI is the canonical product
-surface and the default target for installed desktop commands. Native desktop
-helpers that remain in `desktop_apps/` should call shared services rather than
-duplicating analysis logic.
+This repository keeps desktop launchers under `desktop_apps/launchers/`, native
+helper windows under `desktop_apps/native/`, command-line compatibility wrappers
+under `desktop_apps/cli/`, and shared processing logic under `services/`. The
+WebGUI is the canonical product surface and the default target for installed
+desktop commands. Native desktop helpers should call shared services rather
+than duplicating analysis logic.
 
 ## Current Layout
 
@@ -20,6 +21,8 @@ DataProcess/
 +-- LICENSE
 +-- desktop_apps/
 |   +-- launchers/            # thin WebGUI/CLI launchers
+|   +-- native/               # service-backed Tk helper windows
+|   +-- cli/                  # small CLI compatibility wrappers
 |   +-- web_launcher.py       # opens the canonical WebGUI page for each tool
 +-- web_api/                  # Page/API routes, context, jobs, and local system routes
 +-- services/                 # UI-independent processing services
@@ -27,16 +30,15 @@ DataProcess/
 +-- web_static/               # CSS and shared JavaScript
 +-- vendor/                   # vendored reference parsers kept out of root
 +-- dev_scripts/              # maintainer-only repository scripts
-+-- pipelines/                # canonical WebGUI pipeline registry
 +-- tests/                    # smoke and contract tests
 +-- docs/                     # architecture, WebGUI, changelog, and release notes
-|   +-- pipelines/            # domain pipeline notes and audits
 +-- .github/                  # CI, contribution, security, and issue templates
 ```
 
 This shape is supported by `pyproject.toml`, where GUI console scripts point at
 `desktop_apps.web_launcher:*_main`, while direct source-tree launchers live
-under `desktop_apps/launchers/`.
+under `desktop_apps/launchers/`, native helper windows under
+`desktop_apps/native/`, and pure CLI wrappers under `desktop_apps/cli/`.
 
 ## Recommended Direction
 
@@ -95,17 +97,14 @@ problem.
   `web_templates/partials/` rather than growing `base.html`.
 - Prefer service-task jobs through `submit_json_task(...)`; route modules should
   not manufacture Flask request contexts for background work.
-- Keep Pipeline Runner metadata in `pipelines/registry.json`; route modules and
-  templates should consume that registry instead of keeping their own script
-  maps.
 - Keep local state out of git: `.dataprocess_cache/web_gui_settings.json`, `config.json`, real
   data, generated outputs, `.dataprocess_cache/`, `__pycache__/`, and
   `.DS_Store`.
 - Keep root friendly for non-developer users: setup guides, app entry points,
   examples, and essential packaging/config files can stay there; maintainer
   docs belong in `docs/` or `.github/`.
-- Update `README.md`, `docs/webgui.md`, and the relevant file in
-  `docs/pipelines/` whenever a user-facing workflow changes.
+- Update `README.md` and `docs/webgui.md` whenever a user-facing workflow
+  changes.
 
 ## Suggested Refactor Order
 

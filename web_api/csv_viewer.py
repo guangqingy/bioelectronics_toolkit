@@ -64,14 +64,14 @@ class CsvFullExportRequest(RequestModel):
 
 
 def register_csv_viewer_routes(app, ctx):
-    err = ctx["err"]
-    browse_files = ctx["browse_files"]
-    fig_to_b64 = ctx["fig_to_b64"]
-    float_or = ctx["float_or"]
-    int_or = ctx["int_or"]
-    apply_axes_limits = ctx["apply_axes_limits"]
-    line_color = ctx["LINE_COLOR"]
-    jobs = ctx.get("jobs")
+    err = ctx.err
+    browse_files = ctx.browse_files
+    fig_to_b64 = ctx.fig_to_b64
+    float_or = ctx.float_or
+    int_or = ctx.int_or
+    apply_axes_limits = ctx.apply_axes_limits
+    line_color = ctx.LINE_COLOR
+    jobs = ctx.jobs
 
     _mode_is_save = mode_is_save
     viewer_service = csv_viewer.CsvViewerService(

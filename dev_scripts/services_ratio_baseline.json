@@ -219,13 +219,6 @@
       "service_to_route_ratio": 1.0533333333333332,
       "web_lines": 150
     },
-    "web_api/scripts_panel.py": {
-      "route_to_service_ratio": 0.5467032967032966,
-      "service_lines": 364,
-      "service_target": "services/scripts_panel.py",
-      "service_to_route_ratio": 1.829145728643216,
-      "web_lines": 199
-    },
     "web_api/system.py": {
       "route_to_service_ratio": null,
       "service_lines": 0,

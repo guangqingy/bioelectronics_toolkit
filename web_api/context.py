@@ -9,9 +9,8 @@ from typing import Any, Callable
 class WebApiContext:
     """Typed composition context shared by Web route modules.
 
-    Route modules still use mapping-style access during the incremental
-    migration, so this class deliberately supports ``ctx["key"]`` and
-    ``ctx.get("key")`` while making the available fields explicit.
+    Route modules use attribute access only, so dataclass fields remain the
+    single source of truth for registration dependencies.
     """
 
     err: Callable[..., Any]
@@ -24,13 +23,7 @@ class WebApiContext:
     apply_axes_limits: Callable[..., Any]
     BASE_DIR: Path
     LINE_COLOR: str
-    HAS_ABF: bool
     HAS_RHD: bool
-    HAS_SCIPY: bool
-    HAS_STATSMODELS: bool
-    HAS_TIFF: bool
-    HAS_PIL: bool
-    HAS_READLIF: bool
     pyabf: Any = None
     rhd: Any = None
     find_peaks: Any = None
@@ -44,17 +37,3 @@ class WebApiContext:
     ImageFont: Any = None
     LifFile: Any = None
     jobs: Any = None
-
-    def __getitem__(self, key: str) -> Any:
-        try:
-            return getattr(self, key)
-        except AttributeError as exc:
-            raise KeyError(key) from exc
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        if not hasattr(self, key):
-            raise KeyError(key)
-        object.__setattr__(self, key, value)
-
-    def get(self, key: str, default: Any = None) -> Any:
-        return getattr(self, key, default)

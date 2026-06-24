@@ -1,7 +1,3 @@
-const FL3D_FLAGS = window.FL3D_FLAGS || {};
-const HAS_TIFF = !!FL3D_FLAGS.hasTiff;
-const HAS_PIL = !!FL3D_FLAGS.hasPil;
-
 let _availableTiffs = [];
 let _availableActiveIndex = -1;
 let _currentInfo = null;
