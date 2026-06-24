@@ -428,8 +428,11 @@ class WebAppSmokeTests(unittest.TestCase):
             r"=['\"]([^'\"]+)['\"]"
         )
         call_re = re.compile(r"\b([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)\s*\(")
+        dp_call_re = re.compile(r"\bDP\.([A-Za-z_$][\w$]*)\.([A-Za-z_$][\w$]*)\s*\(")
         js_root = root / "web_static" / "js"
         common_js = "\n".join(path.read_text(encoding="utf-8") for path in js_root.glob("dp_*.js"))
+        page_js_paths = sorted((js_root / "pages").glob("*.js"))
+        all_js = common_js + "\n" + "\n".join(path.read_text(encoding="utf-8") for path in page_js_paths)
         allowed_names = {
             "alert",
             "clearTimeout",
@@ -450,34 +453,71 @@ class WebAppSmokeTests(unittest.TestCase):
             "Object.",
             "String.",
             "console.",
+            "document.",
             "event.",
         )
+
+        def dp_exports(namespace: str) -> set[str]:
+            exports: set[str] = set()
+            direct_re = re.compile(rf"\bwindow\.DP\.{re.escape(namespace)}\.([A-Za-z_$][\w$]*)\s*=")
+            exports.update(direct_re.findall(all_js))
+            assign_patterns = [
+                rf"Object\.assign\(window\.DP\.{re.escape(namespace)},\s*\{{(?P<body>.*?)\}}\);",
+                rf"window\.DP\.{re.escape(namespace)}\s*=\s*Object\.assign\([^,]+,\s*\{{(?P<body>.*?)\}}\);",
+            ]
+            key_re = re.compile(r"(?:^|[,{\n]\s*)([A-Za-z_$][\w$]*)\s*(?=[:,])", re.M)
+            for pattern in assign_patterns:
+                for match in re.finditer(pattern, all_js, re.S):
+                    exports.update(key_re.findall(match.group("body")))
+            return exports
+
+        dp_namespace_exports: dict[str, set[str]] = {}
+
+        def has_dp_export(namespace: str, method: str) -> bool:
+            if namespace not in dp_namespace_exports:
+                dp_namespace_exports[namespace] = dp_exports(namespace)
+            return method in dp_namespace_exports[namespace]
+
+        def has_page_function(name: str, source: str) -> bool:
+            has_function = re.search(rf"\bfunction\s+{re.escape(name)}\s*\(", source)
+            has_export = re.search(rf"['\"]{re.escape(name)}['\"]", source)
+            return bool(has_function or has_export)
+
+        def handler_matches(label: str, text: str):
+            for match in delegated_handler_re.finditer(text):
+                line = text[: match.start()].count("\n") + 1
+                yield f"{label}:{line}", match.group(1)
+
         offenders = []
         for template in (root / "web_templates").rglob("*.html"):
             template_text = template.read_text(encoding="utf-8")
             for handler in inline_handler_re.findall(template_text):
                 offenders.append(f"{template.name}: inline handler remains: {handler}")
-            page_js = "\n".join(
-                (root / "web_static" / "js" / "pages" / script_name).read_text(
-                    encoding="utf-8"
+            page_sources = [
+                (
+                    script_name,
+                    (root / "web_static" / "js" / "pages" / script_name).read_text(
+                        encoding="utf-8"
+                    ),
                 )
                 for script_name in self._page_script_refs(template_text)
-            )
+            ]
+            page_js = "\n".join(text for _script_name, text in page_sources)
             source = f"{template_text}\n{page_js}\n{common_js}"
-            for handler in delegated_handler_re.findall(template_text):
+            handler_sources = [(template.name, template_text), *page_sources]
+            for location, handler in (
+                item for label, text in handler_sources for item in handler_matches(label, text)
+            ):
+                for namespace, method in dp_call_re.findall(handler):
+                    if namespace == "page":
+                        if not has_page_function(method, source):
+                            offenders.append(f"{location}: missing DP.page.{method}")
+                    elif not has_dp_export(namespace, method):
+                        offenders.append(f"{location}: missing DP.{namespace}.{method}")
                 for name in call_re.findall(handler):
                     if name in allowed_names:
                         continue
                     if name.startswith(allowed_prefixes):
-                        if name.startswith("DP.page."):
-                            local_name = name.rsplit(".", 1)[-1]
-                            has_function = re.search(
-                                rf"\bfunction\s+{re.escape(local_name)}\s*\(",
-                                source,
-                            )
-                            has_export = re.search(rf"['\"]{re.escape(local_name)}['\"]", source)
-                            if not has_function and not has_export:
-                                offenders.append(f"{template.name}: missing {name}")
                         continue
                     has_global_function = re.search(
                         rf"\bfunction\s+{re.escape(name)}\s*\(",
@@ -485,7 +525,7 @@ class WebAppSmokeTests(unittest.TestCase):
                     )
                     has_window_export = re.search(rf"\bwindow\.{re.escape(name)}\s*=", source)
                     if not has_global_function and not has_window_export:
-                        offenders.append(f"{template.name}: missing {name}")
+                        offenders.append(f"{location}: missing {name}")
 
         self.assertEqual([], offenders)
 
