@@ -18,6 +18,8 @@ Object.assign(window.DP.dom, {
   toast,
   showErrorBanner,
   dismissErrorBanner,
+  openShortcutModal,
+  closeShortcutModal,
   confirm: dpConfirmAction,
   prompt: dpPromptAction,
   btnBusy,
