@@ -17,7 +17,6 @@ def resolve_output_dir(
         source_path,
         output_dir,
         default_suffix=default_suffix,
-        project_root=Path(__file__).resolve().parents[1],
     )
 
 

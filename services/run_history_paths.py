@@ -40,7 +40,11 @@ def path_from_record(record: Any) -> Path | None:
 
 
 def resolve_root(body: dict[str, Any], base_dir: Path) -> Path:
-    explicit = as_path(body.get("project_root"))
+    explicit_text = str(body.get("project_root") or "").strip()
+    if explicit_text in {".", "__DATAPROCESS_BASE_DIR__"}:
+        return abs_path(base_dir)
+
+    explicit = as_path(explicit_text)
     if explicit is not None:
         if explicit.suffix and explicit.exists() and explicit.is_file():
             explicit = explicit.parent

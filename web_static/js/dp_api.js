@@ -2,12 +2,10 @@ function dpNormalizeApiPayload(payload, responseOk) {
   if (!payload || typeof payload !== 'object') {
     return {
       ok: !!responseOk,
-      data: {},
       outputs: [],
       warnings: [],
       error: responseOk ? null : 'Request failed',
       value: payload,
-      _envelope: null,
     };
   }
 
@@ -18,11 +16,9 @@ function dpNormalizeApiPayload(payload, responseOk) {
     const ok = responseOk !== false && !payload.error;
     return Object.assign({}, payload, {
       ok,
-      data: ok ? Object.assign({}, payload) : {},
       outputs: Array.isArray(payload.outputs) ? payload.outputs : [],
       warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
       error: ok ? null : (payload.error || 'Request failed'),
-      _envelope: null,
     });
   }
 
@@ -30,12 +26,11 @@ function dpNormalizeApiPayload(payload, responseOk) {
     ? payload.data
     : {};
   const legacyOk = Object.prototype.hasOwnProperty.call(data, 'ok') ? data.ok : payload.ok;
-  return Object.assign({}, data, payload, {
+  return Object.assign({}, data, {
     ok: legacyOk === false ? false : payload.ok !== false,
     outputs: Array.isArray(payload.outputs) ? payload.outputs : [],
     warnings: Array.isArray(payload.warnings) ? payload.warnings : [],
     error: payload.error || null,
-    _envelope: payload,
   });
 }
 
@@ -151,7 +146,12 @@ function dpNormalizeJobData(data) {
     Object.prototype.hasOwnProperty.call(data, 'ok') &&
     Object.prototype.hasOwnProperty.call(data, 'error')
   ) {
-    return Object.assign({}, data.data, data);
+    return Object.assign({}, data.data, {
+      ok: data.ok !== false,
+      outputs: Array.isArray(data.outputs) ? data.outputs : [],
+      warnings: Array.isArray(data.warnings) ? data.warnings : [],
+      error: data.error || null,
+    });
   }
   return data;
 }

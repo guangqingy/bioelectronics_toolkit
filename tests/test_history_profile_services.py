@@ -9,6 +9,18 @@ from services import file_profiles, run_history
 
 
 class RunHistoryServiceTests(unittest.TestCase):
+    def test_current_project_marker_resolves_to_base_dir(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_history_current_") as tmp:
+            root = Path(tmp)
+
+            listed = run_history.list_runs({"project_root": "."}, root)
+
+            self.assertEqual(Path(listed["project_root"]).resolve(), root.resolve())
+            self.assertEqual(
+                Path(listed["history_path"]).resolve(),
+                (root / ".dataprocess_cache" / "run_history.json").resolve(),
+            )
+
     def test_record_list_check_report_and_package_run(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_history_service_") as tmp:
             root = Path(tmp)

@@ -3,6 +3,8 @@ let _selectedRunIndex = -1;
 let _selectedManifest = null;
 let _selectedManifestPath = '';
 let _compareManifest = null;
+let _lastHistoryPath = '';
+let _lastProjectRoot = '';
 
 function initRunViewFilter() {
   const select = document.getElementById('runViewFilter');
@@ -17,10 +19,26 @@ function runProjectRoot() {
   return document.getElementById('runProjectRoot').value.trim();
 }
 
+function defaultRunProjectRoot() {
+  return (window.RUN_HISTORY_BOOTSTRAP || {}).defaultDataDir || DEFAULT_DATA_DIR || '';
+}
+
+function useDefaultRunProjectRoot() {
+  const input = document.getElementById('runProjectRoot');
+  if (input) input.value = defaultRunProjectRoot();
+  return loadRuns({selectFirst: true});
+}
+
 function renderRunList() {
   const list = document.getElementById('runList');
   if (!_runs.length) {
-    list.innerHTML = '<div class="file-list-empty">No run manifests found</div>';
+    const view = document.getElementById('runViewFilter')?.value || '';
+    const filter = view ? ` for ${settingsViewLabel(view)}` : '';
+    list.innerHTML = `
+      <div class="file-list-empty">
+        No run manifests found${filter}. Run an analysis or export first, then refresh history.
+        ${_lastHistoryPath ? `<div class="run-page-meta" style="margin-top:6px">${dpEscapeHtml(_lastHistoryPath)}</div>` : ''}
+      </div>`;
     return;
   }
   list.innerHTML = _runs.map((run, i) => {
@@ -48,8 +66,11 @@ function runFormatBytes(bytes) {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-async function loadRuns() {
-  const root = runProjectRoot();
+async function loadRuns(options) {
+  const opts = options || {};
+  const input = document.getElementById('runProjectRoot');
+  const root = runProjectRoot() || defaultRunProjectRoot();
+  if (input && root && input.value.trim() !== root) input.value = root;
   if (!root) {
     setStatus('status', 'Choose a project folder first', 'error');
     return;
@@ -64,21 +85,26 @@ async function loadRuns() {
     });
     if (d.error) throw new Error(d.error);
     _runs = d.runs || [];
+    _lastHistoryPath = d.history_path || '';
+    _lastProjectRoot = d.project_root || root;
     _selectedRunIndex = -1;
     _selectedManifest = null;
     _selectedManifestPath = '';
     renderRunList();
     updateRunKpis(d.history_path || '');
-    document.getElementById('runHistoryMeta').textContent = `${_runs.length} run(s) loaded from ${d.project_root || root}`;
+    document.getElementById('runHistoryMeta').textContent = `${_runs.length} run(s) loaded from ${_lastProjectRoot}`;
     document.getElementById('runDetailTitle').textContent = 'Manifest Details';
     document.getElementById('runDetailStatus').textContent = '';
     document.getElementById('runDetailBody').innerHTML = '<div class="run-empty">Select a run to inspect its inputs, outputs, and parameters.</div>';
     document.getElementById('manifestJson').textContent = '';
-    setStatus('status', 'Loaded ' + _runs.length + ' run(s)', 'ok');
+    if (_runs.length && opts.selectFirst) {
+      await selectRun(0, {quiet: true});
+    }
+    setStatus('status', _runs.length ? 'Loaded ' + _runs.length + ' run(s)' : 'No run manifests found', _runs.length ? 'ok' : 'warning');
   } catch (e) {
     setStatus('status', 'Error: ' + e.message, 'error');
   } finally {
-    btnBusy('btnLoadRuns', false, 'Load Runs');
+    btnBusy('btnLoadRuns', false, 'Refresh');
   }
 }
 
@@ -323,7 +349,8 @@ async function packageSelectedManifest() {
   }
 }
 
-async function selectRun(i) {
+async function selectRun(i, options) {
+  const opts = options || {};
   if (i < 0 || i >= _runs.length) return;
   _selectedRunIndex = i;
   renderRunList();
@@ -333,7 +360,7 @@ async function selectRun(i) {
     const d = await api('/api/run_history/get', {manifest_path: run.manifest_path});
     if (d.error) throw new Error(d.error);
     renderManifest(d.manifest || {}, d.manifest_path || run.manifest_path || '');
-    setStatus('status', 'Manifest loaded', 'ok');
+    if (!opts.quiet) setStatus('status', 'Manifest loaded', 'ok');
   } catch (e) {
     setStatus('status', 'Error: ' + e.message, 'error');
   }
@@ -341,8 +368,9 @@ async function selectRun(i) {
 
 window.addEventListener('load', () => {
   initRunViewFilter();
-  document.getElementById('runProjectRoot').value = (window.RUN_HISTORY_BOOTSTRAP || {}).defaultDataDir || DEFAULT_DATA_DIR || '';
-  setStatus('status', 'Ready', 'ok');
+  document.getElementById('runProjectRoot').value = defaultRunProjectRoot();
+  if (runProjectRoot()) loadRuns({selectFirst: true});
+  else setStatus('status', 'Ready', 'ok');
 });
 
 // DP.page exports for template event handlers.
@@ -371,6 +399,7 @@ window.DP.page = window.DP.page || {};
   'selectRun',
   'setCompareBase',
   'updateRunKpis',
+  'useDefaultRunProjectRoot',
   'writeSelectedManifestReport',
 ].forEach(name => {
   if (typeof window[name] === 'function') window.DP.page[name] = window[name];

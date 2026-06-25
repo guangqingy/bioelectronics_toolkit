@@ -1726,6 +1726,7 @@ class WebAppSmokeTests(unittest.TestCase):
         css_root = root / "web_static" / "style"
         palette_js = (js_root / "dp_palette.js").read_text(encoding="utf-8")
         api_js = (js_root / "dp_api.js").read_text(encoding="utf-8")
+        events_js = (js_root / "dp_events.js").read_text(encoding="utf-8")
         core_js = (js_root / "dp_core.js").read_text(encoding="utf-8")
         keyboard_js = (js_root / "dp_keyboard.js").read_text(encoding="utf-8")
         dom_js = (js_root / "dp_dom.js").read_text(encoding="utf-8")
@@ -1744,6 +1745,11 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("'saveGenericFileProfile'", core_js)
         self.assertIn("window.DP.page[name] = window[name]", core_js)
         self.assertIn("load failed", api_js)
+        self.assertIn("const DP_DELEGATED_EVENT_TYPES = ['click', 'change', 'input'];", events_js)
+        self.assertNotIn("Function(", events_js)
+        self.assertNotIn("eval(", events_js)
+        self.assertNotIn("_envelope", api_js)
+        self.assertNotIn("Object.assign({}, data, payload", api_js)
         self.assertIn("[hidden] { display: none !important; }", reset_css)
         self.assertNotIn("btn.click();\n        btn.click();", keyboard_js)
 

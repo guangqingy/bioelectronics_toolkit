@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import os
 import re
+import sys
 from pathlib import Path
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+APP_DATA_DIR_NAME = "DataProcess"
 
 
 def _clean_suffix(suffix: str) -> str:
@@ -70,6 +73,20 @@ def output_dir_for_project(project_root: Path, view: str) -> Path:
     return Path(project_root) / ".dataprocess_cache" / "exports" / view_slug
 
 
+def user_data_dir() -> Path:
+    """Return the writable per-user data root for app-level fallbacks."""
+    override = str(os.environ.get("DATAPROCESS_USER_DATA_DIR") or "").strip()
+    if override:
+        return Path(override).expanduser()
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / APP_DATA_DIR_NAME
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
+        return Path(base).expanduser() / APP_DATA_DIR_NAME if base else Path.home() / APP_DATA_DIR_NAME
+    xdg_data = os.environ.get("XDG_DATA_HOME")
+    return (Path(xdg_data).expanduser() if xdg_data else Path.home() / ".local" / "share") / "dataprocess"
+
+
 def resolve_output_dir(
     source_path: object = "",
     output_dir: object = "",
@@ -78,7 +95,7 @@ def resolve_output_dir(
     project_root: Path | None = None,
 ) -> Path:
     """Resolve an output directory without depending on process cwd."""
-    root = Path(project_root).expanduser() if project_root is not None else PROJECT_ROOT
+    root = Path(project_root).expanduser() if project_root is not None else user_data_dir() / "exports"
     source_text = str(source_path or "").strip()
     source = Path(source_text).expanduser() if source_text else None
     anchor = source.parent if source is not None and source.name else root
