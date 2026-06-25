@@ -9,7 +9,11 @@ Functional implementation lives in smaller modules:
 - histology_preview: image preview, label preview, and OCR
 - histology_analysis: ROI analysis helpers
 - histology_tiff_project: exported TIFF project discovery and manifests
-- histology_project: DataProcess histology project store and single-file ROI analysis
+- histology_data_project: DataProcess histology project store
+- histology_project_preview: project and single-file preview composition
+- histology_roi_analysis: ROI analysis core
+- histology_batch_analysis: saved-ROI batch output helpers
+- histology_project: public project analysis facade
 """
 
 from services.histology_common import (
