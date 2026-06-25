@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import importlib
 import json
 import os
 import struct
@@ -123,6 +124,25 @@ class HistologyServiceSplitTests(unittest.TestCase):
         self.assertEqual(histology.normalize_rotate_deg("90"), 90)
         self.assertEqual(histology.normalize_rotate_deg("45"), 0)
         self.assertTrue(callable(histology.debug_histology_data_project_roi))
+
+    def test_histology_project_is_split_across_focused_modules(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        module_names = [
+            "services.histology_project",
+            "services.histology_data_project",
+            "services.histology_image_io",
+            "services.histology_batch_analysis",
+        ]
+        for module_name in module_names:
+            with self.subTest(module=module_name):
+                module = importlib.import_module(module_name)
+                self.assertTrue(Path(module.__file__ or "").is_file())
+
+        project_lines = (root / "services" / "histology_project.py").read_text(encoding="utf-8").count("\n") + 1
+        self.assertLess(project_lines, 2300)
+        self.assertTrue(callable(histology_project.create_histology_data_project))
+        self.assertTrue(callable(histology_project.load_histology_data_project_image_preview))
+        self.assertTrue(callable(histology_project.analyze_histology_data_project_saved_rois))
 
     def test_discovery_finds_overview_cases(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_histology_discovery_") as tmp:
