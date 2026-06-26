@@ -135,6 +135,7 @@ class HistologyServiceSplitTests(unittest.TestCase):
             "services.histology_data_project_rename",
             "services.histology_image_io",
             "services.histology_batch_analysis",
+            "services.histology_tiff_io",
         ]
         for module_name in module_names:
             with self.subTest(module=module_name):
@@ -154,11 +155,19 @@ class HistologyServiceSplitTests(unittest.TestCase):
         data_project_rename_lines = (
             root / "services" / "histology_data_project_rename.py"
         ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_project_lines = (
+            root / "services" / "histology_tiff_project.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_io_lines = (
+            root / "services" / "histology_tiff_io.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
         self.assertLess(project_lines, 1000)
         self.assertLess(preview_lines, 850)
         self.assertLess(roi_analysis_lines, 650)
         self.assertLess(data_project_lines, 1000)
         self.assertLess(data_project_rename_lines, 300)
+        self.assertLess(tiff_project_lines, 850)
+        self.assertLess(tiff_io_lines, 300)
         self.assertTrue(callable(histology_project.create_histology_data_project))
         self.assertTrue(callable(histology_project.load_histology_data_project_image_preview))
         self.assertTrue(callable(histology_project.analyze_histology_data_project_saved_rois))

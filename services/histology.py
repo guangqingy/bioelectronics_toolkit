@@ -8,6 +8,7 @@ Functional implementation lives in smaller modules:
 - histology_discovery: case discovery helpers
 - histology_preview: image preview, label preview, and OCR
 - histology_analysis: ROI analysis helpers
+- histology_tiff_io: TIFF/image metadata, guarded loading, and display scaling
 - histology_tiff_project: exported TIFF project discovery and manifests
 - histology_data_project: DataProcess histology project store
 - histology_project_preview: project and single-file preview composition
