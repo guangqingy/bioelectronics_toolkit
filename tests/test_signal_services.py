@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 
 from services import abf, abf_batch, csv_tools, echem, echem_lineshape, emg, rhd
+from services import abf_batch_parsing, abf_batch_process, abf_batch_signals
 from services.csv_viewer import CsvViewerService
 from services.emg_peaks import EMG_TRACE_MAX_POINTS, EmgPeaksService
 
@@ -79,6 +80,8 @@ class CsvToolsServiceTests(unittest.TestCase):
         self.assertTrue(payload["x_sorted"])
         self.assertTrue(payload["x_duplicates_collapsed"])
 
+
+class CsvToolsAdditionalTests(unittest.TestCase):
     def test_trace_data_reports_constant_x_column(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_csv_constant_x_") as tmp:
             path = Path(tmp) / "segment.csv"
@@ -101,6 +104,12 @@ class CsvToolsServiceTests(unittest.TestCase):
 
 
 class AbfBatchServiceTests(unittest.TestCase):
+    def test_abf_batch_facade_exports_split_services(self) -> None:
+        self.assertIs(abf_batch.scan_filename_tokens, abf_batch_parsing.scan_filename_tokens)
+        self.assertIs(abf_batch._parse_abf_batch_stem, abf_batch_parsing._parse_abf_batch_stem)
+        self.assertIs(abf_batch._find_all_pulses, abf_batch_signals._find_all_pulses)
+        self.assertIs(abf_batch.process_payload, abf_batch_process.process_payload)
+
     def test_scan_filename_tokens_reports_ambiguous_mains_without_guessing(self) -> None:
         payload = abf_batch.scan_filename_tokens(
             [

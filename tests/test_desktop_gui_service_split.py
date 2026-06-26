@@ -9,7 +9,14 @@ import numpy as np
 import tifffile
 
 from services import histology_line_measure
-from services.fluorescence import manual_roi, marker_roi
+from services.fluorescence import (
+    manual_roi,
+    marker_roi,
+    marker_roi_core,
+    marker_roi_plots,
+    marker_roi_tables,
+    marker_roi_workflow,
+)
 
 
 class DesktopGuiServiceSplitTests(unittest.TestCase):
@@ -52,6 +59,14 @@ class DesktopGuiServiceSplitTests(unittest.TestCase):
     def test_marker_roi_uses_service_manual_roi_model(self) -> None:
         self.assertIs(marker_roi.RoiPolygon, manual_roi.RoiPolygon)
         self.assertEqual(marker_roi.RoiPolygon.__module__, "services.fluorescence.manual_roi")
+
+    def test_marker_roi_facade_exports_split_services(self) -> None:
+        self.assertIs(marker_roi.MarkerParams, marker_roi_core.MarkerParams)
+        self.assertIs(marker_roi.analyze_roi_image, marker_roi_core.analyze_roi_image)
+        self.assertIs(marker_roi.stats_rows, marker_roi_tables.stats_rows)
+        self.assertIs(marker_roi.make_mouse_plot, marker_roi_plots.make_mouse_plot)
+        self.assertIs(marker_roi.analyze, marker_roi_workflow.analyze)
+        self.assertIs(marker_roi.run_parameter_tuning, marker_roi_workflow.run_parameter_tuning)
 
     def test_histology_line_measurement_service_exports_calibrated_lengths(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

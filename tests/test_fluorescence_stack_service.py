@@ -7,9 +7,16 @@ from pathlib import Path
 import numpy as np
 
 from services.fluorescence import stack as fl_stack
+from services.fluorescence import stack_export, stack_io, stack_processing
 
 
 class FluorescenceStackServiceTests(unittest.TestCase):
+    def test_stack_facade_exports_split_services(self) -> None:
+        self.assertIs(fl_stack.read_tiff_as_pages, stack_io.read_tiff_as_pages)
+        self.assertIs(fl_stack.compute_default_min_max, stack_processing.compute_default_min_max)
+        self.assertIs(fl_stack.export_with_settings, stack_export.export_with_settings)
+        self.assertIs(fl_stack.build_fiji_macro, stack_export.build_fiji_macro)
+
     def test_default_settings_and_export_outputs(self) -> None:
         try:
             import tifffile

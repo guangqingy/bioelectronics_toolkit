@@ -5,10 +5,10 @@ from typing import Any
 
 from services.histology_analysis import _now_iso
 from services.histology_common import sanitize_name
-from services.histology_data_project import (
+from services.histology_data_project_paths import _normalize_data_project_path
+from services.histology_data_project_store import (
     _data_project_entry_from_record,
     _load_data_project_payload,
-    _normalize_data_project_path,
     _write_data_project_payload,
     load_histology_data_project,
 )

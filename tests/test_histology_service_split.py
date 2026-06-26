@@ -129,13 +129,33 @@ class HistologyServiceSplitTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         module_names = [
             "services.histology_project",
+            "services.histology_project_batch",
+            "services.histology_project_core",
+            "services.histology_project_debug",
             "services.histology_project_preview",
+            "services.histology_project_preview_loaders",
+            "services.histology_project_preview_render",
             "services.histology_roi_analysis",
             "services.histology_data_project",
+            "services.histology_data_project_calibration",
+            "services.histology_data_project_paths",
             "services.histology_data_project_rename",
+            "services.histology_data_project_sources",
+            "services.histology_data_project_store",
             "services.histology_image_io",
             "services.histology_batch_analysis",
+            "services.histology_batch_core",
+            "services.histology_batch_outputs",
+            "services.histology_ets_convert",
+            "services.histology_ets_converter",
+            "services.histology_ets_folder",
+            "services.histology_ets_models",
+            "services.histology_ets_reader",
+            "services.histology_tiff_discovery",
+            "services.histology_tiff_grouping",
             "services.histology_tiff_io",
+            "services.histology_tiff_models",
+            "services.histology_tiff_outputs",
         ]
         for module_name in module_names:
             with self.subTest(module=module_name):
@@ -143,8 +163,23 @@ class HistologyServiceSplitTests(unittest.TestCase):
                 self.assertTrue(Path(module.__file__ or "").is_file())
 
         project_lines = (root / "services" / "histology_project.py").read_text(encoding="utf-8").count("\n") + 1
+        project_batch_lines = (
+            root / "services" / "histology_project_batch.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        project_core_lines = (
+            root / "services" / "histology_project_core.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        project_debug_lines = (
+            root / "services" / "histology_project_debug.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
         preview_lines = (
             root / "services" / "histology_project_preview.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        preview_loaders_lines = (
+            root / "services" / "histology_project_preview_loaders.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        preview_render_lines = (
+            root / "services" / "histology_project_preview_render.py"
         ).read_text(encoding="utf-8").count("\n") + 1
         roi_analysis_lines = (
             root / "services" / "histology_roi_analysis.py"
@@ -152,22 +187,91 @@ class HistologyServiceSplitTests(unittest.TestCase):
         data_project_lines = (
             root / "services" / "histology_data_project.py"
         ).read_text(encoding="utf-8").count("\n") + 1
+        data_project_calibration_lines = (
+            root / "services" / "histology_data_project_calibration.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        data_project_paths_lines = (
+            root / "services" / "histology_data_project_paths.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
         data_project_rename_lines = (
             root / "services" / "histology_data_project_rename.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        data_project_sources_lines = (
+            root / "services" / "histology_data_project_sources.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        data_project_store_lines = (
+            root / "services" / "histology_data_project_store.py"
         ).read_text(encoding="utf-8").count("\n") + 1
         tiff_project_lines = (
             root / "services" / "histology_tiff_project.py"
         ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_discovery_lines = (
+            root / "services" / "histology_tiff_discovery.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_grouping_lines = (
+            root / "services" / "histology_tiff_grouping.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_models_lines = (
+            root / "services" / "histology_tiff_models.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        tiff_outputs_lines = (
+            root / "services" / "histology_tiff_outputs.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
         tiff_io_lines = (
             root / "services" / "histology_tiff_io.py"
         ).read_text(encoding="utf-8").count("\n") + 1
-        self.assertLess(project_lines, 1000)
-        self.assertLess(preview_lines, 850)
+        ets_lines = (
+            root / "services" / "histology_ets_convert.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        ets_converter_lines = (
+            root / "services" / "histology_ets_converter.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        ets_folder_lines = (
+            root / "services" / "histology_ets_folder.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        ets_models_lines = (
+            root / "services" / "histology_ets_models.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        ets_reader_lines = (
+            root / "services" / "histology_ets_reader.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        batch_lines = (
+            root / "services" / "histology_batch_analysis.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        batch_core_lines = (
+            root / "services" / "histology_batch_core.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        batch_outputs_lines = (
+            root / "services" / "histology_batch_outputs.py"
+        ).read_text(encoding="utf-8").count("\n") + 1
+        self.assertLess(project_lines, 260)
+        self.assertLess(project_batch_lines, 340)
+        self.assertLess(project_core_lines, 520)
+        self.assertLess(project_debug_lines, 420)
+        self.assertLess(preview_lines, 160)
+        self.assertLess(preview_loaders_lines, 340)
+        self.assertLess(preview_render_lines, 650)
         self.assertLess(roi_analysis_lines, 650)
-        self.assertLess(data_project_lines, 1000)
+        self.assertLess(data_project_lines, 300)
+        self.assertLess(data_project_calibration_lines, 200)
+        self.assertLess(data_project_paths_lines, 260)
         self.assertLess(data_project_rename_lines, 300)
-        self.assertLess(tiff_project_lines, 850)
+        self.assertLess(data_project_sources_lines, 360)
+        self.assertLess(data_project_store_lines, 500)
+        self.assertLess(tiff_project_lines, 200)
+        self.assertLess(tiff_discovery_lines, 180)
+        self.assertLess(tiff_grouping_lines, 360)
+        self.assertLess(tiff_models_lines, 100)
+        self.assertLess(tiff_outputs_lines, 500)
         self.assertLess(tiff_io_lines, 300)
+        self.assertLess(ets_lines, 180)
+        self.assertLess(ets_converter_lines, 440)
+        self.assertLess(ets_folder_lines, 430)
+        self.assertLess(ets_models_lines, 120)
+        self.assertLess(ets_reader_lines, 240)
+        self.assertLess(batch_lines, 200)
+        self.assertLess(batch_core_lines, 650)
+        self.assertLess(batch_outputs_lines, 380)
         self.assertTrue(callable(histology_project.create_histology_data_project))
         self.assertTrue(callable(histology_project.load_histology_data_project_image_preview))
         self.assertTrue(callable(histology_project.analyze_histology_data_project_saved_rois))
