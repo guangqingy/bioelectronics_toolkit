@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -465,6 +466,32 @@ class EchemServiceTests(unittest.TestCase):
 
 
 class EchemLineshapeServiceTests(unittest.TestCase):
+    def test_lineshape_service_is_split_across_focused_modules(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        module_names = [
+            "services.echem_lineshape",
+            "services.echem_lineshape_common",
+            "services.echem_lineshape_sources",
+            "services.echem_lineshape_average",
+            "services.echem_lineshape_export",
+        ]
+        for module_name in module_names:
+            with self.subTest(module=module_name):
+                module = importlib.import_module(module_name)
+                self.assertTrue(Path(module.__file__ or "").is_file())
+
+        limits = {
+            "echem_lineshape.py": 100,
+            "echem_lineshape_common.py": 150,
+            "echem_lineshape_sources.py": 420,
+            "echem_lineshape_average.py": 280,
+            "echem_lineshape_export.py": 320,
+        }
+        for filename, max_lines in limits.items():
+            with self.subTest(file=filename):
+                lines = (root / "services" / filename).read_text(encoding="utf-8").count("\n") + 1
+                self.assertLess(lines, max_lines)
+
     def _write_segment(self, path: Path, values: list[float]) -> None:
         times = [-0.002, -0.001, 0.0, 0.001, 0.002]
         rows = ["time_s,current_mA"]
