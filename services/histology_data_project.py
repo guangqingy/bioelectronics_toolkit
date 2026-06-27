@@ -60,8 +60,17 @@ from services.histology_data_project_store import (
     load_histology_data_project,
 )
 from services.histology_data_project_rename import rename_histology_data_project_entry
+from services.histology_analysis import (
+    ANALYSIS_VERSION,
+    _clean_rois,
+    _now_iso,
+    _read_json,
+    _write_json,
+)
+from services.histology_tiff_project import PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL
 
 __all__ = [
+    "ANALYSIS_VERSION",
     "ETS_DATA_PROJECT_FILE",
     "ETS_DATA_PROJECT_KIND",
     "ETS_INDEX_FILE",
@@ -70,9 +79,11 @@ __all__ = [
     "PROJECT_CONFIG_SUFFIXES",
     "PROJECT_IMAGE_SUFFIXES",
     "PROJECT_PRIMARY_SUFFIXES",
+    "TIFF_PROJECT_PROTOCOL",
     "_associated_files_for_source",
     "_case_dir_for_source",
     "_case_name_for_source",
+    "_clean_rois",
     "_data_project_cache_dir",
     "_data_project_cache_layout",
     "_data_project_dir",
@@ -96,11 +107,13 @@ __all__ = [
     "_load_data_project_entry_analysis",
     "_load_data_project_payload",
     "_load_external_entry_rois",
+    "_now_iso",
     "_normalize_data_project_images",
     "_normalize_data_project_path",
     "_positive_float",
     "_primary_sources_for_project_path",
     "_rational_to_float",
+    "_read_json",
     "_record_source_path",
     "_role_for_path",
     "_safe_relative",
@@ -110,6 +123,7 @@ __all__ = [
     "_source_entry_id",
     "_unit_to_um_scale",
     "_write_data_project_payload",
+    "_write_json",
     "add_histology_data_project_paths",
     "create_histology_data_project",
     "load_histology_data_project",

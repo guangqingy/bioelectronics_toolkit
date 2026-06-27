@@ -37,8 +37,12 @@ from services.histology_batch_outputs import (
     _write_batch_outputs,
     _write_csv_records,
 )
+from services.histology_analysis import ANALYSIS_VERSION, _now_iso, _write_json
+from services.histology_data_project_paths import _data_project_dir
+from services.matplotlib_utils import close_figure, new_subplots
 
 __all__ = [
+    "ANALYSIS_VERSION",
     "TREATMENT_SORT_ORDER",
     "_aggregate_roi_rows_by_entry",
     "_anova_label",
@@ -50,6 +54,7 @@ __all__ = [
     "_batch_timestamp_slug",
     "_boolish",
     "_canonical_treatment_label",
+    "_data_project_dir",
     "_extract_sample_group",
     "_extract_source_letter",
     "_finite_float",
@@ -59,6 +64,7 @@ __all__ = [
     "_mean_sd_sem",
     "_metric_column",
     "_new_project_batch_dir",
+    "_now_iso",
     "_normalize_batch_rows",
     "_normalized_metric_column",
     "_numeric_mean",
@@ -72,4 +78,7 @@ __all__ = [
     "_scalar_for_table",
     "_write_batch_outputs",
     "_write_csv_records",
+    "_write_json",
+    "close_figure",
+    "new_subplots",
 ]
