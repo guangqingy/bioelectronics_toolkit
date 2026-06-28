@@ -270,7 +270,7 @@ def register_csv_viewer_routes(app, ctx):
         )
 
     @app.route("/api/csv/export_csv")
-    def api_csv_export_csv_compat():
+    def api_csv_export_csv():
         try:
             d = parse_query_params(CsvFullExportRequest).model_dump()
             mode = d.get("mode", "download")

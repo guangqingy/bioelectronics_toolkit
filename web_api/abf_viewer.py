@@ -188,7 +188,7 @@ def register_abf_viewer_routes(app, ctx):
 
     @app.route("/api/abf/detect", methods=["POST"])
     @request_schema(AbfDetectRequest)
-    def api_abf_detect_compat():
+    def api_abf_detect():
         try:
             return jsonify(
                 service.detect_payload(parse_json_payload(AbfDetectRequest).model_dump())
@@ -202,7 +202,7 @@ def register_abf_viewer_routes(app, ctx):
 
     @app.route("/api/abf/export_peaks", methods=["GET", "POST"])
     @request_schema(AbfExportPeaksRequest)
-    def api_abf_export_peaks_compat():
+    def api_abf_export_peaks():
         try:
             if request.method == "GET":
                 query = parse_query_params(AbfLegacyTraceExportRequest)

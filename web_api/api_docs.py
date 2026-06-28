@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from flask import Response, jsonify, redirect
+from flask import Response, jsonify
 from pydantic import BaseModel
 
 from .request_validation import iter_request_models, request_schema_for_endpoint
@@ -86,7 +86,3 @@ def register_api_docs_routes(app, _ctx) -> None:
     @app.route("/docs")
     def api_docs():
         return Response(_docs_html(), mimetype="text/html")
-
-    @app.route("/api/docs")
-    def api_docs_alias():
-        return redirect("/docs")
