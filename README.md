@@ -67,19 +67,18 @@ analysis engines. Source launcher modules are grouped under
 
 | Command | What it does |
 | --- | --- |
-| `bte-echem-pc` | Photocurrent waveform analysis and plotting. |
-| `bte-echem-pv` | Photovoltage waveform analysis and plotting. |
+| `bte-echem-photocurrent` | Photocurrent waveform analysis and plotting. |
+| `bte-echem-photovoltage` | Photovoltage waveform analysis and plotting. |
 
 ### EMG / Intan
 
 | Command | What it does |
 | --- | --- |
-| `bte-rhd-viewer` | Viewer for Intan `.rhd` recordings. |
-| `bte-emg-peaks` | Manual / semi-automatic peak selection on EMG traces. |
+| `bte-emg-analysis` | Browse, preview, process, rename, and export Intan `.rhd` EMG recordings. |
+| `bte-emg-peak-selection` | Manual / semi-automatic peak selection on EMG traces. |
 
 Intan `.rhd` parsing is provided by the vendored reference parser under
-`vendor/intan/`. `bte-emg-viewer` remains as a backward-compatible alias for
-`bte-rhd-viewer`.
+`vendor/intan/`.
 
 ### Fluorescence imaging
 
@@ -187,7 +186,7 @@ for day-to-day work:
 
 ```bash
 bte-abf-batch
-bte-echem-pc
+bte-echem-photocurrent
 bte-fl-roi
 # ...etc
 ```
@@ -264,8 +263,8 @@ bioelectronics_toolkit/
 - Shared algorithms should live under `services/` before they are reused by
   both WebGUI routes and desktop entry points. Fluorescence stack export, ROI
   metrics, basic TIFF-to-GIF rendering, CSV trace merging, electrochemistry
-  parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and RHD
-  channel/merge helpers now use this layer. Thin user-facing launchers live in
+  parsing/detection, ABF peak/baseline helpers, EMG peak helpers, and Intan
+  `.rhd` channel/merge helpers now use this layer. Thin user-facing launchers live in
   `desktop_apps/launchers/`; native helper windows live in
   `desktop_apps/native/`; command-line compatibility wrappers live in
   `desktop_apps/cli/`. Temporary desktop tools must call shared services rather

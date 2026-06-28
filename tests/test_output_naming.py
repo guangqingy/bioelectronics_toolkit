@@ -34,8 +34,8 @@ class OutputNamingTests(unittest.TestCase):
         root = Path("/tmp/project")
 
         self.assertEqual(
-            output_dir_for_project(root, "RHD Viewer"),
-            root / ".dataprocess_cache" / "exports" / "RHD_Viewer",
+            output_dir_for_project(root, "EMG Analysis"),
+            root / ".dataprocess_cache" / "exports" / "EMG_Analysis",
         )
 
     def test_fallback_output_dir_uses_user_data_dir(self) -> None:

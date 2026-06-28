@@ -36,7 +36,7 @@ const GUI_ITEMS = [
     href: '/abf/peaks',
   },
   {
-    id: 'echem_pc',
+    id: 'echem_photocurrent',
     name: 'Photocurrent Detector',
     desc: 'Detect POS/NEG threshold events from electrochemistry traces and export paired segments for review.',
     why: 'Use this for current traces where positive and negative events should be paired by timing.',
@@ -45,7 +45,7 @@ const GUI_ITEMS = [
     href: '/echem/photocurrent',
   },
   {
-    id: 'echem_pv',
+    id: 'echem_photovoltage',
     name: 'Photovoltage Detector',
     desc: 'Detect square-pulse photovoltage signals with detrending options and export positive/negative pulses.',
     why: 'Use this for voltage traces that need pulse detection and optional baseline detrending.',
@@ -63,22 +63,22 @@ const GUI_ITEMS = [
     href: '/echem/lineshape',
   },
   {
-    id: 'rhd_viewer',
-    name: 'RHD Viewer (Intan)',
-    desc: 'Browse .rhd recordings, preview channels, and export selected/all channels as CSV.',
-    why: 'Use this first when raw Intan recordings need channel inspection or conversion.',
+    id: 'emg_analysis',
+    name: 'EMG Analysis',
+    desc: 'Browse Intan .rhd recordings, preview EMG channels, and export selected/all channels as CSV.',
+    why: 'Use this first when raw Intan recordings need EMG channel inspection or conversion.',
     tag: 'rhd channels',
     domain: 'EMG',
-    href: '/emg/rhd',
+    href: '/emg/analysis',
   },
   {
-    id: 'emg_peaks',
-    name: 'RHD Peak Selector',
-    desc: 'Load channel CSVs, detect peaks with filters, group patterns, and export centered event segments.',
-    why: 'Use this after RHD export when EMG events need peak-centered windows.',
+    id: 'emg_peak_selection',
+    name: 'Peak Selection',
+    desc: 'Load EMG channel CSVs, detect peaks with filters, group patterns, and export centered event segments.',
+    why: 'Use this after EMG analysis export when events need peak-centered windows.',
     tag: 'Groups Export',
     domain: 'EMG',
-    href: '/emg/peaks',
+    href: '/emg/peak-selection',
   },
   {
     id: 'csv_viewer',
@@ -172,7 +172,7 @@ const GUI_ITEMS = [
   },
 ];
 
-const DEFAULT_RECENT = ['abf_viewer', 'echem_pc', 'rhd_viewer', 'fluorescence', 'fluorescence_roi', 'csv_viewer'];
+const DEFAULT_RECENT = ['abf_viewer', 'echem_photocurrent', 'emg_analysis', 'fluorescence', 'fluorescence_roi', 'csv_viewer'];
 const USAGE_KEY = 'dp_gui_usage_v2';
 const PIN_KEY = 'dp_gui_pins_v1';
 

@@ -194,6 +194,8 @@ def recording_metadata_with_merge_option(path: Path, rhd_module, do_merge: bool)
 
 def _read_amplifier_channel(path: Path, rhd_module, ch_in):
     path = Path(path)
+    if not path.is_file():
+        raise ValueError(f"RHD file not found: {path}")
     with path.open("rb") as fid:
         header = rhd_module.read_header(fid)
         data_offset = fid.tell()

@@ -21,10 +21,10 @@ TOOL_ROUTES = {
     "abf_pc_viewer": "/abf/viewer?rnorm=1",
     "abf_sweep": "/abf/viewer",
     "csv_viewer": "/csv",
-    "echem_pc": "/echem/photocurrent",
-    "echem_pv": "/echem/photovoltage",
-    "emg_peaks": "/emg/peaks",
-    "emg_rhd": "/emg/rhd",
+    "echem_photocurrent": "/echem/photocurrent",
+    "echem_photovoltage": "/echem/photovoltage",
+    "emg_analysis": "/emg/analysis",
+    "emg_peak_selection": "/emg/peak-selection",
     "fluorescence_lut": "/fluorescence",
     "fluorescence_roi": "/fluorescence/roi",
     "histology": "/histology/naming",
@@ -109,11 +109,10 @@ abf_sweep_main = _entry("abf_sweep")
 abf_pc_viewer_main = _entry("abf_pc_viewer")
 abf_pc_figure_main = _entry("abf_pc_figure")
 csv_viewer_main = _entry("csv_viewer")
-echem_pc_main = _entry("echem_pc")
-echem_pv_main = _entry("echem_pv")
-emg_rhd_main = _entry("emg_rhd")
-rhd_viewer_main = _entry("emg_rhd")
-emg_peaks_main = _entry("emg_peaks")
+echem_photocurrent_main = _entry("echem_photocurrent")
+echem_photovoltage_main = _entry("echem_photovoltage")
+emg_analysis_main = _entry("emg_analysis")
+emg_peak_selection_main = _entry("emg_peak_selection")
 fluorescence_lut_main = _entry("fluorescence_lut")
 fluorescence_roi_main = _entry("fluorescence_roi")
 histology_main = _entry("histology")

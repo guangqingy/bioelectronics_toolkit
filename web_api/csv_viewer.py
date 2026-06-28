@@ -145,6 +145,8 @@ def register_csv_viewer_routes(app, ctx):
             return jsonify(viewer_service.plot_preview_payload(d))
         except ValidationError as exc:
             return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 
@@ -158,6 +160,8 @@ def register_csv_viewer_routes(app, ctx):
             return jsonify(viewer_service.trace_data_payload(d))
         except ValidationError as exc:
             return validation_error_response(exc)
+        except ValueError as exc:
+            return err(str(exc))
         except Exception:
             return err(traceback.format_exc())
 

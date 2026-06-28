@@ -55,7 +55,7 @@ src/bioelectronics_toolkit/
 |   +-- api/
 |   +-- templates/
 |   +-- static/
-+-- services/                 # shared ABF, RHD, TIFF, EMG, echem, CSV logic
++-- services/                 # shared ABF, Intan .rhd, TIFF, EMG, echem, CSV logic
 +-- config.py
 ```
 
@@ -73,8 +73,8 @@ problem.
   shared service module and have both surfaces import it. The fluorescence
   stack workflow now uses `services/fluorescence/stack.py`, ROI metrics use
   `services/fluorescence/roi.py`, and basic TIFF-to-GIF rendering uses
-  `services/fluorescence/gif.py`. CSV, echem, ABF, EMG, and RHD helpers now
-  also have service modules, so Web routes should not reimplement those core
+  `services/fluorescence/gif.py`. CSV, echem, ABF, EMG, and Intan `.rhd`
+  helpers now also have service modules, so Web routes should not reimplement those core
   algorithms inline.
 - Keep vendored reference parsers under `vendor/` when they are not maintained
   as first-party services. The Intan RHD parser lives under
@@ -111,7 +111,7 @@ problem.
 1. Add service modules for fluorescence TIFF/LUT, ROI, and GIF workflows. These
    have the largest desktop/Web drift today.
 2. Reuse the same services from `web_api/fluorescence.py` and desktop helpers.
-3. Keep thinning ABF, electrochemistry, EMG, RHD, and CSV Web routes as their
+3. Keep thinning ABF, electrochemistry, EMG, Intan `.rhd`, and CSV Web routes as their
    service modules grow.
 4. Expand service-level tests before tightening route-level lint on additional
    Web modules.

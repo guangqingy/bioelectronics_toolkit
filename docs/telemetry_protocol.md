@@ -64,7 +64,7 @@ Request:
 
 ```json
 {
-  "view": "rhd_viewer",
+  "view": "emg_analysis",
   "export_type": "Export SVG"
 }
 ```

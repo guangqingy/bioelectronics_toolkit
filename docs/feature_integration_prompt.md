@@ -8,7 +8,7 @@ implementation starts.
 
 ```text
 You are maintaining bioelectronics_toolkit, a research-lab toolkit for ABF,
-RHD/EMG, electrochemistry, fluorescence imaging, histology naming, CSV viewing,
+Intan `.rhd` / EMG, electrochemistry, fluorescence imaging, histology naming, CSV viewing,
 and run-history-backed local analysis workflows.
 
 Treat the WebGUI as the canonical user surface. Desktop bte-* commands should

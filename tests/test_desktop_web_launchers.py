@@ -37,6 +37,22 @@ class DesktopWebLauncherTests(unittest.TestCase):
         self.assertEqual(web_launcher.TOOL_ROUTES["abf_pc_viewer"], "/abf/viewer?rnorm=1")
         self.assertEqual(web_launcher.TOOL_ROUTES["abf_sweep"], "/abf/viewer")
 
+    def test_echem_launchers_use_canonical_workflow_routes(self) -> None:
+        self.assertEqual(web_launcher.TOOL_ROUTES["echem_photocurrent"], "/echem/photocurrent")
+        self.assertEqual(web_launcher.TOOL_ROUTES["echem_photovoltage"], "/echem/photovoltage")
+        self.assertNotIn("echem_pc", web_launcher.TOOL_ROUTES)
+        self.assertNotIn("echem_pv", web_launcher.TOOL_ROUTES)
+
+    def test_emg_launchers_use_canonical_workflow_routes(self) -> None:
+        self.assertEqual(web_launcher.TOOL_ROUTES["emg_analysis"], "/emg/analysis")
+        self.assertEqual(
+            web_launcher.TOOL_ROUTES["emg_peak_selection"],
+            "/emg/peak-selection",
+        )
+        self.assertNotIn("emg_rhd", web_launcher.TOOL_ROUTES)
+        self.assertNotIn("rhd_viewer", web_launcher.TOOL_ROUTES)
+        self.assertNotIn("emg_peaks", web_launcher.TOOL_ROUTES)
+
     def test_launcher_modules_stay_thin(self) -> None:
         modules = [
             "desktop_apps.launchers.abf_batch_processor_gui",
@@ -47,8 +63,8 @@ class DesktopWebLauncherTests(unittest.TestCase):
             "desktop_apps.launchers.csv_folder_viewer_gui",
             "desktop_apps.launchers.echem_photocurrent_gui",
             "desktop_apps.launchers.echem_photovoltage_gui",
-            "desktop_apps.launchers.emg_peak_selector_gui",
-            "desktop_apps.launchers.emg_rhd_viewer_gui",
+            "desktop_apps.launchers.emg_analysis_gui",
+            "desktop_apps.launchers.emg_peak_selection_gui",
             "desktop_apps.launchers.fluorescence_lut_gui",
             "desktop_apps.launchers.fluorescence_roi_gui",
             "desktop_apps.launchers.histology_analysis_gui",

@@ -156,8 +156,8 @@ class WebAppSmokeTests(unittest.TestCase):
         "/abf/peaks",
         "/abf/batch",
         "/abf/figure",
-        "/emg/rhd",
-        "/emg/peaks",
+        "/emg/analysis",
+        "/emg/peak-selection",
         "/echem/photocurrent",
         "/echem/photovoltage",
         "/echem/lineshape",
@@ -555,7 +555,10 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("Timecourse", html)
         self.assertIn("Kymograph", html)
         self.assertIn("Photocurrent", html)
-        self.assertIn("RHD Viewer (Intan)", html)
+        self.assertIn("EMG Analysis", html)
+        self.assertIn("Peak Selection", html)
+        self.assertNotIn("RHD Viewer (Intan)", html)
+        self.assertNotIn("RHD Peak Selector", html)
         self.assertIn("Waveform Averager", html)
         self.assertIn("CSV Viewer", html)
         self.assertIn("Histology", html)
@@ -571,7 +574,7 @@ class WebAppSmokeTests(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         response = self.client.get("/histology/naming")
         html = response.data.decode("utf-8")
-        page_js = (root / "web_static" / "js" / "pages" / "histology.js").read_text(
+        page_js = (root / "web_static" / "js" / "pages" / "histology_naming.js").read_text(
             encoding="utf-8"
         )
 
@@ -586,7 +589,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("VSI Label Preview", html)
         self.assertIn("Corresponding Files", html)
         self.assertIn("histology-naming-grid", html)
-        self.assertIn("histology.js", html)
+        self.assertIn("histology_naming.js", html)
         self.assertIn("function loadHistologyProjectEntryPreview", page_js)
         self.assertIn("function scanHistologyTiffProject", page_js)
         self.assertIn("function createHistologyTiffProject", page_js)
@@ -911,15 +914,15 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(file_analysis_data["kind"], "single_file_histology_analysis")
             self.assertGreater(file_analysis_data["results"][0]["macrophage_positive_px"], 0)
 
-    def test_rhd_viewer_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
+    def test_emg_analysis_exposes_preview_merge_downsample_and_view_first_layout(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        template = (root / "web_templates" / "rhd_viewer.html").read_text(encoding="utf-8")
+        template = (root / "web_templates" / "emg_analysis.html").read_text(encoding="utf-8")
         modules = (
-            "rhd_viewer_state_profiles.js",
-            "rhd_viewer_files_queue.js",
-            "rhd_viewer_plot.js",
-            "rhd_viewer_exports.js",
-            "rhd_viewer_rename.js",
+            "emg_analysis_state_profiles.js",
+            "emg_analysis_files_queue.js",
+            "emg_analysis_plot.js",
+            "emg_analysis_exports.js",
+            "emg_analysis_rename.js",
         )
         js_source = "\n".join(
             (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
@@ -932,8 +935,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="invertY"', template)
         for module in modules:
             self.assertIn(f"static_asset('js/pages/{module}')", template)
-        self.assertIn("function reloadCurrentRhdFile()", source)
-        self.assertIn("function renderRhdFileList(options)", source)
+        self.assertIn("function reloadCurrentEmgAnalysisFile()", source)
+        self.assertIn("function renderEmgAnalysisFileList(options)", source)
         self.assertIn("Auto merge folder recording", template)
         self.assertIn("Invert Y polarity", template)
         self.assertIn("Merge folder recording", template)
@@ -942,7 +945,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="processType"', template)
         self.assertIn('data-filter-mode="notch"', template)
         self.assertIn('data-process-mode="smooth"', template)
-        self.assertIn("function updateRhdParameterGroups()", source)
+        self.assertIn("function updateEmgAnalysisParameterGroups()", source)
         self.assertIn("function previewInvertYEnabled()", source)
         self.assertIn("dpBindParamGroups('processType', 'data-process-mode')", source)
         self.assertIn('id="envelopeSmoothMs"', template)
@@ -954,8 +957,8 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="traceLineWidth"', template)
         self.assertIn("function currentFigureParams()", source)
         self.assertIn('id="processArea"', template)
-        self.assertIn("/api/rhd/process", source)
-        self.assertIn("/api/rhd/export_processing_job", source)
+        self.assertIn("/api/emg/analysis/process", source)
+        self.assertIn("/api/emg/analysis/export_processing_job", source)
         self.assertIn('id="renameFind"', template)
         self.assertIn("Quick Rename", template)
         self.assertIn("Use Selected Token", template)
@@ -963,16 +966,16 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('id="btnQuickRenameApply"', template)
         self.assertIn(".rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg", template)
         self.assertIn('id="renamePreviewArea"', template)
-        self.assertIn("/api/rhd/rename/preview", source)
-        self.assertIn("function rhdRecordingToken", source)
-        self.assertIn("function autoFillRhdRenameToken", source)
-        self.assertIn("function useSelectedRhdToken", source)
-        self.assertIn("function previewQuickRhdRename", source)
-        self.assertIn("autoFillRhdRenameToken(path)", source)
-        self.assertIn("function remapRhdPathAfterRename(path, changes)", source)
+        self.assertIn("/api/emg/analysis/rename/preview", source)
+        self.assertIn("function emgAnalysisRecordingToken", source)
+        self.assertIn("function autoFillEmgAnalysisRenameToken", source)
+        self.assertIn("function useSelectedEmgAnalysisToken", source)
+        self.assertIn("function previewQuickEmgAnalysisRename", source)
+        self.assertIn("autoFillEmgAnalysisRenameToken(path)", source)
+        self.assertIn("function remapEmgAnalysisPathAfterRename(path, changes)", source)
         self.assertIn("selectedPath: _currentFile", source)
         self.assertIn("updatedRoot || data.root || payload.root", source)
-        self.assertIn("function currentRhdBatchPaths", source)
+        self.assertIn("function currentEmgAnalysisBatchPaths", source)
         self.assertIn("_metadata.source_paths", source)
         self.assertIn("function currentProcessingPayload(extra)", source)
         self.assertIn("function exportProcessing(fmt)", source)
@@ -983,7 +986,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertLess(template.index("View Window"), template.index("Export Options"))
         self.assertLess(template.index("Export Current"), template.index("Batch Export Queue"))
 
-    def test_lif_viewer_uses_page_specific_js_modules(self) -> None:
+    def test_fluorescence_lif_uses_page_specific_js_modules(self) -> None:
         root = Path(__file__).resolve().parents[1]
         template = (root / "web_templates" / "fluorescence_lif.html").read_text(encoding="utf-8")
         modules = (
@@ -1018,22 +1021,22 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertNotIn("window.FL3D_FLAGS", template)
         self.assertNotIn("function renderVolume3D(volume)", template)
 
-    def test_emg_peaks_uses_workflow_specific_js_modules(self) -> None:
+    def test_emg_peak_selection_uses_workflow_specific_js_modules(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        template = (root / "web_templates" / "emg_peaks.html").read_text(encoding="utf-8")
+        template = (root / "web_templates" / "emg_peak_selection.html").read_text(encoding="utf-8")
         modules = (
-            "emg_peaks_state.js",
-            "emg_peaks_browser.js",
-            "emg_peaks_detection.js",
-            "emg_peaks_table_edit.js",
-            "emg_peaks_export.js",
+            "emg_peak_selection_state.js",
+            "emg_peak_selection_browser.js",
+            "emg_peak_selection_detection.js",
+            "emg_peak_selection_table_edit.js",
+            "emg_peak_selection_export.js",
         )
         js_source = "\n".join(
             (root / "web_static" / "js" / "pages" / module).read_text(encoding="utf-8")
             for module in modules
         )
         detection_source = (
-            root / "web_static" / "js" / "pages" / "emg_peaks_detection.js"
+            root / "web_static" / "js" / "pages" / "emg_peak_selection_detection.js"
         ).read_text(encoding="utf-8")
 
         for module in modules:
@@ -1075,9 +1078,9 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("linked_channels: linkedChannels", js_source)
         self.assertIn("function isEmgSignalInverted()", js_source)
         self.assertIn("invert_signal", js_source)
-        self.assertIn("function installEmgPlotInteractions()", js_source)
+        self.assertIn("function installEmgPeakSelectionPlotInteractions()", js_source)
         self.assertIn("dragZoom: false", js_source)
-        self.assertIn("onCursor: pos => updateEmgPlotReadouts(pos.x, pos.y)", js_source)
+        self.assertIn("onCursor: pos => updateEmgPeakSelectionPlotReadouts(pos.x, pos.y)", js_source)
         self.assertIn("function refreshProcessedPeakOverlay()", js_source)
         self.assertIn("dpRenderTrace('processedPlotArea'", js_source)
         self.assertIn("refreshProcessedPeakOverlay();", js_source)
@@ -1086,7 +1089,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn("function resetPeakSelectionAnchor()", js_source)
         self.assertIn("showProcessedPeakPlot(data.img", detection_source)
         self.assertNotIn("setPlot('plotArea', data.img)", detection_source)
-        self.assertIn("function renderEmgExportOutputs(data)", js_source)
+        self.assertIn("function renderEmgPeakSelectionExportOutputs(data)", js_source)
         self.assertNotIn("d.summary_path ? (' | summary: '", js_source)
         self.assertIn("function autoGroupByTime()", js_source)
         self.assertIn("function exportGrouped()", js_source)
@@ -1094,7 +1097,7 @@ class WebAppSmokeTests(unittest.TestCase):
 
     def test_emg_baseline_segments_keep_peak_file_naming(self) -> None:
         root = Path(__file__).resolve().parents[1]
-        source = (root / "services" / "emg_peaks.py").read_text(encoding="utf-8")
+        source = (root / "services" / "emg_peak_selection.py").read_text(encoding="utf-8")
         self.assertIn('out_file = group_dir / f"peak_{channel}_{index:04d}_t{peak_time:.6f}s.csv"', source)
         self.assertNotIn('f"baseline_{channel}', source)
 
@@ -1157,9 +1160,9 @@ class WebAppSmokeTests(unittest.TestCase):
             "abf_viewer.html",
             "csv_viewer.html",
             "echem_lineshape.html",
-            "echem_pc.html",
-            "echem_pv.html",
-            "emg_peaks.html",
+            "echem_photocurrent.html",
+            "echem_photovoltage.html",
+            "emg_peak_selection.html",
         ]
         for name in templates:
             with self.subTest(template=name):
@@ -1219,16 +1222,16 @@ class WebAppSmokeTests(unittest.TestCase):
 
         with (
             mock.patch(
-                "services.rhd_viewer.rhd_service.recording_metadata_with_merge_option",
+                "services.emg_analysis.rhd_service.recording_metadata_with_merge_option",
                 side_effect=fake_recording_metadata,
             ),
             mock.patch(
-                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.emg_analysis.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ),
         ):
             loaded = self.client.post(
-                "/api/rhd/load",
+                "/api/emg/analysis/load",
                 json={"path": "/tmp/record_0100.rhd", "merge_pair": True},
             )
             loaded_payload = loaded.get_json()
@@ -1238,7 +1241,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(loaded_data["n_samples"], 120_000)
 
             plot = self.client.post(
-                "/api/rhd/plot",
+                "/api/emg/analysis/plot",
                 json={
                     "path": "/tmp/record_0100.rhd",
                     "channel": "A-001",
@@ -1256,7 +1259,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(plot_data["inverted_y"])
 
             processed = self.client.post(
-                "/api/rhd/process",
+                "/api/emg/analysis/process",
                 json={
                     "path": "/tmp/record_0100.rhd",
                     "channel": "A-001",
@@ -1283,7 +1286,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(processed_data["fft_window"], "hamming")
             self.assertLessEqual(processed_data["frequency_max"], 100)
 
-    def test_rhd_processing_exports_analysis_csv_png_and_svg(self) -> None:
+    def test_emg_analysis_processing_exports_csv_png_and_svg(self) -> None:
         import numpy as np
 
         import web_app
@@ -1297,17 +1300,17 @@ class WebAppSmokeTests(unittest.TestCase):
             y = np.sin(2 * np.pi * 20 * t)
             return t, 1000.0, ["A-000"], y, 0, "A-000", Path(path).stem, bool(do_merge), 1
 
-        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_processing_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_analysis_processing_") as tmp:
             src = Path(tmp) / "record_0000.rhd"
             src.write_bytes(b"placeholder")
             saved = {}
             with mock.patch(
-                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.emg_analysis.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ):
                 for fmt in ("csv", "png", "svg"):
                     response = self.client.post(
-                        "/api/rhd/export_processing",
+                        "/api/emg/analysis/export_processing",
                         json={
                             "path": str(src),
                             "channel": "A-000",
@@ -1333,7 +1336,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertTrue(saved["png"].read_bytes().startswith(b"\x89PNG"))
             self.assertIn("<svg", saved["svg"].read_text(encoding="utf-8"))
 
-    def test_rhd_svg_export_is_clean_and_numbered(self) -> None:
+    def test_emg_analysis_svg_export_is_clean_and_numbered(self) -> None:
         import numpy as np
 
         import web_app
@@ -1347,15 +1350,15 @@ class WebAppSmokeTests(unittest.TestCase):
             y = np.sin(2 * np.pi * 20 * t)
             return t, 1000.0, ["A-000"], y, 0, "A-000", Path(path).stem, bool(do_merge), 1
 
-        with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_svg_") as tmp:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_emg_analysis_svg_") as tmp:
             src = Path(tmp) / "record_0000.rhd"
             src.write_bytes(b"placeholder")
             with mock.patch(
-                "services.rhd_viewer.rhd_service.load_channel_with_merge_option",
+                "services.emg_analysis.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ):
                 first = self.client.get(
-                    "/api/rhd/export_channel",
+                    "/api/emg/analysis/export_channel",
                     query_string={
                         "path": str(src),
                         "channel": "A-000",
@@ -1372,7 +1375,7 @@ class WebAppSmokeTests(unittest.TestCase):
                     },
                 )
                 second = self.client.get(
-                    "/api/rhd/export_channel",
+                    "/api/emg/analysis/export_channel",
                     query_string={
                         "path": str(src),
                         "channel": "A-000",
@@ -1383,7 +1386,7 @@ class WebAppSmokeTests(unittest.TestCase):
                     },
                 )
                 csv_response = self.client.get(
-                    "/api/rhd/export_channel",
+                    "/api/emg/analysis/export_channel",
                     query_string={
                         "path": str(src),
                         "channel": "A-000",
@@ -1449,7 +1452,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertNotIn("<rect", svg)
             self.assertNotIn("grid", svg.lower())
 
-    def test_rhd_viewer_rename_previews_and_applies_folder_and_file_names(self) -> None:
+    def test_emg_analysis_rename_previews_and_applies_folder_and_file_names(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_rhd_rename_") as tmp:
             root = Path(tmp) / "rough_session"
             root.mkdir()
@@ -1457,7 +1460,7 @@ class WebAppSmokeTests(unittest.TestCase):
             source.write_bytes(b"placeholder")
 
             preview = self.client.post(
-                "/api/rhd/rename/preview",
+                "/api/emg/analysis/rename/preview",
                 json={
                     "root": str(root),
                     "find": "rough_session",
@@ -1475,7 +1478,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(preview_payload["data"]["conflict_count"], 0)
 
             started = self.client.post(
-                "/api/rhd/rename/apply_job",
+                "/api/emg/analysis/rename/apply_job",
                 json={
                     "root": str(root),
                     "find": "rough_session",
@@ -1575,7 +1578,7 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertEqual(job["data"]["n"], 0)
             self.assertEqual(job["data"]["message"], "No matching files processed")
 
-    def test_echem_pc_and_pv_export_legacy_preview_figures(self) -> None:
+    def test_echem_photocurrent_and_photovoltage_export_preview_figures(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_echem_figures_") as tmp:
             root = Path(tmp)
             pc_path = root / "pc.txt"
@@ -1590,10 +1593,10 @@ class WebAppSmokeTests(unittest.TestCase):
             )
 
             cases = [
-                ("/api/echem/export_figure", pc_path, "png", "pc_preview.png"),
-                ("/api/echem/export_figure", pc_path, "svg", "pc_preview_signal.svg"),
-                ("/api/echem_pv/export_figure", pv_path, "png", "pv_preview.png"),
-                ("/api/echem_pv/export_figure", pv_path, "svg", "pv_preview_signal.svg"),
+                ("/api/echem/photocurrent/export_figure", pc_path, "png", "pc_preview.png"),
+                ("/api/echem/photocurrent/export_figure", pc_path, "svg", "pc_preview_signal.svg"),
+                ("/api/echem/photovoltage/export_figure", pv_path, "png", "pv_preview.png"),
+                ("/api/echem/photovoltage/export_figure", pv_path, "svg", "pv_preview_signal.svg"),
             ]
             for endpoint, source, fmt, filename in cases:
                 with self.subTest(endpoint=endpoint, fmt=fmt):
@@ -1627,8 +1630,8 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/gif_roi/kymograph_export_job",
             "/api/fluorescence/roi/analyze_sequence",
             "/api/fluorescence/roi/export_sequence_gif_job",
-            "/api/rhd/export_processing",
-            "/api/rhd/export_processing_job",
+            "/api/emg/analysis/export_processing",
+            "/api/emg/analysis/export_processing_job",
         }
         self.assertTrue(expected.issubset(routes), sorted(expected - routes))
 
@@ -1637,7 +1640,9 @@ class WebAppSmokeTests(unittest.TestCase):
         generic = (root / "web_templates" / "partials" / "control_panel_extras.html").read_text(
             encoding="utf-8"
         )
-        fluorescence = (root / "web_templates" / "fluorescence.html").read_text(encoding="utf-8")
+        fluorescence = (root / "web_templates" / "fluorescence_stack.html").read_text(
+            encoding="utf-8"
+        )
         gif = (root / "web_templates" / "fluorescence_gif.html").read_text(encoding="utf-8")
         roi = (root / "web_templates" / "fluorescence_roi.html").read_text(encoding="utf-8")
 
@@ -1976,10 +1981,10 @@ class WebAppSmokeTests(unittest.TestCase):
             "AbfPlotRequest",
             "CsvExportRequest",
             "CsvMergeRequest",
-            "EchemPcDetectRequest",
-            "EchemPvDetectRequest",
-            "EmgDetectRequest",
-            "EmgGroupedExportRequest",
+            "EchemPhotocurrentDetectRequest",
+            "EchemPhotovoltageDetectRequest",
+            "EmgPeakSelectionDetectRequest",
+            "EmgPeakSelectionGroupedExportRequest",
             "FigureRunRequest",
             "Fluorescence3dDistributionRequest",
             "Fluorescence3dRotationGifRequest",
@@ -2016,12 +2021,12 @@ class WebAppSmokeTests(unittest.TestCase):
             "TelemetryEventRequest",
             "PreferencesSaveRequest",
             "FileProfileSaveRequest",
-            "RhdExportAllRequest",
-            "RhdExportQueueRequest",
-            "RhdProcessingRequest",
-            "RhdRenameApplyRequest",
-            "RhdRenamePreviewRequest",
-            "RhdViewRequest",
+            "EmgAnalysisExportAllRequest",
+            "EmgAnalysisExportQueueRequest",
+            "EmgAnalysisProcessingRequest",
+            "EmgAnalysisRenameApplyRequest",
+            "EmgAnalysisRenamePreviewRequest",
+            "EmgAnalysisViewRequest",
             "RunPackageRequest",
             "OpenFolderRequest",
         ]:
@@ -2034,12 +2039,14 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/abf/plot": "#/components/schemas/AbfPlotRequest",
             "/api/abf/export_job": "#/components/schemas/AbfExportRequest",
             "/api/abf/export_peaks_job": "#/components/schemas/AbfExportPeaksRequest",
-            "/api/echem/detect": "#/components/schemas/EchemPcDetectRequest",
-            "/api/echem_pv/detect": "#/components/schemas/EchemPvDetectRequest",
+            "/api/echem/photocurrent/detect": "#/components/schemas/EchemPhotocurrentDetectRequest",
+            "/api/echem/photovoltage/detect": "#/components/schemas/EchemPhotovoltageDetectRequest",
             "/api/echem/lineshape/plot": "#/components/schemas/LineshapePlotRequest",
             "/api/echem/lineshape/trace_data": "#/components/schemas/LineshapePlotRequest",
-            "/api/emg/detect": "#/components/schemas/EmgDetectRequest",
-            "/api/emg/export_job": "#/components/schemas/EmgGroupedExportRequest",
+            "/api/emg/peak-selection/detect": "#/components/schemas/EmgPeakSelectionDetectRequest",
+            "/api/emg/peak-selection/export_job": (
+                "#/components/schemas/EmgPeakSelectionGroupedExportRequest"
+            ),
             "/api/figure/run_job": "#/components/schemas/FigureRunRequest",
             "/api/fluorescence/make_gif_job": "#/components/schemas/FluorescenceGifRenderRequest",
             "/api/fluorescence/merge_gif_job": "#/components/schemas/FluorescenceGifMergeRequest",
@@ -2069,13 +2076,13 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/file/image_region_preview": "#/components/schemas/HistologyFileImageRegionPreviewRequest",
             "/api/histology/label_preview": "#/components/schemas/HistologyLabelPreviewRequest",
             "/api/histology/file/analysis/run_job": "#/components/schemas/HistologyFileAnalyzeRoisRequest",
-            "/api/rhd/plot": "#/components/schemas/RhdViewRequest",
-            "/api/rhd/process": "#/components/schemas/RhdProcessingRequest",
-            "/api/rhd/export_processing_job": "#/components/schemas/RhdProcessingRequest",
-            "/api/rhd/export_all_job": "#/components/schemas/RhdExportAllRequest",
-            "/api/rhd/export_queue_job": "#/components/schemas/RhdExportQueueRequest",
-            "/api/rhd/rename/preview": "#/components/schemas/RhdRenamePreviewRequest",
-            "/api/rhd/rename/apply_job": "#/components/schemas/RhdRenameApplyRequest",
+            "/api/emg/analysis/plot": "#/components/schemas/EmgAnalysisViewRequest",
+            "/api/emg/analysis/process": "#/components/schemas/EmgAnalysisProcessingRequest",
+            "/api/emg/analysis/export_processing_job": "#/components/schemas/EmgAnalysisProcessingRequest",
+            "/api/emg/analysis/export_all_job": "#/components/schemas/EmgAnalysisExportAllRequest",
+            "/api/emg/analysis/export_queue_job": "#/components/schemas/EmgAnalysisExportQueueRequest",
+            "/api/emg/analysis/rename/preview": "#/components/schemas/EmgAnalysisRenamePreviewRequest",
+            "/api/emg/analysis/rename/apply_job": "#/components/schemas/EmgAnalysisRenameApplyRequest",
             "/api/fluorescence/lif/preview": "#/components/schemas/LifPreviewRequest",
             "/api/fluorescence/lif/export_manifest": "#/components/schemas/LifExportManifestRequest",
             "/api/fluorescence/lif/export_tiff_job": "#/components/schemas/LifExportTiffRequest",

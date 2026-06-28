@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import io
 import re
 from typing import Iterable
@@ -190,7 +191,11 @@ def decode_base64_payload(payload: str) -> bytes:
         return b""
     if "," in text and "base64" in text[:64].lower():
         text = text.split(",", 1)[1]
-    return base64.b64decode(text)
+    text = "".join(text.split())
+    try:
+        return base64.b64decode(text, validate=True)
+    except (binascii.Error, ValueError) as exc:
+        raise ValueError("Invalid base64 image payload") from exc
 
 
 def iter_with_job_progress(

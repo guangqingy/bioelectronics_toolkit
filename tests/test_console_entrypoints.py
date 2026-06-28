@@ -30,17 +30,34 @@ def project_scripts() -> dict[str, str]:
 
 
 class ConsoleEntrypointTests(unittest.TestCase):
-    def test_rhd_viewer_has_primary_command_and_emg_compatibility_alias(self) -> None:
+    def test_echem_has_only_canonical_commands(self) -> None:
         scripts = project_scripts()
 
         self.assertEqual(
-            scripts.get("bte-rhd-viewer"),
-            "desktop_apps.web_launcher:rhd_viewer_main",
+            scripts.get("bte-echem-photocurrent"),
+            "desktop_apps.web_launcher:echem_photocurrent_main",
         )
         self.assertEqual(
-            scripts.get("bte-emg-viewer"),
-            "desktop_apps.web_launcher:emg_rhd_main",
+            scripts.get("bte-echem-photovoltage"),
+            "desktop_apps.web_launcher:echem_photovoltage_main",
         )
+        self.assertNotIn("bte-echem-pc", scripts)
+        self.assertNotIn("bte-echem-pv", scripts)
+
+    def test_emg_analysis_has_only_canonical_commands(self) -> None:
+        scripts = project_scripts()
+
+        self.assertEqual(
+            scripts.get("bte-emg-analysis"),
+            "desktop_apps.web_launcher:emg_analysis_main",
+        )
+        self.assertEqual(
+            scripts.get("bte-emg-peak-selection"),
+            "desktop_apps.web_launcher:emg_peak_selection_main",
+        )
+        self.assertNotIn("bte-rhd-viewer", scripts)
+        self.assertNotIn("bte-emg-viewer", scripts)
+        self.assertNotIn("bte-emg-peaks", scripts)
 
     def test_service_backed_temporary_tools_have_integrated_commands(self) -> None:
         scripts = project_scripts()

@@ -46,10 +46,13 @@ def _parse_numeric_lines(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
 
 
 def load_echem_file(path: str | Path, value_col_hints: list[str]):
+    source = Path(str(path or "").strip()).expanduser()
+    if not source.is_file():
+        raise ValueError(f"EChem file not found: {source}")
     for sep in ("\t", ",", ";"):
         try:
             df = pd.read_csv(
-                path,
+                source,
                 sep=sep,
                 decimal=",",
                 engine="python",
@@ -79,7 +82,7 @@ def load_echem_file(path: str | Path, value_col_hints: list[str]):
         except Exception:
             pass
 
-    t, v = _parse_numeric_lines(path)
+    t, v = _parse_numeric_lines(source)
     return t, v, "time_s", "value"
 
 

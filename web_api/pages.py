@@ -37,31 +37,31 @@ def register_page_routes(app, ctx) -> None:
 
     @app.route("/abf/peaks")
     def abf_peaks():
-        return render_template("abf_peakdet.html", active="abf_peaks")
+        return render_template("abf_peaks.html", active="abf_peaks")
 
     @app.route("/echem/photocurrent")
-    def echem_pc():
-        return render_template("echem_pc.html", active="echem_pc")
+    def echem_photocurrent():
+        return render_template("echem_photocurrent.html", active="echem_photocurrent")
 
     @app.route("/echem/photovoltage")
-    def echem_pv():
-        return render_template("echem_pv.html", active="echem_pv")
+    def echem_photovoltage():
+        return render_template("echem_photovoltage.html", active="echem_photovoltage")
 
     @app.route("/echem/lineshape")
     def echem_lineshape():
         return render_template("echem_lineshape.html", active="echem_lineshape")
 
-    @app.route("/emg/rhd")
-    def rhd_viewer():
-        return render_template("rhd_viewer.html", active="rhd_viewer", has_rhd=has_rhd)
+    @app.route("/emg/analysis")
+    def emg_analysis():
+        return render_template("emg_analysis.html", active="emg_analysis", has_rhd=has_rhd)
 
-    @app.route("/emg/peaks")
-    def emg_peaks():
-        return render_template("emg_peaks.html", active="emg_peaks")
+    @app.route("/emg/peak-selection")
+    def emg_peak_selection():
+        return render_template("emg_peak_selection.html", active="emg_peak_selection")
 
     @app.route("/fluorescence")
     def fluorescence():
-        return render_template("fluorescence.html", active="fluorescence")
+        return render_template("fluorescence_stack.html", active="fluorescence")
 
     @app.route("/fluorescence/roi")
     def fluorescence_roi():

@@ -25,7 +25,7 @@ class ServicesRatioScriptTests(unittest.TestCase):
         schema_record = records["web_api/fluorescence_request_schemas.py"]
         self.assertTrue(schema_record.loc_budget_exception)
         self.assertEqual(schema_record.status, "ok")
-        self.assertEqual(records["web_api/lif_viewer.py"].status, "route_over_loc_budget")
+        self.assertEqual(records["web_api/fluorescence_lif.py"].status, "route_over_loc_budget")
 
     def test_web_api_does_not_call_private_service_helpers(self) -> None:
         self.assertEqual(private_service_usage_main([]), 0)

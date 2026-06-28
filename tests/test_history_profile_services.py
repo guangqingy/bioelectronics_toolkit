@@ -77,7 +77,7 @@ class FileProfileServiceTests(unittest.TestCase):
             data_file.write_bytes(b"rhd")
 
             empty = file_profiles.get_file_profile(
-                {"project_root": str(root), "file_path": str(data_file), "view": "rhd"}
+                {"project_root": str(root), "file_path": str(data_file), "view": "emg_analysis"}
             )
             self.assertTrue(empty["ok"])
             self.assertEqual(empty["profiles"], {})
@@ -86,7 +86,7 @@ class FileProfileServiceTests(unittest.TestCase):
                 {
                     "project_root": str(root),
                     "file_path": str(data_file),
-                    "view": "rhd",
+                    "view": "emg_analysis",
                     "profile_name": "analysis",
                     "settings": {"downsample": 4},
                     "payload": {"channel": "A-000"},
@@ -99,7 +99,7 @@ class FileProfileServiceTests(unittest.TestCase):
                 {
                     "project_root": str(root),
                     "file_path": str(data_file),
-                    "view": "rhd",
+                    "view": "emg_analysis",
                     "profile_name": "analysis",
                 }
             )
@@ -109,7 +109,7 @@ class FileProfileServiceTests(unittest.TestCase):
                 {
                     "project_root": str(root),
                     "file_path": str(data_file),
-                    "view": "rhd",
+                    "view": "emg_analysis",
                     "profile_name": "analysis",
                 }
             )

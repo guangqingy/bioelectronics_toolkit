@@ -58,7 +58,9 @@ def _import_tifffile(tifflib_module: Any = None):
 
 def estimate_tiff(path: str | Path, tifflib_module: Any = None) -> TiffEstimate:
     tifflib = _import_tifffile(tifflib_module)
-    p = Path(path)
+    p = Path(path).expanduser()
+    if not p.is_file():
+        raise InputTooLargeError(f"TIFF file not found: {p}")
     with tifflib.TiffFile(str(p)) as tif:
         if tif.series:
             series = tif.series[0]
@@ -115,8 +117,10 @@ def assert_file_size_within_limit(
     *,
     max_bytes: int | None = None,
     label: str = "file",
-    ) -> None:
-    p = Path(path)
+) -> None:
+    p = Path(path).expanduser()
+    if not p.is_file():
+        raise InputTooLargeError(f"{label} file not found: {p}")
     limit = max_csv_bytes() if max_bytes is None else int(max_bytes)
     size = int(p.stat().st_size)
     if size > limit:

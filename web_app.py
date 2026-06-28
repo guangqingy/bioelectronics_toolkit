@@ -47,19 +47,19 @@ from web_api.common import (
 from web_api.context import WebApiContext
 from web_api.csv_viewer import register_csv_viewer_routes
 from web_api.echem_lineshape import register_echem_lineshape_routes
-from web_api.echem_pc import register_echem_pc_routes
-from web_api.echem_pv import register_echem_pv_routes
-from web_api.emg_peaks import register_emg_peaks_routes
+from web_api.echem_photocurrent import register_echem_photocurrent_routes
+from web_api.echem_photovoltage import register_echem_photovoltage_routes
+from web_api.emg_peak_selection import register_emg_peak_selection_routes
 from web_api.figure_generator import register_figure_generator_routes
 from web_api.file_profiles import register_file_profile_routes
 from web_api.fluorescence import register_fluorescence_routes
 from web_api.histology import register_histology_routes
 from web_api.jobs import JobManager, register_job_routes
-from web_api.lif_viewer import register_lif_viewer_routes
+from web_api.fluorescence_lif import register_fluorescence_lif_routes
 from web_api.pages import register_page_routes
 from web_api.preferences import register_preferences_routes
 from web_api.response import api_error, register_api_envelope
-from web_api.rhd_viewer import register_rhd_viewer_routes
+from web_api.emg_analysis import register_emg_analysis_routes
 from web_api.run_history import register_run_history_routes
 from web_api.system import register_system_routes
 from web_api.telemetry import register_telemetry_routes
@@ -205,13 +205,13 @@ def create_app(
     register_abf_viewer_routes(flask_app, web_api_ctx)
     register_abf_batch_routes(flask_app, web_api_ctx)
     register_figure_generator_routes(flask_app, web_api_ctx)
-    register_echem_pc_routes(flask_app, web_api_ctx)
-    register_echem_pv_routes(flask_app, web_api_ctx)
+    register_echem_photocurrent_routes(flask_app, web_api_ctx)
+    register_echem_photovoltage_routes(flask_app, web_api_ctx)
     register_echem_lineshape_routes(flask_app, web_api_ctx)
-    register_rhd_viewer_routes(flask_app, web_api_ctx)
-    register_emg_peaks_routes(flask_app, web_api_ctx)
+    register_emg_analysis_routes(flask_app, web_api_ctx)
+    register_emg_peak_selection_routes(flask_app, web_api_ctx)
     register_fluorescence_routes(flask_app, web_api_ctx)
-    register_lif_viewer_routes(flask_app, web_api_ctx)
+    register_fluorescence_lif_routes(flask_app, web_api_ctx)
     register_histology_routes(flask_app, web_api_ctx)
     register_preferences_routes(flask_app, web_api_ctx)
     register_file_profile_routes(flask_app, web_api_ctx)

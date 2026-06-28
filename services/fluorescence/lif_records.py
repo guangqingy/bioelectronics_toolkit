@@ -104,9 +104,12 @@ def clone_records(records: list[dict]) -> list[dict]:
 def load_records(path: str, *, lif_file_cls, cache: dict, reader_error: str = ""):
     if reader_error:
         raise RuntimeError(reader_error)
-    p = Path(path).expanduser()
-    if not p.exists():
-        raise FileNotFoundError(f"LIF file not found: {path}")
+    path_text = str(path or "").strip()
+    if not path_text:
+        raise ValueError("Missing LIF file path")
+    p = Path(path_text).expanduser()
+    if not p.is_file():
+        raise ValueError(f"LIF file not found: {path}")
 
     cache_key = str(p.resolve())
     stat = p.stat()

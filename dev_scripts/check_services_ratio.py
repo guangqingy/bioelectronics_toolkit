@@ -16,6 +16,7 @@ EPSILON = 1e-9
 IGNORED_WEB_MODULES = {
     "__init__",
     "context",
+    "emg_analysis_request_schemas",
     "pages",
     "path_policy",
     "plot_export",
@@ -27,15 +28,15 @@ SERVICE_ALIASES = {
     "abf_viewer": ["abf"],
     "csv_viewer": ["csv_tools"],
     "echem_lineshape": ["echem"],
-    "echem_pc": ["echem"],
-    "echem_pv": ["echem"],
-    "emg_peaks": ["emg", "rhd"],
+    "echem_photocurrent": ["echem"],
+    "echem_photovoltage": ["echem"],
+    "emg_peak_selection": ["emg", "rhd"],
     "fluorescence_3d": ["fluorescence"],
     "fluorescence_gif": ["fluorescence"],
     "fluorescence_roi": ["fluorescence"],
     "fluorescence_stack": ["fluorescence"],
-    "lif_viewer": ["fluorescence"],
-    "rhd_viewer": ["rhd"],
+    "fluorescence_lif": ["fluorescence"],
+    "emg_analysis": ["rhd"],
 }
 
 SERVICE_GLOBS = {

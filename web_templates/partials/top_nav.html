@@ -1,6 +1,6 @@
 {% set abf_active = active in ['abf_viewer', 'abf_batch', 'abf_figure', 'abf_peaks'] %}
-{% set echem_active = active in ['echem_pc', 'echem_pv', 'echem_lineshape'] %}
-{% set emg_active = active in ['rhd_viewer', 'emg_peaks'] %}
+{% set echem_active = active in ['echem_photocurrent', 'echem_photovoltage', 'echem_lineshape'] %}
+{% set emg_active = active in ['emg_analysis', 'emg_peak_selection'] %}
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
 {% set histology_active = active in ['histology_naming', 'histology_analysis'] %}
@@ -28,17 +28,17 @@
       <div class="nav-menu {% if echem_active %}active{% endif %}">
         <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EChem</button>
         <div class="nav-dropdown" role="menu">
-          <a class="nav-dropdown-item {% if active=='echem_pc' %}active{% endif %}" href="/echem/photocurrent" title="Photocurrent Detector">Photocurrent</a>
-          <a class="nav-dropdown-item {% if active=='echem_pv' %}active{% endif %}" href="/echem/photovoltage" title="Photovoltage Detector">Photovoltage</a>
+          <a class="nav-dropdown-item {% if active=='echem_photocurrent' %}active{% endif %}" href="/echem/photocurrent" title="Photocurrent Detector">Photocurrent</a>
+          <a class="nav-dropdown-item {% if active=='echem_photovoltage' %}active{% endif %}" href="/echem/photovoltage" title="Photovoltage Detector">Photovoltage</a>
           <a class="nav-dropdown-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape" title="Average exported pair/pulse segments from Photocurrent or Photovoltage">Waveform Averager</a>
         </div>
       </div>
 
       <div class="nav-menu {% if emg_active %}active{% endif %}">
-        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EMG (RHD)</button>
+        <button class="nav-menu-trigger" type="button" aria-haspopup="true" aria-expanded="false">EMG</button>
         <div class="nav-dropdown" role="menu">
-          <a class="nav-dropdown-item {% if active=='rhd_viewer' %}active{% endif %}" href="/emg/rhd" title="Intan .rhd recording viewer">RHD Viewer (Intan)</a>
-          <a class="nav-dropdown-item {% if active=='emg_peaks' %}active{% endif %}" href="/emg/peaks" title="Peak-centered event selection from exported RHD channels">RHD Peak Selector</a>
+          <a class="nav-dropdown-item {% if active=='emg_analysis' %}active{% endif %}" href="/emg/analysis" title="Intan .rhd recording analysis">EMG Analysis</a>
+          <a class="nav-dropdown-item {% if active=='emg_peak_selection' %}active{% endif %}" href="/emg/peak-selection" title="Peak-centered event selection from exported EMG channels">Peak Selection</a>
         </div>
       </div>
 

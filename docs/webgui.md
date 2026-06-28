@@ -1,7 +1,7 @@
 # DataProcess Web Architecture
 
 DataProcess Web is the Flask browser interface for the desktop-oriented
-bioelectronics toolkit. It wraps CSV, ABF, RHD, EMG, electrochemistry,
+bioelectronics toolkit. It wraps CSV, ABF, Intan `.rhd`, EMG, electrochemistry,
 fluorescence, histology, and run history behind a consistent local UI.
 
 The app is intended to run on a trusted local machine:
@@ -68,8 +68,8 @@ DataProcess/
 │   ├── file_profiles.py        # Per-file cached UI settings
 │   ├── run_history.py          # Run manifests and package/report helpers
 │   ├── fluorescence.py         # Shared fluorescence helpers and route composition
-│   ├── fluorescence_*_routes.py# Focused fluorescence route groups
-│   └── *_viewer.py, *_pc.py... # Other domain-specific route modules
+│   ├── fluorescence_*.py       # Focused fluorescence route groups
+│   └── *_analysis.py, *_viewer.py... # Other domain-specific route modules
 ├── web_templates/              # Jinja pages, one main template per view
 │   └── partials/               # Shared navigation, panels, and modal fragments
 ├── web_static/
@@ -275,13 +275,13 @@ architecture.
 - When adding an export, record durable output paths in the API response so run
   manifests and the job monitor can reason about generated files.
 - For large domains, prefer focused route modules such as
-  `fluorescence_gif_routes.py` and shared service modules over adding more
+  `fluorescence_gif.py` and shared service modules over adding more
   routes to a single monolithic file.
 - Web routes should parse requests, call `services/*`, and return the unified
   API envelope. They should not become the only copy of a data-processing
   algorithm if a desktop entry point also needs that behavior.
 - Fluorescence stack/LUT, ROI metric primitives, and basic TIFF-to-GIF frame
   generation are now service-backed. CSV trace merging, electrochemistry
-  parsing/detection, ABF baseline/peak helpers, EMG peak helpers, and RHD
-  channel/paired-file helpers are also service-backed. GIF ROI overlay/crop
+  parsing/detection, ABF baseline/peak helpers, EMG peak helpers, and Intan
+  `.rhd` channel/paired-file helpers are also service-backed. GIF ROI overlay/crop
   analysis remains the next fluorescence-specific extraction target.

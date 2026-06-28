@@ -10,7 +10,7 @@ from desktop_apps.web_launcher import main_for_tool
 
 
 def main() -> int:
-    return main_for_tool("echem_pv")
+    return main_for_tool("echem_photovoltage")
 
 
 if __name__ == "__main__":

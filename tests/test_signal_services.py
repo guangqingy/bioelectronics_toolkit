@@ -11,7 +11,7 @@ import pandas as pd
 from services import abf, abf_batch, csv_tools, echem, echem_lineshape, emg, rhd
 from services import abf_batch_parsing, abf_batch_process, abf_batch_signals
 from services.csv_viewer import CsvViewerService
-from services.emg_peaks import EMG_TRACE_MAX_POINTS, EmgPeaksService
+from services.emg_peak_selection import EMG_TRACE_MAX_POINTS, EmgPeakSelectionService
 
 
 def _fake_find_peaks(signal, height=None, distance=None, **_kwargs):
@@ -817,7 +817,7 @@ class EmgServiceTests(unittest.TestCase):
             rows.extend(f"{i * 0.001},{float(i % 7)}" for i in range(30))
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-            service = EmgPeaksService(
+            service = EmgPeakSelectionService(
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -844,7 +844,7 @@ class EmgServiceTests(unittest.TestCase):
             rows.extend(f"{i * 0.001},{float(np.sin(i / 12.0) * 1000.0)}" for i in range(60000))
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-            service = EmgPeaksService(
+            service = EmgPeakSelectionService(
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -870,7 +870,7 @@ class EmgServiceTests(unittest.TestCase):
                 rows.append(f"{i * 0.001},{float(i)}")
             path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-            service = EmgPeaksService(
+            service = EmgPeakSelectionService(
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -922,7 +922,7 @@ class EmgServiceTests(unittest.TestCase):
             detect_path.write_text("\n".join(rows0) + "\n", encoding="utf-8")
             linked_path.write_text("\n".join(rows1) + "\n", encoding="utf-8")
 
-            service = EmgPeaksService(
+            service = EmgPeakSelectionService(
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
@@ -969,7 +969,7 @@ class EmgServiceTests(unittest.TestCase):
                 rows.append(f"{t},{i}")
             detect_path.write_text("\n".join(rows) + "\n", encoding="utf-8")
 
-            service = EmgPeaksService(
+            service = EmgPeakSelectionService(
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
