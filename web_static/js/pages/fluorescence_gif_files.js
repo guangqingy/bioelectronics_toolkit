@@ -87,7 +87,7 @@ function renderAvailableTiffList() {
     const meta = info.n_frames ? `${info.n_frames}f · ${shortScaleInfo(info) || 'scale pending'}` : 'not scanned';
     return `
       <div class="file-item gif-available-item ${active}" data-dp-click="selectAvailableTiff(${i})">
-        <input type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="toggleTiffCheck(${i}, this.checked)">
+        <input class="dp-check" type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="toggleTiffCheck(${i}, this.checked)">
         <span class="gif-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
         <span class="gif-available-meta">${escHtml(meta)}</span>
         <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addAvailableByIndex(${i})">Add</button>

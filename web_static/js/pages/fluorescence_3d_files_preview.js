@@ -182,7 +182,7 @@ function renderChannelRangeControls() {
     rows.push(`
       <div class="stack-channel-range-row">
         <span class="stack-channel-label"><i class="stack-channel-swatch" id="chanSwatch_${i}" style="background:${color}"></i>C${i + 1}</span>
-        <input type="checkbox" id="chanEnabled_${i}" checked title="Render/export C${i + 1}">
+        <input class="dp-check" type="checkbox" id="chanEnabled_${i}" checked title="Render/export C${i + 1}">
         <input type="color" id="chanColor_${i}" value="${color}" data-dp-input="document.getElementById('chanSwatch_${i}').style.background=this.value">
         <input type="number" id="chanLow_${i}" value="1" min="0" max="99" step="0.1">
         <input type="number" id="chanHigh_${i}" value="99.7" min="0.1" max="100" step="0.1">

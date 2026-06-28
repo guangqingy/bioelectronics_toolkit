@@ -58,7 +58,7 @@
   </div>
   <label class="checkbox-row">
     <input type="checkbox" id="previewMergePair" checked data-dp-change="onPreviewMergeChanged()">
-    <span>Auto merge folder recording for preview</span>
+    <span>Merge paired folder recordings for preview</span>
   </label>
   <details class="ctrl-details">
     <summary class="ctrl-label" title="Optional filtering applied to the preview and current-channel figure export">Filter</summary>
@@ -219,12 +219,14 @@
 
 <div class="ctrl-section">
   <div class="ctrl-label">Export Options</div>
-  <div class="param-row">
-    <label><input type="checkbox" id="mergePair" checked> Merge folder recording for export</label>
-  </div>
-  <div class="param-row">
-    <label><input type="checkbox" id="wideCsv"> All channels in one file (wide TSV)</label>
-  </div>
+  <label class="checkbox-row">
+    <input type="checkbox" id="mergePair" checked>
+    <span>Merge paired folder recordings for export</span>
+  </label>
+  <label class="checkbox-row">
+    <input type="checkbox" id="wideCsv">
+    <span>Export all channels as one wide TSV</span>
+  </label>
 </div>
 
 <button id="btnSaveAll" class="btn-primary" data-dp-click="DP.page.saveAllChannels()">Export All Channels</button>

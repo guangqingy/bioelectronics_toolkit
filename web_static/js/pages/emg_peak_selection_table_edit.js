@@ -33,7 +33,7 @@ function updatePeaksTable() {
     const kind = isBaselinePeak(peak) ? 'Baseline' : 'Peak';
     const btnLabel = removed ? 'Undo' : 'Remove';
 
-    tr.innerHTML = '<td><input type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + '></td>' +
+    tr.innerHTML = '<td><input class="dp-check" type="checkbox" ' + (_selected.has(idx) ? 'checked' : '') + '></td>' +
       '<td data-peak-select style="cursor:pointer;">' + idx + '</td>' +
       '<td data-peak-select style="cursor:pointer;">' + tVal + '</td>' +
       '<td data-peak-select style="cursor:pointer;">' + hVal + '</td>' +

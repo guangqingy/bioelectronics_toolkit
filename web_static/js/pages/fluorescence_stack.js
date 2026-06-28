@@ -299,7 +299,7 @@ function renderStackRows() {
     const idx = parseInt(s.page_index, 10) + 1;
     return `
       <div style="display:grid;grid-template-columns:18px 52px 78px 78px 78px 72px 72px 46px 50px;gap:4px;align-items:center;font-size:11px;border:1px solid var(--cloud);border-radius:6px;padding:4px 5px">
-        <input type="checkbox" id="stack_include_${i}" ${s.include ? 'checked' : ''} data-dp-change="onStackSettingChange(${i})">
+        <input class="dp-check" type="checkbox" id="stack_include_${i}" ${s.include ? 'checked' : ''} data-dp-change="onStackSettingChange(${i})">
         <div>Stack ${idx}</div>
         <select id="stack_lut_${i}" data-dp-change="onStackSettingChange(${i})">${_optHtml(STACK_LUT_OPTIONS, s.lut || 'Gray')}</select>
         <select id="stack_bg_${i}" data-dp-change="onStackPreprocessChange(${i})">${_optHtml(STACK_BG_OPTIONS, s.background || 'Off')}</select>

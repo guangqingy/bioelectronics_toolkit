@@ -304,6 +304,7 @@ class WebAppSmokeTests(unittest.TestCase):
         self.assertIn('appearance: none', forms)
         self.assertIn('input[type="search"]', forms)
         self.assertIn(".checkbox-row input[type=\"checkbox\"]:checked", style)
+        self.assertIn(".dp-check:checked", style)
         self.assertIn("overflow-wrap: anywhere", status)
         self.assertIn("display: flex", status)
         self.assertIn("flex: 0 0 34px", status)
@@ -332,6 +333,60 @@ class WebAppSmokeTests(unittest.TestCase):
                 for lineno, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
                     if light_bg_re.search(line):
                         offenders.append(f"{source.relative_to(root)}:{lineno}: {line.strip()}")
+
+        self.assertEqual([], offenders)
+
+    def test_checkbox_controls_use_consistent_layout_styles(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        label_re = re.compile(r"<label\b(?P<attrs>[^>]*)>(?P<body>.*?)</label>", re.S | re.I)
+        input_re = re.compile(r"<input\b[^>]*\btype=[\"']checkbox[\"'][^>]*>", re.I)
+        allowed_label_classes = (
+            "checkbox-row",
+            "prefs-field-check",
+            "histology-channel-chip",
+        )
+        offenders = []
+
+        for template in (root / "web_templates").rglob("*.html"):
+            text = template.read_text(encoding="utf-8")
+            covered_spans: list[tuple[int, int]] = []
+            for label_match in label_re.finditer(text):
+                body = label_match.group("body")
+                if not input_re.search(body):
+                    continue
+                line = text[: label_match.start()].count("\n") + 1
+                attrs = label_match.group("attrs")
+                if not any(name in attrs for name in allowed_label_classes):
+                    offenders.append(
+                        f"{template.relative_to(root)}:{line}: checkbox label lacks a shared class"
+                    )
+                if "checkbox-row" in attrs and "<span" not in body.lower():
+                    offenders.append(
+                        f"{template.relative_to(root)}:{line}: checkbox-row label text must be wrapped in span"
+                    )
+                covered_spans.append(label_match.span())
+            for input_match in input_re.finditer(text):
+                if not any(start <= input_match.start() < end for start, end in covered_spans):
+                    line = text[: input_match.start()].count("\n") + 1
+                    offenders.append(
+                        f"{template.relative_to(root)}:{line}: checkbox input is not wrapped by a styled label"
+                    )
+
+        for script in (root / "web_static" / "js").rglob("*.js"):
+            text = script.read_text(encoding="utf-8")
+            for input_match in input_re.finditer(text):
+                input_html = input_match.group(0)
+                context = text[max(0, input_match.start() - 180) : input_match.end() + 180]
+                if (
+                    "dp-check" not in input_html
+                    and "checkbox-row" not in context
+                    and "prefs-field-check" not in context
+                    and "histology-channel-chip" not in context
+                ):
+                    line = text[: input_match.start()].count("\n") + 1
+                    offenders.append(
+                        f"{script.relative_to(root)}:{line}: dynamic checkbox lacks dp-check"
+                    )
 
         self.assertEqual([], offenders)
 
@@ -937,9 +992,10 @@ class WebAppSmokeTests(unittest.TestCase):
             self.assertIn(f"static_asset('js/pages/{module}')", template)
         self.assertIn("function reloadCurrentEmgAnalysisFile()", source)
         self.assertIn("function renderEmgAnalysisFileList(options)", source)
-        self.assertIn("Auto merge folder recording", template)
+        self.assertIn("Merge paired folder recordings for preview", template)
         self.assertIn("Invert Y polarity", template)
-        self.assertIn("Merge folder recording", template)
+        self.assertIn("Merge paired folder recordings for export", template)
+        self.assertIn("Export all channels as one wide TSV", template)
         self.assertIn("split(/[\\\\/]/)", source)
         self.assertIn('id="filterType"', template)
         self.assertIn('id="processType"', template)

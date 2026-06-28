@@ -141,7 +141,7 @@ const SETTINGS_SCHEMAS = {
     {section: 'Paths'}, {id: 'folderPath', label: 'EMG recording folder', type: 'path'},
     {section: 'Axes'}, {id: 'xMin', label: 'X min', type: 'number'}, {id: 'xMax', label: 'X max', type: 'number'}, {id: 'yMin', label: 'Y min', type: 'number'}, {id: 'yMax', label: 'Y max', type: 'number'}, {id: 'invertY', label: 'Invert Y polarity', type: 'checkbox'},
     {section: 'Rename'}, {id: 'renameFind', label: 'Current name', type: 'text'}, {id: 'renameReplace', label: 'New name', type: 'text'}, {id: 'renamePrefix', label: 'Prefix', type: 'text'}, {id: 'renameSuffix', label: 'Suffix', type: 'text'}, {id: 'renameExtensions', label: 'Extensions', type: 'text'},
-    {section: 'Export'}, {id: 'mergePair', label: 'Merge split pair', type: 'checkbox'}, {id: 'wideCsv', label: 'Wide TSV export', type: 'checkbox'},
+    {section: 'Export'}, {id: 'mergePair', label: 'Merge paired folder recordings', type: 'checkbox'}, {id: 'wideCsv', label: 'Export one wide TSV', type: 'checkbox'},
   ],
   emg_peak_selection: [
     {section: 'Paths'}, {id: 'folderPath', label: 'EMG folder', type: 'path'},

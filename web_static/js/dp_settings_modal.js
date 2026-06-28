@@ -26,7 +26,7 @@ function renderSettingField(field, defaults) {
   const help = field.help ? `<div class="prefs-field-help">${dpEscapeHtml(field.help)}</div>` : '';
   const common = `data-pref-key="${dpEscapeHtml(key)}" data-pref-type="${dpEscapeHtml(type)}"`;
   if (type === 'checkbox') {
-    return `<label class="prefs-field prefs-field-check"><input type="checkbox" ${common}${value ? ' checked' : ''}><span>${label}</span></label>`;
+    return `<label class="prefs-field prefs-field-check"><input class="dp-check" type="checkbox" ${common}${value ? ' checked' : ''}><span>${label}</span></label>`;
   }
   if (type === 'textarea') {
     return `<label class="prefs-field"><span>${label}</span><textarea ${common} rows="4">${dpEscapeHtml(value)}</textarea>${help}</label>`;
@@ -234,4 +234,3 @@ function applyPrefsToCurrentPage() {
   toast('Defaults applied');
   document.dispatchEvent(new CustomEvent('dp:prefs-defaults-applied', {detail: {view, defaults}}));
 }
-

@@ -170,7 +170,7 @@ function renderHistologyChannelView(channels, selected) {
     const checked = selectedSet.has(channel) ? ' checked' : '';
     return `
       <label class="histology-channel-chip" title="Show ${escHtml(channel)}">
-        <input type="checkbox" value="${escHtml(channel)}" data-dp-change="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
+        <input class="dp-check" type="checkbox" value="${escHtml(channel)}" data-dp-change="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
         <span>${escHtml(channel)}</span>
       </label>`;
   }).join('');

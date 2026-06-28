@@ -204,7 +204,7 @@ function renderLinkedChannelList() {
     item.className = 'file-item checkbox-row';
     item.title = channel;
     const checked = _linkedChannels.has(channel) ? ' checked' : '';
-    item.innerHTML = '<input type="checkbox"' + checked + '><span>' + escHtml(channel) + '</span>';
+    item.innerHTML = '<input class="dp-check" type="checkbox"' + checked + '><span>' + escHtml(channel) + '</span>';
     item.querySelector('input').addEventListener('change', ev => {
       if (ev.target.checked) _linkedChannels.add(channel);
       else _linkedChannels.delete(channel);

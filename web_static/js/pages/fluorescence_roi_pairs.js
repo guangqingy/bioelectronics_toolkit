@@ -15,7 +15,7 @@ function renderPairList() {
     const active = i === _currentPairIndex ? 'active' : '';
     return `
       <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" data-dp-click="selectPair(${i})">
-        <input type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="togglePairCheck(${i}, this.checked)">
+        <input class="dp-check" type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="togglePairCheck(${i}, this.checked)">
         <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
         <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addPairByIndex(${i})">Add</button>
       </div>`;
