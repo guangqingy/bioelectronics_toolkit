@@ -51,7 +51,7 @@ function renderAvailable() {
     return;
   }
   subList.innerHTML = _available.map((sf, i) =>
-    `<div class="file-item${_selectedAvailIdx === i ? ' active' : ''}" data-dp-click="selectAvailable(${i})">${escapeHtml(sf.name)}</div>`
+    `<div class="file-item${_selectedAvailIdx === i ? ' active' : ''}" data-dp-click="selectAvailable(${i})">${dpEscapeHtml(sf.name)}</div>`
   ).join('');
 }
 
@@ -98,7 +98,7 @@ function renderQueue() {
   }
 
   qList.innerHTML = _queue.map((item, i) =>
-    `<div class="file-item${_selectedQueueIdx === i ? ' active' : ''}" data-dp-click="selectQueueItem(${i})">${escapeHtml(item.folder_name || item.label)} -> ${escapeHtml(item.label)}</div>`
+    `<div class="file-item${_selectedQueueIdx === i ? ' active' : ''}" data-dp-click="selectQueueItem(${i})">${dpEscapeHtml(item.folder_name || item.label)} -> ${dpEscapeHtml(item.label)}</div>`
   ).join('');
 }
 
@@ -245,10 +245,10 @@ function runExportAction(action) {
   runFigureBackgroundJob('/api/figure/run_job', payload, 'Running ' + action)
     .then(r => {
       if (r.error) throw new Error(r.error);
-      const files = (r.generated_files || []).slice(0, 8).map(f => escapeHtml(f)).join('<br>');
+      const files = (r.generated_files || []).slice(0, 8).map(f => dpEscapeHtml(f)).join('<br>');
       document.getElementById('queueSummary').innerHTML =
-        'Action: ' + escapeHtml(action) + '<br>' +
-        'Saved folder: ' + escapeHtml(r.saved_dir || '-') + '<br>' +
+        'Action: ' + dpEscapeHtml(action) + '<br>' +
+        'Saved folder: ' + dpEscapeHtml(r.saved_dir || '-') + '<br>' +
         'Generated files: ' + (r.generated_count || 0) + '<br>' +
         (files ? ('Sample outputs:<br>' + files) : '');
       setStatus('status', 'Complete', 'ok');
@@ -287,7 +287,7 @@ function renderPreviewImages(images) {
   }
   area.innerHTML = images.map(item =>
     '<div style="margin-bottom:14px;">' +
-    '<div style="font-size:12px; color:var(--pewter); margin-bottom:6px;">' + escapeHtml(item.name || 'figure') + '</div>' +
+    '<div style="font-size:12px; color:var(--pewter); margin-bottom:6px;">' + dpEscapeHtml(item.name || 'figure') + '</div>' +
     '<img src="data:image/png;base64,' + item.img + '" alt="plot" style="max-width:100%; border:1px solid var(--line); border-radius:8px;" />' +
     '</div>'
   ).join('');
@@ -296,15 +296,6 @@ function renderPreviewImages(images) {
 function updateSummary() {
   document.getElementById('queueSummary').textContent =
     _queue.length ? ('Queue items: ' + _queue.length + '. Configure ranges and run Preview or export.') : 'Queue is empty.';
-}
-
-function escapeHtml(text) {
-  return String(text || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
 }
 
 window.addEventListener('load', () => {
@@ -322,7 +313,6 @@ window.DP.page = window.DP.page || {};
   'browseMain',
   'buildPayload',
   'clearQueue',
-  'escapeHtml',
   'metricFlags',
   'moveQueue',
   'previewPlots',

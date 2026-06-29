@@ -35,11 +35,11 @@ from services.histology_tiff_io import (
     load_image_for_display,
 )
 from services.histology_tiff_models import (
-    ImageRecord,
     PROJECT_FILE_NAME,
     PROJECT_KIND,
     PROJECT_PROTOCOL,
     RAW_OLYMPUS_SUFFIXES,
+    ImageRecord,
     SampleRecord,
 )
 from services.histology_tiff_outputs import (

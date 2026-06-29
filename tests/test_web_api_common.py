@@ -5,7 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from web_api.common import browse_files, fig_to_b64
+from flask import Flask
+
+from web_api.common import browse_files, fig_to_b64, request_data
 
 
 class _FakeFigure:
@@ -48,6 +50,17 @@ class WebApiCommonTests(unittest.TestCase):
         self.assertEqual(files[0]["name"], "trace.abf")
         self.assertEqual(files[0]["size"], 3)
         self.assertGreater(files[0]["mtime"], 0)
+
+    def test_request_data_ignores_non_json_post_body(self) -> None:
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/api/test",
+            method="POST",
+            data="not-json",
+            content_type="text/plain",
+        ):
+            self.assertEqual(request_data(), {})
 
 
 if __name__ == "__main__":

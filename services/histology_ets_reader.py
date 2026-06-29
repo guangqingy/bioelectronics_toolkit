@@ -11,6 +11,7 @@ from services.histology_ets_models import (
     EtsTile,
 )
 
+
 def _is_hidden(path: Path, root: Path) -> bool:
     try:
         rel = path.relative_to(root)

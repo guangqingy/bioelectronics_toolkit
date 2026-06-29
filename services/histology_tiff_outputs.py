@@ -25,6 +25,7 @@ from services.histology_tiff_models import (
     SampleRecord,
 )
 
+
 def _sample_analysis_paths(sample_id: str, analysis_folder: Path) -> dict[str, str]:
     return {
         "manifest_path": str(analysis_folder / f"{sample_id}_file_manifest.csv"),

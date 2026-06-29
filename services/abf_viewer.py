@@ -21,9 +21,6 @@ class AbfViewerService:
         pyabf_mod: Any,
         find_peaks: Callable | None,
         fig_to_b64: Callable[[Any], str],
-        float_or: Callable[[Any, float | None], float | None],
-        int_or: Callable[[Any, int], int],
-        as_bool: Callable[[Any], bool],
         mode_is_save: Callable[[Any], bool],
         apply_axes_limits: Callable[..., None],
         clean_trace_svg: Callable[..., bytes],
@@ -33,9 +30,6 @@ class AbfViewerService:
         self.pyabf_mod = pyabf_mod
         self.find_peaks = find_peaks
         self.fig_to_b64 = fig_to_b64
-        self.float_or = float_or
-        self.int_or = int_or
-        self.as_bool = as_bool
         self.mode_is_save = mode_is_save
         self.apply_axes_limits = apply_axes_limits
         self.clean_trace_svg = clean_trace_svg
@@ -49,6 +43,31 @@ class AbfViewerService:
     def _require_scipy(self) -> None:
         if self.find_peaks is None:
             raise ValueError("scipy not installed")
+
+    @staticmethod
+    def _num(value: Any, default: float) -> float:
+        """Apply a numeric default for blank/unset typed request fields.
+
+        Type coercion now happens at the request schema boundary
+        (OptFloat/OptInt); this only fills the default when a field is None.
+        """
+        return default if value is None else value
+
+    @staticmethod
+    def _float(value: Any, default: float | None = None) -> float | None:
+        """Coerce an item from an untyped list (peaks/window) to float."""
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _int(value: Any, default: int) -> int:
+        """Coerce an item from an untyped list (peaks) to int."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _abf_output(path: str | Path, role: str) -> dict[str, str]:
@@ -100,18 +119,18 @@ class AbfViewerService:
     def plot_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_abf()
         path = data.get("path", "")
-        sweep = self.int_or(data.get("sweep", 0), 0)
-        channel = self.int_or(data.get("channel", 0), 0)
-        i_ch = self.int_or(data.get("i_ch", 0), 0)
-        v_ch = self.int_or(data.get("v_ch", 1), 1)
+        sweep = self._num(data.get("sweep"), 0)
+        channel = self._num(data.get("channel"), 0)
+        i_ch = self._num(data.get("i_ch"), 0)
+        v_ch = self._num(data.get("v_ch"), 1)
         r_norm = bool(data.get("r_norm", False))
-        bl0 = self.float_or(data.get("bl_pre0"), None)
-        bl1 = self.float_or(data.get("bl_pre1"), None)
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
-        downsample = self.int_or(data.get("dsf", 1), 1)
+        bl0 = data.get("bl_pre0")
+        bl1 = data.get("bl_pre1")
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
+        downsample = self._num(data.get("dsf"), 1)
 
         abf = self.pyabf_mod.ABF(path)
         sweep_index = min(sweep, abf.sweepCount - 1)
@@ -161,18 +180,18 @@ class AbfViewerService:
         """Return decimated ABF trace samples for client-side interactive plotting."""
         self._require_abf()
         path = data.get("path", "")
-        sweep = self.int_or(data.get("sweep", 0), 0)
-        channel = self.int_or(data.get("channel", 0), 0)
-        i_ch = self.int_or(data.get("i_ch", 0), 0)
-        v_ch = self.int_or(data.get("v_ch", 1), 1)
-        r_norm = self.as_bool(data.get("r_norm", False))
-        bl0 = self.float_or(data.get("bl_pre0"), None)
-        bl1 = self.float_or(data.get("bl_pre1"), None)
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
-        downsample = max(1, self.int_or(data.get("dsf", 1), 1))
+        sweep = self._num(data.get("sweep"), 0)
+        channel = self._num(data.get("channel"), 0)
+        i_ch = self._num(data.get("i_ch"), 0)
+        v_ch = self._num(data.get("v_ch"), 1)
+        r_norm = data.get("r_norm", False)
+        bl0 = data.get("bl_pre0")
+        bl1 = data.get("bl_pre1")
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
+        downsample = max(1, self._num(data.get("dsf"), 1))
 
         abf = self.pyabf_mod.ABF(path)
         sweep_index = min(sweep, abf.sweepCount - 1)
@@ -225,20 +244,20 @@ class AbfViewerService:
         self._require_scipy()
 
         path = data.get("path", "")
-        sweep = self.int_or(data.get("sweep", 0), 0)
-        channel = self.int_or(data.get("channel", 0), 0)
-        i_ch = self.int_or(data.get("i_ch", 0), 0)
-        v_ch = self.int_or(data.get("v_ch", 1), 1)
-        r_norm = self.as_bool(data.get("r_norm", False))
-        bl0 = self.float_or(data.get("bl_pre0"), None)
-        bl1 = self.float_or(data.get("bl_pre1"), None)
-        t0 = self.float_or(data.get("t0"), None)
-        t1 = self.float_or(data.get("t1"), None)
-        use_all = self.as_bool(data.get("use_all", False))
+        sweep = self._num(data.get("sweep"), 0)
+        channel = self._num(data.get("channel"), 0)
+        i_ch = self._num(data.get("i_ch"), 0)
+        v_ch = self._num(data.get("v_ch"), 1)
+        r_norm = data.get("r_norm", False)
+        bl0 = data.get("bl_pre0")
+        bl1 = data.get("bl_pre1")
+        t0 = data.get("t0")
+        t1 = data.get("t1")
+        use_all = data.get("use_all", False)
         polarity = data.get("polarity", "positive")
-        height = self.float_or(data.get("height"), None)
-        prominence = self.float_or(data.get("prominence"), None)
-        distance_ms = self.float_or(data.get("distance", 2.0), 2.0)
+        height = data.get("height")
+        prominence = data.get("prominence")
+        distance_ms = self._num(data.get("distance"), 2.0)
 
         if height is not None and height <= 0:
             height = None
@@ -339,26 +358,6 @@ class AbfViewerService:
             },
         }
 
-    def legacy_trace_export_payload(self, path: str, mode: str) -> dict[str, Any]:
-        self._require_abf()
-        abf = self.pyabf_mod.ABF(path)
-        abf.setSweep(0, channel=0)
-        buf = io.BytesIO()
-        pd.DataFrame({"time_s": abf.sweepX, "value": abf.sweepY}).to_csv(buf, index=False)
-        buf.seek(0)
-        payload = buf.getvalue()
-        src = Path(path)
-        if self.mode_is_save(mode):
-            out_path = src.with_name(f"{src.stem}_trace.csv")
-            out_path.write_bytes(payload)
-            return {"kind": "save", "data": {"ok": True, "saved_path": str(out_path)}}
-        return {
-            "kind": "download",
-            "payload": payload,
-            "mimetype": "text/csv",
-            "download_name": f"{src.stem}_trace.csv",
-        }
-
     def export_peaks_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_abf()
 
@@ -368,26 +367,26 @@ class AbfViewerService:
         if not peaks:
             raise ValueError("No peaks selected")
 
-        sweep = self.int_or(data.get("sweep", 0), 0)
-        channel = self.int_or(data.get("channel", 0), 0)
-        i_ch = self.int_or(data.get("i_ch", 0), 0)
-        v_ch = self.int_or(data.get("v_ch", 1), 1)
-        r_norm = self.as_bool(data.get("r_norm", False))
-        bl0 = self.float_or(data.get("bl_pre0"), None)
-        bl1 = self.float_or(data.get("bl_pre1"), None)
-        export_window_ms = self.float_or(data.get("export_window_ms"), 50.0)
+        sweep = self._num(data.get("sweep"), 0)
+        channel = self._num(data.get("channel"), 0)
+        i_ch = self._num(data.get("i_ch"), 0)
+        v_ch = self._num(data.get("v_ch"), 1)
+        r_norm = data.get("r_norm", False)
+        bl0 = data.get("bl_pre0")
+        bl1 = data.get("bl_pre1")
+        export_window_ms = self._num(data.get("export_window_ms"), 50.0)
         if export_window_ms is None or export_window_ms <= 0:
             export_window_ms = 50.0
 
         polarity = str(data.get("polarity", "POS")).upper()
         window = data.get("window", [])
         win_t0 = (
-            self.float_or(window[0], np.nan)
+            self._float(window[0], np.nan)
             if isinstance(window, list) and len(window) > 0
             else np.nan
         )
         win_t1 = (
-            self.float_or(window[1], np.nan)
+            self._float(window[1], np.nan)
             if isinstance(window, list) and len(window) > 1
             else np.nan
         )
@@ -438,9 +437,9 @@ class AbfViewerService:
         rows = []
         selected = []
         for export_index, peak in enumerate(peaks, start=1):
-            global_index = self.int_or(peak.get("idx", peak.get("global_index")), -1)
+            global_index = self._int(peak.get("idx", peak.get("global_index")), -1)
             if global_index < 0 or global_index >= len(t_full):
-                peak_time = self.float_or(peak.get("time", peak.get("t")), None)
+                peak_time = self._float(peak.get("time", peak.get("t")), None)
                 if peak_time is None:
                     continue
                 global_index = int(np.argmin(np.abs(t_full - peak_time)))
@@ -507,19 +506,19 @@ class AbfViewerService:
         path = data.get("path", "")
         fmt = str(data.get("fmt", "png") or "png").lower()
         mode = data.get("mode", "download")
-        sweep = self.int_or(data.get("sweep", 0), 0)
-        channel = self.int_or(data.get("channel", 0), 0)
-        i_ch = self.int_or(data.get("i_ch", 0), 0)
-        v_ch = self.int_or(data.get("v_ch", 1), 1)
-        r_norm = self.as_bool(data.get("r_norm", False))
-        bl0 = self.float_or(data.get("bl_pre0"), None)
-        bl1 = self.float_or(data.get("bl_pre1"), None)
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
-        downsample = max(1, self.int_or(data.get("dsf", 1), 1))
-        signal_only = self.as_bool(data.get("signal_only", False))
+        sweep = self._num(data.get("sweep"), 0)
+        channel = self._num(data.get("channel"), 0)
+        i_ch = self._num(data.get("i_ch"), 0)
+        v_ch = self._num(data.get("v_ch"), 1)
+        r_norm = data.get("r_norm", False)
+        bl0 = data.get("bl_pre0")
+        bl1 = data.get("bl_pre1")
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
+        downsample = max(1, self._num(data.get("dsf"), 1))
+        signal_only = data.get("signal_only", False)
         src = Path(path)
         abf = self.pyabf_mod.ABF(path)
         sweep_index = min(sweep, abf.sweepCount - 1)

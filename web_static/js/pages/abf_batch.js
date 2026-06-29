@@ -171,9 +171,9 @@ async function runBatch(options) {
       danger: true,
       confirmText: 'Apply Changes',
       html: `
-        <div>This run may modify <strong>${escHtml(total)}</strong> ABF file(s).</div>
+        <div>This run may modify <strong>${dpEscapeHtml(total)}</strong> ABF file(s).</div>
         <ul>
-          <li>Move destination pattern: <code>${escHtml(folder)}/${escHtml(main)}_${escHtml(treat)}/sample_{id}/</code></li>
+          <li>Move destination pattern: <code>${dpEscapeHtml(folder)}/${dpEscapeHtml(main)}_${dpEscapeHtml(treat)}/sample_{id}/</code></li>
           <li>Sequence renumbering: <strong>${reindex_seq ? 'enabled' : 'disabled'}</strong></li>
           <li>A small operation log is written only when files are moved or renamed.</li>
         </ul>
@@ -238,10 +238,10 @@ async function runBatch(options) {
       }));
 
       const emptyMessage = rows.length === 0
-        ? '<div class="status-bar status-warning"><span class="status-text">' + escHtml(r.message || 'No matching files processed. Check filename tokens and expected _sample_ filename pattern.') + '</span></div>'
+        ? '<div class="status-bar status-warning"><span class="status-text">' + dpEscapeHtml(r.message || 'No matching files processed. Check filename tokens and expected _sample_ filename pattern.') + '</span></div>'
         : '';
       const warnings = Array.isArray(r.warnings) && r.warnings.length
-        ? '<div class="status-bar status-warning" style="margin-top:8px">' + r.warnings.map(escHtml).join('<br>') + '</div>'
+        ? '<div class="status-bar status-warning" style="margin-top:8px">' + r.warnings.map(dpEscapeHtml).join('<br>') + '</div>'
         : '';
       document.getElementById('resultBody').innerHTML = emptyMessage + buildTable(rows, ['File', 'Status', 'Main', 'Treat', 'Segment']) + warnings;
       document.getElementById('resultCard').style.display = 'block';

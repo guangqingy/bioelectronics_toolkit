@@ -14,7 +14,6 @@ from services.histology_image_io import (
 )
 from services.histology_tiff_project import load_image_for_analysis
 
-
 _EXPECTED_RGB_CHANNEL_WARNING = "Multi-channel/color image stored in one file; expected single-channel XY."
 _LOW_BIT_DEPTH_WARNING = "TIFF is not 16-bit; confirm it is suitable for quantification."
 _LOW_BIT_DEPTH_PREVIEW_WARNING = "Fluorescence TIFFs are 8-bit; confirm exports are suitable for quantification."

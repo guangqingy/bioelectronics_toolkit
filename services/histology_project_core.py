@@ -55,6 +55,7 @@ from services.histology_tiff_project import (
     PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
 )
 
+
 def _update_data_project_entry_counts(project_path: Path, entry_id: str) -> None:
     data = _load_data_project_payload(project_path)
     images = [record for record in data.get("images", []) if isinstance(record, dict)]

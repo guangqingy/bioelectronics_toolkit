@@ -62,32 +62,32 @@ def register_fluorescence_gif_basic_routes(app, fl):
     @request_schema(FluorescenceGifPreviewRequest)
     def api_fl_gif_preview():
         try:
-            d = parse_json_payload(FluorescenceGifPreviewRequest).model_dump()
+            body = parse_json_payload(FluorescenceGifPreviewRequest).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        input_path_str = str(d.get("input_path", "") or "").strip()
+        input_path_str = str(body.get("input_path", "") or "").strip()
         if not input_path_str:
             return err("input_path is required")
-        fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
-        lut = d.get("lut", "Gray")
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 10.0), 10.0))
-        manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
-        auto_scale = _fl_bool(d.get("auto_scale"), True)
-        label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+        fps = max(0.1, float_or(body.get("fps", 5.0), 5.0))
+        lut = body.get("lut", "Gray")
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 10.0), 10.0))
+        manual_px_per_um = max(0.01, float_or(body.get("px_per_um", 3.45), 3.45))
+        auto_scale = _fl_bool(body.get("auto_scale"), True)
+        label_mode = str(body.get("label_mode", "time") or "time").strip().lower()
+        add_timestamp = _fl_bool(body.get("add_timestamp", True), True) and label_mode not in {
             "none",
             "off",
             "no",
         }
-        slice_spec = d.get("slice_spec", "")
-        roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
-        crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
-        crop_mode = str(d.get("crop_mode", "full") or "full").strip().lower()
-        crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
-        crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
-        crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
+        slice_spec = body.get("slice_spec", "")
+        roi_polygons = _fl_normalize_gif_polygons(body.get("roi_polygons"))
+        crop_rects = _fl_normalize_gif_rects(body.get("crop_rects"))
+        crop_mode = str(body.get("crop_mode", "full") or "full").strip().lower()
+        crop_roi_label = str(body.get("crop_roi_label", "") or "").strip()
+        crop_rect_label = str(body.get("crop_rect_label", "") or "").strip()
+        crop_padding_px = max(0, int_or(body.get("crop_padding_px", 0), 0))
         show_roi_overlay = _fl_bool(
-            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+            body.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
         )
         try:
             p_in = Path(input_path_str)
@@ -151,27 +151,27 @@ def register_fluorescence_gif_basic_routes(app, fl):
         """Save one GIF preview frame with polygon ROI overlays and a labeled scale bar."""
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceGifExportPreviewRequest).model_dump()
+                body = parse_json_payload(FluorescenceGifExportPreviewRequest).model_dump()
             else:
-                d = FluorescenceGifExportPreviewRequest.model_validate(payload).model_dump()
+                body = FluorescenceGifExportPreviewRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        input_path_str = str(d.get("input_path", "") or "").strip()
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_reference")
-        slice_spec = d.get("slice_spec", "")
-        lut = d.get("lut", "Gray")
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 10.0), 10.0))
-        manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
-        auto_scale = _fl_bool(d.get("auto_scale"), True)
-        show_name = _fl_bool(d.get("show_name", True), True)
-        show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
-        roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
-        crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
-        crop_mode = str(d.get("crop_mode", "full") or "full").strip().lower()
-        crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
-        crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
-        crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
+        input_path_str = str(body.get("input_path", "") or "").strip()
+        output_dir_raw = str(body.get("output_dir", "") or "").strip()
+        prefix = _fl_sanitize_prefix(body.get("prefix", ""), "gif_roi_reference")
+        slice_spec = body.get("slice_spec", "")
+        lut = body.get("lut", "Gray")
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 10.0), 10.0))
+        manual_px_per_um = max(0.01, float_or(body.get("px_per_um", 3.45), 3.45))
+        auto_scale = _fl_bool(body.get("auto_scale"), True)
+        show_name = _fl_bool(body.get("show_name", True), True)
+        show_scale_bar = _fl_bool(body.get("show_scale_bar", True), True)
+        roi_polygons = _fl_normalize_gif_polygons(body.get("roi_polygons"))
+        crop_rects = _fl_normalize_gif_rects(body.get("crop_rects"))
+        crop_mode = str(body.get("crop_mode", "full") or "full").strip().lower()
+        crop_roi_label = str(body.get("crop_roi_label", "") or "").strip()
+        crop_rect_label = str(body.get("crop_rect_label", "") or "").strip()
+        crop_padding_px = max(0, int_or(body.get("crop_padding_px", 0), 0))
 
         if not input_path_str:
             return err("input_path is required")
@@ -197,7 +197,7 @@ def register_fluorescence_gif_basic_routes(app, fl):
                 crop_padding_px,
             )
             scale_info = _fl_resolve_gif_scale(p_in, auto_scale, manual_px_per_um)
-            frame_label = str(d.get("frame_label", "") or "").strip()
+            frame_label = str(body.get("frame_label", "") or "").strip()
             if not frame_label:
                 frame_label = f"{p_in.name} | slice {first_idx + 1}"
 
@@ -268,33 +268,33 @@ def register_fluorescence_gif_basic_routes(app, fl):
     def api_fl_make_gif(payload=None):
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceGifRenderRequest).model_dump()
+                body = parse_json_payload(FluorescenceGifRenderRequest).model_dump()
             else:
-                d = FluorescenceGifRenderRequest.model_validate(payload).model_dump()
+                body = FluorescenceGifRenderRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        input_path_str = d.get("input_path", "")
-        output_path_str = d.get("output_path", "")
-        fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
-        lut = d.get("lut", "Gray")
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 10.0), 10.0))
-        manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
-        auto_scale = _fl_bool(d.get("auto_scale"), True)
-        label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+        input_path_str = body.get("input_path", "")
+        output_path_str = body.get("output_path", "")
+        fps = max(0.1, float_or(body.get("fps", 5.0), 5.0))
+        lut = body.get("lut", "Gray")
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 10.0), 10.0))
+        manual_px_per_um = max(0.01, float_or(body.get("px_per_um", 3.45), 3.45))
+        auto_scale = _fl_bool(body.get("auto_scale"), True)
+        label_mode = str(body.get("label_mode", "time") or "time").strip().lower()
+        add_timestamp = _fl_bool(body.get("add_timestamp", True), True) and label_mode not in {
             "none",
             "off",
             "no",
         }
-        slice_spec = d.get("slice_spec", "")
-        roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
-        crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
-        crop_mode = str(d.get("crop_mode", "full") or "full").strip().lower()
-        crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
-        crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
-        crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
+        slice_spec = body.get("slice_spec", "")
+        roi_polygons = _fl_normalize_gif_polygons(body.get("roi_polygons"))
+        crop_rects = _fl_normalize_gif_rects(body.get("crop_rects"))
+        crop_mode = str(body.get("crop_mode", "full") or "full").strip().lower()
+        crop_roi_label = str(body.get("crop_roi_label", "") or "").strip()
+        crop_rect_label = str(body.get("crop_rect_label", "") or "").strip()
+        crop_padding_px = max(0, int_or(body.get("crop_padding_px", 0), 0))
         show_roi_overlay = _fl_bool(
-            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+            body.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
         )
         try:
             if not str(input_path_str or "").strip():
@@ -421,36 +421,36 @@ def register_fluorescence_gif_basic_routes(app, fl):
         """
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceGifMergeRequest).model_dump()
+                body = parse_json_payload(FluorescenceGifMergeRequest).model_dump()
             else:
-                d = FluorescenceGifMergeRequest.model_validate(payload).model_dump()
+                body = FluorescenceGifMergeRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        tiff_paths = d.get("tiff_paths") or []
+        tiff_paths = body.get("tiff_paths") or []
         if not tiff_paths:
             return err("tiff_paths must be a non-empty list")
-        slice_specs = d.get("slice_specs") or []
-        fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
-        lut = d.get("lut", "Gray")
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 10.0), 10.0))
-        manual_px_per_um = max(0.01, float_or(d.get("px_per_um", 3.45), 3.45))
-        auto_scale = _fl_bool(d.get("auto_scale"), True)
-        label_mode = str(d.get("label_mode", "time") or "time").strip().lower()
-        add_timestamp = _fl_bool(d.get("add_timestamp", True), True) and label_mode not in {
+        slice_specs = body.get("slice_specs") or []
+        fps = max(0.1, float_or(body.get("fps", 5.0), 5.0))
+        lut = body.get("lut", "Gray")
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 10.0), 10.0))
+        manual_px_per_um = max(0.01, float_or(body.get("px_per_um", 3.45), 3.45))
+        auto_scale = _fl_bool(body.get("auto_scale"), True)
+        label_mode = str(body.get("label_mode", "time") or "time").strip().lower()
+        add_timestamp = _fl_bool(body.get("add_timestamp", True), True) and label_mode not in {
             "none",
             "off",
             "no",
         }
-        roi_polygons = _fl_normalize_gif_polygons(d.get("roi_polygons"))
-        crop_rects = _fl_normalize_gif_rects(d.get("crop_rects"))
-        crop_mode = str(d.get("crop_mode", "full") or "full").strip().lower()
-        crop_roi_label = str(d.get("crop_roi_label", "") or "").strip()
-        crop_rect_label = str(d.get("crop_rect_label", "") or "").strip()
-        crop_padding_px = max(0, int_or(d.get("crop_padding_px", 0), 0))
+        roi_polygons = _fl_normalize_gif_polygons(body.get("roi_polygons"))
+        crop_rects = _fl_normalize_gif_rects(body.get("crop_rects"))
+        crop_mode = str(body.get("crop_mode", "full") or "full").strip().lower()
+        crop_roi_label = str(body.get("crop_roi_label", "") or "").strip()
+        crop_rect_label = str(body.get("crop_rect_label", "") or "").strip()
+        crop_padding_px = max(0, int_or(body.get("crop_padding_px", 0), 0))
         show_roi_overlay = _fl_bool(
-            d.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
+            body.get("show_roi_overlay"), crop_mode in {"", "none", "full", "full_frame", "frame"}
         )
-        output_path_str = (d.get("output_path") or "").strip()
+        output_path_str = (body.get("output_path") or "").strip()
         has_slice_selection = any(
             str(s or "").strip().lower() not in {"", "all", "*"} for s in slice_specs
         )

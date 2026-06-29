@@ -16,6 +16,7 @@ import threading
 import time
 import webbrowser
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import matplotlib
 
@@ -77,6 +78,26 @@ configure_pillow_image_limit(Image)
 LINE_COLOR = "#3E6AE1"
 
 
+def _is_loopback_host(host_header: str | None) -> bool:
+    try:
+        hostname = urlsplit(f"//{host_header or ''}").hostname or ""
+    except ValueError:
+        return False
+    return hostname.rstrip(".").lower() in {"localhost", "127.0.0.1", "::1"}
+
+
+def _is_loopback_url(value: str | None) -> bool:
+    if not value:
+        return True
+    try:
+        parsed = urlsplit(value)
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    return (parsed.hostname or "").rstrip(".").lower() in {"localhost", "127.0.0.1", "::1"}
+
+
 rhd = None
 try:
     from vendor.intan import importrhdutilities as rhd
@@ -125,6 +146,19 @@ def create_app(
             "default_examples_dir": "examples",
             "static_asset": static_asset,
         }
+
+    @flask_app.before_request
+    def guard_local_request_origin():
+        if not _is_loopback_host(request.host):
+            return api_error("Invalid Host header", 403)
+        if request.method not in {"GET", "HEAD", "OPTIONS"}:
+            origin = request.headers.get("Origin")
+            referer = request.headers.get("Referer")
+            if origin and not _is_loopback_url(origin):
+                return api_error("Cross-origin request blocked", 403)
+            if referer and not _is_loopback_url(referer):
+                return api_error("Cross-origin request blocked", 403)
+        return None
 
     @flask_app.after_request
     def optimize_delivery(response):
@@ -177,8 +211,6 @@ def create_app(
         browse_files=browse_files,
         browse_files_recursive=browse_files_recursive,
         fig_to_b64=fig_to_b64,
-        float_or=float_or,
-        int_or=int_or,
         request_data=request_data,
         apply_axes_limits=apply_axes_limits,
         BASE_DIR=base_dir,

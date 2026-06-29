@@ -22,6 +22,34 @@ class WebAppFactoryTests(unittest.TestCase):
         self.assertIn(response.mimetype, {"image/x-icon", "image/vnd.microsoft.icon"})
         self.assertGreater(len(response.data), 0)
 
+    def test_invalid_host_header_is_rejected(self) -> None:
+        app = create_app(jobs=JobManager())
+        response = app.test_client().get("/api/version", headers={"Host": "evil.example"})
+        payload = response.get_json()
+
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["error"], "Invalid Host header")
+
+    def test_cross_origin_post_is_rejected(self) -> None:
+        app = create_app(jobs=JobManager())
+        client = app.test_client()
+
+        blocked = client.post(
+            "/api/csv/browse",
+            json={"folder": "/definitely/not/a/folder"},
+            headers={"Origin": "http://evil.example"},
+        )
+        allowed = client.post(
+            "/api/csv/browse",
+            json={"folder": "/definitely/not/a/folder"},
+            headers={"Origin": "http://localhost"},
+        )
+
+        self.assertEqual(blocked.status_code, 403)
+        self.assertEqual(blocked.get_json()["error"], "Cross-origin request blocked")
+        self.assertEqual(allowed.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

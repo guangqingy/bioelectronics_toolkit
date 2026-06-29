@@ -154,7 +154,7 @@ async function scanFolder(options) {
     }
 
     fileList.innerHTML = files.map((f, i) => {
-      return `<div class="file-item" data-idx="${i}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" data-dp-click="selectFile(this)">${escHtml(f.name)}</div>`;
+      return `<div class="file-item" data-idx="${i}" data-path="${dpEscapeHtml(f.path)}" data-mtime="${dpEscapeHtml(f.mtime || '')}" title="${dpEscapeHtml(f.path)}" data-dp-click="selectFile(this)">${dpEscapeHtml(f.name)}</div>`;
     }).join('');
     DP.liveFolder.markNewItems('fileList', diff.addedPaths);
 

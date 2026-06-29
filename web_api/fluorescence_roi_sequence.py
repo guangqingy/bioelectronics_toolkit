@@ -63,28 +63,28 @@ def register_fluorescence_roi_sequence_routes(app, fl):
     def api_fl_roi_analyze_sequence():
         """Sequence-style ROI analysis across selected stack pairs."""
         try:
-            d = parse_json_payload(FluorescenceRoiAnalyzeSequenceRequest).model_dump()
+            body = parse_json_payload(FluorescenceRoiAnalyzeSequenceRequest).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        records = d.get("records", [])
-        rois = d.get("rois", [])
-        metric = d.get("metric", "mean")
-        plot_metric = d.get("plot_metric", "bg_normalized")
-        bg_mode = d.get("bg_mode", "none")
-        bg_roi = d.get("bg_roi", None)
-        ref_sequence_raw = str(d.get("ref_sequence", "") or "").strip()
-        preview_path_raw = str(d.get("preview_path", "") or "").strip()
-        preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 0.0), 0.0))
-        pixel_size_um_override = float_or(d.get("pixel_size_um"), None)
+        records = body.get("records", [])
+        rois = body.get("rois", [])
+        metric = body.get("metric", "mean")
+        plot_metric = body.get("plot_metric", "bg_normalized")
+        bg_mode = body.get("bg_mode", "none")
+        bg_roi = body.get("bg_roi", None)
+        ref_sequence_raw = str(body.get("ref_sequence", "") or "").strip()
+        preview_path_raw = str(body.get("preview_path", "") or "").strip()
+        preview_stack = str(body.get("preview_stack", "stack1") or "stack1").strip().lower()
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 0.0), 0.0))
+        pixel_size_um_override = float_or(body.get("pixel_size_um"), None)
         if pixel_size_um_override is not None and (
             not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0
         ):
             pixel_size_um_override = None
-        show_preview_name = _fl_bool(d.get("show_preview_name", True), True)
-        show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
-        scale_bar_label = str(d.get("scale_bar_label", "") or "").strip()
-        label_scale = float_or(d.get("label_scale", 2.0), 2.0)
+        show_preview_name = _fl_bool(body.get("show_preview_name", True), True)
+        show_scale_bar = _fl_bool(body.get("show_scale_bar", True), True)
+        scale_bar_label = str(body.get("scale_bar_label", "") or "").strip()
+        label_scale = float_or(body.get("label_scale", 2.0), 2.0)
         label_scale = max(0.5, min(4.0, label_scale))
 
         valid_metrics = {"mean", "top20_mean", "sum", "max", "std"}

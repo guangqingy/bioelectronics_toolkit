@@ -10,12 +10,11 @@ from matplotlib.patches import Rectangle
 from services.fluorescence import gif as fl_gif
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
+from services.fluorescence.stack_processing import float_or
 from services.matplotlib_utils import new_subplots
 
 
-def build_gif_roi_context(
-    *, image_mod, image_draw_mod, image_font_mod, fig_to_b64, float_or
-) -> dict:
+def build_gif_roi_context(*, image_mod, image_draw_mod, image_font_mod, fig_to_b64) -> dict:
     _fl_normalize_hex_color = fl_helpers.normalize_hex_color
     _fl_apply_lut = fl_helpers.apply_lut
     _fl_roi_empty_metrics = fl_roi.empty_metrics

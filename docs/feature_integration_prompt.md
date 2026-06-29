@@ -88,8 +88,8 @@ rules:
 
 8. Run the validation chain before finishing.
    - python -m ruff check .
-   - python -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
-   - python -m ruff check web_api --select F --ignore E402
+   - python -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402,E501
+   - python -m ruff check web_api --select F --ignore E402,E501
    - python -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
    - python -m pytest tests --ignore=tests/e2e -v
    - coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report

@@ -14,10 +14,12 @@ import numpy as np
 from services.matplotlib_utils import new_subplots
 
 
+def _num(value: Any, default: Any) -> Any:
+    return default if value is None else value
+
+
 @dataclass(frozen=True)
 class Volume3DExportContext:
-    int_or: Callable[[Any, int], int]
-    float_or: Callable[[Any, float], float]
     denoise_options: list[str]
     bool_value: Callable[[Any, bool], bool]
     clean_choice: Callable[[Any, list[str], str], str]
@@ -35,8 +37,8 @@ def volume_payload_from_body(
     d: dict, ctx: Volume3DExportContext, *, for_export: bool = False
 ) -> tuple[Path, dict]:
     path = str(d.get("path", "") or "").strip()
-    c = ctx.int_or(d.get("c", 0), 0)
-    t = ctx.int_or(d.get("t", 0), 0)
+    c = _num(d.get("c"), 0)
+    t = _num(d.get("t"), 0)
     extra_indices = d.get("extra_indices") if isinstance(d.get("extra_indices"), dict) else {}
     channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
     if channel_mode not in {"composite", "current"}:
@@ -46,12 +48,10 @@ def volume_payload_from_body(
     max_xy_default = 220 if for_export else 180
     max_z_default = 120 if for_export else 80
     threshold_default = 98.6 if for_export else 98.8
-    max_points = ctx.int_or(d.get("max_points", max_points_default), max_points_default)
-    max_xy = ctx.int_or(d.get("max_xy", max_xy_default), max_xy_default)
-    max_z = ctx.int_or(d.get("max_z", max_z_default), max_z_default)
-    threshold_percentile = ctx.float_or(
-        d.get("threshold_percentile", threshold_default), threshold_default
-    )
+    max_points = _num(d.get("max_points"), max_points_default)
+    max_xy = _num(d.get("max_xy"), max_xy_default)
+    max_z = _num(d.get("max_z"), max_z_default)
+    threshold_percentile = _num(d.get("threshold_percentile"), threshold_default)
     channel_ranges = d.get("channel_ranges") if isinstance(d.get("channel_ranges"), dict) else {}
     denoise_mode = ctx.clean_choice(d.get("denoise"), ctx.denoise_options, "Off")
     interlayer_level = str(d.get("interlayer_level", "middle") or "middle").strip().lower()
@@ -60,14 +60,14 @@ def volume_payload_from_body(
     density_radius_um = (
         None
         if density_radius_raw is None or density_radius_raw == ""
-        else ctx.float_or(density_radius_raw, 0.0)
+        else density_radius_raw
     )
     density_min_raw = d.get("density_min_neighbors", None)
     density_min_neighbors = (
-        None if density_min_raw is None or density_min_raw == "" else ctx.int_or(density_min_raw, 0)
+        None if density_min_raw is None or density_min_raw == "" else density_min_raw
     )
     show_scale_bar = ctx.bool_value(d.get("show_scale_bar", True), True)
-    scale_bar_um = max(0.0, ctx.float_or(d.get("scale_bar_um", 20.0), 20.0))
+    scale_bar_um = max(0.0, _num(d.get("scale_bar_um"), 20.0))
     p = Path(path)
     if not p.exists():
         raise ValueError(f"Input TIFF not found: {path}")
@@ -128,11 +128,11 @@ def rotation_gif_payload(
     frame_default = 24 if preview else 48
     size_default = 420 if preview else 640
     max_points_default = 18000 if preview else 45000
-    frame_count = ctx.int_or(d.get("gif_frames", frame_default), frame_default)
-    fps = ctx.float_or(d.get("gif_fps", 12.0), 12.0)
-    image_size = ctx.int_or(d.get("gif_size", size_default), size_default)
-    max_gif_points = ctx.int_or(d.get("gif_points", max_points_default), max_points_default)
-    scale_bar_um = max(0.0, ctx.float_or(d.get("scale_bar_um", 20.0), 20.0))
+    frame_count = _num(d.get("gif_frames"), frame_default)
+    fps = _num(d.get("gif_fps"), 12.0)
+    image_size = _num(d.get("gif_size"), size_default)
+    max_gif_points = _num(d.get("gif_points"), max_points_default)
+    scale_bar_um = max(0.0, _num(d.get("scale_bar_um"), 20.0))
     show_scale_bar = ctx.bool_value(d.get("show_scale_bar", True), True) and scale_bar_um > 0
     gif_bytes = rotation_gif_bytes(
         payload,
@@ -196,8 +196,8 @@ def distribution_payload(d: dict, ctx: Volume3DExportContext) -> dict:
     c_count = max(1, int(dims.get("c", 1) or 1))
     x_count = max(1, int(dims.get("x", 1) or 1))
     y_count = max(1, int(dims.get("y", 1) or 1))
-    c = max(0, min(ctx.int_or(d.get("distribution_channel", d.get("c", 0)), 0), c_count - 1))
-    t = ctx.int_or(d.get("t", 0), 0)
+    c = max(0, min(_num(d.get("distribution_channel", d.get("c")), 0), c_count - 1))
+    t = _num(d.get("t"), 0)
     extra_indices = d.get("extra_indices") if isinstance(d.get("extra_indices"), dict) else {}
     axis = str(d.get("distribution_axis", "z") or "z").strip().lower()
     if axis not in {"x", "y", "z"}:

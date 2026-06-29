@@ -4,6 +4,7 @@ from typing import Any
 
 import numpy as np
 
+
 def _read_sweep(abf: Any, *, i_ch: int, v_ch: int, analog_ch: int) -> tuple[np.ndarray, ...]:
     sweep = list(getattr(abf, "sweepList", [0]))[0]
     abf.setSweep(sweep, channel=i_ch)

@@ -99,7 +99,7 @@ function renderFiles(files) {
     return;
   }
   list.innerHTML = files.map((f, idx) =>
-    `<div class="file-item" data-index="${idx}" data-path="${escHtml(f.path)}" data-mtime="${escHtml(f.mtime || '')}" title="${escHtml(f.path)}" data-dp-click="selectFile(this)">${escHtml(f.name)}</div>`
+    `<div class="file-item" data-index="${idx}" data-path="${dpEscapeHtml(f.path)}" data-mtime="${dpEscapeHtml(f.mtime || '')}" title="${dpEscapeHtml(f.path)}" data-dp-click="selectFile(this)">${dpEscapeHtml(f.name)}</div>`
   ).join("");
 }
 

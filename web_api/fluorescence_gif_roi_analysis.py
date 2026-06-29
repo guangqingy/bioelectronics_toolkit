@@ -67,29 +67,29 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
         """Analyze polygon ROI fluorescence across the GIF queue timeline."""
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceGifRoiAnalyzeRequest).model_dump()
+                body = parse_json_payload(FluorescenceGifRoiAnalyzeRequest).model_dump()
             else:
-                d = FluorescenceGifRoiAnalyzeRequest.model_validate(payload).model_dump()
+                body = FluorescenceGifRoiAnalyzeRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        tiff_paths = d.get("tiff_paths") or []
-        slice_specs = d.get("slice_specs") or []
-        roi_specs = _fl_gif_roi_make_specs(d.get("rois", d.get("roi_polygons", [])))
+        tiff_paths = body.get("tiff_paths") or []
+        slice_specs = body.get("slice_specs") or []
+        roi_specs = _fl_gif_roi_make_specs(body.get("rois", body.get("roi_polygons", [])))
         bg_specs = (
-            _fl_gif_roi_make_specs([d.get("bg_roi")], "BG")
-            if isinstance(d.get("bg_roi"), dict)
+            _fl_gif_roi_make_specs([body.get("bg_roi")], "BG")
+            if isinstance(body.get("bg_roi"), dict)
             else []
         )
         bg_roi = bg_specs[0] if bg_specs else None
 
-        metric = str(d.get("metric", "mean") or "mean").strip()
-        plot_metric = str(d.get("plot_metric", "delta_f_over_f0") or "delta_f_over_f0").strip()
-        bg_mode = str(d.get("bg_mode", "none") or "none").strip()
-        fps = max(0.1, float_or(d.get("fps", 5.0), 5.0))
-        frame_interval_s = float_or(d.get("frame_interval_s"), None)
+        metric = str(body.get("metric", "mean") or "mean").strip()
+        plot_metric = str(body.get("plot_metric", "delta_f_over_f0") or "delta_f_over_f0").strip()
+        bg_mode = str(body.get("bg_mode", "none") or "none").strip()
+        fps = max(0.1, float_or(body.get("fps", 5.0), 5.0))
+        frame_interval_s = float_or(body.get("frame_interval_s"), None)
         if frame_interval_s is None or not np.isfinite(frame_interval_s) or frame_interval_s <= 0:
             frame_interval_s = 1.0 / fps
-        ref_frame_raw = int_or(d.get("ref_frame", 1), 1)
+        ref_frame_raw = int_or(body.get("ref_frame", 1), 1)
 
         valid_metrics = {"mean", "top20_mean", "sum", "max", "std"}
         valid_plot_metrics = {"absolute", "bg_subtracted", "bg_normalized", "delta_f_over_f0"}
@@ -294,18 +294,18 @@ def register_fluorescence_gif_roi_analysis_routes(app, fl):
         """Save GIF ROI time-analysis CSV and/or plot PNG to disk."""
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceGifRoiExportRequest).model_dump()
+                body = parse_json_payload(FluorescenceGifRoiExportRequest).model_dump()
             else:
-                d = FluorescenceGifRoiExportRequest.model_validate(payload).model_dump()
+                body = FluorescenceGifRoiExportRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        tiff_paths = d.get("tiff_paths") or []
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "gif_roi_time_analysis")
-        save_csv = _fl_bool(d.get("save_csv", True), True)
-        save_plot = _fl_bool(d.get("save_plot", True), True)
-        csv_text = str(d.get("csv", "") or "")
-        plot_png_b64 = str(d.get("plot_png_b64", "") or "")
+        tiff_paths = body.get("tiff_paths") or []
+        output_dir_raw = str(body.get("output_dir", "") or "").strip()
+        prefix = _fl_sanitize_prefix(body.get("prefix", ""), "gif_roi_time_analysis")
+        save_csv = _fl_bool(body.get("save_csv", True), True)
+        save_plot = _fl_bool(body.get("save_plot", True), True)
+        csv_text = str(body.get("csv", "") or "")
+        plot_png_b64 = str(body.get("plot_png_b64", "") or "")
 
         try:
             anchor = None

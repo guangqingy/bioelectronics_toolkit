@@ -2,16 +2,11 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from pydantic import Field, ValidationError
+from pydantic import Field
 
 from services.background_jobs import JobContext, JobManager
 
-from .request_validation import (
-    RequestModel,
-    parse_json_payload,
-    request_schema,
-    validation_error_response,
-)
+from .request_validation import RequestModel, api_endpoint
 from .response import api_error, api_ok
 
 
@@ -102,23 +97,15 @@ def register_job_routes(app, ctx) -> None:
     jobs: JobManager = ctx.jobs
 
     @app.route("/api/jobs/list", methods=["POST"])
-    @request_schema(JobListRequest)
-    def api_jobs_list():
-        try:
-            payload = parse_json_payload(JobListRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(JobListRequest, dump=False)
+    def api_jobs_list(payload):
         return api_ok(
             {"jobs": jobs.list(limit=payload.limit, include_finished=payload.include_finished)}
         )
 
     @app.route("/api/jobs/get", methods=["POST"])
-    @request_schema(JobIdRequest)
-    def api_jobs_get():
-        try:
-            payload = parse_json_payload(JobIdRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(JobIdRequest, dump=False)
+    def api_jobs_get(payload):
         job_id = payload.job_id.strip()
         job = jobs.get(job_id)
         if not job:
@@ -126,12 +113,8 @@ def register_job_routes(app, ctx) -> None:
         return api_ok({"job": job})
 
     @app.route("/api/jobs/cancel", methods=["POST"])
-    @request_schema(JobIdRequest)
-    def api_jobs_cancel():
-        try:
-            payload = parse_json_payload(JobIdRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(JobIdRequest, dump=False)
+    def api_jobs_cancel(payload):
         job_id = payload.job_id.strip()
         if not jobs.request_cancel(job_id):
             return api_error(f"Unknown job: {job_id}", 404)

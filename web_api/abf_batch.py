@@ -1,18 +1,17 @@
-import traceback
 from pathlib import Path
 from typing import Any
 
 from flask import jsonify
-from pydantic import Field, ValidationError
+from pydantic import Field
 
 from services import abf_batch as abf_batch_service
 
 from .jobs import submit_json_task
 from .request_validation import (
+    OptFloat,
+    OptInt,
     RequestModel,
-    parse_json_payload,
-    request_schema,
-    validation_error_response,
+    api_endpoint,
 )
 from .response import api_ok
 
@@ -32,12 +31,12 @@ class AbfBatchProcessRequest(RequestModel):
     main: str = ""
     treat: str = ""
     powers: str = ""
-    i_ch: Any = 0
-    v_ch: Any = 1
-    analog_ch: Any = 2
+    i_ch: OptInt = 0
+    v_ch: OptInt = 1
+    analog_ch: OptInt = 2
     segment_mode: str = "auto"
-    segment_t0: Any = 0.1
-    segment_t1: Any = 0.7
+    segment_t0: OptFloat = 0.1
+    segment_t1: OptFloat = 0.7
     save_segments: bool = True
     pure_csv: bool = False
     move_files: bool = True
@@ -46,10 +45,7 @@ class AbfBatchProcessRequest(RequestModel):
 
 
 def register_abf_batch_routes(app, ctx):
-    err = ctx.err
     browse_files_recursive = ctx.browse_files_recursive
-    float_or = ctx.float_or
-    int_or = ctx.int_or
     pyabf_mod = ctx.pyabf
     jobs = ctx.jobs
 
@@ -57,8 +53,6 @@ def register_abf_batch_routes(app, ctx):
         return abf_batch_service.process_payload(
             d,
             pyabf_mod=pyabf_mod,
-            float_or=float_or,
-            int_or=int_or,
             root_dir=ROOT_DIR,
         )
 
@@ -67,46 +61,26 @@ def register_abf_batch_routes(app, ctx):
         return _abf_batch_process_payload(body)
 
     @app.route("/api/abf_batch/browse", methods=["POST"])
-    @request_schema(AbfBatchBrowseRequest)
-    def api_abf_batch_browse():
-        try:
-            payload = parse_json_payload(AbfBatchBrowseRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(AbfBatchBrowseRequest, dump=False)
+    def api_abf_batch_browse(payload):
         return jsonify(abf_batch_service.browse_payload(payload.folder, browse_files_recursive))
 
     @app.route("/api/abf_batch/scan_tokens", methods=["POST"])
-    @request_schema(AbfBatchScanTokensRequest)
-    def api_abf_batch_scan_tokens():
+    @api_endpoint(AbfBatchScanTokensRequest, dump=False)
+    def api_abf_batch_scan_tokens(payload):
         """Scan filenames to suggest main/treat tokens."""
-        try:
-            payload = parse_json_payload(AbfBatchScanTokensRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
         return jsonify(abf_batch_service.scan_filename_tokens(payload.files))
 
     @app.route("/api/abf_batch/process", methods=["POST"])
-    @request_schema(AbfBatchProcessRequest)
-    def api_abf_batch_process():
+    @api_endpoint(AbfBatchProcessRequest)
+    def api_abf_batch_process(d):
         """Process a batch of ABF files and extract photocurrent peaks."""
-        try:
-            d = parse_json_payload(AbfBatchProcessRequest).model_dump()
-            result = _abf_batch_process_payload(d)
-            return api_ok(result, outputs=result.get("outputs"), warnings=result.get("warnings"))
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except ValueError as exc:
-            return err(str(exc))
-        except Exception:
-            return err(traceback.format_exc())
+        result = _abf_batch_process_payload(d)
+        return api_ok(result, outputs=result.get("outputs"), warnings=result.get("warnings"))
 
     @app.route("/api/abf_batch/process_job", methods=["POST"])
-    @request_schema(AbfBatchProcessRequest)
-    def api_abf_batch_process_job():
-        try:
-            body = parse_json_payload(AbfBatchProcessRequest).model_dump()
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(AbfBatchProcessRequest)
+    def api_abf_batch_process_job(body):
         return submit_json_task(
             jobs,
             "abf_batch.process",

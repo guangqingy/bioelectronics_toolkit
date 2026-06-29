@@ -1,16 +1,13 @@
 # TODO(structure-debt): this route module exceeds the 200-line route budget.
 # Move remaining LIF response assembly into services/fluorescence/lif_* helpers
 # and track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
-import base64
 import csv
-import io
 import traceback
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from flask import jsonify
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
 from services.fluorescence import (
     lif_dimensions,
@@ -21,88 +18,36 @@ from services.fluorescence import (
     route_helpers,
 )
 
+from .fluorescence_lif_request_schemas import (
+    LifBrowseRequest,
+    LifExportManifestRequest,
+    LifExportTiffBatchRequest,
+    LifExportTiffRequest,
+    LifExportVolume3dRequest,
+    LifInfoRequest,
+    LifPreviewRequest,
+    LifVolume3dRequest,
+)
 from .jobs import route_response_to_payload, submit_json_task
 from .request_validation import (
-    RequestModel,
     parse_json_payload,
     request_schema,
     validation_error_response,
 )
 
 
-class LifBrowseRequest(RequestModel):
-    folder: str = ""
-
-
-class LifInfoRequest(RequestModel):
-    path: str = Field(min_length=1)
-    sort: str = "time"
-
-
-class LifPreviewRequest(RequestModel):
-    path: str = Field(min_length=1)
-    image_index: Any = 0
-    z: Any = 0
-    t: Any = 0
-    c: Any = 0
-    m: Any = 0
-    requested_dims: Any = Field(default_factory=dict)
-    lut: str = "Gray"
-    p_low: Any = 1.0
-    p_high: Any = 99.0
-
-
-class LifVolume3dRequest(LifPreviewRequest):
-    channel_mode: str = "composite"
-    max_points: Any = 70000
-    max_xy: Any = 180
-    max_z: Any = 80
-    threshold_percentile: Any = 98.8
-
-
-class LifExportVolume3dRequest(LifVolume3dRequest):
-    max_points: Any = 110000
-    max_xy: Any = 220
-    max_z: Any = 120
-    threshold_percentile: Any = 98.6
-    output_name: str = ""
-    output_dir: str = ""
-    overwrite: Any = False
-
-
-class LifExportManifestRequest(RequestModel):
-    path: str = Field(min_length=1)
-    order_indices: list[Any] = Field(default_factory=list)
-    rename_map: Any = Field(default_factory=dict)
-
-
-class LifExportTiffRequest(RequestModel):
-    path: str = Field(min_length=1)
-    image_index: Any = 0
-    output_name: str = ""
-    output_dir: str = ""
-    overwrite: Any = False
-
-
-class LifExportTiffBatchRequest(RequestModel):
-    path: str = Field(min_length=1)
-    order_indices: list[Any] = Field(default_factory=list)
-    rename_map: Any = Field(default_factory=dict)
-    output_dir: str = ""
-    overwrite: Any = False
-
-
 def register_fluorescence_lif_routes(app, ctx):
     err = ctx.err
     browse_files = ctx.browse_files
-    float_or = ctx.float_or
-    int_or = ctx.int_or
     tifflib = ctx.tifflib
     image_mod = ctx.Image
     jobs = ctx.jobs
 
     LifFile = ctx.LifFile
     _lif_cache = {}
+
+    def _num(value, default):
+        return default if value is None else value
 
     def _response_task(job_ctx, body: dict, handler, message: str) -> dict:
         job_ctx.set_progress(0.2, message)
@@ -114,44 +59,10 @@ def register_fluorescence_lif_routes(app, ctx):
             return "readlif is not installed. Run: python -m pip install readlif"
         return ""
 
-    def _lif_apply_lut(gray8: np.ndarray, lut: str) -> np.ndarray:
-        lut_name = (lut or "Gray").strip().lower()
-        z = np.zeros_like(gray8)
-        if lut_name == "red":
-            return np.stack([gray8, z, z], axis=-1)
-        if lut_name == "green":
-            return np.stack([z, gray8, z], axis=-1)
-        if lut_name == "blue":
-            return np.stack([z, z, gray8], axis=-1)
-        if lut_name == "magenta":
-            return np.stack([gray8, z, gray8], axis=-1)
-        if lut_name == "cyan":
-            return np.stack([z, gray8, gray8], axis=-1)
-        if lut_name == "yellow":
-            return np.stack([gray8, gray8, z], axis=-1)
-        return np.stack([gray8, gray8, gray8], axis=-1)
-
     def _lif_plane_to_b64(frame, lut: str, p_low: float, p_high: float) -> str:
-        arr = np.asarray(frame)
-        if arr.ndim > 2:
-            arr = np.squeeze(arr)
-        if arr.ndim != 2:
-            arr = arr.reshape(arr.shape[-2], arr.shape[-1])
-
-        arr = arr.astype(np.float32)
-        lo, hi = np.percentile(arr, [p_low, p_high])
-        if not np.isfinite(lo) or not np.isfinite(hi) or hi <= lo:
-            lo, hi = float(np.min(arr)), float(np.max(arr))
-        if hi <= lo:
-            hi = lo + 1.0
-
-        gray8 = np.clip((arr - lo) / (hi - lo) * 255.0, 0, 255).astype(np.uint8)
-        rgb = _lif_apply_lut(gray8, lut)
-        img = image_mod.fromarray(rgb, mode="RGB")
-        buf = io.BytesIO()
-        img.save(buf, format="PNG")
-        buf.seek(0)
-        return base64.b64encode(buf.read()).decode()
+        return route_helpers.frame_to_b64(
+            _lif_normalize_2d_array(frame), lut, p_low, p_high, image_mod
+        )
 
     _lif_apply_orientation = lif_dimensions.apply_orientation
     _lif_sanitize_filename = lif_export.sanitize_filename
@@ -240,9 +151,9 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifInfoRequest)
     def api_lif_info():
         try:
-            d = parse_json_payload(LifInfoRequest)
-            path = d.path.strip()
-            sort_mode = str(d.sort or "time").strip().lower()
+            body = parse_json_payload(LifInfoRequest)
+            path = body.path.strip()
+            sort_mode = str(body.sort or "time").strip().lower()
             if sort_mode not in {"time", "original", "name"}:
                 sort_mode = "time"
             _, records = _lif_load_records(path)
@@ -276,17 +187,17 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifPreviewRequest)
     def api_lif_preview():
         try:
-            d = parse_json_payload(LifPreviewRequest)
-            path = d.path.strip()
-            image_index = int_or(d.image_index, 0)
-            z = int_or(d.z, 0)
-            t = int_or(d.t, 0)
-            c = int_or(d.c, 0)
-            m = int_or(d.m, 0)
-            requested_dims = d.requested_dims if isinstance(d.requested_dims, dict) else {}
-            lut = str(d.lut or "Gray")
-            p_low = max(0.0, min(49.0, float_or(d.p_low, 1.0)))
-            p_high = max(51.0, min(100.0, float_or(d.p_high, 99.0)))
+            body = parse_json_payload(LifPreviewRequest)
+            path = body.path.strip()
+            image_index = _num(body.image_index, 0)
+            z = _num(body.z, 0)
+            t = _num(body.t, 0)
+            c = _num(body.c, 0)
+            m = _num(body.m, 0)
+            requested_dims = body.requested_dims if isinstance(body.requested_dims, dict) else {}
+            lut = str(body.lut or "Gray")
+            p_low = max(0.0, min(49.0, _num(body.p_low, 1.0)))
+            p_high = max(51.0, min(100.0, _num(body.p_high, 99.0)))
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -319,20 +230,20 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifVolume3dRequest)
     def api_lif_volume3d():
         try:
-            d = parse_json_payload(LifVolume3dRequest)
-            path = d.path.strip()
-            image_index = int_or(d.image_index, 0)
-            t = int_or(d.t, 0)
-            c = int_or(d.c, 0)
-            m = int_or(d.m, 0)
-            requested_dims = d.requested_dims if isinstance(d.requested_dims, dict) else {}
-            channel_mode = str(d.channel_mode or "composite").strip().lower()
+            body = parse_json_payload(LifVolume3dRequest)
+            path = body.path.strip()
+            image_index = _num(body.image_index, 0)
+            t = _num(body.t, 0)
+            c = _num(body.c, 0)
+            m = _num(body.m, 0)
+            requested_dims = body.requested_dims if isinstance(body.requested_dims, dict) else {}
+            channel_mode = str(body.channel_mode or "composite").strip().lower()
             if channel_mode not in {"composite", "current"}:
                 channel_mode = "composite"
-            max_points = int_or(d.max_points, 70000)
-            max_xy = int_or(d.max_xy, 180)
-            max_z = int_or(d.max_z, 80)
-            threshold_percentile = float_or(d.threshold_percentile, 98.8)
+            max_points = _num(body.max_points, 70000)
+            max_xy = _num(body.max_xy, 180)
+            max_z = _num(body.max_z, 80)
+            threshold_percentile = _num(body.threshold_percentile, 98.8)
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -361,29 +272,29 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifExportVolume3dRequest)
     def api_lif_export_volume3d(payload=None):
         try:
-            d = (
+            body = (
                 parse_json_payload(LifExportVolume3dRequest).model_dump()
                 if payload is None
                 else payload
             )
-            path = str(d.get("path", "") or "").strip()
-            image_index = int_or(d.get("image_index", 0), 0)
-            output_name = str(d.get("output_name", "") or "").strip()
-            output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", False))
-            t = int_or(d.get("t", 0), 0)
-            c = int_or(d.get("c", 0), 0)
-            m = int_or(d.get("m", 0), 0)
+            path = str(body.get("path", "") or "").strip()
+            image_index = _num(body.get("image_index"), 0)
+            output_name = str(body.get("output_name", "") or "").strip()
+            output_dir_raw = str(body.get("output_dir", "") or "").strip()
+            overwrite = bool(body.get("overwrite", False))
+            t = _num(body.get("t"), 0)
+            c = _num(body.get("c"), 0)
+            m = _num(body.get("m"), 0)
             requested_dims = (
-                d.get("requested_dims") if isinstance(d.get("requested_dims"), dict) else {}
+                body.get("requested_dims") if isinstance(body.get("requested_dims"), dict) else {}
             )
-            channel_mode = str(d.get("channel_mode", "composite") or "composite").strip().lower()
+            channel_mode = str(body.get("channel_mode", "composite") or "composite").strip().lower()
             if channel_mode not in {"composite", "current"}:
                 channel_mode = "composite"
-            max_points = int_or(d.get("max_points", 110000), 110000)
-            max_xy = int_or(d.get("max_xy", 220), 220)
-            max_z = int_or(d.get("max_z", 120), 120)
-            threshold_percentile = float_or(d.get("threshold_percentile", 98.6), 98.6)
+            max_points = _num(body.get("max_points"), 110000)
+            max_xy = _num(body.get("max_xy"), 220)
+            max_z = _num(body.get("max_z"), 120)
+            threshold_percentile = _num(body.get("threshold_percentile"), 98.6)
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -459,10 +370,10 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifExportManifestRequest)
     def api_lif_export_manifest():
         try:
-            d = parse_json_payload(LifExportManifestRequest)
-            path = d.path.strip()
-            order_indices_raw = d.order_indices or []
-            rename_map = d.rename_map if isinstance(d.rename_map, dict) else {}
+            body = parse_json_payload(LifExportManifestRequest)
+            path = body.path.strip()
+            order_indices_raw = body.order_indices or []
+            rename_map = body.rename_map if isinstance(body.rename_map, dict) else {}
             order_indices = []
             for raw in order_indices_raw:
                 try:
@@ -507,16 +418,16 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifExportTiffRequest)
     def api_lif_export_tiff(payload=None):
         try:
-            d = (
+            body = (
                 parse_json_payload(LifExportTiffRequest).model_dump()
                 if payload is None
                 else payload
             )
-            path = str(d.get("path", "") or "").strip()
-            image_index = int_or(d.get("image_index", 0), 0)
-            output_name = str(d.get("output_name", "") or "").strip()
-            output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", False))
+            path = str(body.get("path", "") or "").strip()
+            image_index = _num(body.get("image_index"), 0)
+            output_name = str(body.get("output_name", "") or "").strip()
+            output_dir_raw = str(body.get("output_dir", "") or "").strip()
+            overwrite = bool(body.get("overwrite", False))
             lif, records = _lif_load_records(path)
             if image_index < 0 or image_index >= len(records):
                 return err(f"Invalid image index: {image_index}")
@@ -563,16 +474,16 @@ def register_fluorescence_lif_routes(app, ctx):
     @request_schema(LifExportTiffBatchRequest)
     def api_lif_export_tiff_batch(payload=None, job_ctx=None):
         try:
-            d = (
+            body = (
                 parse_json_payload(LifExportTiffBatchRequest).model_dump()
                 if payload is None
                 else payload
             )
-            path = str(d.get("path", "") or "").strip()
-            order_indices_raw = d.get("order_indices") or []
-            rename_map = d.get("rename_map") if isinstance(d.get("rename_map"), dict) else {}
-            output_dir_raw = str(d.get("output_dir", "") or "").strip()
-            overwrite = bool(d.get("overwrite", False))
+            path = str(body.get("path", "") or "").strip()
+            order_indices_raw = body.get("order_indices") or []
+            rename_map = body.get("rename_map") if isinstance(body.get("rename_map"), dict) else {}
+            output_dir_raw = str(body.get("output_dir", "") or "").strip()
+            overwrite = bool(body.get("overwrite", False))
 
             order_indices = []
             if isinstance(order_indices_raw, list):

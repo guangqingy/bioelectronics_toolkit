@@ -6,7 +6,6 @@ from pathlib import Path
 
 from web_app import app
 
-
 ROOT = Path(__file__).resolve().parents[1]
 WEB_API = ROOT / "web_api"
 WEB_STATIC = ROOT / "web_static"

@@ -62,26 +62,26 @@ def register_fluorescence_roi_export_routes(app, fl):
         """Save ROI sequence analysis outputs to disk (CSV/plot/ROI preview)."""
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceRoiExportSequenceRequest).model_dump()
+                body = parse_json_payload(FluorescenceRoiExportSequenceRequest).model_dump()
             else:
-                d = FluorescenceRoiExportSequenceRequest.model_validate(payload).model_dump()
+                body = FluorescenceRoiExportSequenceRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        records = d.get("records", [])
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_analysis")
+        records = body.get("records", [])
+        output_dir_raw = str(body.get("output_dir", "") or "").strip()
+        prefix = _fl_sanitize_prefix(body.get("prefix", ""), "roi_analysis")
 
-        save_csv = _fl_bool(d.get("save_csv", True), True)
-        save_plot = _fl_bool(d.get("save_plot", True), True)
-        save_preview = _fl_bool(d.get("save_preview", True), True)
-        save_radial_csv = _fl_bool(d.get("save_radial_csv", True), True)
-        save_radial_plot = _fl_bool(d.get("save_radial_plot", True), True)
+        save_csv = _fl_bool(body.get("save_csv", True), True)
+        save_plot = _fl_bool(body.get("save_plot", True), True)
+        save_preview = _fl_bool(body.get("save_preview", True), True)
+        save_radial_csv = _fl_bool(body.get("save_radial_csv", True), True)
+        save_radial_plot = _fl_bool(body.get("save_radial_plot", True), True)
 
-        csv_text = str(d.get("csv", "") or "")
-        plot_png_b64 = str(d.get("plot_png_b64", "") or "")
-        roi_preview_png_b64 = str(d.get("roi_preview_png_b64", "") or "")
-        radial_csv_text = str(d.get("radial_csv", "") or "")
-        radial_plot_png_b64 = str(d.get("radial_plot_png_b64", "") or "")
+        csv_text = str(body.get("csv", "") or "")
+        plot_png_b64 = str(body.get("plot_png_b64", "") or "")
+        roi_preview_png_b64 = str(body.get("roi_preview_png_b64", "") or "")
+        radial_csv_text = str(body.get("radial_csv", "") or "")
+        radial_plot_png_b64 = str(body.get("radial_plot_png_b64", "") or "")
 
         try:
             out_dir = _fl_roi_pick_output_dir(records, output_dir_raw)
@@ -168,29 +168,29 @@ def register_fluorescence_roi_export_routes(app, fl):
         """Save a sequence GIF from selected ROI records with ROI overlays and scale bar."""
         try:
             if payload is None:
-                d = parse_json_payload(FluorescenceRoiExportSequenceGifRequest).model_dump()
+                body = parse_json_payload(FluorescenceRoiExportSequenceGifRequest).model_dump()
             else:
-                d = FluorescenceRoiExportSequenceGifRequest.model_validate(payload).model_dump()
+                body = FluorescenceRoiExportSequenceGifRequest.model_validate(payload).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        records = d.get("records", [])
-        rois = d.get("rois", [])
-        preview_stack = str(d.get("preview_stack", "stack1") or "stack1").strip().lower()
-        output_dir_raw = str(d.get("output_dir", "") or "").strip()
-        prefix = _fl_sanitize_prefix(d.get("prefix", ""), "roi_analysis")
+        records = body.get("records", [])
+        rois = body.get("rois", [])
+        preview_stack = str(body.get("preview_stack", "stack1") or "stack1").strip().lower()
+        output_dir_raw = str(body.get("output_dir", "") or "").strip()
+        prefix = _fl_sanitize_prefix(body.get("prefix", ""), "roi_analysis")
 
-        frame_ms = int_or(d.get("frame_ms", 2000), 2000)
+        frame_ms = int_or(body.get("frame_ms", 2000), 2000)
         frame_ms = max(20, frame_ms)
-        scale_bar_um = max(0.0, float_or(d.get("scale_bar_um", 0.0), 0.0))
-        pixel_size_um_override = float_or(d.get("pixel_size_um"), None)
+        scale_bar_um = max(0.0, float_or(body.get("scale_bar_um", 0.0), 0.0))
+        pixel_size_um_override = float_or(body.get("pixel_size_um"), None)
         if pixel_size_um_override is not None and (
             not np.isfinite(pixel_size_um_override) or pixel_size_um_override <= 0
         ):
             pixel_size_um_override = None
-        show_preview_name = _fl_bool(d.get("show_preview_name", True), True)
-        show_scale_bar = _fl_bool(d.get("show_scale_bar", True), True)
-        scale_bar_label = str(d.get("scale_bar_label", "") or "").strip()
-        label_scale = float_or(d.get("label_scale", 1.0), 1.0)
+        show_preview_name = _fl_bool(body.get("show_preview_name", True), True)
+        show_scale_bar = _fl_bool(body.get("show_scale_bar", True), True)
+        scale_bar_label = str(body.get("scale_bar_label", "") or "").strip()
+        label_scale = float_or(body.get("label_scale", 1.0), 1.0)
         label_scale = max(0.5, min(4.0, label_scale))
 
         if not isinstance(records, list) or not records:

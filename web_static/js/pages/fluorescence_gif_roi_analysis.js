@@ -61,7 +61,7 @@ async function generateGif() {
 
     if (d.error) {
       setStatus('status', 'Error: ' + d.error, 'error');
-      if (resultArea) resultArea.innerHTML = `<pre class="log-box">${escHtml(d.error)}</pre>`;
+      if (resultArea) resultArea.innerHTML = `<pre class="log-box">${dpEscapeHtml(d.error)}</pre>`;
       return;
     }
 
@@ -82,10 +82,10 @@ async function generateGif() {
         <div style="font-size:12px;color:#555;margin-bottom:4px">Frames: <b>${d.n_frames}</b></div>
         ${d.selected_slices ? `<div style="font-size:12px;color:#555;margin-bottom:4px">Selected slices: <b>${d.selected_slices}</b></div>` : ''}
         <div style="font-size:12px;color:#555;margin-bottom:4px">Polygon ROI: <b>${d.roi_polygons || 0}</b> · marked: <b>${d.show_roi_overlay ? 'yes' : 'no'}</b></div>
-        ${d.crop && d.crop.mode && d.crop.mode !== 'full' ? `<div style="font-size:12px;color:#555;margin-bottom:4px">Crop: <b>${escHtml(d.crop.width)}×${escHtml(d.crop.height)} px</b> from (${escHtml(d.crop.x)}, ${escHtml(d.crop.y)})</div>` : ''}
-        <div style="font-size:12px;color:#555;margin-bottom:4px">Scale: <b>${escHtml(formatScaleInfo(d))}</b></div>
-        <div style="font-size:12px;color:#555;margin-bottom:8px;word-break:break-all">Path: <code>${escHtml(d.output_path)}</code></div>
-        ${outDir ? `<button class="btn-secondary" data-dp-click="openFolder('${escHtml(outDir)}')">Open Folder</button>` : ''}
+        ${d.crop && d.crop.mode && d.crop.mode !== 'full' ? `<div style="font-size:12px;color:#555;margin-bottom:4px">Crop: <b>${dpEscapeHtml(d.crop.width)}×${dpEscapeHtml(d.crop.height)} px</b> from (${dpEscapeHtml(d.crop.x)}, ${dpEscapeHtml(d.crop.y)})</div>` : ''}
+        <div style="font-size:12px;color:#555;margin-bottom:4px">Scale: <b>${dpEscapeHtml(formatScaleInfo(d))}</b></div>
+        <div style="font-size:12px;color:#555;margin-bottom:8px;word-break:break-all">Path: <code>${dpEscapeHtml(d.output_path)}</code></div>
+        ${outDir ? `<button class="btn-secondary" data-dp-click="openFolder('${dpEscapeHtml(outDir)}')">Open Folder</button>` : ''}
       </div>`;
     recordRunHistory({
       view: 'fluorescence_gif',
@@ -194,15 +194,15 @@ async function exportGifRoiPreview() {
     _gifRoiDefaultOutputDir = d.output_dir || _gifRoiDefaultOutputDir;
 
     const openButton = d.output_dir
-      ? `<button class="btn-secondary" data-folder="${escHtml(d.output_dir)}" data-dp-click="openFolder(this.dataset.folder)">Open Folder</button>`
+      ? `<button class="btn-secondary" data-folder="${dpEscapeHtml(d.output_dir)}" data-dp-click="openFolder(this.dataset.folder)">Open Folder</button>`
       : '';
     const header =
       `ROI Preview <span style="font-weight:400;color:var(--silver)">` +
-      `${d.roi_polygons || rois.length} ROI | slice ${d.frame} | ${escHtml(formatScaleInfo(d))}</span>`;
+      `${d.roi_polygons || rois.length} ROI | slice ${d.frame} | ${dpEscapeHtml(formatScaleInfo(d))}</span>`;
     const body = `
       <img class="gif-reference-img" src="data:image/png;base64,${d.img}" alt="GIF ROI preview"/>
-      <div style="font-size:11px;color:var(--silver);margin-top:6px;word-break:break-all">Exported: <code>${escHtml(d.output_path || '')}</code></div>
-      <div style="font-size:11px;color:var(--silver);margin-top:2px">Scale bar: ${Number(d.scale_bar_um || 0).toPrecision(4)} um · ${escHtml(formatScaleInfo(d))}</div>
+      <div style="font-size:11px;color:var(--silver);margin-top:6px;word-break:break-all">Exported: <code>${dpEscapeHtml(d.output_path || '')}</code></div>
+      <div style="font-size:11px;color:var(--silver);margin-top:2px">Scale bar: ${Number(d.scale_bar_um || 0).toPrecision(4)} um · ${dpEscapeHtml(formatScaleInfo(d))}</div>
       <div style="margin-top:8px">${openButton}</div>`;
     upsertGifResultCard('gifRoiPreviewResultCard', header, body);
     setStatus('status', 'ROI preview exported: ' + (d.output_path || ''), 'ok');
@@ -305,7 +305,7 @@ async function runGifRoiAnalysis() {
 
     const refText = d.plot_metric === 'delta_f_over_f0' ? ` | ref frame ${d.ref_frame_applied}` : '';
     const warnText = (d.warnings || []).length
-      ? `<div style="font-size:11px;color:#9a6a00;margin-top:6px">${(d.warnings || []).map(escHtml).join('<br>')}</div>`
+      ? `<div style="font-size:11px;color:#9a6a00;margin-top:6px">${(d.warnings || []).map(dpEscapeHtml).join('<br>')}</div>`
       : '';
     const header =
       `ROI Time Analysis <span style="font-weight:400;color:var(--silver)">` +

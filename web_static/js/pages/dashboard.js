@@ -262,7 +262,10 @@ function renderGrid(id, items, pins, emptyText) {
   const grid = document.getElementById(id);
   grid.innerHTML = '';
   if (!items.length) {
-    grid.innerHTML = `<div class="empty-recent">${emptyText}</div>`;
+    const empty = document.createElement('div');
+    empty.className = 'empty-recent';
+    empty.textContent = emptyText;
+    grid.appendChild(empty);
     return;
   }
   items.forEach(item => grid.appendChild(makeGuiCard(item, pins)));

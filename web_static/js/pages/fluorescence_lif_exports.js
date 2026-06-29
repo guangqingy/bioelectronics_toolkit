@@ -140,7 +140,7 @@ function exportAllTiff() {
 }
 
 function showLog(title, text) {
-  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${escapeHtml(text)}</pre>`;
+  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${dpEscapeHtml(text)}</pre>`;
   upsertResultCard('lifLogCard', title, body);
 }
 
@@ -155,7 +155,7 @@ function upsertResultCard(cardId, title, bodyHtml) {
     area.prepend(card);
   }
   card.innerHTML = `
-    <div class="result-card-header">${escapeHtml(title)}</div>
+    <div class="result-card-header">${dpEscapeHtml(title)}</div>
     <div class="result-card-body">${bodyHtml}</div>`;
 }
 

@@ -41,7 +41,7 @@ function renderSourceFiles() {
     const active = selected.has(sourceKey(file.path));
     const count = Number(file.segment_count || 0);
     const suffix = count ? ` · ${count}` : '';
-    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${escHtml(file.path)}" title="${escHtml(file.path)}" data-dp-click="DP.page.toggleSourceIndex(${i}, event)">${active ? '✓ ' : ''}${escHtml(file.name || baseName(file.path))}${suffix}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-idx="${i}" data-path="${dpEscapeHtml(file.path)}" title="${dpEscapeHtml(file.path)}" data-dp-click="DP.page.toggleSourceIndex(${i}, event)">${active ? '✓ ' : ''}${dpEscapeHtml(file.name || baseName(file.path))}${suffix}</div>`;
   }).join('');
   updateSourceCount();
   if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
@@ -257,7 +257,7 @@ function renderSampleList() {
   }
   el.innerHTML = _samples.map((s, i) => {
     const active = _selected.has(i);
-    return `<div class="file-item${active ? ' active' : ''}" data-dp-click="DP.page.toggleSample(${i}, event)" data-idx="${i}" title="${escHtml(s.file || '')}">${active ? '✓ ' : ''}${escHtml(s.label || s.device || 'sample')}</div>`;
+    return `<div class="file-item${active ? ' active' : ''}" data-dp-click="DP.page.toggleSample(${i}, event)" data-idx="${i}" title="${dpEscapeHtml(s.file || '')}">${active ? '✓ ' : ''}${dpEscapeHtml(s.label || s.device || 'sample')}</div>`;
   }).join('');
 }
 
@@ -306,8 +306,8 @@ function renderPreviewPage() {
     const zeroX = 10 + ((0 - axes.crop_t0) / (axes.crop_t1 - axes.crop_t0 || 1)) * 280;
     cards.push(`
       <button class="lineshape-mini${active ? ' active' : ''}" type="button" data-dp-click="DP.page.toggleSample(${idx}, event)">
-        <div class="lineshape-mini-title">${active ? '✓ ' : ''}${escHtml(sample.label || 'sample')}</div>
-        <svg viewBox="0 0 300 150" role="img" aria-label="${escHtml(sample.label || 'sample')}">
+        <div class="lineshape-mini-title">${active ? '✓ ' : ''}${dpEscapeHtml(sample.label || 'sample')}</div>
+        <svg viewBox="0 0 300 150" role="img" aria-label="${dpEscapeHtml(sample.label || 'sample')}">
           <line x1="${zeroX.toFixed(2)}" x2="${zeroX.toFixed(2)}" y1="8" y2="142" stroke="#D0D1D2" stroke-width="1" stroke-dasharray="3 3"></line>
           <path d="${path}" fill="none" stroke="${active ? '#3E6AE1' : '#A9ADB5'}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
         </svg>
@@ -321,7 +321,7 @@ function clearAverage(message) {
   _avgData = null;
   _avgB64 = null;
   if (typeof dpDestroyTrace === 'function') dpDestroyTrace('avgPlotArea');
-  document.getElementById('avgPlotArea').innerHTML = `<div class="plot-placeholder">${escHtml(message || 'No samples selected')}</div>`;
+  document.getElementById('avgPlotArea').innerHTML = `<div class="plot-placeholder">${dpEscapeHtml(message || 'No samples selected')}</div>`;
   document.getElementById('avgInfo').textContent = '';
   document.getElementById('btnExportFiles').style.display = 'none';
   document.getElementById('btnDownloadPNG').style.display = 'none';

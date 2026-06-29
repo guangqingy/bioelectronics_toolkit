@@ -3,16 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 from flask import jsonify
-from pydantic import Field, ValidationError
+from pydantic import Field
 
 from services import file_profiles as file_profile_service
 
-from .request_validation import (
-    RequestModel,
-    parse_json_payload,
-    request_schema,
-    validation_error_response,
-)
+from .request_validation import RequestModel, api_endpoint
 
 
 class FileProfileGetRequest(RequestModel):
@@ -34,39 +29,17 @@ class FileProfileDeleteRequest(FileProfileGetRequest):
 
 
 def register_file_profile_routes(app, ctx):
-    err = ctx.err
-
-    def _json_or_error(func, body):
-        try:
-            return jsonify(func(body))
-        except ValueError as exc:
-            return err(str(exc), 400)
-        except Exception as exc:
-            return err(exc)
-
     @app.route("/api/file_profiles/get", methods=["POST"])
-    @request_schema(FileProfileGetRequest)
-    def api_file_profiles_get():
-        try:
-            payload = parse_json_payload(FileProfileGetRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(file_profile_service.get_file_profile, payload.model_dump())
+    @api_endpoint(FileProfileGetRequest)
+    def api_file_profiles_get(body):
+        return jsonify(file_profile_service.get_file_profile(body))
 
     @app.route("/api/file_profiles/save", methods=["POST"])
-    @request_schema(FileProfileSaveRequest)
-    def api_file_profiles_save():
-        try:
-            payload = parse_json_payload(FileProfileSaveRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(file_profile_service.save_file_profile, payload.model_dump())
+    @api_endpoint(FileProfileSaveRequest)
+    def api_file_profiles_save(body):
+        return jsonify(file_profile_service.save_file_profile(body))
 
     @app.route("/api/file_profiles/delete", methods=["POST"])
-    @request_schema(FileProfileDeleteRequest)
-    def api_file_profiles_delete():
-        try:
-            payload = parse_json_payload(FileProfileDeleteRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(file_profile_service.delete_file_profile, payload.model_dump())
+    @api_endpoint(FileProfileDeleteRequest)
+    def api_file_profiles_delete(body):
+        return jsonify(file_profile_service.delete_file_profile(body))

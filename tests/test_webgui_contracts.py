@@ -13,7 +13,7 @@ from flask import Flask
 
 from web_api import system as system_api
 from web_api.jobs import JobManager
-from web_api.response import api_error, make_envelope
+from web_api.response import api_error, attachment_content_disposition, make_envelope
 
 
 def _api_data(payload: dict) -> dict:
@@ -89,9 +89,29 @@ class ApiEnvelopeTests(unittest.TestCase):
         self.assertIn("operation failed", payload["error"])
         self.assertNotIn("Traceback (most recent call last)", payload["error"])
         self.assertRegex(payload["data"]["id"], r"^[0-9a-f]{8}$")
+        self.assertNotIn("technical_details", payload["data"])
+
+    def test_traceback_errors_include_details_in_debug(self) -> None:
+        app = Flask(__name__)
+        app.config["DEBUG"] = True
+
+        with app.app_context():
+            response, code = api_error("Traceback (most recent call last):\n  File x.py", 400)
+
+        payload = response.get_json()
+        self.assertEqual(code, 500)
+        self.assertIn("Traceback (most recent call last)", payload["error"])
         self.assertEqual(
             payload["data"]["technical_details"], "Traceback (most recent call last):\n  File x.py"
         )
+
+    def test_attachment_content_disposition_quotes_and_encodes_filename(self) -> None:
+        header = attachment_content_disposition('resume report "alpha"\r\n.csv')
+
+        self.assertNotIn("\r", header)
+        self.assertNotIn("\n", header)
+        self.assertIn('filename="resume report _alpha_  .csv"', header)
+        self.assertIn("filename*=UTF-8''resume%20report%20%22alpha%22%20%20.csv", header)
 
 
 class JobManagerContractTests(unittest.TestCase):
@@ -241,6 +261,22 @@ class WebAppSmokeTests(unittest.TestCase):
     def _top_level_js_lexicals(cls, source: str) -> list[str]:
         code = cls._strip_js_comments_and_strings(source)
         token_re = re.compile(r"[{}]|\b(?:const|let|class)\s+([A-Za-z_$][\w$]*)")
+        depth = 0
+        names: list[str] = []
+        for match in token_re.finditer(code):
+            token = match.group(0)
+            if token == "{":
+                depth += 1
+            elif token == "}":
+                depth = max(0, depth - 1)
+            elif depth == 0 and match.group(1):
+                names.append(match.group(1))
+        return names
+
+    @classmethod
+    def _top_level_js_functions(cls, source: str) -> list[str]:
+        code = cls._strip_js_comments_and_strings(source)
+        token_re = re.compile(r"[{}]|\bfunction\s+([A-Za-z_$][\w$]*)\s*\(")
         depth = 0
         names: list[str] = []
         for match in token_re.finditer(code):
@@ -469,6 +505,34 @@ class WebAppSmokeTests(unittest.TestCase):
                         offenders.append(f"{template.name}: {name} in {seen[name]} and {script_name}")
                     else:
                         seen[name] = script_name
+
+        self.assertEqual([], offenders)
+
+    def test_multi_script_pages_do_not_redeclare_global_functions(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for template in (root / "web_templates").rglob("*.html"):
+            scripts = self._page_script_refs(template.read_text(encoding="utf-8"))
+            if len(scripts) < 2:
+                continue
+            seen: dict[str, str] = {}
+            for script_name in scripts:
+                script_path = root / "web_static" / "js" / "pages" / script_name
+                for name in self._top_level_js_functions(script_path.read_text(encoding="utf-8")):
+                    if name in seen:
+                        offenders.append(f"{template.name}: {name} in {seen[name]} and {script_name}")
+                    else:
+                        seen[name] = script_name
+
+        self.assertEqual([], offenders)
+
+    def test_page_scripts_export_through_dp_page_bridge(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        offenders = []
+        for script in sorted((root / "web_static" / "js" / "pages").glob("*.js")):
+            text = script.read_text(encoding="utf-8")
+            if self._top_level_js_functions(text) and "window.DP.page" not in text:
+                offenders.append(script.name)
 
         self.assertEqual([], offenders)
 
@@ -1409,13 +1473,37 @@ class WebAppSmokeTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_analysis_svg_") as tmp:
             src = Path(tmp) / "record_0000.rhd"
             src.write_bytes(b"placeholder")
+
+            blocked = self.client.get(
+                "/api/emg/analysis/export_channel",
+                query_string={
+                    "path": str(src),
+                    "channel": "A-000",
+                    "fmt": "svg",
+                    "mode": "save",
+                },
+            )
+            blocked_payload = blocked.get_json()
+            self.assertEqual(blocked.status_code, 405)
+            self.assertFalse(blocked_payload["ok"])
+            self.assertIn("requires POST", blocked_payload["error"])
+
+            def export_channel_job(body: dict) -> dict:
+                started = self.client.post("/api/emg/analysis/export_channel_job", json=body)
+                started_payload = started.get_json()
+                started_data = _api_data(started_payload)
+                self.assertEqual(started.status_code, 200)
+                self.assertTrue(started_payload["ok"])
+                job = self._wait_for_api_job(started_data["job_id"])
+                self.assertEqual(job["status"], "succeeded")
+                return job["data"]
+
             with mock.patch(
                 "services.emg_analysis.rhd_service.load_channel_with_merge_option",
                 side_effect=fake_load_channel_with_merge_option,
             ):
-                first = self.client.get(
-                    "/api/emg/analysis/export_channel",
-                    query_string={
+                first_data = export_channel_job(
+                    {
                         "path": str(src),
                         "channel": "A-000",
                         "fmt": "svg",
@@ -1430,9 +1518,8 @@ class WebAppSmokeTests(unittest.TestCase):
                         "trace_color": "#ff0000",
                     },
                 )
-                second = self.client.get(
-                    "/api/emg/analysis/export_channel",
-                    query_string={
+                second_data = export_channel_job(
+                    {
                         "path": str(src),
                         "channel": "A-000",
                         "fmt": "svg",
@@ -1441,9 +1528,8 @@ class WebAppSmokeTests(unittest.TestCase):
                         "x_max": 0.25,
                     },
                 )
-                csv_response = self.client.get(
-                    "/api/emg/analysis/export_channel",
-                    query_string={
+                csv_data = export_channel_job(
+                    {
                         "path": str(src),
                         "channel": "A-000",
                         "fmt": "csv",
@@ -1452,12 +1538,6 @@ class WebAppSmokeTests(unittest.TestCase):
                     },
                 )
 
-            first_payload = first.get_json()
-            second_payload = second.get_json()
-            csv_payload = csv_response.get_json()
-            first_data = _api_data(first_payload)
-            second_data = _api_data(second_payload)
-            csv_data = _api_data(csv_payload)
             first_path = Path(first_data["saved_path"])
             second_path = Path(second_data["saved_path"])
             csv_path = Path(csv_data["saved_path"])
@@ -1686,6 +1766,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/fluorescence/gif_roi/kymograph_export_job",
             "/api/fluorescence/roi/analyze_sequence",
             "/api/fluorescence/roi/export_sequence_gif_job",
+            "/api/emg/analysis/export_channel_job",
             "/api/emg/analysis/export_processing",
             "/api/emg/analysis/export_processing_job",
         }
@@ -1959,9 +2040,50 @@ class WebAppSmokeTests(unittest.TestCase):
                 query_string={"path": str(source), "mode": "save"},
             )
             direct_payload = direct.get_json()
-            self.assertEqual(direct.status_code, 200)
-            self.assertTrue(direct_payload["ok"])
-            self.assertTrue(Path(direct_payload["outputs"][0]["path"]).exists())
+            self.assertEqual(direct.status_code, 405)
+            self.assertFalse(direct_payload["ok"])
+            self.assertIn("requires POST", direct_payload["error"])
+
+            plot_save = self.client.get(
+                "/api/csv/export",
+                query_string={
+                    "path": str(source),
+                    "x_col": "time",
+                    "y_col": "value",
+                    "mode": "save",
+                },
+            )
+            plot_save_payload = plot_save.get_json()
+            self.assertEqual(plot_save.status_code, 405)
+            self.assertFalse(plot_save_payload["ok"])
+            self.assertIn("requires POST", plot_save_payload["error"])
+
+            abf_save = self.client.get(
+                "/api/abf/export",
+                query_string={"path": str(Path(tmp) / "missing.abf"), "mode": "save"},
+            )
+            abf_save_payload = abf_save.get_json()
+            self.assertEqual(abf_save.status_code, 405)
+            self.assertFalse(abf_save_payload["ok"])
+            self.assertIn("requires POST", abf_save_payload["error"])
+
+            emg_processing_save = self.client.get(
+                "/api/emg/analysis/export_processing",
+                query_string={
+                    "path": str(Path(tmp) / "missing.rhd"),
+                    "channel": "A-000",
+                    "mode": "save",
+                },
+            )
+            emg_processing_payload = emg_processing_save.get_json()
+            self.assertEqual(emg_processing_save.status_code, 405)
+            self.assertFalse(emg_processing_payload["ok"])
+            self.assertIn("requires POST", emg_processing_payload["error"])
+
+            download = self.client.get("/api/csv/export_csv", query_string={"path": str(source)})
+            self.assertEqual(download.status_code, 200)
+            self.assertIn("filename=", download.headers["Content-Disposition"])
+            self.assertIn("filename*=", download.headers["Content-Disposition"])
 
             started = self.client.post("/api/csv/export_csv_job", json={"path": str(source)})
             started_payload = started.get_json()
@@ -2134,6 +2256,7 @@ class WebAppSmokeTests(unittest.TestCase):
             "/api/histology/file/analysis/run_job": "#/components/schemas/HistologyFileAnalyzeRoisRequest",
             "/api/emg/analysis/plot": "#/components/schemas/EmgAnalysisViewRequest",
             "/api/emg/analysis/process": "#/components/schemas/EmgAnalysisProcessingRequest",
+            "/api/emg/analysis/export_channel_job": "#/components/schemas/EmgAnalysisExportChannelRequest",
             "/api/emg/analysis/export_processing_job": "#/components/schemas/EmgAnalysisProcessingRequest",
             "/api/emg/analysis/export_all_job": "#/components/schemas/EmgAnalysisExportAllRequest",
             "/api/emg/analysis/export_queue_job": "#/components/schemas/EmgAnalysisExportQueueRequest",

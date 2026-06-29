@@ -19,19 +19,24 @@ class CsvViewerService:
     def __init__(
         self,
         *,
-        float_or: Callable[[Any, float | None], float | None],
-        int_or: Callable[[Any, int], int],
         apply_axes_limits: Callable[..., None],
         fig_to_b64: Callable[[Any], str],
         clean_trace_svg: Callable[..., bytes],
         line_color: str,
     ):
-        self.float_or = float_or
-        self.int_or = int_or
         self.apply_axes_limits = apply_axes_limits
         self.fig_to_b64 = fig_to_b64
         self.clean_trace_svg = clean_trace_svg
         self.line_color = line_color
+
+    @staticmethod
+    def _num(value: Any, default: float) -> float:
+        """Apply a numeric default for blank/unset typed request fields.
+
+        Type coercion now happens at the request schema boundary
+        (OptFloat/OptInt); this only fills the default when a field is None.
+        """
+        return default if value is None else value
 
     @staticmethod
     def _prepare_uplot_xy(
@@ -85,11 +90,11 @@ class CsvViewerService:
         path = data.get("path", "")
         x_col = data.get("x_col", "")
         y_col = data.get("y_col", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
-        downsample = self.int_or(data.get("dsf", 1), 1)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
+        downsample = self._num(data.get("dsf"), 1)
 
         x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=downsample)
         fig, ax = new_subplots(figsize=(8, 4))
@@ -116,11 +121,11 @@ class CsvViewerService:
         path = data.get("path", "")
         x_col = data.get("x_col", "")
         y_col = data.get("y_col", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
-        downsample = self.int_or(data.get("dsf", 1), 1)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
+        downsample = self._num(data.get("dsf"), 1)
 
         x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max, downsample=downsample)
         n_full = int(x.shape[0])
@@ -157,8 +162,8 @@ class CsvViewerService:
         paths = data.get("paths", [])
         x_col = data.get("x_col", "")
         y_col = data.get("y_col", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
         if not isinstance(paths, list) or not paths:
             raise ValueError("Merge queue is empty")
         if not x_col or not y_col:
@@ -200,8 +205,8 @@ class CsvViewerService:
         paths = data.get("paths", [])
         x_col = data.get("x_col", "")
         y_col = data.get("y_col", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
         drop_first_subsequent = bool(data.get("drop_first_subsequent", True))
 
         if not isinstance(paths, list) or not paths:
@@ -232,10 +237,10 @@ class CsvViewerService:
         fmt = str(data.get("fmt", "png") or "png").lower()
         x_col = data.get("x_col", "")
         y_col = data.get("y_col", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
         src = Path(path)
         x, y = csv_tools.load_xy(path, x_col, y_col, x_min, x_max)
 

@@ -156,13 +156,13 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyTiffProjectScanRequest)
     def api_histology_project_scan_tiff():
         try:
-            payload = parse_json_payload(HistologyTiffProjectScanRequest)
+            body = parse_json_payload(HistologyTiffProjectScanRequest)
             return jsonify(
                 scan_exported_tiff_project(
-                    payload.exported_dir,
-                    raw_dir=payload.raw_dir,
-                    analysis_dir=payload.analysis_dir,
-                    convert_ets=payload.convert_ets,
+                    body.exported_dir,
+                    raw_dir=body.raw_dir,
+                    analysis_dir=body.analysis_dir,
+                    convert_ets=body.convert_ets,
                 )
             )
         except ValidationError as exc:
@@ -203,15 +203,15 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyTiffProjectCreateRequest)
     def api_histology_project_create_from_tiff():
         try:
-            payload = parse_json_payload(HistologyTiffProjectCreateRequest)
+            body = parse_json_payload(HistologyTiffProjectCreateRequest)
             return jsonify(
                 create_project_from_exported_tiff(
-                    payload.project_path,
-                    payload.exported_dir,
-                    raw_dir=payload.raw_dir,
-                    analysis_dir=payload.analysis_dir,
-                    name=payload.name,
-                    convert_ets=payload.convert_ets,
+                    body.project_path,
+                    body.exported_dir,
+                    raw_dir=body.raw_dir,
+                    analysis_dir=body.analysis_dir,
+                    name=body.name,
+                    convert_ets=body.convert_ets,
                 )
             )
         except ValidationError as exc:
@@ -254,8 +254,8 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyDataProjectLoadRequest)
     def api_histology_project_load():
         try:
-            payload = parse_json_payload(HistologyDataProjectLoadRequest)
-            return jsonify(load_histology_data_project(payload.project_path))
+            body = parse_json_payload(HistologyDataProjectLoadRequest)
+            return jsonify(load_histology_data_project(body.project_path))
         except ValidationError as exc:
             return validation_error_response(exc)
         except (FileNotFoundError, ValueError) as exc:
@@ -267,12 +267,12 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyDataProjectRenameEntryRequest)
     def api_histology_project_rename_entry():
         try:
-            payload = parse_json_payload(HistologyDataProjectRenameEntryRequest)
+            body = parse_json_payload(HistologyDataProjectRenameEntryRequest)
             return jsonify(
                 rename_histology_data_project_entry(
-                    payload.project_path,
-                    payload.entry_id,
-                    payload.display_name,
+                    body.project_path,
+                    body.entry_id,
+                    body.display_name,
                 )
             )
         except ValidationError as exc:
@@ -286,12 +286,12 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyDataProjectImagePreviewRequest)
     def api_histology_project_image_preview():
         try:
-            payload = parse_json_payload(HistologyDataProjectImagePreviewRequest)
+            body = parse_json_payload(HistologyDataProjectImagePreviewRequest)
             result = load_histology_data_project_image_preview(
-                payload.project_path,
-                payload.entry_id,
-                max_side=payload.max_side,
-                selected_channels=payload.selected_channels,
+                body.project_path,
+                body.entry_id,
+                max_side=body.max_side,
+                selected_channels=body.selected_channels,
             )
             return jsonify({"ok": True, **result})
         except ValidationError as exc:
@@ -305,16 +305,16 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyDataProjectImageRegionPreviewRequest)
     def api_histology_project_image_region_preview():
         try:
-            payload = parse_json_payload(HistologyDataProjectImageRegionPreviewRequest)
+            body = parse_json_payload(HistologyDataProjectImageRegionPreviewRequest)
             result = load_histology_data_project_image_region_preview(
-                payload.project_path,
-                payload.entry_id,
-                payload.x,
-                payload.y,
-                payload.width,
-                payload.height,
-                max_side=payload.max_side,
-                selected_channels=payload.selected_channels,
+                body.project_path,
+                body.entry_id,
+                body.x,
+                body.y,
+                body.width,
+                body.height,
+                max_side=body.max_side,
+                selected_channels=body.selected_channels,
             )
             return jsonify({"ok": True, **result})
         except ValidationError as exc:
@@ -437,17 +437,17 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyDataProjectRoiDebugRequest)
     def api_histology_project_analysis_debug_roi():
         try:
-            payload = parse_json_payload(HistologyDataProjectRoiDebugRequest)
+            body = parse_json_payload(HistologyDataProjectRoiDebugRequest)
             result = debug_histology_data_project_roi(
-                payload.project_path,
-                payload.entry_id,
-                roi_id=payload.roi_id,
-                roi_index=payload.roi_index,
-                parameters=payload.parameters,
-                before_parameters=payload.before_parameters or None,
-                max_side=payload.max_side,
-                selected_channels=payload.selected_channels,
-                include_preview=payload.include_preview,
+                body.project_path,
+                body.entry_id,
+                roi_id=body.roi_id,
+                roi_index=body.roi_index,
+                parameters=body.parameters,
+                before_parameters=body.before_parameters or None,
+                max_side=body.max_side,
+                selected_channels=body.selected_channels,
+                include_preview=body.include_preview,
             )
             return jsonify({"ok": True, **result})
         except ValidationError as exc:
@@ -461,10 +461,10 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyFileImagePreviewRequest)
     def api_histology_file_image_preview():
         try:
-            payload = parse_json_payload(HistologyFileImagePreviewRequest)
+            body = parse_json_payload(HistologyFileImagePreviewRequest)
             result = load_histology_file_image_preview(
-                payload.image_path,
-                max_side=payload.max_side,
+                body.image_path,
+                max_side=body.max_side,
             )
             return jsonify({"ok": True, **result})
         except ValidationError as exc:
@@ -478,14 +478,14 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyFileImageRegionPreviewRequest)
     def api_histology_file_image_region_preview():
         try:
-            payload = parse_json_payload(HistologyFileImageRegionPreviewRequest)
+            body = parse_json_payload(HistologyFileImageRegionPreviewRequest)
             result = load_histology_file_image_region_preview(
-                payload.image_path,
-                payload.x,
-                payload.y,
-                payload.width,
-                payload.height,
-                max_side=payload.max_side,
+                body.image_path,
+                body.x,
+                body.y,
+                body.width,
+                body.height,
+                max_side=body.max_side,
             )
             return jsonify({"ok": True, **result})
         except ValidationError as exc:
@@ -499,12 +499,12 @@ def register_histology_routes(app, ctx):
     @request_schema(HistologyLabelPreviewRequest)
     def api_histology_label_preview():
         try:
-            payload = parse_json_payload(HistologyLabelPreviewRequest)
+            body = parse_json_payload(HistologyLabelPreviewRequest)
             result = load_histology_preview_pair(
-                payload.overview_path,
-                rotate_deg=payload.rotate_deg,
-                do_ocr=payload.do_ocr,
-                ocr_lang=payload.ocr_lang,
+                body.overview_path,
+                rotate_deg=body.rotate_deg,
+                do_ocr=body.do_ocr,
+                ocr_lang=body.ocr_lang,
             )
             return jsonify({"ok": not bool(result.get("error")), **result})
         except ValidationError as exc:

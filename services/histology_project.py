@@ -1,5 +1,13 @@
 from __future__ import annotations
 
+from services.histology_analysis import (
+    ANALYSIS_VERSION,
+    _clean_rois,
+    _geojson,
+    _now_iso,
+    _png_b64,
+    _write_json,
+)
 from services.histology_batch_analysis import (
     _aggregate_roi_rows_by_entry,
     _apply_batch_grouping,
@@ -41,14 +49,6 @@ from services.histology_data_project import (
     create_histology_data_project,
     load_histology_data_project,
     rename_histology_data_project_entry,
-)
-from services.histology_analysis import (
-    ANALYSIS_VERSION,
-    _clean_rois,
-    _geojson,
-    _now_iso,
-    _png_b64,
-    _write_json,
 )
 from services.histology_image_io import (
     _read_project_image,

@@ -17,6 +17,7 @@ from services.histology_ets_models import (
 )
 from services.histology_ets_reader import _is_hidden, read_ets_index
 
+
 def _case_dir_for_ets(root: Path, ets_path: Path) -> Path:
     root = root.resolve()
     ets_path = ets_path.resolve()

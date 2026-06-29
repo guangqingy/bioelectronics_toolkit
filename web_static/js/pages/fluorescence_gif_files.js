@@ -88,8 +88,8 @@ function renderAvailableTiffList() {
     return `
       <div class="file-item gif-available-item ${active}" data-dp-click="selectAvailableTiff(${i})">
         <input class="dp-check" type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="toggleTiffCheck(${i}, this.checked)">
-        <span class="gif-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
-        <span class="gif-available-meta">${escHtml(meta)}</span>
+        <span class="gif-available-name">${dpEscapeHtml(f.name || fileBasename(f.path))}</span>
+        <span class="gif-available-meta">${dpEscapeHtml(meta)}</span>
         <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addAvailableByIndex(${i})">Add</button>
       </div>`;
   }).join('');
@@ -314,7 +314,7 @@ function renderTiffList() {
       ? `<span class="gif-pill">${e.frames} frames</span>`
       : '<span class="gif-pill gif-pill-muted">not scanned</span>';
     const scaleTag = e.scale && e.scale.scale_source
-      ? `<span class="gif-pill gif-pill-muted">${escHtml(shortScaleInfo(e.scale))}</span>`
+      ? `<span class="gif-pill gif-pill-muted">${dpEscapeHtml(shortScaleInfo(e.scale))}</span>`
       : '';
     const fileName = fileBasename(e.path) || 'Choose a TIFF stack';
     const fileSub = e.path ? compactPath(e.path) : 'Use the file button to pick a .tif or .tiff stack';
@@ -323,21 +323,21 @@ function renderTiffList() {
       <div class="gif-file-top">
         <div class="gif-file-index">${String(i + 1).padStart(2, '0')}</div>
         <div class="gif-file-summary">
-          <div class="gif-file-name">${escHtml(fileName)}</div>
-          <div class="gif-file-sub">${escHtml(fileSub)}</div>
+          <div class="gif-file-name">${dpEscapeHtml(fileName)}</div>
+          <div class="gif-file-sub">${dpEscapeHtml(fileSub)}</div>
         </div>
         <div class="gif-pill-row">${frameTag}${scaleTag}</div>
       </div>
       <div class="gif-file-path-row">
         <span class="gif-mini-label">File</span>
-        <input type="text" value="${escHtml(e.path)}"
+        <input type="text" value="${dpEscapeHtml(e.path)}"
                placeholder="/path/to/file.tif"
  data-dp-input="updateTiffPath('${e.id}', this.value)">
         <button class="btn-icon" title="Choose TIFF" data-dp-click="pickTiffFile('${e.id}')">⌕</button>
       </div>
       <div class="gif-slice-row">
         <span class="gif-mini-label">Slices</span>
-        <input type="text" value="${escHtml(e.slices || '')}"
+        <input type="text" value="${dpEscapeHtml(e.slices || '')}"
                placeholder="all or 1-20,25,30-40:2"
  data-dp-input="updateSliceSpec('${e.id}', this.value)">
         <div class="gif-row-actions">
@@ -348,15 +348,6 @@ function renderTiffList() {
       </div>
     </div>`;
   }).join('');
-}
-
-function escHtml(s) {
-  return String(s ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }
 
 // DP.page exports for template event handlers.
@@ -370,7 +361,6 @@ window.DP.page = window.DP.page || {};
   'clearTiffChecks',
   'collectGifPrefs',
   'entryKey',
-  'escHtml',
   'gifChecked',
   'gifElement',
   'gifInteger',

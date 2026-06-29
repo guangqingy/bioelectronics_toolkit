@@ -169,9 +169,9 @@ function renderHistologyChannelView(channels, selected) {
   el.innerHTML = ordered.map(channel => {
     const checked = selectedSet.has(channel) ? ' checked' : '';
     return `
-      <label class="histology-channel-chip" title="Show ${escHtml(channel)}">
-        <input class="dp-check" type="checkbox" value="${escHtml(channel)}" data-dp-change="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
-        <span>${escHtml(channel)}</span>
+      <label class="histology-channel-chip" title="Show ${dpEscapeHtml(channel)}">
+        <input class="dp-check" type="checkbox" value="${dpEscapeHtml(channel)}" data-dp-change="DP.page.histologyHandleViewChannelChanged(event)"${checked}>
+        <span>${dpEscapeHtml(channel)}</span>
       </label>`;
   }).join('');
 }
@@ -722,10 +722,10 @@ function renderHistologyAnalysisProjectImageList() {
     const detail = [entry.case_name || '', entry.case_relative_path || entry.relative_path || entry.source_path || '']
       .filter(Boolean).join(' · ');
     return `
-      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectImage('${escHtml(entry.entry_id)}')">
-        <div class="histology-file-title">${escHtml(entry.image_name || entry.entry_id)}</div>
-        <div class="histology-file-subline">${escHtml(counts + role + missing + rebuild + channelText)}</div>
-        <div class="histology-file-path">${escHtml(detail)}</div>
+      <div class="file-item${active}" data-entry-id="${dpEscapeHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectImage('${dpEscapeHtml(entry.entry_id)}')">
+        <div class="histology-file-title">${dpEscapeHtml(entry.image_name || entry.entry_id)}</div>
+        <div class="histology-file-subline">${dpEscapeHtml(counts + role + missing + rebuild + channelText)}</div>
+        <div class="histology-file-path">${dpEscapeHtml(detail)}</div>
       </div>`;
   }).join('');
 }
@@ -1246,7 +1246,7 @@ function renderHistologyRoiDebugSelect() {
   select.innerHTML = _histologyAnalysisRois.map((roi, index) => {
     const label = roi.label || `ROI ${index + 1}`;
     const points = Array.isArray(roi.points) ? roi.points.length : 0;
-    return `<option value="${index}">${escHtml(index + 1)} · ${escHtml(label)} · ${points} pt</option>`;
+    return `<option value="${index}">${dpEscapeHtml(index + 1)} · ${dpEscapeHtml(label)} · ${points} pt</option>`;
   }).join('');
   if (previous && Array.from(select.options).some(option => option.value === previous)) {
     select.value = previous;
@@ -1373,23 +1373,23 @@ function renderHistologyRoiDebugResult(payload) {
     ].filter(Boolean).join(' -> ');
     return `
       <tr>
-        <td>${escHtml(label)}</td>
-        <td>${escHtml(histologyDebugPercent(beforeMarker.positive_area_ratio))}</td>
-        <td>${escHtml(histologyDebugPercent(afterMarker.positive_area_ratio))}</td>
-        <td>${escHtml(histologyDebugSignedPercent(deltaMarker.positive_area_ratio))}</td>
-        <td>${escHtml(histologyDebugMetricCell(afterMarker.positive_px, 0))}</td>
-        <td>${escHtml(thresholdText)}</td>
-        <td>${escHtml(histologyDebugMetricCell(afterMarker.object_count, 0))}</td>
+        <td>${dpEscapeHtml(label)}</td>
+        <td>${dpEscapeHtml(histologyDebugPercent(beforeMarker.positive_area_ratio))}</td>
+        <td>${dpEscapeHtml(histologyDebugPercent(afterMarker.positive_area_ratio))}</td>
+        <td>${dpEscapeHtml(histologyDebugSignedPercent(deltaMarker.positive_area_ratio))}</td>
+        <td>${dpEscapeHtml(histologyDebugMetricCell(afterMarker.positive_px, 0))}</td>
+        <td>${dpEscapeHtml(thresholdText)}</td>
+        <td>${dpEscapeHtml(histologyDebugMetricCell(afterMarker.object_count, 0))}</td>
       </tr>`;
   };
   const warnings = (Array.isArray(payload.warnings) ? payload.warnings : [])
     .filter(Boolean)
     .slice(0, 2)
-    .map(item => `<div class="histology-file-subline">${escHtml(item)}</div>`)
+    .map(item => `<div class="histology-file-subline">${dpEscapeHtml(item)}</div>`)
     .join('');
   metrics.innerHTML = `
     <div class="histology-results-meta">
-      Area ${escHtml(histologyDebugMetricCell(before.area_px, 0))} -> ${escHtml(histologyDebugMetricCell(after.area_px, 0))} px · analysis ${escHtml(histologyDebugMetricCell(before.analysis_area_px, 0))} -> ${escHtml(histologyDebugMetricCell(after.analysis_area_px, 0))} px
+      Area ${dpEscapeHtml(histologyDebugMetricCell(before.area_px, 0))} -> ${dpEscapeHtml(histologyDebugMetricCell(after.area_px, 0))} px · analysis ${dpEscapeHtml(histologyDebugMetricCell(before.analysis_area_px, 0))} -> ${dpEscapeHtml(histologyDebugMetricCell(after.analysis_area_px, 0))} px
     </div>
     <div class="histology-scroll">
       <table class="data-table">
@@ -1453,12 +1453,12 @@ function renderHistologyRoiList() {
   }
   const saved = _histologyAnalysisRois.map((roi, i) => `
     <div class="file-item histology-roi-item">
-      <span class="histology-roi-dot" style="--roi-color:${escHtml(roi.color || histologyRoiFallbackColor())}"></span>
-      <span class="histology-roi-name">${escHtml(roi.label || ('ROI ' + (i + 1)))} · ${(roi.points || []).length} pt</span>
+      <span class="histology-roi-dot" style="--roi-color:${dpEscapeHtml(roi.color || histologyRoiFallbackColor())}"></span>
+      <span class="histology-roi-name">${dpEscapeHtml(roi.label || ('ROI ' + (i + 1)))} · ${(roi.points || []).length} pt</span>
       <button class="btn-secondary histology-roi-delete" type="button" data-dp-click="DP.page.deleteHistologyRoi(${i})">X</button>
     </div>`);
   if (_histologyActivePolygon) {
-    saved.push(`<div class="file-item active">${escHtml(_histologyActivePolygon.label)} · drawing ${_histologyActivePolygon.points.length} pt</div>`);
+    saved.push(`<div class="file-item active">${dpEscapeHtml(_histologyActivePolygon.label)} · drawing ${_histologyActivePolygon.points.length} pt</div>`);
   }
   el.innerHTML = saved.join('');
   scheduleHistologyRoiDebugPreview(320);
@@ -1757,7 +1757,7 @@ function renderHistologyProjectBatchResults(batch) {
   }
   const rows = batch.summary.map(row => `
     <tr>
-      <td>${escHtml(row.sample_group || '')}</td>
+      <td>${dpEscapeHtml(row.sample_group || '')}</td>
       <td>${histologyCompactNumber(row.n_entries || row.n_observations || 0, 0)}</td>
       <td>${histologyCompactNumber(row.n_roi || 0, 0)}</td>
       <td>${histologyCompactNumber(row.sma_n_observations || row.n_entries || 0, 0)}</td>
@@ -1770,24 +1770,24 @@ function renderHistologyProjectBatchResults(batch) {
   const stat = marker => batch.statistics && batch.statistics[marker] ? batch.statistics[marker] : {};
   const outputs = [batch.roi_table_path, batch.image_table_path, batch.summary_table_path, batch.statistics_path, batch.manifest_path]
     .filter(Boolean)
-    .map(path => `<div class="histology-file-path">${escHtml(path)}</div>`)
+    .map(path => `<div class="histology-file-path">${dpEscapeHtml(path)}</div>`)
     .join('');
   const plots = (Array.isArray(batch.plots) ? batch.plots : [])
     .filter(plot => plot && plot.img)
     .map(plot => `
       <div class="plot-image-frame histology-stack-gap">
-        <img alt="${escHtml(plot.marker || 'histology')} ${escHtml(plot.kind || 'plot')}" src="data:image/png;base64,${plot.img}">
+        <img alt="${dpEscapeHtml(plot.marker || 'histology')} ${dpEscapeHtml(plot.kind || 'plot')}" src="data:image/png;base64,${plot.img}">
       </div>`)
     .join('');
   const warnings = (Array.isArray(batch.warnings) ? batch.warnings : [])
     .filter(Boolean)
     .slice(0, 4)
-    .map(item => `<div class="histology-file-subline">${escHtml(item)}</div>`)
+    .map(item => `<div class="histology-file-subline">${dpEscapeHtml(item)}</div>`)
     .join('');
   el.innerHTML = `
     <div class="histology-results-meta">
-      ${escHtml(batch.created_at || '')} · ${escHtml(batch.observation_level || 'image')} level · normalized to group ${escHtml(batch.normalization?.normalize_to_group || '1')} ·
-      SMA ANOVA P=${escHtml(histologyFormatP(stat('sma').p))} · Macrophage ANOVA P=${escHtml(histologyFormatP(stat('macrophage').p))}
+      ${dpEscapeHtml(batch.created_at || '')} · ${dpEscapeHtml(batch.observation_level || 'image')} level · normalized to group ${dpEscapeHtml(batch.normalization?.normalize_to_group || '1')} ·
+      SMA ANOVA P=${dpEscapeHtml(histologyFormatP(stat('sma').p))} · Macrophage ANOVA P=${dpEscapeHtml(histologyFormatP(stat('macrophage').p))}
     </div>
     <div class="histology-scroll">
       <table class="data-table">
@@ -1810,13 +1810,13 @@ function renderHistologyAnalysisResults(analysis) {
   }
   const rows = results.map(row => `
     <tr>
-      <td>${escHtml(row.roi_label || row.roi_id || '')}</td>
-      <td>${escHtml(histologyAreaText(row))}</td>
+      <td>${dpEscapeHtml(row.roi_label || row.roi_id || '')}</td>
+      <td>${dpEscapeHtml(histologyAreaText(row))}</td>
       <td>${(100 * Number(row.sma_positive_fraction || 0)).toFixed(2)}%</td>
       <td>${(100 * Number(row.macrophage_positive_fraction || 0)).toFixed(2)}%</td>
       <td>${(100 * Number(row.double_positive_fraction || 0)).toFixed(2)}%</td>
-      <td>${escHtml(histologyDensityText(row.sma_object_density_per_mm2) || histologyCompactNumber(row.sma_object_count || 0, 0))}</td>
-      <td>${escHtml(histologyDensityText(row.macrophage_object_density_per_mm2) || histologyCompactNumber(row.macrophage_object_count || 0, 0))}</td>
+      <td>${dpEscapeHtml(histologyDensityText(row.sma_object_density_per_mm2) || histologyCompactNumber(row.sma_object_count || 0, 0))}</td>
+      <td>${dpEscapeHtml(histologyDensityText(row.macrophage_object_density_per_mm2) || histologyCompactNumber(row.macrophage_object_count || 0, 0))}</td>
     </tr>`).join('');
   const calibrated = !!analysis.calibration?.has_physical_scale;
   const areaHead = calibrated ? 'Area' : 'Area px';
@@ -1832,11 +1832,11 @@ function renderHistologyAnalysisResults(analysis) {
     : '';
   el.innerHTML = `
     <div class="histology-results-meta">
-      ${escHtml(analysis.created_at || '')} · ${escHtml(paramText)}${escHtml(calibrationText)}
+      ${dpEscapeHtml(analysis.created_at || '')} · ${dpEscapeHtml(paramText)}${dpEscapeHtml(calibrationText)}
     </div>
     <div class="histology-scroll">
       <table class="data-table">
-        <thead><tr><th>ROI</th><th>${escHtml(areaHead)}</th><th>SMA+</th><th>Macrophage+</th><th>Double+</th><th>SMA ${escHtml(objectHead)}</th><th>Mac ${escHtml(objectHead)}</th></tr></thead>
+        <thead><tr><th>ROI</th><th>${dpEscapeHtml(areaHead)}</th><th>SMA+</th><th>Macrophage+</th><th>Double+</th><th>SMA ${dpEscapeHtml(objectHead)}</th><th>Mac ${dpEscapeHtml(objectHead)}</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
     </div>`;

@@ -1,4 +1,4 @@
-# Known-good Python 3.12 dependency lock for bioelectronics-toolkit 0.6.0.
+# Known-good Python 3.12 dependency lock for bioelectronics-toolkit 0.7.0.
 # Generated from a clean virtualenv with:
 #   python -m pip install -e ".[dev]"
 #   python -m pip freeze --exclude-editable

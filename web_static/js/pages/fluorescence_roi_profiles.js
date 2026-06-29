@@ -30,15 +30,6 @@ let _nextRoiIdx = 1;
 let _roiPrefs = {};
 let _roiFileProfileState = null;
 
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function pairKey(p) {
   return [p.base || '', p.stack1 || '', p.stack2 || ''].join('||');
 }
@@ -99,7 +90,7 @@ function renderRoiContextOptions(selectedKey) {
   const contexts = Object.entries(_roiPrefs.contexts || {})
     .sort((a, b) => String(b[1].updated_at || '').localeCompare(String(a[1].updated_at || '')));
   select.innerHTML = ['<option value="">Saved contexts</option>'].concat(contexts.map(([key, ctx]) =>
-    `<option value="${escapeHtml(key)}"${key === selectedKey ? ' selected' : ''}>${escapeHtml(ctx.name || key)}</option>`
+    `<option value="${dpEscapeHtml(key)}"${key === selectedKey ? ' selected' : ''}>${dpEscapeHtml(ctx.name || key)}</option>`
   )).join('');
 }
 
@@ -325,7 +316,6 @@ window.DP.page = window.DP.page || {};
   'collectRoiFilePayload',
   'collectRoiSettings',
   'deleteSelectedRoiFileProfile',
-  'escapeHtml',
   'loadRoiProfileForCurrent',
   'loadSelectedRoiFileProfile',
   'pairKey',

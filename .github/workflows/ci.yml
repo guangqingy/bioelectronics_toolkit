@@ -48,7 +48,7 @@ jobs:
       - name: service coverage report
         run: |
           coverage run --source=services -m pytest tests --ignore=tests/e2e
-          coverage report --show-missing --fail-under=58
+          coverage report --show-missing --fail-under=62
           coverage xml -o coverage-services.xml
 
       - name: upload service coverage artifact
@@ -81,7 +81,7 @@ jobs:
       - name: Strict lint for maintained service and Web entry layers
         run: ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402,E501
       - name: Strict unused-name lint for Web API modules
-        run: ruff check web_api --select F --ignore E402
+        run: ruff check web_api --select F --ignore E402,E501
 
   e2e:
     name: playwright e2e

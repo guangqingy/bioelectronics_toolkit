@@ -36,7 +36,7 @@ async function previewRotationGif() {
     preview.innerHTML = `<img src="data:image/gif;base64,${d.gif_b64}" alt="3D rotation preview">`;
     setStatus('status', `Rotation preview ready: ${d.frames || 0} frames`, 'ok');
   } catch (e) {
-    preview.innerHTML = `<div class="plot-placeholder">Rotation preview error: ${escHtml(e.message)}</div>`;
+    preview.innerHTML = `<div class="plot-placeholder">Rotation preview error: ${dpEscapeHtml(e.message)}</div>`;
     setStatus('status', 'Rotation preview error: ' + (e.message || String(e)), 'error');
     showLog('Rotation Preview Error', e.message || String(e));
   } finally {
@@ -111,13 +111,13 @@ async function analyzeIntensityDistribution() {
     if (d.error) throw new Error(d.error);
     const rows = (d.rows || []).slice(0, 8).map(row => `
       <tr>
-        <td>${escHtml(String(row.index))}</td>
+        <td>${dpEscapeHtml(String(row.index))}</td>
         <td>${formatNumber(row.coordinate_um, 3)}</td>
         <td>${formatNumber(row.intensity, 3)}</td>
       </tr>`).join('');
     upsertResultCard('stackDistributionCard', `C${(d.channel || 0) + 1} ${String(d.axis || '').toUpperCase()} Distribution`, `
       <div class="stack-distribution-plot"><img src="data:image/png;base64,${d.plot}" alt="Intensity distribution"></div>
-      <div class="lif-export-note">CSV: ${escHtml(d.csv_path || '')}</div>
+      <div class="lif-export-note">CSV: ${dpEscapeHtml(d.csv_path || '')}</div>
       <table class="stack-distribution-table">
         <thead><tr><th>Index</th><th>µm</th><th>Intensity</th></tr></thead>
         <tbody>${rows}</tbody>
@@ -141,7 +141,7 @@ async function analyzeIntensityDistribution() {
 }
 
 function showLog(title, text) {
-  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${escHtml(text)}</pre>`;
+  const body = `<pre style="white-space:pre-wrap;font-size:11.5px;color:var(--graphite)">${dpEscapeHtml(text)}</pre>`;
   upsertResultCard('stackLogCard', title, body);
 }
 
@@ -156,7 +156,7 @@ function upsertResultCard(cardId, title, bodyHtml) {
     area.prepend(card);
   }
   card.innerHTML = `
-    <div class="result-card-header">${escHtml(title)}</div>
+    <div class="result-card-header">${dpEscapeHtml(title)}</div>
     <div class="result-card-body">${bodyHtml}</div>`;
 }
 

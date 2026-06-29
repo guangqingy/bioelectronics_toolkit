@@ -44,7 +44,6 @@ from services.fluorescence.preview_export import (
     fmt_float as _fmt_float,
 )
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 

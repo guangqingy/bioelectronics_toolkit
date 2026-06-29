@@ -16,7 +16,7 @@ function renderPairList() {
     return `
       <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" data-dp-click="selectPair(${i})">
         <input class="dp-check" type="checkbox" ${checked} data-dp-click="event.stopPropagation()" data-dp-change="togglePairCheck(${i}, this.checked)">
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${dpEscapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
         <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();addPairByIndex(${i})">Add</button>
       </div>`;
   }).join('');
@@ -34,7 +34,7 @@ function renderAnalysisList() {
     const active = i === _analysisActiveIndex ? 'active' : '';
     return `
       <div class="file-item ${active}" style="display:flex;align-items:center;gap:6px" data-dp-click="selectAnalysisPair(${i})">
-        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${escapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
+        <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis">${dpEscapeHtml(p.base || ('Pair ' + (i + 1)))}</span>
         <button class="btn-secondary" style="font-size:11px;padding:1px 7px;min-height:22px" data-dp-click="event.stopPropagation();removeAnalysisPair(${i})">X</button>
       </div>`;
   }).join('');

@@ -209,7 +209,7 @@ function renderEmgAnalysisRenamePreview(data) {
   const summary = `${data.ready_count || 0} ready · ${data.conflict_count || 0} conflict(s) · ${data.scanned_count || rows.length} scanned`;
   const shown = rows.slice(0, 300);
   area.innerHTML = `
-    <div class="run-history-meta" style="margin-bottom:8px;">${escHtml(summary)}</div>
+    <div class="run-history-meta" style="margin-bottom:8px;">${dpEscapeHtml(summary)}</div>
     <div class="data-table-wrap">
       <table class="dp-table">
         <thead>
@@ -223,10 +223,10 @@ function renderEmgAnalysisRenamePreview(data) {
         <tbody>
           ${shown.map(row => `
             <tr>
-              <td><span class="run-check-status ${emgAnalysisRenameStatusClass(row.status)}">${escHtml(row.status || '')}</span>${row.reason ? `<div class="run-history-meta">${escHtml(row.reason)}</div>` : ''}</td>
-              <td>${escHtml(row.kind || '')}</td>
-              <td><code>${escHtml(row.source_path || '')}</code></td>
-              <td><code>${escHtml(row.target_path || '')}</code></td>
+              <td><span class="run-check-status ${emgAnalysisRenameStatusClass(row.status)}">${dpEscapeHtml(row.status || '')}</span>${row.reason ? `<div class="run-history-meta">${dpEscapeHtml(row.reason)}</div>` : ''}</td>
+              <td>${dpEscapeHtml(row.kind || '')}</td>
+              <td><code>${dpEscapeHtml(row.source_path || '')}</code></td>
+              <td><code>${dpEscapeHtml(row.target_path || '')}</code></td>
             </tr>
           `).join('')}
         </tbody>

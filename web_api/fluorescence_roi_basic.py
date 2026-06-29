@@ -3,8 +3,8 @@
 # track the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 from __future__ import annotations
 
-import traceback
 import io
+import traceback
 from pathlib import Path
 
 import numpy as np
@@ -80,10 +80,10 @@ def register_fluorescence_roi_basic_routes(app, fl):
     @request_schema(FluorescenceRoiLoadStackRequest)
     def api_fl_roi_load_stack():
         try:
-            payload = parse_json_payload(FluorescenceRoiLoadStackRequest)
-            stack_path = payload.stack_path
-            frame_idx = int_or(payload.frame, 0)
-            lut = payload.lut
+            body = parse_json_payload(FluorescenceRoiLoadStackRequest)
+            stack_path = body.stack_path
+            frame_idx = int_or(body.frame, 0)
+            lut = body.lut
             frame, frame_idx, n_frames = fl_stack.read_tiff_page(stack_path, frame_idx, tifflib)
             h, w = frame.shape[-2], frame.shape[-1]
             b64 = _fl_frame_to_b64(frame, lut, 1.0, 99.5)
@@ -108,17 +108,17 @@ def register_fluorescence_roi_basic_routes(app, fl):
     @request_schema(FluorescenceRoiAnalyzeRequest)
     def api_fl_roi_analyze():
         try:
-            d = parse_json_payload(FluorescenceRoiAnalyzeRequest).model_dump()
+            body = parse_json_payload(FluorescenceRoiAnalyzeRequest).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        stack1_path = d.get("stack1_path", "")
-        stack2_path = d.get("stack2_path", "")
-        rois = d.get("rois", [])
-        metric = d.get("metric", "mean")
-        frame_interval_s = float_or(d.get("frame_interval_s", 1.0), 1.0)
-        bg_mode = d.get("bg_mode", "none")
-        bg_roi = d.get("bg_roi", None)
-        plot_metric = d.get("plot_metric", "absolute")
+        stack1_path = body.get("stack1_path", "")
+        stack2_path = body.get("stack2_path", "")
+        rois = body.get("rois", [])
+        metric = body.get("metric", "mean")
+        frame_interval_s = float_or(body.get("frame_interval_s", 1.0), 1.0)
+        bg_mode = body.get("bg_mode", "none")
+        bg_roi = body.get("bg_roi", None)
+        plot_metric = body.get("plot_metric", "absolute")
         roi_colors = {r["label"]: r.get("color", "#3E6AE1") for r in rois}
 
         if not stack1_path and not stack2_path:
@@ -144,8 +144,8 @@ def register_fluorescence_roi_basic_routes(app, fl):
             if bg_mode in ("corner_br", "corner_tl"):
                 # Prefer caller-supplied dimensions (from load_stack response)
                 # to avoid re-reading the TIFF just to get image size.
-                img_w = int_or(d.get("img_width", 0), 0)
-                img_h = int_or(d.get("img_height", 0), 0)
+                img_w = int_or(body.get("img_width", 0), 0)
+                img_h = int_or(body.get("img_height", 0), 0)
                 if img_w <= 0 or img_h <= 0:
                     first_stack = (
                         stack1_path if (stack1_path and Path(stack1_path).exists()) else stack2_path

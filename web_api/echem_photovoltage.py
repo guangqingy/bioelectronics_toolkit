@@ -3,113 +3,36 @@
 # the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 import traceback
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 from flask import Response, jsonify
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
 from services import echem as echem_service
 from services.matplotlib_utils import close_figure, new_subplots
-from web_api.common import as_bool
+from web_api.common import as_bool, float_or, int_or
 
+from .echem_photovoltage_request_schemas import (
+    EchemPhotovoltageBrowseRequest,
+    EchemPhotovoltageDetectRequest,
+    EchemPhotovoltageExportRequest,
+    EchemPhotovoltageFigureExportRequest,
+    EchemPhotovoltageLoadRequest,
+    EchemPhotovoltageTraceDataRequest,
+)
 from .jobs import submit_json_task
 from .request_validation import (
-    RequestModel,
     parse_json_payload,
     request_schema,
     validation_error_response,
 )
-from .response import api_ok
-
-
-class EchemPhotovoltageBrowseRequest(RequestModel):
-    folder: str = ""
-
-
-class EchemPhotovoltageLoadRequest(RequestModel):
-    path: str = Field(min_length=1)
-
-
-class EchemPhotovoltageTraceDataRequest(EchemPhotovoltageLoadRequest):
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    t0: Any = None
-    t1: Any = None
-
-
-class EchemPhotovoltageDetectRequest(RequestModel):
-    path: str = Field(min_length=1)
-    t0: Any = None
-    t1: Any = None
-    baseline_method: str = "median"
-    detrend_method: str = ""
-    baseline_win_ms: Any = 50.0
-    bl_win_ms: Any = None
-    detrend_win_ms: Any = None
-    detrend_win: Any = None
-    sg_window_ms: Any = 51.0
-    sg_win_ms: Any = None
-    sg_poly: Any = 3
-    peak_min_v: Any = None
-    peak_min_V: Any = None
-    pv_height: Any = None
-    min_width_ms: Any = 5.0
-    min_spacing_ms: Any = 10.0
-    pv_dist: Any = None
-    min_dist: Any = None
-    polarity: str = ""
-    det_pos: Any = True
-    det_neg: Any = False
-    use_all: Any = False
-    show_detrended: Any = False
-
-
-class EchemPhotovoltageExportRequest(RequestModel):
-    path: str = Field(min_length=1)
-    pulses: list[Any] = Field(default_factory=list)
-    mode: str = "download"
-    window: list[Any] = Field(default_factory=list)
-    params: dict[str, Any] = Field(default_factory=dict)
-    baseline_method: str = ""
-    detrend_method: str = ""
-    baseline_win_ms: Any = None
-    bl_win_ms: Any = None
-    sg_window_ms: Any = None
-    sg_poly: Any = None
-    peak_min_v: Any = None
-    peak_min_V: Any = None
-    min_width_ms: Any = None
-    min_spacing_ms: Any = None
-    pulse_window_ms: Any = 50.0
-
-
-class EchemPhotovoltageFigureExportRequest(RequestModel):
-    path: str = Field(min_length=1)
-    fmt: str = "png"
-    pulses: list[Any] = Field(default_factory=list)
-    window: list[Any] = Field(default_factory=list)
-    params: dict[str, Any] = Field(default_factory=dict)
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    show_detrended: Any = None
-    baseline_method: str = ""
-    baseline_win_ms: Any = None
-    sg_window_ms: Any = None
-    sg_poly: Any = None
-    dpi: Any = 300
+from .response import api_ok, attachment_content_disposition
 
 
 def register_echem_photovoltage_routes(app, ctx):
     err = ctx.err
     browse_files = ctx.browse_files
     fig_to_b64 = ctx.fig_to_b64
-    float_or = ctx.float_or
-    int_or = ctx.int_or
     line_color = ctx.LINE_COLOR
     jobs = ctx.jobs
     find_peaks = ctx.find_peaks
@@ -166,8 +89,8 @@ def register_echem_photovoltage_routes(app, ctx):
             peak_widths,
         )
 
-    def _echem_photovoltage_export_payload(d: dict) -> dict:
-        return echem_service.photovoltage_export_payload(d, savgol_filter_func=savgol_filter)
+    def _echem_photovoltage_export_payload(body: dict) -> dict:
+        return echem_service.photovoltage_export_payload(body, savgol_filter_func=savgol_filter)
 
     def _echem_photovoltage_export_task(job_ctx, body: dict) -> dict:
         job_ctx.set_progress(0.2, "Exporting photovoltage pulses")
@@ -175,10 +98,10 @@ def register_echem_photovoltage_routes(app, ctx):
         save_body["mode"] = "save"
         return _echem_photovoltage_export_payload(save_body)["data"]
 
-    def _figure_window(d: dict, t) -> tuple[float, float]:
-        window = d.get("window", [])
-        x0 = float_or(d.get("x_min"), None)
-        x1 = float_or(d.get("x_max"), None)
+    def _figure_window(body: dict, t) -> tuple[float, float]:
+        window = body.get("window", [])
+        x0 = float_or(body.get("x_min"), None)
+        x1 = float_or(body.get("x_max"), None)
         if (x0 is None or x1 is None) and isinstance(window, list) and len(window) >= 2:
             x0 = float_or(window[0], None)
             x1 = float_or(window[1], None)
@@ -200,44 +123,44 @@ def register_echem_photovoltage_routes(app, ctx):
             return None
         return int(np.argmin(np.abs(t - marker_t)))
 
-    def _echem_photovoltage_figure_export_payload(d: dict) -> dict:
-        src = Path(d.get("path", ""))
+    def _echem_photovoltage_figure_export_payload(body: dict) -> dict:
+        src = Path(body.get("path", ""))
         if not src.exists():
             raise ValueError(f"File not found: {src}")
-        fmt = str(d.get("fmt", "png") or "png").lower()
+        fmt = str(body.get("fmt", "png") or "png").lower()
         if fmt not in {"png", "svg"}:
             raise ValueError("Figure format must be png or svg")
 
         t, v_raw, _t_col, _v_col = _load_echem(str(src))
         if len(t) == 0:
             raise ValueError("No data points found in file")
-        params = d.get("params", {}) if isinstance(d.get("params"), dict) else {}
+        params = body.get("params", {}) if isinstance(body.get("params"), dict) else {}
         show_detrended = _as_bool(
-            d.get("show_detrended", params.get("show_detrended", False)),
+            body.get("show_detrended", params.get("show_detrended", False)),
             False,
         )
         if show_detrended:
             baseline_method = _normalize_method(
-                d.get("baseline_method") or params.get("baseline_method") or "median"
+                body.get("baseline_method") or params.get("baseline_method") or "median"
             )
             baseline_win_ms = float_or(
-                d.get("baseline_win_ms", params.get("baseline_win_ms", 50.0)),
+                body.get("baseline_win_ms", params.get("baseline_win_ms", 50.0)),
                 50.0,
             )
-            sg_window_ms = float_or(d.get("sg_window_ms", params.get("sg_window_ms", 51.0)), 51.0)
-            sg_poly = int_or(d.get("sg_poly", params.get("sg_poly", 3)), 3)
+            sg_window_ms = float_or(body.get("sg_window_ms", params.get("sg_window_ms", 51.0)), 51.0)
+            sg_poly = int_or(body.get("sg_poly", params.get("sg_poly", 3)), 3)
             y = _detrend_signal(t, v_raw, baseline_method, baseline_win_ms, sg_window_ms, sg_poly)
             y_label = "Detrended Voltage (V)"
         else:
             y = v_raw
             y_label = "Voltage (V)"
 
-        x0, x1 = _figure_window(d, t)
+        x0, x1 = _figure_window(body, t)
         mask = (t >= x0) & (t <= x1)
         if not np.any(mask):
             raise ValueError("No points in the current preview window")
-        y_min = float_or(d.get("y_min"), None)
-        y_max = float_or(d.get("y_max"), None)
+        y_min = float_or(body.get("y_min"), None)
+        y_max = float_or(body.get("y_max"), None)
         if y_min is None or y_max is None or y_max <= y_min:
             y_view = y[mask]
             pad = float(np.ptp(y_view)) * 0.08 if len(y_view) else 0.0
@@ -278,14 +201,14 @@ def register_echem_photovoltage_routes(app, ctx):
                 ax.set_ylim(y_min, y_max)
                 marker_t = []
                 marker_y = []
-                for pulse in d.get("pulses", []):
+                for pulse in body.get("pulses", []):
                     idx = _marker_index_from_pulse(pulse, t)
                     if idx is not None and x0 <= float(t[idx]) <= x1:
                         marker_t.append(float(t[idx]))
                         marker_y.append(float(y[idx]))
                 if marker_t:
                     ax.scatter(marker_t, marker_y, s=50, marker="^", color="red", zorder=5)
-                dpi = int(float_or(d.get("dpi"), 300) or 300)
+                dpi = int(float_or(body.get("dpi"), 300) or 300)
                 fig.savefig(out_path, dpi=dpi, bbox_inches="tight", pad_inches=0.05, facecolor="white")
         finally:
             close_figure(fig)
@@ -305,10 +228,10 @@ def register_echem_photovoltage_routes(app, ctx):
     @request_schema(EchemPhotovoltageBrowseRequest)
     def api_echem_photovoltage_browse():
         try:
-            payload = parse_json_payload(EchemPhotovoltageBrowseRequest)
+            body = parse_json_payload(EchemPhotovoltageBrowseRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        files = browse_files(payload.folder, {".txt", ".csv"})
+        files = browse_files(body.folder, {".txt", ".csv"})
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem/photovoltage/load", methods=["POST"])
@@ -346,8 +269,8 @@ def register_echem_photovoltage_routes(app, ctx):
     @request_schema(EchemPhotovoltageTraceDataRequest)
     def api_echem_photovoltage_trace_data():
         try:
-            d = parse_json_payload(EchemPhotovoltageTraceDataRequest).model_dump()
-            return jsonify(echem_service.photovoltage_trace_data_payload(d))
+            body = parse_json_payload(EchemPhotovoltageTraceDataRequest).model_dump()
+            return jsonify(echem_service.photovoltage_trace_data_payload(body))
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -361,37 +284,37 @@ def register_echem_photovoltage_routes(app, ctx):
         if find_peaks is None or peak_widths is None:
             return err("scipy not installed")
         try:
-            d = parse_json_payload(EchemPhotovoltageDetectRequest).model_dump()
+            body = parse_json_payload(EchemPhotovoltageDetectRequest).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        path = d.get("path", "")
+        path = body.get("path", "")
         baseline_method = _normalize_method(
-            d.get("baseline_method", d.get("detrend_method", "median"))
+            body.get("baseline_method", body.get("detrend_method", "median"))
         )
         baseline_win_ms = float_or(
-            d.get(
+            body.get(
                 "baseline_win_ms",
-                d.get("bl_win_ms", d.get("detrend_win_ms", d.get("detrend_win", 50.0))),
+                body.get("bl_win_ms", body.get("detrend_win_ms", body.get("detrend_win", 50.0))),
             ),
             50.0,
         )
-        sg_window_ms = float_or(d.get("sg_window_ms", d.get("sg_win_ms", 51.0)), 51.0)
-        sg_poly = int_or(d.get("sg_poly", 3), 3)
+        sg_window_ms = float_or(body.get("sg_window_ms", body.get("sg_win_ms", 51.0)), 51.0)
+        sg_poly = int_or(body.get("sg_poly", 3), 3)
 
-        t0 = float_or(d.get("t0"), None)
-        t1 = float_or(d.get("t1"), None)
-        peak_min_v = float_or(d.get("peak_min_v", d.get("peak_min_V", d.get("pv_height"))), None)
+        t0 = float_or(body.get("t0"), None)
+        t1 = float_or(body.get("t1"), None)
+        peak_min_v = float_or(body.get("peak_min_v", body.get("peak_min_V", body.get("pv_height"))), None)
         if peak_min_v is None:
             peak_min_v = 0.01
-        min_width_ms = float_or(d.get("min_width_ms", 5.0), 5.0)
+        min_width_ms = float_or(body.get("min_width_ms", 5.0), 5.0)
         min_spacing_ms = float_or(
-            d.get("min_spacing_ms", d.get("pv_dist", d.get("min_dist", 10.0))), 10.0
+            body.get("min_spacing_ms", body.get("pv_dist", body.get("min_dist", 10.0))), 10.0
         )
 
-        polarity = str(d.get("polarity", "")).strip().lower()
+        polarity = str(body.get("polarity", "")).strip().lower()
         if not polarity:
-            det_pos = _as_bool(d.get("det_pos"), True)
-            det_neg = _as_bool(d.get("det_neg"), False)
+            det_pos = _as_bool(body.get("det_pos"), True)
+            det_neg = _as_bool(body.get("det_neg"), False)
             if det_pos and det_neg:
                 polarity = "both"
             elif det_neg:
@@ -401,8 +324,8 @@ def register_echem_photovoltage_routes(app, ctx):
         if polarity not in {"positive", "negative", "both"}:
             polarity = "positive"
 
-        use_all = _as_bool(d.get("use_all"), False)
-        show_detrended = _as_bool(d.get("show_detrended"), False)
+        use_all = _as_bool(body.get("use_all"), False)
+        show_detrended = _as_bool(body.get("show_detrended"), False)
 
         try:
             t, v, t_col, v_col = _load_echem(path)
@@ -558,15 +481,17 @@ def register_echem_photovoltage_routes(app, ctx):
     @request_schema(EchemPhotovoltageExportRequest)
     def api_echem_photovoltage_export():
         try:
-            d = parse_json_payload(EchemPhotovoltageExportRequest).model_dump()
-            result = _echem_photovoltage_export_payload(d)
+            body = parse_json_payload(EchemPhotovoltageExportRequest).model_dump()
+            result = _echem_photovoltage_export_payload(body)
             if result["kind"] == "save":
                 data = result["data"]
                 return api_ok(data, outputs=data["outputs"])
             return Response(
                 result["payload"],
                 mimetype=result["mimetype"],
-                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
+                headers={
+                    "Content-Disposition": attachment_content_disposition(result["download_name"])
+                },
             )
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -595,8 +520,8 @@ def register_echem_photovoltage_routes(app, ctx):
     @request_schema(EchemPhotovoltageFigureExportRequest)
     def api_echem_photovoltage_export_figure():
         try:
-            d = parse_json_payload(EchemPhotovoltageFigureExportRequest).model_dump()
-            result = _echem_photovoltage_figure_export_payload(d)
+            body = parse_json_payload(EchemPhotovoltageFigureExportRequest).model_dump()
+            result = _echem_photovoltage_figure_export_payload(body)
             return api_ok(result, outputs=result["outputs"])
         except ValidationError as exc:
             return validation_error_response(exc)

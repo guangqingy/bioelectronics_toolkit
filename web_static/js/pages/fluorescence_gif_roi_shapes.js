@@ -31,7 +31,7 @@ function updateGifBgControls(preferredLabel) {
   row.style.display = mode === 'roi' ? 'flex' : 'none';
   const prev = preferredLabel || sel.value;
   const polys = getClosedRoiPolygons();
-  sel.innerHTML = polys.map(p => `<option value="${escHtml(p.label)}">${escHtml(p.label)}</option>`).join('');
+  sel.innerHTML = polys.map(p => `<option value="${dpEscapeHtml(p.label)}">${dpEscapeHtml(p.label)}</option>`).join('');
   if (polys.some(p => p.label === prev)) sel.value = prev;
   else if (polys.length) sel.value = polys[0].label;
 }
@@ -48,7 +48,7 @@ function updateGifKymoControls() {
   const prev = sel.value;
   const bgLabel = gifBgLabel();
   const polys = getClosedRoiPolygons().filter(p => p.label !== bgLabel);
-  sel.innerHTML = polys.map(p => `<option value="${escHtml(p.label)}">${escHtml(p.label)}</option>`).join('');
+  sel.innerHTML = polys.map(p => `<option value="${dpEscapeHtml(p.label)}">${dpEscapeHtml(p.label)}</option>`).join('');
   if (polys.some(p => p.label === prev)) sel.value = prev;
   else if (polys.length) sel.value = polys[0].label;
 }
@@ -68,7 +68,7 @@ function updateGifCropControls() {
 
   const prev = sel.value;
   const rects = getCropRects();
-  sel.innerHTML = rects.map(r => `<option value="${escHtml(r.label)}">${escHtml(r.label)}</option>`).join('');
+  sel.innerHTML = rects.map(r => `<option value="${dpEscapeHtml(r.label)}">${dpEscapeHtml(r.label)}</option>`).join('');
   if (rects.some(r => r.label === prev)) sel.value = prev;
   else if (rects.length) sel.value = rects[0].label;
 }
@@ -207,14 +207,14 @@ function renderPolygonList() {
   const rows = _roiPolygons.map((p, i) => `
     <div class="gif-roi-item">
       <span class="gif-roi-swatch" style="background:${p.color}"></span>
-      <span class="gif-roi-name">${escHtml(p.label)}${p.label === bgLabel ? ' · BG' : ''} · ${p.points.length} pts</span>
+      <span class="gif-roi-name">${dpEscapeHtml(p.label)}${p.label === bgLabel ? ' · BG' : ''} · ${p.points.length} pts</span>
       <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" data-dp-click="removePolygon(${i})">×</button>
     </div>`);
   if (_draftPolygon) {
     rows.push(`
       <div class="gif-roi-item">
         <span class="gif-roi-swatch" style="background:${_draftPolygon.color}"></span>
-        <span class="gif-roi-name">${escHtml(_draftPolygon.label)} · drawing · ${_draftPolygon.points.length} pts</span>
+        <span class="gif-roi-name">${dpEscapeHtml(_draftPolygon.label)} · drawing · ${_draftPolygon.points.length} pts</span>
       </div>`);
   }
   el.innerHTML = rows.join('');
@@ -331,7 +331,7 @@ function renderCropRectList() {
   const rows = _cropRects.map((r, i) => `
     <div class="gif-roi-item">
       <span class="gif-roi-swatch" style="background:${r.color}"></span>
-      <span class="gif-roi-name">${escHtml(r.label)} · ${Math.round(r.width)}×${Math.round(r.height)} px</span>
+      <span class="gif-roi-name">${dpEscapeHtml(r.label)} · ${Math.round(r.width)}×${Math.round(r.height)} px</span>
       <button class="btn-icon btn-danger" style="width:24px;min-width:24px;height:24px;padding:0" data-dp-click="removeCropRect(${i})">×</button>
     </div>`);
   if (_draftCropRect) {
@@ -339,7 +339,7 @@ function renderCropRectList() {
     rows.push(`
       <div class="gif-roi-item">
         <span class="gif-roi-swatch" style="background:${_draftCropRect.color}"></span>
-        <span class="gif-roi-name">${escHtml(_draftCropRect.label)} · drawing · ${Math.round(r.width)}×${Math.round(r.height)} px</span>
+        <span class="gif-roi-name">${dpEscapeHtml(_draftCropRect.label)} · drawing · ${Math.round(r.width)}×${Math.round(r.height)} px</span>
       </div>`);
   }
   el.innerHTML = rows.join('');

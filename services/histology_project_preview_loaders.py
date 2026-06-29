@@ -30,6 +30,7 @@ from services.histology_project_preview_render import (
     _rgb_channels_are_monochrome,
 )
 
+
 def _entry_preview_image_path(entry: dict[str, Any]) -> str:
     direct = str(entry.get("image_path") or entry.get("source_path") or "").strip()
     if direct:

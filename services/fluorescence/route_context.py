@@ -11,6 +11,7 @@ from services.fluorescence import roi_render_context as fl_roi_render_context
 from services.fluorescence import route_helpers as fl_helpers
 from services.fluorescence import stack as fl_stack
 from services.fluorescence import tiff_volume_context as fl_tiff_volume_context
+from services.fluorescence.stack_processing import float_or, int_or
 from services.matplotlib_utils import new_subplots
 
 
@@ -18,8 +19,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
     err = ctx.err
     browse_files = ctx.browse_files
     fig_to_b64 = ctx.fig_to_b64
-    float_or = ctx.float_or
-    int_or = ctx.int_or
 
     tifflib = ctx.tifflib
     image_mod = ctx.Image
@@ -63,8 +62,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
 
     _fl_tiff_helpers = fl_tiff_volume_context.build_tiff_volume_context(
         tifflib=tifflib,
-        int_or=int_or,
-        float_or=float_or,
         denoise_options=_FL_DENOISE_OPTIONS,
     )
     _fl_tiff_plane_from_array = _fl_tiff_helpers["_fl_tiff_plane_from_array"]
@@ -85,7 +82,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         image_draw_mod=image_draw_mod,
         image_font_mod=image_font_mod,
         fig_to_b64=fig_to_b64,
-        float_or=float_or,
     )
     _fl_apply_gif_crop = _fl_gif_roi_helpers["_fl_apply_gif_crop"]
     _fl_gif_kymo_stat = _fl_gif_roi_helpers["_fl_gif_kymo_stat"]
@@ -144,7 +140,6 @@ def build_fluorescence_route_contexts(ctx) -> dict[str, dict]:
         image_draw_mod=image_draw_mod,
         image_font_mod=image_font_mod,
         fig_to_b64=fig_to_b64,
-        int_or=int_or,
         infer_pixel_size_um_from_tiff=_fl_infer_pixel_size_um_from_tiff,
     )
     _fl_roi_pick_output_dir = _fl_roi_render_helpers["_fl_roi_pick_output_dir"]

@@ -156,19 +156,19 @@ function renderRoiList() {
   el.innerHTML = _rois.map((r, i) => `
     <div style="display:flex;align-items:center;gap:6px;background:var(--surface2);border-radius:4px;padding:4px 6px">
       <span style="width:12px;height:12px;border-radius:2px;background:${r.color};flex-shrink:0;display:inline-block"></span>
-      <span style="flex:1;font-size:12px;color:var(--pewter)">${escapeHtml(r.label)}</span>
-      ${r.drawn ? `<span style="font-size:10px;color:var(--silver)">${escapeHtml(roiSummary(r))}</span>` : ''}
+      <span style="flex:1;font-size:12px;color:var(--pewter)">${dpEscapeHtml(r.label)}</span>
+      ${r.drawn ? `<span style="font-size:10px;color:var(--silver)">${dpEscapeHtml(roiSummary(r))}</span>` : ''}
       <button data-dp-click="removeRoi(${i})" style="background:none;border:none;color:var(--silver);cursor:pointer;font-size:13px;padding:0 2px;line-height:1">X</button>
     </div>`).join('');
 
   const drawTarget = document.getElementById('drawTarget');
   const prevTarget = drawTarget.value;
-  drawTarget.innerHTML = _rois.map(r => `<option value="${escapeHtml(r.label)}">${escapeHtml(r.label)}</option>`).join('');
+  drawTarget.innerHTML = _rois.map(r => `<option value="${dpEscapeHtml(r.label)}">${dpEscapeHtml(r.label)}</option>`).join('');
   if (_rois.some(r => r.label === prevTarget)) drawTarget.value = prevTarget;
 
   const bgSel = document.getElementById('bgRoiSelect');
   const prevBg = bgSel.value;
-  bgSel.innerHTML = _rois.map(r => `<option value="${escapeHtml(r.label)}">${escapeHtml(r.label)}</option>`).join('');
+  bgSel.innerHTML = _rois.map(r => `<option value="${dpEscapeHtml(r.label)}">${dpEscapeHtml(r.label)}</option>`).join('');
   if (_rois.some(r => r.label === prevBg)) bgSel.value = prevBg;
 }
 

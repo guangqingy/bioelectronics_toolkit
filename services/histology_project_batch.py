@@ -35,6 +35,7 @@ from services.histology_tiff_project import (
     PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
 )
 
+
 def analyze_histology_data_project_saved_rois(
     project_path: str | Path,
     parameters: dict[str, Any] | None = None,

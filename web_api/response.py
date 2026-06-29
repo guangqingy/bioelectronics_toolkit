@@ -1,14 +1,26 @@
 from __future__ import annotations
 
 import logging
+import unicodedata
 import uuid
 from typing import Any
+from urllib.parse import quote
 
 from flask import current_app, has_app_context, jsonify, request
 
 from services.output_records import as_list, infer_outputs, is_envelope
 
 LOG = logging.getLogger(__name__)
+
+
+def attachment_content_disposition(filename: Any) -> str:
+    cleaned = str(filename or "download").replace("\r", " ").replace("\n", " ").strip()
+    cleaned = cleaned or "download"
+    fallback = unicodedata.normalize("NFKD", cleaned).encode("ascii", "ignore").decode("ascii")
+    fallback = fallback or "download"
+    fallback = fallback.replace("\\", "_").replace("/", "_").replace('"', "_")
+    encoded = quote(cleaned, safe="")
+    return f"attachment; filename=\"{fallback}\"; filename*=UTF-8''{encoded}"
 
 
 def make_envelope(payload: Any = None, *, ok: bool = True, error: Any = None) -> dict[str, Any]:
@@ -96,7 +108,7 @@ def _public_error(message: Any, code: int) -> tuple[str, int, str | None, str | 
     LOG.error("[%s] Unhandled API exception\n%s", correlation_id, technical_details)
     if _debug_errors_enabled():
         return technical_details, max(500, code), correlation_id, technical_details
-    return _friendly_traceback_message(correlation_id), max(500, code), correlation_id, technical_details
+    return _friendly_traceback_message(correlation_id), max(500, code), correlation_id, None
 
 
 def api_error(

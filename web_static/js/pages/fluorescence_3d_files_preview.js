@@ -14,8 +14,8 @@ function renderAvailableTiffList() {
     const meta = info.error ? info.error : `${formatDimText(info)} · ${info.axes || '?'}`;
     return `
       <div class="file-item stack-available-item ${active}" data-dp-click="selectAvailableTiff(${i})">
-        <span class="stack-available-name">${escHtml(f.name || fileBasename(f.path))}</span>
-        <span class="stack-available-meta">${escHtml(meta)}</span>
+        <span class="stack-available-name">${dpEscapeHtml(f.name || fileBasename(f.path))}</span>
+        <span class="stack-available-meta">${dpEscapeHtml(meta)}</span>
         <span class="stack-pill ${info.can_3d ? '' : 'stack-pill-muted'}">${stackTag}</span>
       </div>`;
   }).join('');
@@ -89,7 +89,7 @@ function updateSelectedSummary(info) {
   }
   const d = stackDims(info);
   pills.innerHTML = `
-    <span class="stack-pill">${escHtml(info.axes || '?')}</span>
+    <span class="stack-pill">${dpEscapeHtml(info.axes || '?')}</span>
     <span class="stack-pill">${d.z || 1} Z</span>
     <span class="stack-pill ${Number(d.c || 1) > 1 ? '' : 'stack-pill-muted'}">${d.c || 1} C</span>`;
 }
@@ -145,17 +145,17 @@ function renderStackDetails() {
   const d = stackDims(info);
   const cal = info.calibration || {};
   body.innerHTML = `
-    <div class="lif-detail-title">${escHtml(info.name || fileBasename(info.path))}</div>
-    <div class="lif-detail-muted">${escHtml(compactPath(info.path || ''))}</div>
+    <div class="lif-detail-title">${dpEscapeHtml(info.name || fileBasename(info.path))}</div>
+    <div class="lif-detail-muted">${dpEscapeHtml(compactPath(info.path || ''))}</div>
     <div class="lif-detail-grid">
-      <span>Axes</span><strong>${escHtml(info.axes || '')}</strong>
-      <span>Shape</span><strong>${escHtml((info.shape || []).join(' × '))}</strong>
-      <span>Dimensions</span><strong>${escHtml(formatDimText(info))}</strong>
-      <span>Dtype</span><strong>${escHtml(info.dtype || '')}</strong>
+      <span>Axes</span><strong>${dpEscapeHtml(info.axes || '')}</strong>
+      <span>Shape</span><strong>${dpEscapeHtml((info.shape || []).join(' × '))}</strong>
+      <span>Dimensions</span><strong>${dpEscapeHtml(formatDimText(info))}</strong>
+      <span>Dtype</span><strong>${dpEscapeHtml(info.dtype || '')}</strong>
       <span>Pixel size</span><strong>${formatNumber(cal.pixel_width_um, 4)} um/px</strong>
       <span>Z spacing</span><strong>${formatNumber(cal.z_spacing_um, 4)} um</strong>
     </div>
-    <div class="lif-export-note">Scale: ${escHtml(cal.pixel_source || 'fallback')}<br>Z: ${escHtml(cal.z_source || 'fallback')}</div>
+    <div class="lif-export-note">Scale: ${dpEscapeHtml(cal.pixel_source || 'fallback')}<br>Z: ${dpEscapeHtml(cal.z_source || 'fallback')}</div>
   `;
   document.getElementById('stackMeta').textContent =
     `${info.name || 'TIFF stack'} · ${d.z || 1} Z · ${d.c || 1} channel(s) · ${formatNumber(cal.pixel_width_um, 4)} um/px`;
@@ -230,7 +230,7 @@ function updateExtraControls() {
   }
   el.innerHTML = extras.map(extra => {
     const count = Math.max(1, Number(extra.count || 1));
-    const label = escHtml(extra.axis || ('D' + extra.index));
+    const label = dpEscapeHtml(extra.axis || ('D' + extra.index));
     return `
       <div class="lif-slider-row lif-extra-dim-row">
         <span>${label}</span>
@@ -296,7 +296,7 @@ async function loadSlicePreview() {
     if (d.error) throw new Error(d.error);
     preview.innerHTML = `<img src="data:image/png;base64,${d.img}" alt="TIFF slice"/>`;
   } catch (e) {
-    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${escHtml(e.message)}</div>`;
+    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${dpEscapeHtml(e.message)}</div>`;
     setStatus('status', 'Preview error', 'error');
   }
 }

@@ -216,7 +216,7 @@ function runAnalysis() {
 	      const pxInfo = d.roi_preview_pixel_size_um ? ` | pixel=${Number(d.roi_preview_pixel_size_um).toFixed(5)} um/px` : '';
 	      const prevHeader =
 	        `ROI Reference Preview <span style="font-weight:400;color:var(--silver)">` +
-	        `${d.roi_preview_path ? escapeHtml(d.roi_preview_path.split('/').pop()) : 'selected preview'}${pxInfo}</span>`;
+	        `${d.roi_preview_path ? dpEscapeHtml(d.roi_preview_path.split('/').pop()) : 'selected preview'}${pxInfo}</span>`;
 	      const prevBody = `<img class="roi-reference-img" src="data:image/png;base64,${_lastPreviewB64}" alt="ROI reference preview"/>`;
 	      upsertResultCard('roiPreviewResultCard', prevHeader, prevBody);
 	    }

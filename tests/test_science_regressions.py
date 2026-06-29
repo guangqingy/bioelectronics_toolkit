@@ -12,7 +12,7 @@ from services import echem, emg
 from services.abf_viewer import AbfViewerService
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import roi_primitives, roi_radial
-from web_api.common import apply_axes_limits, as_bool, float_or, int_or, mode_is_save
+from web_api.common import apply_axes_limits, mode_is_save
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -193,9 +193,6 @@ class AbfViewerRegressionTests(unittest.TestCase):
             pyabf_mod=pyabf,
             find_peaks=find_peaks,
             fig_to_b64=fake_fig_to_b64,
-            float_or=float_or,
-            int_or=int_or,
-            as_bool=as_bool,
             mode_is_save=mode_is_save,
             apply_axes_limits=apply_axes_limits,
             clean_trace_svg=lambda *_args, **_kwargs: b"<svg/>",
@@ -236,12 +233,6 @@ class AbfViewerRegressionTests(unittest.TestCase):
         )
         self.assertGreaterEqual(len(detected["peaks"]), 1)
         self.assertEqual(detected["meta"]["polarity"], "POS")
-
-    def test_abf_legacy_trace_export_downloads_csv(self) -> None:
-        path = ROOT / "examples" / "sample_patch_clamp.abf"
-        result = self._service().legacy_trace_export_payload(str(path), mode="download")
-        self.assertEqual(result["kind"], "download")
-        self.assertIn(b"time_s,value", result["payload"][:64])
 
 
 if __name__ == "__main__":

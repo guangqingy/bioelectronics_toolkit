@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+from services.histology_analysis import (
+    ANALYSIS_VERSION,
+    _clean_rois,
+    _now_iso,
+    _read_json,
+    _write_json,
+)
 from services.histology_data_project_calibration import (
     _infer_tiff_pixel_calibration,
     _positive_float,
@@ -36,6 +43,7 @@ from services.histology_data_project_paths import (
     _slide_stem_for_source,
     _source_entry_id,
 )
+from services.histology_data_project_rename import rename_histology_data_project_entry
 from services.histology_data_project_sources import (
     _associated_files_for_source,
     _data_project_record_for_source,
@@ -58,14 +66,6 @@ from services.histology_data_project_store import (
     add_histology_data_project_paths,
     create_histology_data_project,
     load_histology_data_project,
-)
-from services.histology_data_project_rename import rename_histology_data_project_entry
-from services.histology_analysis import (
-    ANALYSIS_VERSION,
-    _clean_rois,
-    _now_iso,
-    _read_json,
-    _write_json,
 )
 from services.histology_tiff_project import PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL
 

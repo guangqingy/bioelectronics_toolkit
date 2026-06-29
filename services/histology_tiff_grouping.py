@@ -19,6 +19,7 @@ from services.histology_tiff_io import (
 )
 from services.histology_tiff_models import ImageRecord, SampleRecord
 
+
 def _conversion_dicts(conversions: list[EtsConversionResult]) -> list[dict[str, Any]]:
     return [asdict(item) for item in conversions]
 

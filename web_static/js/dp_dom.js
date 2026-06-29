@@ -5,7 +5,7 @@ const DP_FILE_LIST_VIRTUAL_THRESHOLD = 160;
 const DP_FILE_LIST_PAGE_SIZE = 120;
 const _dpVirtualLists = {};
 
-function escHtml(value) {
+function dpEscapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
@@ -135,6 +135,167 @@ function closeShortcutModal() {
   modal.classList.remove('show');
   modal.setAttribute('aria-hidden', 'true');
 }
+
+function dpVisibleText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function dpReadableId(value) {
+  return dpVisibleText(String(value || '')
+    .replace(/^btn/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2'));
+}
+
+function dpLabelledByText(el) {
+  const ids = (el.getAttribute('aria-labelledby') || '').split(/\s+/).filter(Boolean);
+  return dpVisibleText(ids.map(id => document.getElementById(id)?.textContent || '').join(' '));
+}
+
+function dpNativeLabelText(el) {
+  if (el.labels && el.labels.length) {
+    return dpVisibleText(Array.from(el.labels).map(label => label.textContent || '').join(' '));
+  }
+  const wrapped = el.closest('label');
+  return wrapped ? dpVisibleText(wrapped.textContent || '') : '';
+}
+
+function dpNearbyControlLabel(el) {
+  const row = el.closest(
+    '.param-row, .form-row, .ctrl-row, .stack-control, .stack-preview-row, ' +
+    '.gif-file-path-row, .gif-slice-row, .prefs-field, details, section, .ctrl-group'
+  );
+  const selectors = [
+    '.param-label',
+    '.form-label',
+    '.ctrl-label',
+    '.prefs-label',
+    '.stack-mini-label',
+    '.gif-mini-label',
+    '.lif-detail-title',
+  ];
+  for (const selector of selectors) {
+    const label = row?.querySelector(selector);
+    const text = label && !label.contains(el) ? dpVisibleText(label.textContent) : '';
+    if (text) return text;
+  }
+  for (const sibling of [el.previousElementSibling, el.nextElementSibling]) {
+    if (sibling && !/^(INPUT|SELECT|TEXTAREA|BUTTON)$/i.test(sibling.tagName || '')) {
+      const text = dpVisibleText(sibling.textContent || sibling.getAttribute('title') || '');
+      if (text) return text;
+    }
+  }
+  return '';
+}
+
+function dpControlAccessibleName(el) {
+  return (
+    dpVisibleText(el.getAttribute('aria-label')) ||
+    dpLabelledByText(el) ||
+    dpNativeLabelText(el) ||
+    dpNearbyControlLabel(el) ||
+    dpVisibleText(el.getAttribute('data-label')) ||
+    dpVisibleText(el.getAttribute('title')) ||
+    dpVisibleText(el.getAttribute('placeholder')) ||
+    dpVisibleText(el.value && /^(button|submit|reset)$/i.test(el.type || '') ? el.value : '') ||
+    dpReadableId(el.id || el.name)
+  );
+}
+
+function dpControlHasProgrammaticName(el) {
+  if (dpVisibleText(el.getAttribute('aria-label')) || dpLabelledByText(el)) return true;
+  if (el.labels && el.labels.length) return true;
+  if (el.tagName === 'BUTTON' && dpVisibleText(el.textContent || el.value || el.title)) return true;
+  return false;
+}
+
+function dpEnsureControlNames(root) {
+  const scope = root || document;
+  const selector = 'input:not([type="hidden"]), select, textarea, button';
+  const controls = scope.querySelectorAll
+    ? Array.from(scope.querySelectorAll(selector))
+    : [];
+  if (scope.matches?.(selector)) controls.push(scope);
+  controls.forEach(el => {
+    if (dpControlHasProgrammaticName(el)) return;
+    const label = dpControlAccessibleName(el);
+    if (label) el.setAttribute('aria-label', label);
+  });
+}
+
+const DP_FOCUSABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+function dpVisibleFocusable(el) {
+  return !!(el && (el.offsetParent || el.getClientRects().length));
+}
+
+function dpActiveDialog() {
+  const overlays = Array.from(
+    document.querySelectorAll('.modal-overlay.show, .modal-overlay[aria-hidden="false"]')
+  ).filter(dpVisibleFocusable);
+  const overlay = overlays.at(-1);
+  return overlay?.querySelector('[role="dialog"]') || null;
+}
+
+function dpTrapDialogFocus(event) {
+  if (event.key !== 'Tab') return;
+  const dialog = dpActiveDialog();
+  if (!dialog) return;
+  const focusables = Array.from(dialog.querySelectorAll(DP_FOCUSABLE)).filter(dpVisibleFocusable);
+  if (!focusables.length) {
+    event.preventDefault();
+    dialog.setAttribute('tabindex', '-1');
+    dialog.focus();
+    return;
+  }
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (!dialog.contains(document.activeElement)) {
+    event.preventDefault();
+    first.focus();
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function dpEnhanceDialogs(root) {
+  const scope = root || document;
+  const dialogs = scope.querySelectorAll ? Array.from(scope.querySelectorAll('.modal-card')) : [];
+  if (scope.matches?.('.modal-card')) dialogs.push(scope);
+  dialogs.forEach(card => {
+    if (!card.getAttribute('role')) card.setAttribute('role', 'dialog');
+    if (!card.getAttribute('aria-modal')) card.setAttribute('aria-modal', 'true');
+  });
+}
+
+function dpInstallAccessibilityEnhancements() {
+  dpEnsureControlNames(document);
+  dpEnhanceDialogs(document);
+  if (window._dpAccessibilityObserver) return;
+  document.addEventListener('keydown', dpTrapDialogFocus);
+  window._dpAccessibilityObserver = new MutationObserver(records => {
+    records.forEach(record => {
+      record.addedNodes.forEach(node => {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        dpEnsureControlNames(node);
+        dpEnhanceDialogs(node);
+      });
+    });
+  });
+  window._dpAccessibilityObserver.observe(document.body, {childList: true, subtree: true});
+}
+
 function dpConfirmAction(options) {
   const opts = options || {};
   return new Promise(resolve => {
@@ -164,7 +325,7 @@ function dpConfirmAction(options) {
     }
     modal.querySelector('#dpConfirmTitle').textContent = opts.title || 'Confirm action';
     modal.querySelector('#dpConfirmSub').textContent = opts.subtitle || '';
-    modal.querySelector('#dpConfirmDetail').innerHTML = opts.html || escHtml(opts.message || '');
+    modal.querySelector('#dpConfirmDetail').innerHTML = opts.html || dpEscapeHtml(opts.message || '');
     const okBtn = modal.querySelector('[data-confirm="ok"]');
     const cancelBtn = modal.querySelector('[data-confirm="cancel"]');
     okBtn.textContent = opts.confirmText || 'Continue';
@@ -311,7 +472,7 @@ function dpPlotActionsHtml(src, fmt, label) {
     <div class="plot-image-actions">
       <button class="btn-secondary" type="button" data-plot-action="open">Open</button>
       <button class="btn-secondary" type="button" data-plot-action="download">Download</button>
-      <span class="sr-only">${escHtml(label || 'Static plot preview')}</span>
+      <span class="sr-only">${dpEscapeHtml(label || 'Static plot preview')}</span>
     </div>
   `;
 }
@@ -342,7 +503,7 @@ function setPlot(containerId, b64, fmt, altText) {
   const alt = altText || c.getAttribute('aria-label') || 'Static plot preview';
   c.innerHTML = `
     <div class="plot-image-frame">
-      <img src="${src}" alt="${escHtml(alt)}"/>
+      <img src="${src}" alt="${dpEscapeHtml(alt)}"/>
       ${dpPlotActionsHtml(src, fmt, alt)}
     </div>
   `;
@@ -377,7 +538,7 @@ function buildFileList(containerId, files, onSelect) {
   }
   delete _dpVirtualLists[containerId];
   el.innerHTML = normalized.map(f =>
-    `<div class="file-item" data-idx="${f.originalIndex}" data-path="${escHtml(f.path)}" title="${escHtml(f.path)}">${escHtml(f.name)}</div>`
+    `<div class="file-item" data-idx="${f.originalIndex}" data-path="${dpEscapeHtml(f.path)}" title="${dpEscapeHtml(f.path)}">${dpEscapeHtml(f.name)}</div>`
   ).join('');
   el.querySelectorAll('.file-item').forEach(item => {
     item.addEventListener('click', () => onSelect(item));
@@ -408,7 +569,7 @@ function dpRenderVirtualFileList(containerId) {
     </div>
   `;
   el.innerHTML = controls + pageItems.map(item =>
-    `<div class="file-item" data-idx="${item.originalIndex}" data-path="${escHtml(item.path)}" title="${escHtml(item.path)}">${escHtml(item.name)}</div>`
+    `<div class="file-item" data-idx="${item.originalIndex}" data-path="${dpEscapeHtml(item.path)}" title="${dpEscapeHtml(item.path)}">${dpEscapeHtml(item.name)}</div>`
   ).join('');
   el.querySelector('[data-file-page="prev"]')?.addEventListener('click', () => {
     state.page -= 1;
@@ -463,8 +624,8 @@ function dpEnhanceFileLists() {
     const wrap = document.createElement('div');
     wrap.className = 'file-filter';
     wrap.innerHTML = `
-      <input type="search" data-target="${escHtml(listId)}" placeholder="Filter list" aria-label="Filter ${escHtml(listId)}">
-      <span class="file-filter-count" data-target="${escHtml(listId)}"></span>
+      <input type="search" data-target="${dpEscapeHtml(listId)}" placeholder="Filter list" aria-label="Filter ${dpEscapeHtml(listId)}">
+      <span class="file-filter-count" data-target="${dpEscapeHtml(listId)}"></span>
     `;
     list.parentNode.insertBefore(wrap, list);
     const input = wrap.querySelector('input');

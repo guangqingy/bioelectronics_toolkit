@@ -121,11 +121,11 @@ async function runGifKymograph() {
       ? ` | ref frame ${d.ref_frame_applied} (${d.ref_stat}, F0=${Number(d.f0_value || 0).toPrecision(4)})`
       : '';
     const warnText = (d.warnings || []).length
-      ? `<div style="font-size:11px;color:#9a6a00;margin-top:6px">${(d.warnings || []).map(escHtml).join('<br>')}</div>`
+      ? `<div style="font-size:11px;color:#9a6a00;margin-top:6px">${(d.warnings || []).map(dpEscapeHtml).join('<br>')}</div>`
       : '';
     const header =
       `ROI Kymograph <span style="font-weight:400;color:var(--silver)">` +
-      `${escHtml(d.roi_label)} | ${d.n_frames} frames | ${d.bins} bins | ${d.value_mode} | smooth I ${Number(d.smooth_intensity_bins || 0).toFixed(1)} / T ${Number(d.smooth_time_frames || 0).toFixed(1)}${refText}</span>`;
+      `${dpEscapeHtml(d.roi_label)} | ${d.n_frames} frames | ${d.bins} bins | ${d.value_mode} | smooth I ${Number(d.smooth_intensity_bins || 0).toFixed(1)} / T ${Number(d.smooth_time_frames || 0).toFixed(1)}${refText}</span>`;
     const thresholdText = (d.threshold_lines || []).length
       ? ` · thresholds: ${(d.threshold_lines || []).map(x => Number(x).toPrecision(4)).join(', ')}`
       : '';

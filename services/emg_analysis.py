@@ -38,7 +38,6 @@ class EmgAnalysisService:
     has_rhd: bool
     rhd_module: Any
     fig_to_b64: Callable[[Any], str]
-    float_or: Callable[[Any, float | None], float | None]
     bool_value: Callable[[Any], bool]
     mode_is_save: Callable[[Any], bool]
     clean_trace_svg: Callable[..., bytes]
@@ -56,8 +55,8 @@ class EmgAnalysisService:
         t, _fs, _ch_names, y, ch, ch_label, base_stem, used_pair, _segment_count = (
             self._load_view_trace(data)
         )
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
         downsample = data.get("downsample", data.get("dsf", "auto"))
         fig_params = emg_analysis_processing.figure_params(
             data, default_line_color=self.line_color, default_show_title=True
@@ -123,8 +122,8 @@ class EmgAnalysisService:
             payload = self.clean_trace_svg(
                 t_view,
                 y_view,
-                y_min=self.float_or(data.get("y_min"), None),
-                y_max=self.float_or(data.get("y_max"), None),
+                y_min=data.get("y_min"),
+                y_max=data.get("y_max"),
                 width=fig_params["width_in"] * 72.0,
                 height=fig_params["height_in"] * 72.0,
                 line_color=fig_params["line_color"],
@@ -149,8 +148,8 @@ class EmgAnalysisService:
             emg_analysis_processing.finish_axis(
                 ax,
                 t_view,
-                self.float_or(data.get("y_min"), None),
-                self.float_or(data.get("y_max"), None),
+                data.get("y_min"),
+                data.get("y_max"),
                 grid=fig_params["show_grid"],
             )
             fig.tight_layout()
@@ -171,6 +170,11 @@ class EmgAnalysisService:
             return self._save_result(out_path, "emg_analysis_channel_export")
         mimetype = "image/png" if fmt == "png" else "image/svg+xml"
         return self._download_result(payload, mimetype, filename)
+
+    def export_channel_job_payload(self, data: dict[str, Any]) -> dict[str, Any]:
+        save_body = dict(data or {})
+        save_body["mode"] = "save"
+        return self.export_channel_payload(save_body)["data"]
 
     def export_processing_payload(self, data: dict[str, Any]) -> dict[str, Any]:
         self._require_rhd()
@@ -304,7 +308,7 @@ class EmgAnalysisService:
             rhd_service.load_channel_with_merge_option(path, self.rhd_module, ch_in, do_merge)
         )
         t, y = emg_analysis_processing.apply_time_window(
-            t, y, self.float_or(data.get("x_min"), None), self.float_or(data.get("x_max"), None)
+            t, y, data.get("x_min"), data.get("x_max")
         )
         y = emg_analysis_processing.apply_filter(y, fs, emg_analysis_processing.filter_params(data))
         y = emg_analysis_processing.apply_y_polarity(y, data)
@@ -325,7 +329,7 @@ class EmgAnalysisService:
 
     def _filtered_export_view(self, data: dict[str, Any], t, fs, y):
         t_view, y_view = emg_analysis_processing.apply_time_window(
-            t, y, self.float_or(data.get("x_min"), None), self.float_or(data.get("x_max"), None)
+            t, y, data.get("x_min"), data.get("x_max")
         )
         y_view = emg_analysis_processing.apply_filter(
             y_view, fs, emg_analysis_processing.filter_params(data)

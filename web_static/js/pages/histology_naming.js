@@ -66,10 +66,10 @@ function renderHistologyProjectImageList() {
     const vsi = histologyEntryVsiPath(entry);
     const detail = vsi ? vsi.split(/[\\/]/).pop() : (entry.case_dir || entry.source_name || entry.image_path || '');
     return `
-      <div class="file-item${active}" data-entry-id="${escHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectEntry('${escHtml(entry.entry_id)}')">
-        <div class="histology-file-title">${escHtml(title)}</div>
-        <div class="histology-file-subline">${escHtml(counts + missing + rebuild)}</div>
-        <div class="histology-file-path">${escHtml(detail)}</div>
+      <div class="file-item${active}" data-entry-id="${dpEscapeHtml(entry.entry_id)}" data-dp-click="DP.page.selectHistologyProjectEntry('${dpEscapeHtml(entry.entry_id)}')">
+        <div class="histology-file-title">${dpEscapeHtml(title)}</div>
+        <div class="histology-file-subline">${dpEscapeHtml(counts + missing + rebuild)}</div>
+        <div class="histology-file-path">${dpEscapeHtml(detail)}</div>
       </div>`;
   }).join('');
 }
@@ -225,7 +225,7 @@ function loadHistologyDataProject() {
 function setPreviewPlaceholder(containerId, message) {
   const el = document.getElementById(containerId);
   if (!el) return;
-  el.innerHTML = `<div class="plot-placeholder">${escHtml(message || 'Preview not available')}</div>`;
+  el.innerHTML = `<div class="plot-placeholder">${dpEscapeHtml(message || 'Preview not available')}</div>`;
 }
 
 function histologyProjectChannelFiles(entry) {
@@ -254,17 +254,17 @@ function renderHistologyProjectChannelPanel(entry) {
   const associated = Array.isArray(entry.associated_files) ? entry.associated_files : [];
   const vsiRows = associated.map(item => `
     <div class="file-item">
-      <div class="histology-file-title">${escHtml(item.role || 'vsi')}</div>
-      <div class="histology-file-path">${escHtml(item.path || item.name || '')}</div>
+      <div class="histology-file-title">${dpEscapeHtml(item.role || 'vsi')}</div>
+      <div class="histology-file-path">${dpEscapeHtml(item.path || item.name || '')}</div>
     </div>`).join('');
   const convertedRows = converted.length ? converted.map(item => `
     <div class="file-item">
-      <div class="histology-file-title">${escHtml(item.role || 'image')}</div>
-      <div class="histology-file-path">${escHtml(item.output_path || '')}</div>
+      <div class="histology-file-title">${dpEscapeHtml(item.role || 'image')}</div>
+      <div class="histology-file-path">${dpEscapeHtml(item.output_path || '')}</div>
     </div>`).join('') : Object.entries(channels).map(([channel, path]) => `
     <div class="file-item">
-      <div class="histology-file-title">${escHtml(channel)}</div>
-      <div class="histology-file-path">${escHtml(path)}</div>
+      <div class="histology-file-title">${dpEscapeHtml(channel)}</div>
+      <div class="histology-file-path">${dpEscapeHtml(path)}</div>
     </div>`).join('');
   panel.innerHTML = `
     <div class="histology-channel-panel">

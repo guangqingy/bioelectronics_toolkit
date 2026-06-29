@@ -24,6 +24,7 @@ from services.fluorescence.stack_processing import (
     preprocess_stack_image,
 )
 
+
 def to_macro_path(path: Path) -> str:
     return str(path).replace("\\", "/")
 

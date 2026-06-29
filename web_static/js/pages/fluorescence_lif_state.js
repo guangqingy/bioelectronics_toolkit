@@ -6,17 +6,8 @@ let _lifRenameMap = {};
 let _lifActiveIndex = null;
 let _lifPreviewDebounce = null;
 
-function escapeHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function escapeAttr(s) {
-  return escapeHtml(s).replace(/`/g, '&#96;');
+  return dpEscapeHtml(s).replace(/`/g, '&#96;');
 }
 
 function renameStorageKey(path) {
@@ -68,7 +59,6 @@ window.DP.page = window.DP.page || {};
 [
   'displayName',
   'escapeAttr',
-  'escapeHtml',
   'hasCustomName',
   'loadRenameMap',
   'planeCount',

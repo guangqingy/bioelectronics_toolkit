@@ -105,7 +105,7 @@ def request_data():
 
     if request.method == "GET":
         return request.args
-    return request.json or {}
+    return request.get_json(silent=True) or {}
 
 
 def apply_axes_limits(ax, xmin, xmax, ymin, ymax):

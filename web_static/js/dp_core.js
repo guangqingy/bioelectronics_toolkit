@@ -13,7 +13,7 @@ window.DP.page = window.DP.page || {};
 
 Object.assign(window.DP.api, {request: api});
 Object.assign(window.DP.dom, {
-  escHtml,
+  dpEscapeHtml,
   setStatus,
   toast,
   showErrorBanner,
@@ -25,6 +25,7 @@ Object.assign(window.DP.dom, {
   btnBusy,
   enhanceEmptyStates: dpEnhanceEmptyStates,
   enhancePlotImages: dpEnhancePlotImages,
+  enhanceAccessibility: dpInstallAccessibilityEnhancements,
   useExamplesDir: dpUseExamplesDir,
 });
 Object.assign(window.DP.palette, {
@@ -79,6 +80,7 @@ Object.assign(window.DP.jobs, {
 
 document.addEventListener('DOMContentLoaded', () => {
   installFileListFilters();
+  dpInstallAccessibilityEnhancements();
   dpEnhanceEmptyStates();
   dpEnhanceExampleEntrypoints();
   dpInstallPlotImageObserver();

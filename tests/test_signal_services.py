@@ -8,8 +8,18 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from services import abf, abf_batch, csv_tools, echem, echem_lineshape, emg, rhd
-from services import abf_batch_parsing, abf_batch_process, abf_batch_signals
+from services import (
+    abf,
+    abf_batch,
+    abf_batch_parsing,
+    abf_batch_process,
+    abf_batch_signals,
+    csv_tools,
+    echem,
+    echem_lineshape,
+    emg,
+    rhd,
+)
 from services.csv_viewer import CsvViewerService
 from services.emg_peak_selection import EMG_TRACE_MAX_POINTS, EmgPeakSelectionService
 
@@ -33,8 +43,6 @@ def _fake_peak_widths(_signal, peaks, rel_height=0.5):
 
 def _csv_viewer_service() -> CsvViewerService:
     return CsvViewerService(
-        float_or=lambda value, default: default if value in (None, "") else float(value),
-        int_or=lambda value, default: default if value in (None, "") else int(value),
         apply_axes_limits=lambda *_args, **_kwargs: None,
         fig_to_b64=lambda _fig: "",
         clean_trace_svg=lambda *_args, **_kwargs: b"",
@@ -159,8 +167,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "dry_run": False,
                 },
                 pyabf_mod=FakePyabf,
-                float_or=lambda value, _default: float(value),
-                int_or=lambda value, _default: int(value),
                 root_dir=root,
             )
 
@@ -211,8 +217,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "segment_mode": "auto",
                 },
                 pyabf_mod=FakePyabf,
-                float_or=lambda value, _default: float(value),
-                int_or=lambda value, _default: int(value),
                 root_dir=root,
             )
 
@@ -270,8 +274,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "pure_csv": True,
                 },
                 pyabf_mod=FakePyabf,
-                float_or=lambda value, _default: float(value),
-                int_or=lambda value, _default: int(value),
                 root_dir=root,
             )
 
@@ -326,8 +328,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "segment_mode": "auto",
                 },
                 pyabf_mod=FakePyabf,
-                float_or=lambda value, _default: float(value),
-                int_or=lambda value, _default: int(value),
                 root_dir=root,
             )
 
@@ -382,8 +382,6 @@ class AbfBatchServiceTests(unittest.TestCase):
                     "segment_mode": "auto",
                 },
                 pyabf_mod=FakePyabf,
-                float_or=lambda value, _default: float(value),
-                int_or=lambda value, _default: int(value),
                 root_dir=root,
             )
 
@@ -821,9 +819,6 @@ class EmgServiceTests(unittest.TestCase):
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
-                float_or=lambda value, default: float(value)
-                if value not in (None, "")
-                else default,
                 line_color="#3E6AE1",
                 mode_is_save=lambda _mode: False,
             )
@@ -848,9 +843,6 @@ class EmgServiceTests(unittest.TestCase):
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
-                float_or=lambda value, default: float(value)
-                if value not in (None, "")
-                else default,
                 line_color="#3E6AE1",
                 mode_is_save=lambda _mode: False,
             )
@@ -874,9 +866,6 @@ class EmgServiceTests(unittest.TestCase):
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
-                float_or=lambda value, default: float(value)
-                if value not in (None, "")
-                else default,
                 line_color="#3E6AE1",
                 mode_is_save=lambda mode: mode == "save",
             )
@@ -926,9 +915,6 @@ class EmgServiceTests(unittest.TestCase):
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
-                float_or=lambda value, default: float(value)
-                if value not in (None, "")
-                else default,
                 line_color="#3E6AE1",
                 mode_is_save=lambda mode: mode == "save",
             )
@@ -973,9 +959,6 @@ class EmgServiceTests(unittest.TestCase):
                 find_peaks=None,
                 peak_widths=None,
                 fig_to_b64=lambda _fig: "",
-                float_or=lambda value, default: float(value)
-                if value not in (None, "")
-                else default,
                 line_color="#3E6AE1",
                 mode_is_save=lambda mode: mode == "save",
             )

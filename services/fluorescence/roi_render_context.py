@@ -7,6 +7,7 @@ from matplotlib.patches import Circle, Rectangle
 
 from services.fluorescence import roi as fl_roi
 from services.fluorescence import route_helpers as fl_helpers
+from services.fluorescence.stack_processing import int_or
 from services.matplotlib_utils import new_subplots
 from services.output_naming import resolve_output_dir
 
@@ -18,7 +19,6 @@ def build_roi_render_context(
     image_draw_mod,
     image_font_mod,
     fig_to_b64,
-    int_or,
     infer_pixel_size_um_from_tiff,
 ) -> dict:
     _fl_normalize_display_2d = fl_helpers.normalize_display_2d

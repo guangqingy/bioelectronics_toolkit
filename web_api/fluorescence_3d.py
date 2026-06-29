@@ -33,8 +33,6 @@ from .response import api_ok
 
 def register_fluorescence_3d_routes(app, fl):
     err = fl["err"]
-    int_or = fl["int_or"]
-    float_or = fl["float_or"]
     jobs = fl["jobs"]
 
     _fl_frame_to_b64 = fl["_fl_frame_to_b64"]
@@ -43,8 +41,6 @@ def register_fluorescence_3d_routes(app, fl):
     _fl_tiff_series_info = fl["_fl_tiff_series_info"]
 
     volume_export_ctx = Volume3DExportContext(
-        int_or=int_or,
-        float_or=float_or,
         denoise_options=list(fl["_FL_DENOISE_OPTIONS"]),
         bool_value=fl["_fl_bool"],
         clean_choice=fl["_fl_clean_choice"],
@@ -102,15 +98,15 @@ def register_fluorescence_3d_routes(app, fl):
     @request_schema(Fluorescence3dPreviewSliceRequest)
     def api_fl_3d_preview_slice():
         try:
-            d = parse_json_payload(Fluorescence3dPreviewSliceRequest)
-            path = d.path.strip()
-            z = int_or(d.z, 0)
-            c = int_or(d.c, 0)
-            t = int_or(d.t, 0)
-            extra_indices = d.extra_indices if isinstance(d.extra_indices, dict) else {}
-            lut = str(d.lut or "Gray")
-            p_low = max(0.0, min(49.0, float_or(d.p_low, 1.0)))
-            p_high = max(51.0, min(100.0, float_or(d.p_high, 99.0)))
+            body = parse_json_payload(Fluorescence3dPreviewSliceRequest)
+            path = body.path.strip()
+            z = body.z if body.z is not None else 0
+            c = body.c if body.c is not None else 0
+            t = body.t if body.t is not None else 0
+            extra_indices = body.extra_indices if isinstance(body.extra_indices, dict) else {}
+            lut = str(body.lut or "Gray")
+            p_low = max(0.0, min(49.0, body.p_low if body.p_low is not None else 1.0))
+            p_high = max(51.0, min(100.0, body.p_high if body.p_high is not None else 99.0))
             p = Path(path)
             if not p.exists():
                 return err(f"Input TIFF not found: {path}")

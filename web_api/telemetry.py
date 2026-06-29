@@ -7,17 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from pydantic import Field, ValidationError
+from pydantic import Field
 
-from .request_validation import (
-    RequestModel,
-    parse_json_payload,
-    request_schema,
-    validation_error_response,
-)
 from .preferences import preferences_path
+from .request_validation import RequestModel, api_endpoint
 from .response import api_ok
-
 
 _telemetry_lock = threading.Lock()
 _ALLOWED_EVENTS = {"page_open", "export_click", "startup"}
@@ -99,65 +93,46 @@ def _record_telemetry_event(
 
 def register_telemetry_routes(app, ctx) -> None:
     base_dir = Path(ctx.BASE_DIR)
-    err = ctx.err
     prefs_path = preferences_path(base_dir)
     telemetry_path = base_dir / ".dataprocess_cache" / "telemetry.json"
 
     @app.route("/api/telemetry/page", methods=["POST"])
-    @request_schema(TelemetryPageRequest)
-    def api_telemetry_page():
-        try:
-            payload = parse_json_payload(TelemetryPageRequest)
-            return api_ok(
-                _record_telemetry_event(
-                    app=app,
-                    prefs_path=prefs_path,
-                    telemetry_path=telemetry_path,
-                    event="page_open",
-                    view=payload.view,
-                )
+    @api_endpoint(TelemetryPageRequest, dump=False)
+    def api_telemetry_page(payload):
+        return api_ok(
+            _record_telemetry_event(
+                app=app,
+                prefs_path=prefs_path,
+                telemetry_path=telemetry_path,
+                event="page_open",
+                view=payload.view,
             )
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception as exc:
-            return err(exc)
+        )
 
     @app.route("/api/telemetry/export", methods=["POST"])
-    @request_schema(TelemetryExportRequest)
-    def api_telemetry_export():
-        try:
-            payload = parse_json_payload(TelemetryExportRequest)
-            return api_ok(
-                _record_telemetry_event(
-                    app=app,
-                    prefs_path=prefs_path,
-                    telemetry_path=telemetry_path,
-                    event="export_click",
-                    view=payload.view,
-                    label=payload.export_type,
-                )
+    @api_endpoint(TelemetryExportRequest, dump=False)
+    def api_telemetry_export(payload):
+        return api_ok(
+            _record_telemetry_event(
+                app=app,
+                prefs_path=prefs_path,
+                telemetry_path=telemetry_path,
+                event="export_click",
+                view=payload.view,
+                label=payload.export_type,
             )
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception as exc:
-            return err(exc)
+        )
 
     @app.route("/api/telemetry/event", methods=["POST"])
-    @request_schema(TelemetryEventRequest)
-    def api_telemetry_event():
-        try:
-            payload = parse_json_payload(TelemetryEventRequest)
-            return api_ok(
-                _record_telemetry_event(
-                    app=app,
-                    prefs_path=prefs_path,
-                    telemetry_path=telemetry_path,
-                    event=payload.event,
-                    view=payload.view,
-                    label=payload.label,
-                )
+    @api_endpoint(TelemetryEventRequest, dump=False)
+    def api_telemetry_event(payload):
+        return api_ok(
+            _record_telemetry_event(
+                app=app,
+                prefs_path=prefs_path,
+                telemetry_path=telemetry_path,
+                event=payload.event,
+                view=payload.view,
+                label=payload.label,
             )
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        except Exception as exc:
-            return err(exc)
+        )

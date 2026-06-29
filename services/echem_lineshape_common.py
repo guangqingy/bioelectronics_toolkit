@@ -5,7 +5,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 DEFAULT_CHAMBERS = [1, 2, 3]
 DEFAULT_CROP_T0 = -0.005
 DEFAULT_CROP_T1 = 0.020

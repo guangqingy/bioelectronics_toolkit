@@ -4,7 +4,7 @@ import json
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -17,6 +17,7 @@ from services.abf_batch_signals import (
     _segment_bounds,
 )
 
+
 def _write_operation_log(root_dir: Path, payload: dict[str, Any]) -> str:
     log_dir = root_dir / ".dataprocess_cache" / "operation_logs"
     log_dir.mkdir(parents=True, exist_ok=True)
@@ -26,12 +27,14 @@ def _write_operation_log(root_dir: Path, payload: dict[str, Any]) -> str:
     return str(path)
 
 
+def _num(value: Any, default: Any) -> Any:
+    return default if value is None else value
+
+
 def process_payload(
     data: dict[str, Any],
     *,
     pyabf_mod: Any,
-    float_or: Callable[[Any, float | None], float | None],
-    int_or: Callable[[Any, int], int],
     root_dir: Path,
 ) -> dict[str, Any]:
     """Process a batch of ABF files and return the web response payload."""
@@ -52,9 +55,9 @@ def process_payload(
             powers = [float(x) for x in data.get("powers", "").split(",") if x.strip()]
     except ValueError as exc:
         raise ValueError("Power list must be comma-separated numbers") from exc
-    i_ch = int_or(data.get("i_ch", 0), 0)
-    v_ch = int_or(data.get("v_ch", 1), 1)
-    analog_ch = int_or(data.get("analog_ch", 2), 2)
+    i_ch = _num(data.get("i_ch"), 0)
+    v_ch = _num(data.get("v_ch"), 1)
+    analog_ch = _num(data.get("analog_ch"), 2)
     move_files = bool(data.get("move_files", True))
     reindex_seq = bool(data.get("reindex_seq", False))
     dry_run = bool(data.get("dry_run", False))
@@ -62,8 +65,8 @@ def process_payload(
     segment_mode = str(data.get("segment_mode", "auto") or "auto").strip().lower()
     if segment_mode not in {"auto", "manual"}:
         raise ValueError("Segment mode must be 'auto' or 'manual'")
-    segment_t0 = float_or(data.get("segment_t0", 0.1), 0.1)
-    segment_t1 = float_or(data.get("segment_t1", 0.7), 0.7)
+    segment_t0 = _num(data.get("segment_t0"), 0.1)
+    segment_t1 = _num(data.get("segment_t1"), 0.7)
     if segment_t0 is None or segment_t1 is None or not segment_t1 > segment_t0:
         raise ValueError("Segment window requires t1 > t0")
 

@@ -9,6 +9,7 @@ import pandas as pd
 from services.histology_tiff_io import SUPPORTED_IMAGE_SUFFIXES
 from services.histology_tiff_models import RAW_OLYMPUS_SUFFIXES
 
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 

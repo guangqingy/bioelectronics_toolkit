@@ -38,12 +38,12 @@ Run locally:
 
 ```bash
 ruff check .
-ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
-ruff check web_api --select F --ignore E402
+ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402,E501
+ruff check web_api --select F --ignore E402,E501
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 bte-web --self-check
 python3 -m pytest tests --ignore=tests/e2e -v
-coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=58
+coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=62
 python3 dev_scripts/check_services_ratio.py
 python3 dev_scripts/check_services_ratio.py --check-loc-budget --warn-only
 python3 dev_scripts/check_private_service_usage.py

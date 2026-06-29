@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import Field
 
-from .request_validation import RequestModel
+from .request_validation import OptFloat, OptInt, RequestModel
 
 
 class EmgAnalysisBrowseRequest(RequestModel):
@@ -13,72 +13,72 @@ class EmgAnalysisBrowseRequest(RequestModel):
 
 class EmgAnalysisLoadRequest(RequestModel):
     path: str = Field(min_length=1)
-    merge_pair: Any = False
-    preview_merge_pair: Any = None
+    merge_pair: bool = False
+    preview_merge_pair: bool | None = None
 
 
 class EmgAnalysisViewRequest(EmgAnalysisLoadRequest):
     channel: Any = 0
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    invert_y: Any = False
+    x_min: OptFloat = None
+    x_max: OptFloat = None
+    y_min: OptFloat = None
+    y_max: OptFloat = None
+    invert_y: bool = False
     downsample: Any = "auto"
     dsf: Any = None
     filter_type: str = "none"
-    filter_low_hz: Any = None
-    filter_high_hz: Any = None
-    filter_notch_hz: Any = None
-    filter_order: Any = None
-    filter_notch_q: Any = None
-    fig_width_in: Any = None
-    fig_height_in: Any = None
-    fig_dpi: Any = None
-    trace_line_width: Any = None
+    filter_low_hz: OptFloat = None
+    filter_high_hz: OptFloat = None
+    filter_notch_hz: OptFloat = None
+    filter_order: OptInt = None
+    filter_notch_q: OptFloat = None
+    fig_width_in: OptFloat = None
+    fig_height_in: OptFloat = None
+    fig_dpi: OptInt = None
+    trace_line_width: OptFloat = None
     trace_color: str = "#3E6AE1"
-    show_grid: Any = False
-    show_title: Any = False
+    show_grid: bool = False
+    show_title: bool = False
 
 
 class EmgAnalysisProcessingRequest(EmgAnalysisViewRequest):
     process_type: str = "envelope"
-    smooth_ms: Any = None
-    envelope_smooth_ms: Any = None
+    smooth_ms: OptFloat = None
+    envelope_smooth_ms: OptFloat = None
     smooth_method: str = "moving"
-    sg_poly: Any = None
-    fit_degree: Any = None
-    fit_show_raw: Any = False
+    sg_poly: OptInt = None
+    fit_degree: OptInt = None
+    fit_show_raw: bool = False
     fft_window: str = "hann"
-    fft_max_hz: Any = None
-    fft_log: Any = False
-    stft_ms: Any = None
-    stft_overlap_pct: Any = None
-    stft_max_hz: Any = None
+    fft_max_hz: OptFloat = None
+    fft_log: bool = False
+    stft_ms: OptFloat = None
+    stft_overlap_pct: OptFloat = None
+    stft_max_hz: OptFloat = None
     stft_cmap: str = "viridis"
-    stft_log: Any = False
+    stft_log: bool = False
     fmt: str = "csv"
-    mode: Any = "download"
+    mode: str = "download"
 
 
 class EmgAnalysisExportChannelRequest(EmgAnalysisViewRequest):
     fmt: str = "csv"
-    mode: Any = "download"
+    mode: str = "download"
 
 
 class EmgAnalysisExportAllRequest(RequestModel):
     path: str = Field(min_length=1)
-    mode: Any = "download"
-    merge_pair: Any = True
-    preview_merge_pair: Any = None
-    wide_csv: Any = False
+    mode: str = "download"
+    merge_pair: bool = True
+    preview_merge_pair: bool | None = None
+    wide_csv: bool = False
 
 
 class EmgAnalysisExportQueueRequest(RequestModel):
-    paths: list[Any] = Field(default_factory=list)
-    merge_pair: Any = True
-    preview_merge_pair: Any = None
-    wide_csv: Any = False
+    paths: list[str] = Field(default_factory=list)
+    merge_pair: bool = True
+    preview_merge_pair: bool | None = None
+    wide_csv: bool = False
 
 
 class EmgAnalysisRenamePreviewRequest(RequestModel):
@@ -87,17 +87,17 @@ class EmgAnalysisRenamePreviewRequest(RequestModel):
     replace: str = ""
     prefix: str = ""
     suffix: str = ""
-    recursive: Any = True
-    include_root: Any = True
-    include_files: Any = True
-    include_dirs: Any = True
-    use_regex: Any = False
-    case_sensitive: Any = True
-    preserve_extension: Any = True
-    skip_hidden: Any = True
+    recursive: bool = True
+    include_root: bool = True
+    include_files: bool = True
+    include_dirs: bool = True
+    use_regex: bool = False
+    case_sensitive: bool = True
+    preserve_extension: bool = True
+    skip_hidden: bool = True
     extensions: Any = ".rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg"
     max_items: int = Field(default=5000, ge=1, le=50000)
 
 
 class EmgAnalysisRenameApplyRequest(EmgAnalysisRenamePreviewRequest):
-    confirm: Any = False
+    confirm: bool = False

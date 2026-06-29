@@ -34,6 +34,7 @@ from services.histology_tiff_project import (
     PROJECT_PROTOCOL as TIFF_PROJECT_PROTOCOL,
 )
 
+
 def _select_roi_for_debug(
     rois: list[dict[str, Any]],
     roi_id: str = "",

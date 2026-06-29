@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from services.histology_analysis import ANALYSIS_VERSION, _now_iso, _write_json
 from services.histology_batch_core import (
     TREATMENT_SORT_ORDER,
     _aggregate_roi_rows_by_entry,
@@ -37,7 +38,6 @@ from services.histology_batch_outputs import (
     _write_batch_outputs,
     _write_csv_records,
 )
-from services.histology_analysis import ANALYSIS_VERSION, _now_iso, _write_json
 from services.histology_data_project_paths import _data_project_dir
 from services.matplotlib_utils import close_figure, new_subplots
 

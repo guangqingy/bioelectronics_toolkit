@@ -17,8 +17,6 @@ class WebApiContext:
     browse_files: Callable[..., Any]
     browse_files_recursive: Callable[..., Any]
     fig_to_b64: Callable[..., Any]
-    float_or: Callable[..., Any]
-    int_or: Callable[..., Any]
     request_data: Callable[..., Any]
     apply_axes_limits: Callable[..., Any]
     BASE_DIR: Path

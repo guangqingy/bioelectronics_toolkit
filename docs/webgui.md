@@ -239,12 +239,12 @@ Run these before committing WebGUI changes:
 
 ```bash
 python3 -m ruff check .
-python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402
-python3 -m ruff check web_api --select F --ignore E402
+python3 -m ruff check services tests desktop_apps/web_launcher.py desktop_apps/launchers desktop_apps/native desktop_apps/cli --select E,F,W,I --ignore E402,E501
+python3 -m ruff check web_api --select F --ignore E402,E501
 python3 -m compileall -q -f $(git ls-files '*.py' | grep -v '^\.dataprocess_cache/')
 bte-web --self-check
 python3 -m pytest tests --ignore=tests/e2e -v
-coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=58
+coverage run --source=services -m pytest tests --ignore=tests/e2e && coverage report --fail-under=62
 python3 dev_scripts/check_services_ratio.py --warn-only
 python3 dev_scripts/check_no_pyplot.py
 ```
@@ -253,7 +253,7 @@ The unit/contract suite uses Flask's test client, so it does not require
 launching a separate browser or server. Browser-level smoke coverage lives under
 `tests/e2e` and runs with `python3 -m pytest tests/e2e`.
 
-Service coverage is currently ratcheted at the measured baseline (`58%`) so CI
+Service coverage is currently ratcheted at the measured baseline (`62%`) so CI
 uses the signal instead of only uploading it. Raise this floor as new
 echem/ABF/EMG/ROI golden tests land.
 

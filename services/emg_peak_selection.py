@@ -27,20 +27,40 @@ class EmgPeakSelectionService:
         find_peaks: Callable | None,
         peak_widths: Callable | None,
         fig_to_b64: Callable[[Any], str],
-        float_or: Callable[[Any, float | None], float | None],
         line_color: str,
         mode_is_save: Callable[[Any], bool],
     ):
         self.find_peaks = find_peaks
         self.peak_widths = peak_widths
         self.fig_to_b64 = fig_to_b64
-        self.float_or = float_or
         self.line_color = line_color
         self.mode_is_save = mode_is_save
 
     def _require_scipy(self) -> None:
         if self.find_peaks is None or self.peak_widths is None:
             raise ValueError("scipy not installed")
+
+    @staticmethod
+    def _num(value: Any, default: float) -> float:
+        """Apply a numeric default for blank/unset typed fields.
+
+        Type coercion (str -> float/int) now happens at the request schema
+        boundary (OptFloat/OptInt), so this only fills in the default when a
+        field was left blank (None).
+        """
+        return default if value is None else value
+
+    @staticmethod
+    def _float(value: Any, default: float | None = None) -> float | None:
+        """Coerce a value from the untyped ``peaks`` list to float.
+
+        Items inside ``peaks: list[Any]`` are not validated by the request
+        schema, so per-item numeric fields still need explicit coercion.
+        """
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     @staticmethod
     def _as_bool(value: Any, default: bool = False) -> bool:
@@ -153,8 +173,8 @@ class EmgPeakSelectionService:
 
     def plot_payload(self, data: dict[str, Any]) -> dict[str, str]:
         path = data.get("path", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
         invert_signal = self._invert_signal_enabled(data)
         t, v, t_col, v_col = self._load_windowed_signal(
             path, x_min, x_max, invert_signal=invert_signal
@@ -173,10 +193,10 @@ class EmgPeakSelectionService:
     ) -> dict[str, Any]:
         """Return decimated EMG samples for client-side interactive plotting."""
         path = data.get("path", "")
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
-        y_min = self.float_or(data.get("y_min"), None)
-        y_max = self.float_or(data.get("y_max"), None)
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
+        y_min = data.get("y_min")
+        y_max = data.get("y_max")
         invert_signal = self._invert_signal_enabled(data)
         t, v, t_col, v_col = self._load_windowed_signal(
             path, x_min, x_max, invert_signal=invert_signal
@@ -201,21 +221,21 @@ class EmgPeakSelectionService:
         self._require_scipy()
 
         path = data.get("path", "")
-        height = self.float_or(data.get("pk_height"), None)
-        prom = self.float_or(data.get("pk_prom"), None)
-        dist = self.float_or(data.get("pk_dist", 100), 100)
-        minw = self.float_or(data.get("pk_minw"), None)
-        wlen = self.float_or(data.get("pk_wlen"), None)
-        x_min = self.float_or(data.get("x_min"), None)
-        x_max = self.float_or(data.get("x_max"), None)
+        height = data.get("pk_height")
+        prom = data.get("pk_prom")
+        dist = self._num(data.get("pk_dist"), 100)
+        minw = data.get("pk_minw")
+        wlen = data.get("pk_wlen")
+        x_min = data.get("x_min")
+        x_max = data.get("x_max")
         polarity = str(data.get("polarity", "both")).strip().lower()
         if polarity not in {"positive", "negative", "both"}:
             polarity = "both"
         adaptive_sigma = self._as_bool(data.get("adaptive_sigma"), False)
         invert_signal = self._invert_signal_enabled(data)
-        sigma_prom = self.float_or(data.get("sigma_prom"), 1.0)
-        sigma_height = self.float_or(data.get("sigma_height"), 1.0)
-        dur = self.float_or(data.get("pk_dur"), None)
+        sigma_prom = self._num(data.get("sigma_prom"), 1.0)
+        sigma_height = self._num(data.get("sigma_height"), 1.0)
+        dur = data.get("pk_dur")
 
         df = self._read_csv(path)
         t_col, v_col = emg_service.pick_columns(df)
@@ -316,10 +336,10 @@ class EmgPeakSelectionService:
         self._require_scipy()
 
         path = data.get("path", "")
-        height = self.float_or(data.get("height"), None)
-        prom = self.float_or(data.get("prominence"), None)
-        dist = self.float_or(data.get("distance", 100), 100)
-        dur = self.float_or(data.get("duration"), None)
+        height = data.get("height")
+        prom = data.get("prominence")
+        dist = self._num(data.get("distance"), 100)
+        dur = data.get("duration")
 
         df = self._read_csv(path)
         t_col, v_col = emg_service.pick_columns(df)
@@ -452,7 +472,7 @@ class EmgPeakSelectionService:
         t = t_raw[valid]
         v = v_raw[valid]
 
-        half_ms = self.float_or(data.get("half_ms"), 100.0)
+        half_ms = self._num(data.get("half_ms"), 100.0)
         if half_ms is None or half_ms <= 0:
             half_ms = 100.0
         half_s = float(half_ms) / 1000.0
@@ -465,7 +485,7 @@ class EmgPeakSelectionService:
             source_kind = str(peak.get("source_kind") or "").strip().lower()
             if bool(peak.get("baseline")) or source_kind.startswith("baseline"):
                 continue
-            duration = self.float_or(
+            duration = self._float(
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
             )
             if np.isfinite(duration) and duration > 0:
@@ -477,16 +497,16 @@ class EmgPeakSelectionService:
         for peak in active_peaks:
             source_kind = str(peak.get("source_kind") or "").strip().lower()
             is_baseline = bool(peak.get("baseline")) or source_kind.startswith("baseline")
-            baseline_source_start = self.float_or(
+            baseline_source_start = self._float(
                 peak.get("baseline_source_start_s", peak.get("baseline_start_s")), None
             )
-            baseline_source_end = self.float_or(
+            baseline_source_end = self._float(
                 peak.get("baseline_source_end_s", peak.get("baseline_end_s")), None
             )
             if is_baseline and baseline_source_start is None:
-                baseline_source_start = self.float_or(peak.get("segment_start_s"), None)
+                baseline_source_start = self._float(peak.get("segment_start_s"), None)
             if is_baseline and baseline_source_end is None:
-                baseline_source_end = self.float_or(peak.get("segment_end_s"), None)
+                baseline_source_end = self._float(peak.get("segment_end_s"), None)
             if (
                 baseline_source_start is not None
                 and baseline_source_end is not None
@@ -502,7 +522,7 @@ class EmgPeakSelectionService:
                 if peak.get("peak_idx", peak.get("idx", None)) is not None
                 else -1
             )
-            peak_time = self.float_or(peak.get("time_s", peak.get("time")), None)
+            peak_time = self._float(peak.get("time_s", peak.get("time")), None)
             if is_baseline and baseline_source_start is not None and baseline_source_end is not None:
                 peak_time = (
                     float(peak_time)
@@ -518,7 +538,7 @@ class EmgPeakSelectionService:
             segment_start = float(peak_time) - half_s
             segment_end = float(peak_time) + half_s
             group = str(peak.get("group", "")).strip()
-            duration = self.float_or(
+            duration = self._float(
                 peak.get("duration", peak.get("duration_ms", peak.get("fwhm_ms"))), np.nan
             )
             if is_baseline and (not np.isfinite(duration) or duration <= 0):
@@ -526,7 +546,7 @@ class EmgPeakSelectionService:
             height = (
                 float(v[peak_index])
                 if is_baseline
-                else self.float_or(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
+                else self._float(peak.get("height", peak.get("height_uV")), float(v[peak_index]))
             )
             baseline_fill_seed = peak.get("baseline_fill_seed", peak.get("baseline_seed"))
             baseline_rep = peak.get("baseline_rep")
@@ -615,8 +635,8 @@ class EmgPeakSelectionService:
             for index, row in enumerate(sorted_rows):
                 peak_time = float(row["peak_time_s"])
                 source_kind = str(row.get("source_kind") or "peak")
-                segment_start = self.float_or(row.get("segment_start_s"), None)
-                segment_end = self.float_or(row.get("segment_end_s"), None)
+                segment_start = self._float(row.get("segment_start_s"), None)
+                segment_end = self._float(row.get("segment_end_s"), None)
                 if segment_start is None or segment_end is None or segment_end <= segment_start:
                     segment_start = peak_time - half_s
                     segment_end = peak_time + half_s

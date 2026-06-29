@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unittest
 from pathlib import Path
 from subprocess import check_output
@@ -80,6 +81,22 @@ class RepositoryAssetTests(unittest.TestCase):
                     break
 
         self.assertEqual([], offenders)
+
+    def test_frontend_uses_single_html_escape_helper(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        definitions = []
+        old_callers = []
+        definition_re = re.compile(r"\bfunction\s+(escHtml|escapeHtml|dpEscapeHtml)\s*\(")
+        old_call_re = re.compile(r"\b(?:escHtml|escapeHtml)\s*\(")
+        for path in (root / "web_static" / "js").rglob("*.js"):
+            text = path.read_text(encoding="utf-8")
+            rel = path.relative_to(root).as_posix()
+            definitions.extend(f"{rel}:{match.group(1)}" for match in definition_re.finditer(text))
+            if old_call_re.search(text):
+                old_callers.append(rel)
+
+        self.assertEqual(["web_static/js/dp_dom.js:dpEscapeHtml"], definitions)
+        self.assertEqual([], old_callers)
 
 
 if __name__ == "__main__":

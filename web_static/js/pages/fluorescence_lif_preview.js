@@ -79,7 +79,7 @@ function loadLifPreview() {
     if (d.error) throw new Error(d.error);
     preview.innerHTML = `<img src="data:image/png;base64,${d.img}" alt="LIF frame"/>`;
   }).catch(e => {
-    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${escapeHtml(e.message)}</div>`;
+    preview.innerHTML = `<div class="plot-placeholder">Preview error: ${dpEscapeHtml(e.message)}</div>`;
     setStatus('status', 'Preview error', 'error');
   });
 }

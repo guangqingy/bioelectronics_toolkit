@@ -102,33 +102,37 @@ function exportFig(fmt) {
     setStatus('status', 'No channel selected', 'error');
     return;
   }
-  const params = new URLSearchParams({
+  const payload = {
     path: _currentFile,
     channel: _currentChannel,
     fmt,
     mode: 'save',
     merge_pair: previewMergeEnabled() ? '1' : '0',
     downsample: currentDownsampleValue(),
-  });
+  };
   const viewParams = currentViewParams();
   ['x_min', 'x_max', 'y_min', 'y_max', 'filter_low_hz', 'filter_high_hz', 'filter_notch_hz', 'filter_order', 'filter_notch_q'].forEach(key => {
-    if (viewParams[key] !== null && Number.isFinite(viewParams[key])) params.set(key, String(viewParams[key]));
+    if (viewParams[key] !== null && Number.isFinite(viewParams[key])) payload[key] = viewParams[key];
   });
-  params.set('invert_y', viewParams.invert_y ? '1' : '0');
-  params.set('filter_type', viewParams.filter_type || 'none');
+  payload.invert_y = viewParams.invert_y;
+  payload.filter_type = viewParams.filter_type || 'none';
   const figureParams = currentFigureParams();
   ['fig_width_in', 'fig_height_in', 'fig_dpi', 'trace_line_width'].forEach(key => {
-    if (figureParams[key] !== null && Number.isFinite(figureParams[key])) params.set(key, String(figureParams[key]));
+    if (figureParams[key] !== null && Number.isFinite(figureParams[key])) payload[key] = figureParams[key];
   });
-  params.set('trace_color', figureParams.trace_color || '#3E6AE1');
-  params.set('show_grid', figureParams.show_grid ? '1' : '0');
-  params.set('show_title', figureParams.show_title ? '1' : '0');
-  const url = '/api/emg/analysis/export_channel?' + params.toString();
+  payload.trace_color = figureParams.trace_color || '#3E6AE1';
+  payload.show_grid = figureParams.show_grid;
+  payload.show_title = figureParams.show_title;
   setStatus('status', 'Exporting current channel...', 'loading');
-  fetch(url)
-    .then(async r => {
-      const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.error || 'Export failed');
+  dpRunJobEndpoint('/api/emg/analysis/export_channel_job', payload, {
+    interval_ms: 800,
+    on_update: job => {
+      const pct = typeof job.progress === 'number' ? ` ${Math.round(job.progress * 100)}%` : '';
+      const msg = job.message ? ` · ${job.message}` : '';
+      setStatus('status', `Exporting current channel${pct}${msg}`, 'loading');
+    },
+  })
+    .then(d => {
       setStatus('status', 'Exported: ' + (d.saved_path || 'ok'), 'ok');
       recordRunHistory({
         view: 'emg_analysis',

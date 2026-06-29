@@ -3,88 +3,37 @@
 # the GitHub issue draft in docs/loc_budget_issue_drafts.md.
 import traceback
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pandas as pd
 from flask import Response, jsonify
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
 from services import echem as echem_service
 from services.matplotlib_utils import close_figure, new_subplots
-from web_api.common import as_bool, mode_is_save
+from web_api.common import as_bool, float_or, mode_is_save
 
+from .echem_photocurrent_request_schemas import (
+    EchemPhotocurrentBrowseRequest,
+    EchemPhotocurrentDetectRequest,
+    EchemPhotocurrentExportRequest,
+    EchemPhotocurrentFigureExportRequest,
+    EchemPhotocurrentLoadRequest,
+    EchemPhotocurrentTraceDataRequest,
+)
 from .jobs import submit_json_task
 from .request_validation import (
-    RequestModel,
     parse_json_payload,
     request_schema,
     validation_error_response,
 )
-from .response import api_ok
-
-
-class EchemPhotocurrentBrowseRequest(RequestModel):
-    folder: str = ""
-
-
-class EchemPhotocurrentLoadRequest(RequestModel):
-    path: str = Field(min_length=1)
-
-
-class EchemPhotocurrentTraceDataRequest(EchemPhotocurrentLoadRequest):
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    t0: Any = None
-    t1: Any = None
-
-
-class EchemPhotocurrentDetectRequest(RequestModel):
-    path: str = Field(min_length=1)
-    t0: Any = None
-    t1: Any = None
-    pos_min_mA: Any = None
-    neg_min_abs_mA: Any = None
-    min_delay_ms: Any = 1.0
-    max_delay_ms: Any = 15.0
-    min_pos_distance_ms: Any = 200.0
-    use_all: Any = True
-    pos_thresh: Any = None
-    neg_thresh: Any = None
-    min_dist: Any = None
-
-
-class EchemPhotocurrentExportRequest(RequestModel):
-    path: str = Field(min_length=1)
-    pairs: list[Any] = Field(default_factory=list)
-    mode: str = "download"
-    window: list[Any] = Field(default_factory=list)
-    t0: Any = None
-    t1: Any = None
-    pos_min_mA: Any = None
-    neg_min_abs_mA: Any = None
-    pair_window_ms: Any = 50.0
-
-
-class EchemPhotocurrentFigureExportRequest(RequestModel):
-    path: str = Field(min_length=1)
-    fmt: str = "png"
-    pairs: list[Any] = Field(default_factory=list)
-    window: list[Any] = Field(default_factory=list)
-    x_min: Any = None
-    x_max: Any = None
-    y_min: Any = None
-    y_max: Any = None
-    dpi: Any = 300
+from .response import api_ok, attachment_content_disposition
 
 
 def register_echem_photocurrent_routes(app, ctx):
     err = ctx.err
     browse_files = ctx.browse_files
     fig_to_b64 = ctx.fig_to_b64
-    float_or = ctx.float_or
     line_color = ctx.LINE_COLOR
     jobs = ctx.jobs
     find_peaks = ctx.find_peaks
@@ -110,10 +59,10 @@ def register_echem_photocurrent_routes(app, ctx):
         )
         return outputs
 
-    def _echem_photocurrent_export_payload(d: dict) -> dict:
-        pairs = d.get("pairs", [])
-        path = d.get("path", "")
-        mode = d.get("mode", "download")
+    def _echem_photocurrent_export_payload(body: dict) -> dict:
+        pairs = body.get("pairs", [])
+        path = body.get("path", "")
+        mode = body.get("mode", "download")
         if not pairs:
             raise ValueError("No pairs to export")
 
@@ -130,16 +79,16 @@ def register_echem_photocurrent_routes(app, ctx):
             output_folder = src.with_name(src.stem)
             output_folder.mkdir(parents=True, exist_ok=True)
 
-            window = d.get("window", [])
+            window = body.get("window", [])
             if isinstance(window, list) and len(window) >= 2:
                 win_t0 = float_or(window[0], np.nan)
                 win_t1 = float_or(window[1], np.nan)
             else:
-                win_t0 = float_or(d.get("t0"), np.nan)
-                win_t1 = float_or(d.get("t1"), np.nan)
+                win_t0 = float_or(body.get("t0"), np.nan)
+                win_t1 = float_or(body.get("t1"), np.nan)
 
-            pos_min_mA = float_or(d.get("pos_min_mA"), np.nan)
-            neg_min_abs_mA = float_or(d.get("neg_min_abs_mA"), np.nan)
+            pos_min_mA = float_or(body.get("pos_min_mA"), np.nan)
+            neg_min_abs_mA = float_or(body.get("neg_min_abs_mA"), np.nan)
 
             summary_path = output_folder / f"{src.stem}_pairs_summary.csv"
             rows = []
@@ -196,7 +145,7 @@ def register_echem_photocurrent_routes(app, ctx):
                         ",".join(f"{v:.9g}" if isinstance(v, float) else str(v) for v in r) + "\n"
                     )
 
-            window_ms = float_or(d.get("pair_window_ms"), 50.0)
+            window_ms = float_or(body.get("pair_window_ms"), 50.0)
             if window_ms is None or window_ms <= 0:
                 window_ms = 50.0
 
@@ -243,10 +192,10 @@ def register_echem_photocurrent_routes(app, ctx):
         save_body["mode"] = "save"
         return _echem_photocurrent_export_payload(save_body)["data"]
 
-    def _figure_window(d: dict, t: np.ndarray) -> tuple[float, float]:
-        window = d.get("window", [])
-        x0 = float_or(d.get("x_min"), None)
-        x1 = float_or(d.get("x_max"), None)
+    def _figure_window(body: dict, t: np.ndarray) -> tuple[float, float]:
+        window = body.get("window", [])
+        x0 = float_or(body.get("x_min"), None)
+        x1 = float_or(body.get("x_max"), None)
         if (x0 is None or x1 is None) and isinstance(window, list) and len(window) >= 2:
             x0 = float_or(window[0], None)
             x1 = float_or(window[1], None)
@@ -270,23 +219,23 @@ def register_echem_photocurrent_routes(app, ctx):
             return None
         return int(np.argmin(np.abs(t - marker_t)))
 
-    def _echem_photocurrent_figure_export_payload(d: dict) -> dict:
-        src = Path(d.get("path", ""))
+    def _echem_photocurrent_figure_export_payload(body: dict) -> dict:
+        src = Path(body.get("path", ""))
         if not src.exists():
             raise ValueError(f"File not found: {src}")
-        fmt = str(d.get("fmt", "png") or "png").lower()
+        fmt = str(body.get("fmt", "png") or "png").lower()
         if fmt not in {"png", "svg"}:
             raise ValueError("Figure format must be png or svg")
 
         t, i_raw, _t_col, _i_col = _load_echem(str(src))
         if len(t) == 0:
             raise ValueError("No data points found in file")
-        x0, x1 = _figure_window(d, t)
+        x0, x1 = _figure_window(body, t)
         mask = (t >= x0) & (t <= x1)
         if not np.any(mask):
             raise ValueError("No points in the current preview window")
-        y_min = float_or(d.get("y_min"), None)
-        y_max = float_or(d.get("y_max"), None)
+        y_min = float_or(body.get("y_min"), None)
+        y_max = float_or(body.get("y_max"), None)
         if y_min is None or y_max is None or y_max <= y_min:
             y_view = i_raw[mask]
             pad = float(np.ptp(y_view)) * 0.08 if len(y_view) else 0.0
@@ -327,14 +276,14 @@ def register_echem_photocurrent_routes(app, ctx):
                 ax.set_ylim(y_min, y_max)
                 marker_t = []
                 marker_i = []
-                for pair in d.get("pairs", []):
+                for pair in body.get("pairs", []):
                     idx = _marker_index_from_pair(pair, t)
                     if idx is not None and x0 <= float(t[idx]) <= x1:
                         marker_t.append(float(t[idx]))
                         marker_i.append(float(i_raw[idx]))
                 if marker_t:
                     ax.scatter(marker_t, marker_i, s=50, marker="^", color="red", zorder=5)
-                dpi = int(float_or(d.get("dpi"), 300) or 300)
+                dpi = int(float_or(body.get("dpi"), 300) or 300)
                 fig.savefig(out_path, dpi=dpi, bbox_inches="tight", pad_inches=0.05, facecolor="white")
         finally:
             close_figure(fig)
@@ -354,10 +303,10 @@ def register_echem_photocurrent_routes(app, ctx):
     @request_schema(EchemPhotocurrentBrowseRequest)
     def api_echem_photocurrent_browse():
         try:
-            payload = parse_json_payload(EchemPhotocurrentBrowseRequest)
+            body = parse_json_payload(EchemPhotocurrentBrowseRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        files = browse_files(payload.folder, {".txt", ".csv"})
+        files = browse_files(body.folder, {".txt", ".csv"})
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem/photocurrent/load", methods=["POST"])
@@ -395,8 +344,8 @@ def register_echem_photocurrent_routes(app, ctx):
     @request_schema(EchemPhotocurrentTraceDataRequest)
     def api_echem_photocurrent_trace_data():
         try:
-            d = parse_json_payload(EchemPhotocurrentTraceDataRequest).model_dump()
-            return jsonify(echem_service.photocurrent_trace_data_payload(d))
+            body = parse_json_payload(EchemPhotocurrentTraceDataRequest).model_dump()
+            return jsonify(echem_service.photocurrent_trace_data_payload(body))
         except ValidationError as exc:
             return validation_error_response(exc)
         except ValueError as exc:
@@ -410,27 +359,27 @@ def register_echem_photocurrent_routes(app, ctx):
         if find_peaks is None:
             return err("scipy not installed")
         try:
-            d = parse_json_payload(EchemPhotocurrentDetectRequest).model_dump()
+            body = parse_json_payload(EchemPhotocurrentDetectRequest).model_dump()
         except ValidationError as exc:
             return validation_error_response(exc)
-        path = d.get("path", "")
-        t0 = float_or(d.get("t0"), None)
-        t1 = float_or(d.get("t1"), None)
-        pos_min_mA = float_or(d.get("pos_min_mA"), None)
-        neg_min_abs_mA = float_or(d.get("neg_min_abs_mA"), None)
-        min_delay_ms = float_or(d.get("min_delay_ms", 1.0), 1.0)
-        max_delay_ms = float_or(d.get("max_delay_ms", 15.0), 15.0)
-        min_pos_distance_ms = float_or(d.get("min_pos_distance_ms", 200.0), 200.0)
-        use_all = _as_bool(d.get("use_all"), True)
+        path = body.get("path", "")
+        t0 = float_or(body.get("t0"), None)
+        t1 = float_or(body.get("t1"), None)
+        pos_min_mA = float_or(body.get("pos_min_mA"), None)
+        neg_min_abs_mA = float_or(body.get("neg_min_abs_mA"), None)
+        min_delay_ms = float_or(body.get("min_delay_ms", 1.0), 1.0)
+        max_delay_ms = float_or(body.get("max_delay_ms", 15.0), 15.0)
+        min_pos_distance_ms = float_or(body.get("min_pos_distance_ms", 200.0), 200.0)
+        use_all = _as_bool(body.get("use_all"), True)
 
         # Backward-compatible aliases from earlier web payload naming.
         if pos_min_mA is None:
-            pos_min_mA = float_or(d.get("pos_thresh"), 0.01)
+            pos_min_mA = float_or(body.get("pos_thresh"), 0.01)
         if neg_min_abs_mA is None:
-            neg_old = float_or(d.get("neg_thresh"), None)
+            neg_old = float_or(body.get("neg_thresh"), None)
             neg_min_abs_mA = abs(neg_old) if neg_old is not None else 0.01
-        if d.get("min_dist") is not None and d.get("min_pos_distance_ms") is None:
-            min_pos_distance_ms = float_or(d.get("min_dist"), min_pos_distance_ms)
+        if body.get("min_dist") is not None and body.get("min_pos_distance_ms") is None:
+            min_pos_distance_ms = float_or(body.get("min_dist"), min_pos_distance_ms)
 
         try:
             t, i_raw, t_col, i_col = _load_echem(path)
@@ -542,15 +491,17 @@ def register_echem_photocurrent_routes(app, ctx):
     @request_schema(EchemPhotocurrentExportRequest)
     def api_echem_photocurrent_export():
         try:
-            d = parse_json_payload(EchemPhotocurrentExportRequest).model_dump()
-            result = _echem_photocurrent_export_payload(d)
+            body = parse_json_payload(EchemPhotocurrentExportRequest).model_dump()
+            result = _echem_photocurrent_export_payload(body)
             if result["kind"] == "save":
                 data = result["data"]
                 return api_ok(data, outputs=data["outputs"])
             return Response(
                 result["payload"],
                 mimetype=result["mimetype"],
-                headers={"Content-Disposition": f"attachment; filename={result['download_name']}"},
+                headers={
+                    "Content-Disposition": attachment_content_disposition(result["download_name"])
+                },
             )
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -579,8 +530,8 @@ def register_echem_photocurrent_routes(app, ctx):
     @request_schema(EchemPhotocurrentFigureExportRequest)
     def api_echem_photocurrent_export_figure():
         try:
-            d = parse_json_payload(EchemPhotocurrentFigureExportRequest).model_dump()
-            result = _echem_photocurrent_figure_export_payload(d)
+            body = parse_json_payload(EchemPhotocurrentFigureExportRequest).model_dump()
+            result = _echem_photocurrent_figure_export_payload(body)
             return api_ok(result, outputs=result["outputs"])
         except ValidationError as exc:
             return validation_error_response(exc)

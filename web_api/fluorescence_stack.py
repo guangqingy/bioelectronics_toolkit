@@ -9,6 +9,7 @@ from pathlib import Path
 import numpy as np
 from flask import jsonify
 from pydantic import ValidationError
+
 from services.fluorescence import stack as fl_stack
 from services.fluorescence.route_helpers import iter_with_job_progress
 
@@ -51,9 +52,9 @@ def register_fluorescence_stack_routes(app, fl):
     _fl_resolve_gif_scale = fl["_fl_resolve_gif_scale"]
     _fl_tiff_gif_frame_count = fl["_fl_tiff_gif_frame_count"]
 
-    def _stack_export_payload(d: dict) -> dict:
-        input_path_str = str(d.get("input_path", "") or "").strip()
-        raw_settings = d.get("settings")
+    def _stack_export_payload(body: dict) -> dict:
+        input_path_str = str(body.get("input_path", "") or "").strip()
+        raw_settings = body.get("settings")
         p_in = Path(input_path_str)
         if not p_in.exists():
             raise ValueError(f"Input file not found: {input_path_str}")
@@ -65,12 +66,12 @@ def register_fluorescence_stack_routes(app, fl):
         job_ctx.set_progress(0.2, "Exporting TIFF stack")
         return _stack_export_payload(body)
 
-    def _stack_export_batch_payload(d: dict, job_ctx=None) -> dict:
-        paths_raw = d.get("paths") or []
-        use_template = _fl_bool(d.get("use_template", True), True)
-        lock_ranges = _fl_bool(d.get("lock_ranges", False), False)
+    def _stack_export_batch_payload(body: dict, job_ctx=None) -> dict:
+        paths_raw = body.get("paths") or []
+        use_template = _fl_bool(body.get("use_template", True), True)
+        lock_ranges = _fl_bool(body.get("lock_ranges", False), False)
         template_settings = (
-            d.get("template_settings") if isinstance(d.get("template_settings"), list) else []
+            body.get("template_settings") if isinstance(body.get("template_settings"), list) else []
         )
 
         if not isinstance(paths_raw, list) or not paths_raw:
@@ -111,12 +112,12 @@ def register_fluorescence_stack_routes(app, fl):
         job_ctx.set_progress(0.2, "Batch exporting TIFF stacks")
         return _stack_export_batch_payload(body, job_ctx=job_ctx)
 
-    def _normalize_payload(d: dict) -> dict:
-        input_path_str = d.get("input_path", "")
-        output_path_str = d.get("output_path", "")
-        low_pct = float_or(d.get("low_pct", 1.0), 1.0)
-        high_pct = float_or(d.get("high_pct", 99.8), 99.8)
-        dtype_name = d.get("dtype", "uint16")
+    def _normalize_payload(body: dict) -> dict:
+        input_path_str = body.get("input_path", "")
+        output_path_str = body.get("output_path", "")
+        low_pct = float_or(body.get("low_pct", 1.0), 1.0)
+        high_pct = float_or(body.get("high_pct", 99.8), 99.8)
+        dtype_name = body.get("dtype", "uint16")
         if not str(input_path_str or "").strip():
             raise ValueError("input_path is required")
         p_in = Path(input_path_str)
@@ -219,15 +220,15 @@ def register_fluorescence_stack_routes(app, fl):
     @request_schema(FluorescencePreviewFrameRequest)
     def api_fl_preview_frame():
         try:
-            d = parse_json_payload(FluorescencePreviewFrameRequest)
-            path = d.path
-            frame_idx = int_or(d.frame, 0)
-            lut = d.lut
-            p_low = float_or(d.p_low, 1.0)
-            p_high = float_or(d.p_high, 99.8)
-            mode = d.mode
-            z_start = d.z_start
-            z_end = d.z_end
+            body = parse_json_payload(FluorescencePreviewFrameRequest)
+            path = body.path
+            frame_idx = int_or(body.frame, 0)
+            lut = body.lut
+            p_low = float_or(body.p_low, 1.0)
+            p_high = float_or(body.p_high, 99.8)
+            mode = body.mode
+            z_start = body.z_start
+            z_end = body.z_end
             z_start_i = None if z_start in {None, ""} else int_or(z_start, 0)
             z_end_i = None if z_end in {None, ""} else int_or(z_end, 0)
             frame, info = fl_stack.select_display_frame_from_tiff(
@@ -271,11 +272,11 @@ def register_fluorescence_stack_routes(app, fl):
     @request_schema(FluorescenceStackAutoRangeRequest)
     def api_fl_stack_auto_range():
         try:
-            d = parse_json_payload(FluorescenceStackAutoRangeRequest)
-            path = d.path.strip()
-            page_index = int_or(d.page_index, 0)
-            background = _fl_clean_choice(d.background, _FL_BACKGROUND_OPTIONS, "Off")
-            denoise = _fl_clean_choice(d.denoise, _FL_DENOISE_OPTIONS, "Off")
+            body = parse_json_payload(FluorescenceStackAutoRangeRequest)
+            path = body.path.strip()
+            page_index = int_or(body.page_index, 0)
+            background = _fl_clean_choice(body.background, _FL_BACKGROUND_OPTIONS, "Off")
+            denoise = _fl_clean_choice(body.denoise, _FL_DENOISE_OPTIONS, "Off")
             p = Path(path)
             if not p.exists():
                 return err(f"Input file not found: {path}")
@@ -295,8 +296,8 @@ def register_fluorescence_stack_routes(app, fl):
     @request_schema(FluorescenceStackExportRequest)
     def api_fl_stack_export():
         try:
-            d = parse_json_payload(FluorescenceStackExportRequest).model_dump()
-            result = _stack_export_payload(d)
+            body = parse_json_payload(FluorescenceStackExportRequest).model_dump()
+            result = _stack_export_payload(body)
             return api_ok(result, outputs=result.get("outputs"))
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -325,8 +326,8 @@ def register_fluorescence_stack_routes(app, fl):
     @request_schema(FluorescenceStackExportBatchRequest)
     def api_fl_stack_export_batch():
         try:
-            d = parse_json_payload(FluorescenceStackExportBatchRequest).model_dump()
-            result = _stack_export_batch_payload(d)
+            body = parse_json_payload(FluorescenceStackExportBatchRequest).model_dump()
+            result = _stack_export_batch_payload(body)
             return api_ok(result, outputs=result.get("outputs"))
         except ValidationError as exc:
             return validation_error_response(exc)
@@ -353,8 +354,8 @@ def register_fluorescence_stack_routes(app, fl):
     @request_schema(FluorescenceNormalizeRequest)
     def api_fl_normalize():
         try:
-            d = parse_json_payload(FluorescenceNormalizeRequest).model_dump()
-            result = _normalize_payload(d)
+            body = parse_json_payload(FluorescenceNormalizeRequest).model_dump()
+            result = _normalize_payload(body)
             return api_ok(result, outputs=result["outputs"])
         except ValidationError as exc:
             return validation_error_response(exc)

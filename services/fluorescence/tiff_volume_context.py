@@ -10,9 +10,10 @@ import numpy as np
 from services.fluorescence import route_helpers as fl_helpers
 from services.fluorescence import stack as fl_stack
 from services.fluorescence import tiff_metadata_context as fl_tiff_metadata_context
+from services.fluorescence.stack_processing import float_or, int_or
 
 
-def build_tiff_volume_context(*, tifflib, int_or, float_or, denoise_options: list[str]) -> dict:
+def build_tiff_volume_context(*, tifflib, denoise_options: list[str]) -> dict:
     _FL_DENOISE_OPTIONS = list(denoise_options or [])
     _fl_clean_choice = fl_stack.clean_choice
     _fl_apply_optional_denoise = fl_stack.apply_optional_denoise

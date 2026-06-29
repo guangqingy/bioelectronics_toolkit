@@ -18,7 +18,7 @@ function renderLifFileList() {
     return;
   }
   el.innerHTML = _lifFiles.map((f, i) => `
-    <div class="file-item" data-idx="${i}" data-dp-click="selectLifFile(${i})">${escapeHtml(f.name)}</div>
+    <div class="file-item" data-idx="${i}" data-dp-click="selectLifFile(${i})">${dpEscapeHtml(f.name)}</div>
   `).join('');
 }
 
@@ -132,12 +132,12 @@ function renderLifSubfileList() {
   }
   el.innerHTML = _lifDisplayRecords.map((rec, i) => {
     const active = Number(rec.index) === Number(_lifActiveIndex) ? 'active' : '';
-    const customLine = hasCustomName(rec) ? `<span class="lif-subfile-original">Original: ${escapeHtml(rec.name || '')}</span>` : '';
+    const customLine = hasCustomName(rec) ? `<span class="lif-subfile-original">Original: ${dpEscapeHtml(rec.name || '')}</span>` : '';
     return `
       <div class="file-item lif-subfile-item ${active}" data-dp-click="selectLifRecord(${rec.index})">
         <span class="lif-order">${i + 1}</span>
-        <span class="lif-subfile-main">${escapeHtml(displayName(rec))}</span>
-        <span class="lif-subfile-time">${escapeHtml(rec.acquired_at || 'Leica order')} · LIF ${rec.original_order || ''} · ${escapeHtml(dimText(rec))}</span>
+        <span class="lif-subfile-main">${dpEscapeHtml(displayName(rec))}</span>
+        <span class="lif-subfile-time">${dpEscapeHtml(rec.acquired_at || 'Leica order')} · LIF ${rec.original_order || ''} · ${dpEscapeHtml(dimText(rec))}</span>
         ${customLine}
       </div>`;
   }).join('');
@@ -169,18 +169,18 @@ function renderSelectedDetail() {
   const planes = planeCount(rec);
   const stackLine = planes > 1 ? `${planes} planes will export as one multi-page TIFF stack.` : 'Single plane TIFF export.';
   body.innerHTML = `
-    <div class="lif-detail-title">${escapeHtml(displayName(rec))}</div>
-    ${hasCustomName(rec) ? `<div class="lif-detail-muted">Original: ${escapeHtml(rec.name || '')}</div>` : ''}
+    <div class="lif-detail-title">${dpEscapeHtml(displayName(rec))}</div>
+    ${hasCustomName(rec) ? `<div class="lif-detail-muted">Original: ${dpEscapeHtml(rec.name || '')}</div>` : ''}
     <div class="lif-detail-grid">
       <span>Project order</span><strong>${rec.original_order || ''}</strong>
-      <span>Time</span><strong>${escapeHtml(rec.acquired_at || 'No timestamp')}</strong>
-      <span>Folder</span><strong>${escapeHtml(rec.folder || 'Project')}</strong>
-      <span>Dimensions</span><strong>${escapeHtml(dimText(rec))}</strong>
+      <span>Time</span><strong>${dpEscapeHtml(rec.acquired_at || 'No timestamp')}</strong>
+      <span>Folder</span><strong>${dpEscapeHtml(rec.folder || 'Project')}</strong>
+      <span>Dimensions</span><strong>${dpEscapeHtml(dimText(rec))}</strong>
       <span>Planes</span><strong>${planes}</strong>
-      <span>Bit depth</span><strong>${escapeHtml((rec.bit_depth || []).join('/') || '')}</strong>
-      <span>Pixel size</span><strong>${escapeHtml(pixelSizeText(rec))}</strong>
-      <span>Z spacing</span><strong>${escapeHtml(fmtMetaNumber((rec.calibration || {}).z_spacing_um, ' um'))}</strong>
-      <span>T interval</span><strong>${escapeHtml(fmtMetaNumber((rec.calibration || {}).frame_interval_s, ' s'))}</strong>
+      <span>Bit depth</span><strong>${dpEscapeHtml((rec.bit_depth || []).join('/') || '')}</strong>
+      <span>Pixel size</span><strong>${dpEscapeHtml(pixelSizeText(rec))}</strong>
+      <span>Z spacing</span><strong>${dpEscapeHtml(fmtMetaNumber((rec.calibration || {}).z_spacing_um, ' um'))}</strong>
+      <span>T interval</span><strong>${dpEscapeHtml(fmtMetaNumber((rec.calibration || {}).frame_interval_s, ' s'))}</strong>
     </div>
     <div class="param-row" style="margin-top:12px">
       <div class="param-label">Export name</div>
@@ -190,7 +190,7 @@ function renderSelectedDetail() {
       <button class="btn-secondary" id="btnApplyRename" data-dp-click="applySelectedRename()">Rename</button>
       <button class="btn-tertiary" data-dp-click="resetSelectedRename()">Reset</button>
     </div>
-    <div class="lif-export-note">${escapeHtml(stackLine)}</div>
+    <div class="lif-export-note">${dpEscapeHtml(stackLine)}</div>
     <button class="btn-primary" id="btnExportTiff" data-label="Export Selected TIFF" data-dp-click="exportSelectedTiff()" style="margin-top:10px">Export Selected TIFF</button>
   `;
 }
@@ -263,7 +263,7 @@ function renderExtraDimControls(rec) {
     const id = Number(dim.id);
     const count = Math.max(1, Number(dim.count || 1));
     const value = Math.max(0, Math.min(count - 1, Number(currentValues[id] || 0)));
-    const label = escapeHtml(dim.label || ('D' + id));
+    const label = dpEscapeHtml(dim.label || ('D' + id));
     return `
       <div class="lif-slider-row lif-extra-dim-row" data-dim-id="${id}">
         <span>${label}</span>

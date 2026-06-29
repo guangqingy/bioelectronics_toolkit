@@ -58,9 +58,9 @@ function renderCommandPalette() {
     return;
   }
   list.innerHTML = rows.map((command, i) => `
-    <button class="command-item ${i === _commandPaletteIndex ? 'active' : ''}" type="button" data-url="${escHtml(command.url)}">
-      <span class="command-main">${escHtml(command.label)}</span>
-      <span class="command-meta">${escHtml(command.section)} · ${escHtml(command.url)}</span>
+    <button class="command-item ${i === _commandPaletteIndex ? 'active' : ''}" type="button" data-url="${dpEscapeHtml(command.url)}">
+      <span class="command-main">${dpEscapeHtml(command.label)}</span>
+      <span class="command-meta">${dpEscapeHtml(command.section)} · ${dpEscapeHtml(command.url)}</span>
     </button>
   `).join('');
   list.querySelectorAll('.command-item').forEach((btn, i) => {

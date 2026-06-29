@@ -29,7 +29,7 @@ function updatePeaksTable() {
     const tVal = formatPeakTableNumber(peakTime(peak), 3);
     const hVal = formatPeakTableNumber(peakHeight(peak), 3);
     const dVal = formatPeakTableNumber(peakDuration(peak), 2);
-    const group = escHtml(peak.group || '-');
+    const group = dpEscapeHtml(peak.group || '-');
     const kind = isBaselinePeak(peak) ? 'Baseline' : 'Peak';
     const btnLabel = removed ? 'Undo' : 'Remove';
 

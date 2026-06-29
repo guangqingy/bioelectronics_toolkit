@@ -4,17 +4,12 @@ from pathlib import Path
 from typing import Any
 
 from flask import jsonify
-from pydantic import Field, ValidationError
+from pydantic import Field
 
 from services import run_history as run_history_service
 
 from .jobs import submit_json_task
-from .request_validation import (
-    RequestModel,
-    parse_json_payload,
-    request_schema,
-    validation_error_response,
-)
+from .request_validation import RequestModel, api_endpoint
 
 
 class RunHistoryRecordRequest(RequestModel):
@@ -69,82 +64,48 @@ def register_run_history_routes(app, ctx):
             return err(str(exc), 404)
         except ValueError as exc:
             return err(str(exc), 400)
-        except Exception as exc:
-            return err(exc)
 
     @app.route("/api/run_history/record", methods=["POST"])
-    @request_schema(RunHistoryRecordRequest)
-    def api_run_history_record():
-        try:
-            payload = parse_json_payload(RunHistoryRecordRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(run_history_service.record_run, payload.model_dump(), base_dir)
+    @api_endpoint(RunHistoryRecordRequest)
+    def api_run_history_record(body):
+        return _json_or_error(run_history_service.record_run, body, base_dir)
 
     @app.route("/api/run_history/list", methods=["POST"])
-    @request_schema(RunHistoryListRequest)
-    def api_run_history_list():
-        try:
-            payload = parse_json_payload(RunHistoryListRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(run_history_service.list_runs, payload.model_dump(), base_dir)
+    @api_endpoint(RunHistoryListRequest)
+    def api_run_history_list(body):
+        return _json_or_error(run_history_service.list_runs, body, base_dir)
 
     @app.route("/api/run_history/get", methods=["POST"])
-    @request_schema(RunManifestRequest)
-    def api_run_history_get():
-        try:
-            payload = parse_json_payload(RunManifestRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(run_history_service.get_run_manifest, payload.model_dump(), base_dir)
+    @api_endpoint(RunManifestRequest)
+    def api_run_history_get(body):
+        return _json_or_error(run_history_service.get_run_manifest, body, base_dir)
 
     @app.route("/api/run_history/check", methods=["POST"])
-    @request_schema(RunManifestRequest)
-    def api_run_history_check():
-        try:
-            payload = parse_json_payload(RunManifestRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(
-            run_history_service.check_run_manifest, payload.model_dump(), base_dir
-        )
+    @api_endpoint(RunManifestRequest)
+    def api_run_history_check(body):
+        return _json_or_error(run_history_service.check_run_manifest, body, base_dir)
 
     @app.route("/api/run_history/report", methods=["POST"])
-    @request_schema(RunReportRequest)
-    def api_run_history_report():
-        try:
-            payload = parse_json_payload(RunReportRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(run_history_service.write_run_report, payload.model_dump(), base_dir)
+    @api_endpoint(RunReportRequest)
+    def api_run_history_report(body):
+        return _json_or_error(run_history_service.write_run_report, body, base_dir)
 
     def _package_run_history_body(job_ctx: Any, body: dict[str, Any]) -> dict[str, Any]:
         return run_history_service.package_run_manifest(body or {}, base_dir, job_ctx)
 
     @app.route("/api/run_history/package_job", methods=["POST"])
-    @request_schema(RunPackageRequest)
-    def api_run_history_package_job():
-        try:
-            payload = parse_json_payload(RunPackageRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
+    @api_endpoint(RunPackageRequest)
+    def api_run_history_package_job(body):
         return submit_json_task(
             jobs,
             "run_history.package",
             "Package run manifest",
             _package_run_history_body,
-            payload.model_dump(),
+            body,
             metadata={"endpoint": "/api/run_history/package"},
         )
 
     @app.route("/api/run_history/package", methods=["POST"])
-    @request_schema(RunPackageRequest)
-    def api_run_history_package():
-        try:
-            payload = parse_json_payload(RunPackageRequest)
-        except ValidationError as exc:
-            return validation_error_response(exc)
-        return _json_or_error(
-            run_history_service.package_run_manifest, payload.model_dump(), base_dir
-        )
+    @api_endpoint(RunPackageRequest)
+    def api_run_history_package(body):
+        return _json_or_error(run_history_service.package_run_manifest, body, base_dir)

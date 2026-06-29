@@ -188,14 +188,19 @@ async function dpRunJobEndpoint(endpoint, payload, options) {
 }
 
 function showLogoutScreen(message) {
-  document.body.innerHTML = `
-    <div class="logout-screen">
-      <div class="logout-card">
-        <div class="logout-title">${APP_LABEL} Closed</div>
-        <div class="logout-sub">${message || 'The Python service has stopped. You can close this tab now.'}</div>
-      </div>
-    </div>
-  `;
+  const screen = document.createElement('div');
+  screen.className = 'logout-screen';
+  const card = document.createElement('div');
+  card.className = 'logout-card';
+  const title = document.createElement('div');
+  title.className = 'logout-title';
+  title.textContent = `${APP_LABEL} Closed`;
+  const sub = document.createElement('div');
+  sub.className = 'logout-sub';
+  sub.textContent = message || 'The Python service has stopped. You can close this tab now.';
+  card.append(title, sub);
+  screen.appendChild(card);
+  document.body.replaceChildren(screen);
 }
 
 function isLogoutDisconnectMessage(message) {

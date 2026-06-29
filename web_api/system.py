@@ -113,8 +113,8 @@ def register_system_routes(app, ctx) -> None:
     @request_schema(PickerRequest)
     def api_system_select_folder():
         try:
-            payload = parse_json_payload(PickerRequest)
-            default_dir = _default_picker_dir(base_dir, payload.start.strip())
+            body = parse_json_payload(PickerRequest)
+            default_dir = _default_picker_dir(base_dir, body.start.strip())
             path = _choose_folder(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
         except ValidationError as exc:
@@ -128,8 +128,8 @@ def register_system_routes(app, ctx) -> None:
     @request_schema(PickerRequest)
     def api_system_select_file():
         try:
-            payload = parse_json_payload(PickerRequest)
-            default_dir = _default_picker_dir(base_dir, payload.start.strip())
+            body = parse_json_payload(PickerRequest)
+            default_dir = _default_picker_dir(base_dir, body.start.strip())
             path = _choose_file(default_dir)
             return api_ok({"path": path, "cancelled": not bool(path)})
         except ValidationError as exc:
@@ -143,10 +143,10 @@ def register_system_routes(app, ctx) -> None:
     @request_schema(OpenFolderRequest)
     def api_system_open_folder():
         try:
-            payload = parse_json_payload(OpenFolderRequest)
-            path = Path(payload.path).expanduser()
+            body = parse_json_payload(OpenFolderRequest)
+            path = Path(body.path).expanduser()
             if not path.is_dir():
-                return err(f"Not a directory: {payload.path}")
+                return err(f"Not a directory: {body.path}")
             if sys.platform == "darwin":
                 subprocess.Popen(["open", str(path)])
             elif sys.platform.startswith("linux"):

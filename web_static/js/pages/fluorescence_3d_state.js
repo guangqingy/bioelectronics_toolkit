@@ -10,15 +10,6 @@ let _controls = null;
 let _anim = null;
 let _resizeObserver = null;
 
-function escHtml(s) {
-  return String(s || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
 function fileBasename(path) {
   return String(path || '').split(/[\\/]/).pop() || '';
 }
@@ -54,7 +45,6 @@ window.DP = window.DP || {};
 window.DP.page = window.DP.page || {};
 [
   'compactPath',
-  'escHtml',
   'fileBasename',
   'formatDimText',
   'formatNumber',
