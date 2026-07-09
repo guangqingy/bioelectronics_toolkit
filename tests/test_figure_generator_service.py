@@ -7,7 +7,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from services.figure_generator import browse_payload, preview_payload, run_payload
+from services.figure_generator import _parse_ranges, browse_payload, preview_payload, run_payload
 
 
 class FigureGeneratorServiceTest(unittest.TestCase):
@@ -55,6 +55,39 @@ class FigureGeneratorServiceTest(unittest.TestCase):
             self.assertGreaterEqual(result["generated_count"], 1)
             for generated in result["generated_files"]:
                 self.assertTrue(Path(generated).exists())
+
+    def test_parse_ranges_accepts_multiple_delimiters(self) -> None:
+        self.assertEqual(
+            _parse_ranges("0-1, 0-100\n1e-3-1e-1"),
+            [(0.0, 1.0), (0.0, 100.0), (0.001, 0.1)],
+        )
+        self.assertEqual(_parse_ranges([[2, 1], "5 to 7"]), [(1.0, 2.0), (5.0, 7.0)])
+
+    def test_preview_payload_generates_all_requested_ranges(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            child = root / "recording_a"
+            self._write_summary(child)
+            body = {
+                **self._queue_body(root, child),
+                "x_lin_ranges": "0-1; 0-100",
+                "x_log_ranges": "0.01-1\n0.01-100",
+            }
+
+            def fake_fig_to_b64(fig):
+                plt.close(fig)
+                return "encoded"
+
+            preview = preview_payload(body, fake_fig_to_b64)
+            self.assertEqual(
+                [item["name"] for item in preview["images"]],
+                [
+                    "peak_linear_0-1",
+                    "peak_linear_0-100",
+                    "peak_log_0.01-1",
+                    "peak_log_0.01-100",
+                ],
+            )
 
 
 if __name__ == "__main__":

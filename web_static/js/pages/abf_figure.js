@@ -285,12 +285,16 @@ function renderPreviewImages(images) {
     area.innerHTML = '<div class="plot-placeholder">No preview images</div>';
     return;
   }
-  area.innerHTML = images.map(item =>
-    '<div style="margin-bottom:14px;">' +
-    '<div style="font-size:12px; color:var(--pewter); margin-bottom:6px;">' + dpEscapeHtml(item.name || 'figure') + '</div>' +
-    '<img src="data:image/png;base64,' + item.img + '" alt="plot" style="max-width:100%; border:1px solid var(--line); border-radius:8px;" />' +
-    '</div>'
-  ).join('');
+  area.innerHTML = '<div class="figure-preview-grid">' + images.map(item => {
+    const name = dpEscapeHtml(item.name || 'figure');
+    const src = dpEscapeHtml(item.img || '');
+    return (
+      '<figure class="figure-preview-item">' +
+      '<figcaption class="figure-preview-title">' + name + '</figcaption>' +
+      '<img class="figure-preview-img" src="data:image/png;base64,' + src + '" alt="' + name + '" />' +
+      '</figure>'
+    );
+  }).join('') + '</div>';
 }
 
 function updateSummary() {

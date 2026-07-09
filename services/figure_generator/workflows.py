@@ -60,16 +60,14 @@ def preview_payload(data: dict[str, Any], fig_to_b64: Callable[[Any], str]) -> d
 
     for spec in _metric_specs(use_peak, use_integral, series_peak, series_int):
         series, ylabel, title, prefix = spec
-        if lin_ranges:
-            xmin, xmax = lin_ranges[0]
+        for xmin, xmax in lin_ranges:
             _append_preview(
                 images,
                 f"{prefix}_linear_{_fmt_range_value(xmin)}-{_fmt_range_value(xmax)}",
                 _plot_linear(series, ylabel, title, xmin, xmax),
                 fig_to_b64,
             )
-        if log_ranges:
-            xmin, xmax = log_ranges[0]
+        for xmin, xmax in log_ranges:
             _append_preview(
                 images,
                 f"{prefix}_log_{_fmt_range_value(xmin)}-{_fmt_range_value(xmax)}",

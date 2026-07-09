@@ -2,6 +2,58 @@
 
 {% block title %}Figure Generator{% endblock %}
 
+{% block head %}
+<style>
+.figure-preview-area {
+  display: block;
+  min-height: 380px;
+  padding: 12px;
+  overflow: auto;
+  background: var(--white);
+}
+.figure-preview-area > .plot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 356px;
+  padding: 0 40px;
+}
+.figure-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+.figure-preview-item {
+  min-width: 0;
+  margin: 0;
+}
+.figure-preview-title {
+  margin-bottom: 6px;
+  color: var(--pewter);
+  font-size: 12px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.figure-preview-img {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  max-height: none;
+  height: auto;
+  border: 1px solid var(--cloud);
+  border-radius: var(--radius-md);
+  background: var(--white);
+  object-fit: contain;
+}
+@media (max-width: 1100px) {
+  .figure-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+{% endblock %}
+
 {% block controls %}
 <div class="ctrl-section">
   <div class="ctrl-label">Main Folder</div>
@@ -72,7 +124,7 @@
     <div class="view-sub">Uses Batch Processor summary folders; queue comparisons, preview figures, and export analysis outputs.</div>
   </div>
   <div class="view-preview">
-    <div id="plotArea" class="plot-area"><div class="plot-placeholder">Add queue items and click Preview</div></div>
+    <div id="plotArea" class="plot-area figure-preview-area"><div class="plot-placeholder">Add queue items and click Preview</div></div>
   </div>
   <div class="view-results">
     <div class="result-card">

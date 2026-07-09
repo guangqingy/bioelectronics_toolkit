@@ -1,11 +1,15 @@
 """Summary CSV parsing, aggregation, and range helpers for figure generation."""
 
+import re
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
 from .constants import EPS, INT_COLS_CANDIDATES, PEAK_COLS_CANDIDATES, POWER_COL_CANDIDATES
+
+_RANGE_NUMBER = r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?"
+_RANGE_RE = re.compile(rf"({_RANGE_NUMBER})\s*(?:-|\u2013|\u2014|to|\.\.)\s*({_RANGE_NUMBER})")
 
 
 def _find_matching_column(df, candidates):
@@ -20,29 +24,34 @@ def _find_matching_column(df, candidates):
 
 
 def _parse_ranges(raw):
-    if isinstance(raw, list):
-        text = ";".join(str(x).strip() for x in raw if str(x).strip())
-    else:
-        text = str(raw or "").strip()
-
     out = []
-    if not text:
+    if isinstance(raw, (list, tuple)):
+        for item in raw:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                _append_range(out, item[0], item[1])
+            else:
+                _parse_range_text(str(item or ""), out)
         return out
-    for block in text.split(";"):
-        block = block.strip()
-        if not block or "-" not in block:
-            continue
-        a, b = block.split("-", 1)
-        try:
-            xmin = float(a.strip())
-            xmax = float(b.strip())
-        except Exception:
-            continue
-        if np.isfinite(xmin) and np.isfinite(xmax) and xmin != xmax:
-            if xmin > xmax:
-                xmin, xmax = xmax, xmin
-            out.append((xmin, xmax))
+
+    _parse_range_text(str(raw or ""), out)
     return out
+
+
+def _parse_range_text(text, out):
+    for match in _RANGE_RE.finditer(text.strip()):
+        _append_range(out, match.group(1), match.group(2))
+
+
+def _append_range(out, raw_min, raw_max):
+    try:
+        xmin = float(str(raw_min).strip())
+        xmax = float(str(raw_max).strip())
+    except Exception:
+        return
+    if np.isfinite(xmin) and np.isfinite(xmax) and xmin != xmax:
+        if xmin > xmax:
+            xmin, xmax = xmax, xmin
+        out.append((xmin, xmax))
 
 
 def _fmt_range_value(v):
