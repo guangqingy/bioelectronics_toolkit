@@ -1,7 +1,7 @@
 /* ─── 3D stacking ─── */
 .stacking-layout {
   display: grid;
-  grid-template-columns: minmax(560px, 1fr) minmax(320px, 0.48fr);
+  grid-template-columns: minmax(400px, 1fr) minmax(240px, 0.48fr);
   gap: 12px;
   align-items: start;
 }

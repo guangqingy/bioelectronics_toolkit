@@ -83,6 +83,8 @@
   font-size: 28px;
   font-weight: 720;
   line-height: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .run-path {
   color: var(--pewter);

@@ -75,11 +75,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Sweep and Channel</div>
   <div class="param-row">
-    <div class="param-label abf-narrow">Sweep</div>
+    <label class="param-label abf-narrow" for="sweepNum">Sweep</label>
     <input type="number" id="sweepNum" class="input-sm" value="0" min="0" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
-    <div class="param-label abf-narrow">Channel</div>
+    <label class="param-label abf-narrow" for="channel">Channel</label>
     <select id="channel" class="abf-select" data-dp-change="plot()">
       <option value="">Select channel</option>
     </select>
@@ -93,13 +93,13 @@
     <span>R normalization</span>
   </label>
   <div class="param-row" id="iChRow" data-rnorm-state="checked" hidden>
-    <div class="param-label abf-narrow">I Ch</div>
+    <label class="param-label abf-narrow" for="iCh">I Ch</label>
     <select id="iCh" class="abf-select" data-dp-change="plot()">
       <option value="">None</option>
     </select>
   </div>
   <div class="param-row" id="vChRow" data-rnorm-state="checked" hidden>
-    <div class="param-label abf-narrow">V Ch</div>
+    <label class="param-label abf-narrow" for="vCh">V Ch</label>
     <select id="vCh" class="abf-select" data-dp-change="plot()">
       <option value="">None</option>
     </select>
@@ -109,11 +109,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Baseline (ms)</div>
   <div class="param-row">
-    <div class="param-label abf-narrow">Start</div>
+    <label class="param-label abf-narrow" for="blPre0">Start</label>
     <input type="number" id="blPre0" class="input-sm" value="0" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
-    <div class="param-label abf-narrow">End</div>
+    <label class="param-label abf-narrow" for="blPre1">End</label>
     <input type="number" id="blPre1" class="input-sm" value="100" step="any" data-dp-change="plot()"/>
   </div>
 </div>
@@ -121,19 +121,19 @@
 <div class="ctrl-section">
   <div class="ctrl-label">View Window</div>
   <div class="param-row">
-    <div class="param-label abf-narrow">X Min</div>
+    <label class="param-label abf-narrow" for="xMin">X Min</label>
     <input type="number" id="xMin" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
-    <div class="param-label abf-narrow">X Max</div>
+    <label class="param-label abf-narrow" for="xMax">X Max</label>
     <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
-    <div class="param-label abf-narrow">Y Min</div>
+    <label class="param-label abf-narrow" for="yMin">Y Min</label>
     <input type="number" id="yMin" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
   <div class="param-row">
-    <div class="param-label abf-narrow">Y Max</div>
+    <label class="param-label abf-narrow" for="yMax">Y Max</label>
     <input type="number" id="yMax" class="input-sm" step="any" data-dp-change="plot()"/>
   </div>
 </div>

@@ -58,6 +58,7 @@ table.dp-table tr:hover td { background: var(--ash); }
   font-weight: 500;
   color: var(--carbon);
   margin-bottom: 5px;
+  overflow-wrap: anywhere;
 }
 .dash-card-desc {
   font-size: 12px;

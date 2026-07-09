@@ -15,7 +15,7 @@
 }
 .histology-analysis-workbench {
   display: grid;
-  grid-template-columns: minmax(420px, 1.25fr) minmax(300px, .75fr);
+  grid-template-columns: minmax(360px, 1.25fr) minmax(260px, .75fr);
   gap: 12px;
   align-items: start;
 }
@@ -247,7 +247,7 @@
 .histology-roi-toolbar .btn-primary:disabled {
   opacity: .62;
 }
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .histology-analysis-workbench {
     grid-template-columns: 1fr;
   }
@@ -261,7 +261,7 @@
   <div class="ctrl-section" id="histologyAnalysisProjectControls">
     <div class="ctrl-label">DataProcess Project</div>
     <div class="param-row">
-      <div class="param-label">Project</div>
+      <label class="param-label" for="projectPath">Project</label>
       <div class="input-row histology-grow">
         <input type="text" id="projectPath" class="input-path histology-grow" placeholder="/path/to/histology_project.dphistology or containing folder">
         <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('projectPath','loadHistologyDataProject')">Open Project</button>
@@ -277,7 +277,7 @@
   <div class="ctrl-section" id="histologySingleFileControls">
     <div class="ctrl-label">Test Image</div>
     <div class="param-row">
-      <div class="param-label">Image</div>
+      <label class="param-label" for="histologyImagePath">Image</label>
       <div class="input-row histology-grow">
         <input type="text" id="histologyImagePath" class="input-path histology-grow" placeholder="/path/to/exported TIFF for quick testing">
         <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyImagePath','loadHistologyFileImage')">Open File</button>
@@ -297,7 +297,7 @@
   <div class="ctrl-section" id="histologyMarkerControls">
     <div class="ctrl-label">Channels</div>
     <div class="param-row">
-      <div class="param-label">DAPI</div>
+      <label class="param-label" for="dapiChannel">DAPI</label>
       <select id="dapiChannel" class="input-sm histology-select-wide">
         <option value="dapi" selected>DAPI / Blue</option>
         <option value="blue">Blue</option>
@@ -307,7 +307,7 @@
       </select>
     </div>
     <div class="param-row">
-      <div class="param-label">SMA</div>
+      <label class="param-label" for="smaChannel">SMA</label>
       <select id="smaChannel" class="input-sm histology-select-wide">
         <option value="fitc" selected>FITC / Green</option>
         <option value="green">Green</option>
@@ -317,7 +317,7 @@
       </select>
     </div>
     <div class="param-row">
-      <div class="param-label">Macrophage</div>
+      <label class="param-label" for="macrophageChannel">Macrophage</label>
       <select id="macrophageChannel" class="input-sm histology-select-wide">
         <option value="cy5" selected>Cy5 / Red</option>
         <option value="red">Red</option>
@@ -331,7 +331,7 @@
   <div class="ctrl-section" id="histologyDetectionControls">
     <div class="ctrl-label">Thresholds</div>
     <div class="param-row">
-      <div class="param-label">SMA T</div>
+      <label class="param-label" for="smaThresholdMethod">SMA T</label>
       <select id="smaThresholdMethod" class="input-sm">
         <option value="otsu" selected>Otsu</option>
         <option value="manual">Manual</option>
@@ -341,7 +341,7 @@
       <input type="number" id="smaThreshold" class="input-sm" min="0" max="255" step="1" value="120">
     </div>
     <div class="param-row">
-      <div class="param-label">Mac T</div>
+      <label class="param-label" for="macrophageThresholdMethod">Mac T</label>
       <select id="macrophageThresholdMethod" class="input-sm">
         <option value="otsu" selected>Otsu</option>
         <option value="manual">Manual</option>
@@ -351,7 +351,7 @@
       <input type="number" id="macrophageThreshold" class="input-sm" min="0" max="255" step="1" value="120">
     </div>
     <div class="param-row">
-      <div class="param-label">DAPI T</div>
+      <label class="param-label" for="dapiThresholdMethod">DAPI T</label>
       <select id="dapiThresholdMethod" class="input-sm">
         <option value="otsu" selected>Otsu</option>
         <option value="manual">Manual</option>
@@ -365,7 +365,7 @@
     <details class="ctrl-details">
       <summary>Advanced Detection</summary>
       <div class="param-row">
-        <div class="param-label">BC</div>
+        <label class="param-label" for="backgroundMode">BC</label>
         <select id="backgroundMode" class="input-sm">
           <option value="percentile" selected>Percentile</option>
           <option value="rolling">Rolling</option>
@@ -374,38 +374,38 @@
         <input type="number" id="backgroundPercentile" class="input-sm" min="0" max="50" step="1" value="10">
       </div>
       <div class="param-row">
-        <div class="param-label">Smooth</div>
+        <label class="param-label" for="smoothSigma">Smooth</label>
         <input type="number" id="smoothSigma" class="input-sm" min="0" max="10" step="0.25" value="1">
       </div>
       <div class="param-row">
-        <div class="param-label">Min area</div>
+        <label class="param-label" for="minPositiveArea">Min area</label>
         <input type="number" id="minPositiveArea" class="input-sm" min="1" max="10000" step="1" value="12">
       </div>
       <div class="param-row">
-        <div class="param-label">Pct T</div>
+        <label class="param-label" for="thresholdPercentile">Pct T</label>
         <input type="number" id="thresholdPercentile" class="input-sm" min="50" max="100" step="0.1" value="97.5">
       </div>
       <div class="param-row">
-        <div class="param-label">SD k</div>
+        <label class="param-label" for="thresholdStdK">SD k</label>
         <input type="number" id="thresholdStdK" class="input-sm" min="0" max="10" step="0.25" value="2">
       </div>
       <div class="param-row">
-        <div class="param-label">DAPI dilate</div>
+        <label class="param-label" for="dapiDilatePx">DAPI dilate</label>
         <input type="number" id="dapiDilatePx" class="input-sm" min="0" max="30" step="1" value="2">
       </div>
       <div class="param-row">
-        <div class="param-label">ROI shrink</div>
+        <label class="param-label" for="roiShrinkPercent">ROI shrink</label>
         <input type="number" id="roiShrinkPercent" class="input-sm" min="0" max="80" step="1" value="0">
       </div>
       <div class="param-row">
-        <div class="param-label">Group</div>
+        <label class="param-label" for="histologySummaryGroupBy">Group</label>
         <select id="histologySummaryGroupBy" class="input-sm histology-select-wide">
           <option value="treatment" selected>Treatment</option>
           <option value="sample">Sample #</option>
         </select>
       </div>
       <div class="param-row">
-        <div class="param-label">Normalize to</div>
+        <label class="param-label" for="histologyNormalizeGroup">Normalize to</label>
         <input type="text" id="histologyNormalizeGroup" class="input-sm" value="CB">
       </div>
       <label class="checkbox-row"><input type="checkbox" id="histologyExcludeZeroObservations" checked><span>Skip non-detect points</span></label>
@@ -476,7 +476,7 @@
             <label class="checkbox-row"><input type="checkbox" id="histologyRoiDebugAuto" checked><span>Auto</span></label>
           </div>
           <div class="param-row">
-            <div class="param-label">ROI</div>
+            <label class="param-label" for="histologyDebugRoiSelect">ROI</label>
             <select id="histologyDebugRoiSelect" class="input-sm histology-grow"></select>
           </div>
           <div class="btn-row">

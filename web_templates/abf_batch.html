@@ -50,15 +50,15 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Channels</div>
   <div class="param-row">
-    <div class="param-label">I Ch</div>
+    <label class="param-label" for="iCh">I Ch</label>
     <input type="number" id="iCh" class="input-xs" value="0" min="0" max="10">
   </div>
   <div class="param-row">
-    <div class="param-label">V Ch</div>
+    <label class="param-label" for="vCh">V Ch</label>
     <input type="number" id="vCh" class="input-xs" value="1" min="0" max="10">
   </div>
   <div class="param-row">
-    <div class="param-label">TTL Ch</div>
+    <label class="param-label" for="analogCh">TTL Ch</label>
     <input type="number" id="analogCh" class="input-xs" value="2" min="0" max="10">
   </div>
 </div>
@@ -66,18 +66,18 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Segment Selection</div>
   <div class="param-row">
-    <div class="param-label">Mode</div>
+    <label class="param-label" for="segmentMode">Mode</label>
     <select id="segmentMode" class="input-xs" data-dp-change="DP.page.syncSegmentControls()">
       <option value="auto" selected>Auto</option>
       <option value="manual">Manual</option>
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">t0 s</div>
+    <label class="param-label" for="segmentT0">t0 s</label>
     <input type="number" id="segmentT0" class="input-xs" value="0.1" step="any" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">t1 s</div>
+    <label class="param-label" for="segmentT1">t1 s</label>
     <input type="number" id="segmentT1" class="input-xs" value="0.7" step="any" min="0">
   </div>
 </div>

@@ -294,7 +294,21 @@ def main(argv: list[str] | None = None) -> None:
     if not args.no_browser and no_browser not in {"1", "true", "yes", "on"}:
         threading.Thread(target=_open_browser, daemon=True).start()
     print(f"\n  DataProcess Web  ->  http://localhost:{PORT}\n")
-    app.run(host=args.host, port=PORT, debug=False, threaded=True)
+    try:
+        app.run(host=args.host, port=PORT, debug=False, threaded=True)
+    except OSError as exc:
+        if exc.errno in {48, 98, 10048}:  # EADDRINUSE across macOS/Linux/Windows
+            print(
+                f"\n  Port {PORT} is already in use.\n"
+                "  DataProcess may already be running in another window "
+                "(check your open browser tabs at\n"
+                f"  http://localhost:{PORT}), or another program is using this port.\n\n"
+                "  To use a different port, start it with:\n"
+                f"      python3 web_app.py --port {PORT + 1}\n",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from None
+        raise
 
 
 if __name__ == "__main__":

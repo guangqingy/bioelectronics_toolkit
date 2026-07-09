@@ -315,7 +315,7 @@
 <div class="ctrl-section" id="sliceSection" style="display:none">
   <div class="ctrl-label">Slice Preview</div>
   <div class="param-row">
-    <div class="param-label">LUT</div>
+    <label class="param-label" for="lutSelect">LUT</label>
     <select id="lutSelect" class="input-sm" data-dp-change="refreshSlicePreview()">
       <option>Gray</option>
       <option>Red</option>
@@ -347,14 +347,14 @@
 <details class="ctrl-section ctrl-details" id="renderSection" style="display:none">
   <summary class="ctrl-label">3D Render</summary>
   <div class="param-row">
-    <div class="param-label">Render Channel</div>
+    <label class="param-label" for="volumeChannelMode">Render Channel</label>
     <select id="volumeChannelMode" style="flex:1">
       <option value="composite" selected>Composite channels</option>
       <option value="current">Current C only</option>
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Detail</div>
+    <label class="param-label" for="volumeQuality">Detail</label>
     <select id="volumeQuality" style="flex:1">
       <option value="middle" selected>Middle</option>
       <option value="low">Low</option>
@@ -362,7 +362,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Layer fill</div>
+    <label class="param-label" for="interlayerLevel">Layer fill</label>
     <select id="interlayerLevel" style="flex:1">
       <option value="middle" selected>Middle</option>
       <option value="low">Low</option>
@@ -370,11 +370,11 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Signal %</div>
+    <label class="param-label" for="volumeThreshold">Signal %</label>
     <input type="number" id="volumeThreshold" class="input-sm" value="98.8" min="80" max="99.95" step="0.1" style="flex:1;width:auto!important">
   </div>
   <div class="param-row">
-    <div class="param-label">Denoise</div>
+    <label class="param-label" for="volumeDenoise">Denoise</label>
     <select id="volumeDenoise" style="flex:1">
       <option value="Off" selected>Off</option>
       <option value="Light">Light</option>
@@ -383,7 +383,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Density</div>
+    <label class="param-label" for="volumeDensityMode">Density</label>
     <select id="volumeDensityMode" style="flex:1">
       <option value="low" selected>Low</option>
       <option value="off">Off</option>
@@ -393,11 +393,11 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Radius µm</div>
+    <label class="param-label" for="volumeDensityRadius">Radius µm</label>
     <input type="number" id="volumeDensityRadius" class="input-sm" value="" min="0" step="0.1" placeholder="auto" style="flex:1;width:auto!important">
   </div>
   <div class="param-row">
-    <div class="param-label">Min pts</div>
+    <label class="param-label" for="volumeDensityMin">Min pts</label>
     <input type="number" id="volumeDensityMin" class="input-sm" value="" min="1" max="100" step="1" placeholder="auto" style="flex:1;width:auto!important">
   </div>
   <div id="channelRangeControls" class="stack-channel-ranges"></div>
@@ -406,11 +406,11 @@
     <span>Show GIF scale bar</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Bar µm</div>
+    <label class="param-label" for="scaleBarUm">Bar µm</label>
     <input type="number" id="scaleBarUm" class="input-sm" value="20" min="0" step="1" style="flex:1;width:auto!important">
   </div>
   <div class="param-row">
-    <div class="param-label">Output</div>
+    <label class="param-label" for="outputName">Output</label>
     <input type="text" id="outputName" placeholder="(auto based on TIFF)" style="font-size:11.5px">
   </div>
   <button class="btn-primary" id="btnPreview3D" data-label="Preview 3D Render" data-dp-click="DP.page.generateVolume3D()" style="width:100%;margin-top:8px">Preview 3D Render</button>
@@ -419,7 +419,7 @@
     <summary class="ctrl-label">Rotation GIF</summary>
     <div class="stack-rotation-grid">
       <div class="param-row">
-        <div class="param-label">Rotation Axis</div>
+        <label class="param-label" for="rotationAxis">Rotation Axis</label>
         <input type="text" id="rotationAxis" list="rotationAxisOptions" value="z" placeholder="z or 0.2x+0.8y" style="flex:1">
         <datalist id="rotationAxisOptions">
           <option value="z"></option>
@@ -431,18 +431,18 @@
         </datalist>
       </div>
       <div class="param-row">
-        <div class="param-label">Dir</div>
+        <label class="param-label" for="rotationDirection">Dir</label>
         <select id="rotationDirection" style="flex:1">
           <option value="forward" selected>Forward</option>
           <option value="reverse">Reverse</option>
         </select>
       </div>
       <div class="param-row">
-        <div class="param-label">Frames</div>
+        <label class="param-label" for="gifFrames">Frames</label>
         <input type="number" id="gifFrames" class="input-sm" value="48" min="8" max="120" step="4" style="flex:1;width:auto!important">
       </div>
       <div class="param-row">
-        <div class="param-label">FPS</div>
+        <label class="param-label" for="gifFps">FPS</label>
         <input type="number" id="gifFps" class="input-sm" value="12" min="1" max="30" step="1" style="flex:1;width:auto!important">
       </div>
     </div>
@@ -452,11 +452,11 @@
   <details class="stack-subsection ctrl-details">
     <summary class="ctrl-label">Intensity Distribution</summary>
     <div class="param-row">
-      <div class="param-label">Histogram Channel</div>
+      <label class="param-label" for="distributionChannel">Histogram Channel</label>
       <select id="distributionChannel" style="flex:1"></select>
     </div>
     <div class="param-row">
-      <div class="param-label">Histogram Axis</div>
+      <label class="param-label" for="distributionAxis">Histogram Axis</label>
       <select id="distributionAxis" style="flex:1">
         <option value="z" selected>Z</option>
         <option value="x">X</option>
@@ -464,7 +464,7 @@
       </select>
     </div>
     <div class="param-row">
-      <div class="param-label">Metric</div>
+      <label class="param-label" for="distributionMetric">Metric</label>
       <select id="distributionMetric" style="flex:1">
         <option value="mean" selected>Mean</option>
         <option value="sum">Sum</option>

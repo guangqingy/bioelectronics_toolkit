@@ -28,7 +28,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Project Order</div>
   <div class="param-row">
-    <div class="param-label">Sort</div>
+    <label class="param-label" for="sortMode">Sort</label>
     <select id="sortMode" data-dp-change="onSortChange()" style="flex:1">
       <option value="time" selected>Acquisition time</option>
       <option value="original">Leica project order</option>
@@ -52,7 +52,7 @@
 <div class="ctrl-section" id="previewSection" style="display:none">
   <div class="ctrl-label">Preview</div>
   <div class="param-row">
-    <div class="param-label">LUT</div>
+    <label class="param-label" for="lutSelect">LUT</label>
     <select id="lutSelect" class="input-sm" data-dp-change="refreshLifPreview()">
       <option>Gray</option>
       <option>Red</option>

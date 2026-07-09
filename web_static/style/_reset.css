@@ -17,3 +17,6 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
 }
+/* Inline code/paths often carry long unbreakable tokens (file paths, sample
+   IDs). Let them wrap so they never spill past their container. */
+code, kbd, samp { overflow-wrap: anywhere; }

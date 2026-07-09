@@ -107,6 +107,9 @@ body {
   line-height: 1.5;
   overflow-x: hidden;
 }
+/* Inline code/paths often carry long unbreakable tokens (file paths, sample
+   IDs). Let them wrap so they never spill past their container. */
+code, kbd, samp { overflow-wrap: anywhere; }
 
 /* web_static/style/_nav.css */
 
@@ -1160,6 +1163,7 @@ table.dp-table tr:hover td { background: var(--ash); }
   font-weight: 500;
   color: var(--carbon);
   margin-bottom: 5px;
+  overflow-wrap: anywhere;
 }
 .dash-card-desc {
   font-size: 12px;
@@ -1795,6 +1799,8 @@ table.dp-table tr:hover td { background: var(--ash); }
   font-size: 28px;
   font-weight: 720;
   line-height: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .run-path {
   color: var(--pewter);
@@ -2193,7 +2199,7 @@ pre {
 /* ─── Leica LIF browser ─── */
 .lif-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 1.25fr) minmax(320px, 0.75fr);
+  grid-template-columns: minmax(380px, 1.25fr) minmax(240px, 0.75fr);
   gap: 12px;
   align-items: start;
 }
@@ -2413,7 +2419,7 @@ pre {
 /* ─── 3D stacking ─── */
 .stacking-layout {
   display: grid;
-  grid-template-columns: minmax(560px, 1fr) minmax(320px, 0.48fr);
+  grid-template-columns: minmax(400px, 1fr) minmax(240px, 0.48fr);
   gap: 12px;
   align-items: start;
 }
@@ -2499,6 +2505,15 @@ pre {
   display: none;
 }
 
+/* The LIF and 3D-stacking pages use a two-column results grid inside the main
+   content area (which already sits beside the fixed-width control panel). Below
+   ~1200px the grid cannot fit next to the panel, so collapse it to a single
+   column before the right card can overflow off-screen. */
+@media (max-width: 1200px) {
+  .lif-layout { grid-template-columns: 1fr; }
+  .stacking-layout { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 1024px) {
   .nav-inner { padding: 0 12px; gap: 5px; }
   .nav-brand { margin-right: 4px; }
@@ -2518,8 +2533,6 @@ pre {
   }
   .main-content, .abf-main { padding: 14px; }
   .plot-area { min-height: 280px; }
-  .lif-layout { grid-template-columns: 1fr; }
-  .stacking-layout { grid-template-columns: 1fr; }
   .lif-table-wrap, .lif-preview { min-height: 320px; max-height: none; }
   .lif-3d-viewport { min-height: 420px; height: 62vh; }
   .prefs-layout { grid-template-columns: 1fr; }

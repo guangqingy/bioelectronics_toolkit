@@ -39,15 +39,15 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Channel</div>
   <div class="param-row">
-    <div class="param-label">Signal</div>
+    <label class="param-label" for="channel">Signal</label>
     <input type="number" id="channel" class="input-xs" value="0" min="0" max="10">
   </div>
   <div class="param-row">
-    <div class="param-label">I Ch</div>
+    <label class="param-label" for="iCh">I Ch</label>
     <input type="number" id="iCh" class="input-xs" value="0" min="0" max="10">
   </div>
   <div class="param-row">
-    <div class="param-label">V Ch</div>
+    <label class="param-label" for="vCh">V Ch</label>
     <input type="number" id="vCh" class="input-xs" value="1" min="0" max="10">
   </div>
   <label class="checkbox-row" style="margin-top:8px;">
@@ -59,11 +59,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Window (s)</div>
   <div class="param-row">
-    <div class="param-label">Start</div>
+    <label class="param-label" for="t0">Start</label>
     <input type="number" id="t0" class="input-xs" value="0" step="any">
   </div>
   <div class="param-row">
-    <div class="param-label">End</div>
+    <label class="param-label" for="t1">End</label>
     <input type="number" id="t1" class="input-xs" step="any">
   </div>
   <label class="checkbox-row" style="margin-top:8px;">
@@ -75,14 +75,14 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Peak Detection</div>
   <div class="param-row">
-    <div class="param-label">Polarity</div>
+    <label class="param-label" for="polarity">Polarity</label>
     <select id="polarity" class="input-sm">
       <option value="positive">Positive</option>
       <option value="negative">Negative</option>
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Height</div>
+    <label class="param-label" for="pkHeight">Height</label>
     <input type="number" id="pkHeight" class="input-xs" step="any" placeholder="optional">
   </div>
   <div class="param-row">
@@ -100,7 +100,7 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Export</summary>
   <div class="param-row">
-    <div class="param-label">±Win (ms)</div>
+    <label class="param-label" for="exportWinMs">±Win (ms)</label>
     <input type="number" id="exportWinMs" class="input-xs" value="50" min="1" step="1">
   </div>
   <div class="btn-row">

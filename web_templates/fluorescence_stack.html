@@ -40,7 +40,7 @@
 <div class="ctrl-section" id="previewSection">
   <div class="ctrl-label">Display</div>
   <div class="param-row">
-    <div class="param-label">LUT</div>
+    <label class="param-label" for="lutSelect">LUT</label>
     <select id="lutSelect" class="input-sm" data-dp-change="refreshPreview()">
       <option>Gray</option>
       <option>Red</option>
@@ -52,7 +52,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Mode</div>
+    <label class="param-label" for="displayMode">Mode</label>
     <select id="displayMode" data-dp-change="onDisplayModeChange()">
       <option value="single" selected>Single slice</option>
       <option value="max">Max projection</option>
@@ -79,7 +79,7 @@
     </div>
   </div>
   <div class="param-row" id="zRangeRow" style="margin-top:7px;display:none">
-    <div class="param-label">Slices</div>
+    <label class="param-label" for="zStart">Slices</label>
     <input type="number" id="zStart" value="1" min="1" step="1" data-dp-change="refreshPreview()" style="font-size:11.5px">
     <input type="number" id="zEnd" value="1" min="1" step="1" data-dp-change="refreshPreview()" style="font-size:11.5px">
   </div>

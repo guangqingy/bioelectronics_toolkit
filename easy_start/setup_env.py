@@ -100,7 +100,16 @@ def main() -> int:
     except subprocess.CalledProcessError as exc:
         log("\nSetup did not finish successfully.")
         log(f"Failed command exit code: {exc.returncode}")
+        log("\nCommon causes and fixes:")
+        log("  - No internet connection: downloading packages needs a working network.")
+        log("  - A firewall or proxy is blocking pip: try again on a different network.")
+        log("  - Not enough disk space: free up space and re-run this script.")
+        log("  - A previous partial install: delete the '.venv' folder and re-run.")
+        log("\nIf it keeps failing, copy the messages above when asking for help.")
         return int(exc.returncode or 1)
+    except KeyboardInterrupt:
+        log("\nSetup was cancelled.")
+        return 130
     return 0
 
 

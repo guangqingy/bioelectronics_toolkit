@@ -48,7 +48,18 @@ async function api(url, body, options) {
   if (method.toUpperCase() !== 'GET') {
     fetchOptions.body = JSON.stringify(body || {});
   }
-  const r = await fetch(url, fetchOptions);
+  let r;
+  try {
+    r = await fetch(url, fetchOptions);
+  } catch (netErr) {
+    // Aborted requests are an expected control-flow signal, not a failure.
+    if (netErr && netErr.name === 'AbortError') throw netErr;
+    const message =
+      'Cannot reach DataProcess. The local server may have stopped — check that the '
+      + 'terminal/command window running it is still open, then reload this page.';
+    if (typeof showErrorBanner === 'function') showErrorBanner(message);
+    return {ok: false, outputs: [], warnings: [], error: message, offline: true};
+  }
   const payload = await r.json().catch(() => ({}));
   const d = dpNormalizeApiPayload(payload, r.ok);
   if (!r.ok && !d.error) d.error = 'Request failed';

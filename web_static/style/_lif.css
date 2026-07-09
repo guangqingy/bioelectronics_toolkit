@@ -1,7 +1,7 @@
 /* ─── Leica LIF browser ─── */
 .lif-layout {
   display: grid;
-  grid-template-columns: minmax(520px, 1.25fr) minmax(320px, 0.75fr);
+  grid-template-columns: minmax(380px, 1.25fr) minmax(240px, 0.75fr);
   gap: 12px;
   align-items: start;
 }

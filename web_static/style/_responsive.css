@@ -22,12 +22,19 @@
   }
   .main-content, .abf-main { padding: 14px; }
   .plot-area { min-height: 280px; }
-  .lif-layout { grid-template-columns: 1fr; }
-  .stacking-layout { grid-template-columns: 1fr; }
   .lif-table-wrap, .lif-preview { min-height: 320px; max-height: none; }
   .lif-3d-viewport { min-height: 420px; height: 62vh; }
   .prefs-layout { grid-template-columns: 1fr; }
   .prefs-form-grid { max-height: none; }
+}
+
+/* The LIF and 3D-stacking pages use a two-column results grid inside the main
+   content area (which already sits beside the fixed-width control panel). Below
+   ~1200px the grid cannot fit next to the panel, so collapse it to a single
+   column before the right card can overflow off-screen. */
+@media (max-width: 1200px) {
+  .lif-layout { grid-template-columns: 1fr; }
+  .stacking-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 700px) {
   :root { --ctrl-w: 100%; }

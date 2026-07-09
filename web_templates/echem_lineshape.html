@@ -6,7 +6,7 @@
 <style>
 .lineshape-workbench {
   display: grid;
-  grid-template-columns: minmax(280px, 0.85fr) minmax(440px, 1.15fr);
+  grid-template-columns: minmax(260px, 0.85fr) minmax(360px, 1.15fr);
   gap: 12px;
   align-items: stretch;
 }
@@ -61,7 +61,7 @@
   font-size: 12px;
   text-align: center;
 }
-@media (max-width: 1100px) {
+@media (max-width: 1200px) {
   .lineshape-workbench {
     grid-template-columns: 1fr;
   }
@@ -108,19 +108,19 @@
     </div>
   </div>
   <div class="param-row">
-    <div class="param-label">Material</div>
+    <label class="param-label" for="material">Material</label>
     <input type="text" id="material" value="ATAT" style="flex:1">
   </div>
   <div class="param-row">
-    <div class="param-label">Index</div>
+    <label class="param-label" for="indexK">Index</label>
     <input type="number" id="indexK" class="input-sm" value="1" step="1" min="1" max="20">
   </div>
   <div class="param-row">
-    <div class="param-label">Chambers</div>
+    <label class="param-label" for="chambers">Chambers</label>
     <input type="text" id="chambers" value="1,2,3" style="flex:1">
   </div>
   <div class="param-row">
-    <div class="param-label">Kind</div>
+    <label class="param-label" for="kind">Kind</label>
     <select id="kind">
       <option value="photocurrent">Photocurrent</option>
       <option value="photovoltage">Photovoltage</option>
@@ -131,23 +131,23 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Axes</div>
   <div class="param-row">
-    <div class="param-label">X min</div>
+    <label class="param-label" for="cropT0">X min</label>
     <input type="number" id="cropT0" class="input-sm" value="-0.005" step="0.001">
   </div>
   <div class="param-row">
-    <div class="param-label">X max</div>
+    <label class="param-label" for="cropT1">X max</label>
     <input type="number" id="cropT1" class="input-sm" value="0.020" step="0.001">
   </div>
   <div class="param-row">
-    <div class="param-label">X offset</div>
+    <label class="param-label" for="xOffset">X offset</label>
     <input type="number" id="xOffset" class="input-sm" value="0" step="0.0001">
   </div>
   <div class="param-row">
-    <div class="param-label">Y min</div>
+    <label class="param-label" for="yMin">Y min</label>
     <input type="number" id="yMin" class="input-sm" placeholder="auto" step="any">
   </div>
   <div class="param-row">
-    <div class="param-label">Y max</div>
+    <label class="param-label" for="yMax">Y max</label>
     <input type="number" id="yMax" class="input-sm" placeholder="auto" step="any">
   </div>
   <div class="btn-row" style="margin-top:6px">
@@ -173,11 +173,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Export</div>
   <div class="param-row">
-    <div class="param-label">Output</div>
+    <label class="param-label" for="outputDir">Output</label>
     <input type="text" id="outputDir" placeholder="plots_shape_average" style="flex:1">
   </div>
   <div class="param-row">
-    <div class="param-label">DPI</div>
+    <label class="param-label" for="exportDpi">DPI</label>
     <input type="number" id="exportDpi" class="input-sm" value="300" min="72" max="600" step="1">
   </div>
   <button class="btn-primary" id="btnExportFiles" data-label="Export CSV + PNG + SVG + Sources" type="button" data-dp-click="DP.page.exportFiles()" style="display:none">Export CSV + PNG + SVG + Sources</button>

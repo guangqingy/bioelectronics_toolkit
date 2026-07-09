@@ -85,13 +85,15 @@ class JobManager:
         self._persistence_disabled = True
         if not self._persistence_warning_logged:
             self._persistence_warning_logged = True
+            # Recoverable by design (we fall back to in-memory jobs), so keep the
+            # console message concise; the full traceback stays at DEBUG for devs.
             LOG.warning(
                 "Job persistence unavailable at %s while %s; continuing with in-memory jobs only: %s",
                 self.persistence_path,
                 action,
                 exc,
-                exc_info=True,
             )
+            LOG.debug("Job persistence failure detail while %s", action, exc_info=True)
         else:
             LOG.debug("Job persistence already disabled while %s: %s", action, exc)
 

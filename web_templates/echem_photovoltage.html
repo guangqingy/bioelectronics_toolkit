@@ -23,11 +23,11 @@
   </label>
   <div id="windowRow">
     <div class="param-row">
-      <div class="param-label param-label-with-help">Start (s)<span class="help-tip" title="First timestamp included in the pulse detection window.">?</span></div>
+      <label class="param-label param-label-with-help" for="t0">Start (s)<span class="help-tip" title="First timestamp included in the pulse detection window.">?</span></label>
       <input type="number" id="t0" class="input-sm" value="0" step="0.1">
     </div>
     <div class="param-row">
-      <div class="param-label param-label-with-help">End (s)<span class="help-tip" title="Last timestamp included in the pulse detection window.">?</span></div>
+      <label class="param-label param-label-with-help" for="t1">End (s)<span class="help-tip" title="Last timestamp included in the pulse detection window.">?</span></label>
       <input type="number" id="t1" class="input-sm" value="10" step="0.1">
     </div>
   </div>
@@ -36,14 +36,14 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Detrend</div>
   <div class="param-row">
-    <div class="param-label">Method</div>
+    <label class="param-label" for="detrendMethod">Method</label>
     <select id="detrendMethod">
       <option value="median">Rolling median</option>
       <option value="savgol">Savitzky-Golay</option>
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Window (ms)</div>
+    <label class="param-label" for="baselineWinMs">Window (ms)</label>
     <input type="number" id="baselineWinMs" class="input-sm" value="50" step="1" min="1">
   </div>
   <div class="param-row">
@@ -59,15 +59,15 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Detection Parameters</div>
   <div class="param-row">
-    <div class="param-label">Peak min (V)</div>
+    <label class="param-label" for="peakMinV">Peak min (V)</label>
     <input type="number" id="peakMinV" class="input-sm" value="0.01" step="0.001" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">Min width (ms)</div>
+    <label class="param-label" for="minWidthMs">Min width (ms)</label>
     <input type="number" id="minWidthMs" class="input-sm" value="5" step="0.1" min="0.1">
   </div>
   <div class="param-row">
-    <div class="param-label">Min spacing (ms)</div>
+    <label class="param-label" for="minSpacingMs">Min spacing (ms)</label>
     <input type="number" id="minSpacingMs" class="input-sm" value="10" step="0.1" min="0.1">
   </div>
 </div>
@@ -75,7 +75,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Polarity</div>
   <div class="param-row">
-    <div class="param-label">Mode</div>
+    <label class="param-label" for="polarity">Mode</label>
     <select id="polarity">
       <option value="positive">Positive</option>
       <option value="negative">Negative</option>

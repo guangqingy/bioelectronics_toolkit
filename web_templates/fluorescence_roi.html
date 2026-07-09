@@ -40,14 +40,14 @@
 <div class="ctrl-section" id="stackSection" style="display:none" data-resettable="true">
   <div class="ctrl-label">Preview</div>
   <div class="param-row">
-    <div class="param-label">Stack</div>
+    <label class="param-label" for="stackSelect">Stack</label>
     <select id="stackSelect" data-dp-change="loadStack()">
       <option value="stack1">Stack 1</option>
       <option value="stack2">Stack 2</option>
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">LUT</div>
+    <label class="param-label" for="lutSelect">LUT</label>
     <select id="lutSelect" data-dp-change="loadStack()">
       <option>Gray</option>
       <option>Red</option>
@@ -58,7 +58,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Size</div>
+    <label class="param-label" for="previewScale">Size</label>
     <select id="previewScale" data-dp-change="applyPreviewScale()">
       <option value="0.60">Compact</option>
       <option value="0.85" selected>Comfortable</option>
@@ -81,11 +81,11 @@
   </div>
   <div id="roiList" style="display:flex;flex-direction:column;gap:4px;margin-top:4px"></div>
 	  <div class="param-row" style="margin-top:8px">
-	    <div class="param-label">Draw target</div>
+	    <label class="param-label" for="drawTarget">Draw target</label>
     <select id="drawTarget" data-dp-change="onDrawTargetChange()" style="flex:1"></select>
 	  </div>
 	  <div class="param-row">
-	    <div class="param-label">Shape</div>
+	    <label class="param-label" for="drawShape">Shape</label>
 	    <select id="drawShape" data-dp-change="onDrawShapeChange()" style="flex:1">
 	      <option value="rect">Rectangle</option>
 	      <option value="concentric">Concentric circles</option>
@@ -106,7 +106,7 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Background</div>
   <div class="param-row">
-    <div class="param-label">Mode</div>
+    <label class="param-label" for="bgMode">Mode</label>
     <select id="bgMode" data-dp-change="onBgModeChange()" style="flex:1">
       <option value="none">None</option>
       <option value="corner_br">Corner (bottom-right)</option>
@@ -115,7 +115,7 @@
     </select>
   </div>
   <div id="bgRoiRow" class="param-row" style="display:none">
-    <div class="param-label">BG ROI</div>
+    <label class="param-label" for="bgRoiSelect">BG ROI</label>
     <select id="bgRoiSelect" data-dp-change="onBgRoiChange()" style="flex:1"></select>
   </div>
 </div>
@@ -123,7 +123,7 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Analysis Settings</div>
   <div class="param-row">
-    <div class="param-label">Metric</div>
+    <label class="param-label" for="metric">Metric</label>
     <select id="metric">
       <option value="mean">Mean</option>
       <option value="top20_mean">Top 20% mean</option>
@@ -133,7 +133,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Plot mode</div>
+    <label class="param-label" for="plotMetric">Plot mode</label>
     <select id="plotMetric">
       <option value="absolute">Absolute</option>
       <option value="bg_subtracted">BG Subtracted</option>
@@ -146,27 +146,27 @@
     <input type="text" id="refSequence" value="" placeholder="e.g. 0 or 10" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Prefix</div>
+    <label class="param-label" for="outPrefix">Prefix</label>
     <input type="text" id="outPrefix" value="roi_analysis" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Scale bar µm</div>
+    <label class="param-label" for="scaleBarUm">Scale bar µm</label>
     <input type="number" id="scaleBarUm" value="200" min="0" step="any" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">GIF frame ms</div>
+    <label class="param-label" for="gifFrameMs">GIF frame ms</label>
     <input type="number" id="gifFrameMs" value="2000" min="20" step="10" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Pixel size µm/px</div>
+    <label class="param-label" for="pixelSizeUm">Pixel size µm/px</label>
   <input type="number" id="pixelSizeUm" placeholder="auto from TIFF metadata" min="0" step="any" data-dp-change="onRingWidthChange()" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Scale text</div>
+    <label class="param-label" for="scaleLabel">Scale text</label>
     <input type="text" id="scaleLabel" placeholder="auto: {Scale bar µm} µm" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Label scale</div>
+    <label class="param-label" for="labelScale">Label scale</label>
     <input type="number" id="labelScale" value="2.0" min="0.5" max="4" step="0.1" style="font-size:11.5px">
   </div>
   <label class="checkbox-row" style="margin-top:6px">

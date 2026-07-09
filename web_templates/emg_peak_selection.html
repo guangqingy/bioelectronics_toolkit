@@ -24,11 +24,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Preview Window (s)</div>
   <div class="param-row">
-    <div class="param-label">X Min</div>
+    <label class="param-label" for="xMin">X Min</label>
     <input type="number" id="xMin" class="input-sm" value="0" step="any" data-dp-change="DP.page.plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">X Max</div>
+    <label class="param-label" for="xMax">X Max</label>
     <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="DP.page.plot()">
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">
@@ -41,7 +41,7 @@
   <summary class="ctrl-label">Detect</summary>
   <div class="ctrl-label">Peak Detection</div>
   <div class="param-row">
-    <div class="param-label">Polarity</div>
+    <label class="param-label" for="pkPolarity">Polarity</label>
     <select id="pkPolarity" class="input-sm" style="width:100%;">
       <option value="both" selected>Both</option>
       <option value="positive">Positive</option>
@@ -53,7 +53,7 @@
     <span>Polarity inverse</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Height</div>
+    <label class="param-label" for="pkHeight">Height</label>
     <input type="number" id="pkHeight" class="input-sm" value="200" step="1">
   </div>
   <div class="param-row">
@@ -65,11 +65,11 @@
     <input type="number" id="pkDist" class="input-sm" value="400" step="1" min="1">
   </div>
   <div class="param-row">
-    <div class="param-label">Max ms</div>
+    <label class="param-label" for="pkDur">Max ms</label>
     <input type="number" id="pkDur" class="input-sm" value="200" step="1" min="1">
   </div>
   <div class="param-row">
-    <div class="param-label">Min width ms</div>
+    <label class="param-label" for="pkMinW">Min width ms</label>
     <input type="number" id="pkMinW" class="input-sm" value="0.1" step="0.1" min="0">
   </div>
   <div class="param-row">
@@ -86,7 +86,7 @@
     <input type="number" id="pkSigmaHeight" class="input-sm" value="1" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">Detect mode</div>
+    <label class="param-label" for="detectMode">Detect mode</label>
     <select id="detectMode" class="input-sm" style="width:100%;">
       <option value="replace" selected>Replace</option>
       <option value="append">Append</option>
@@ -100,15 +100,15 @@
   <summary class="ctrl-label">Group</summary>
   <div class="ctrl-label">Auto Grouping</div>
   <div class="param-row">
-    <div class="param-label">Period Hz</div>
+    <label class="param-label" for="grpPeriod">Period Hz</label>
     <input type="number" id="grpPeriod" class="input-sm" value="2" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">Gap x period</div>
+    <label class="param-label" for="grpGapFac">Gap x period</label>
     <input type="number" id="grpGapFac" class="input-sm" value="1.5" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">Group start</div>
+    <label class="param-label" for="grpStart">Group start</label>
     <input type="number" id="grpStart" class="input-sm" value="0" step="1">
   </div>
   <button class="btn-secondary" data-dp-click="DP.page.autoGroupByTime()" style="width:100%; margin-top:8px;">Auto Group By Time</button>
@@ -116,27 +116,27 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Baseline Fill</div>
   <div class="param-row">
-    <div class="param-label">Total groups</div>
+    <label class="param-label" for="grpTargetCount">Total groups</label>
     <input type="number" id="grpTargetCount" class="input-sm" value="10" step="1" min="1">
   </div>
   <div class="param-row">
-    <div class="param-label">Per group</div>
+    <label class="param-label" for="baselinePerGroup">Per group</label>
     <input type="number" id="baselinePerGroup" class="input-sm" value="3" step="1" min="1">
   </div>
   <div class="param-row">
-    <div class="param-label">Thresh x</div>
+    <label class="param-label" for="baselineThresholdScale">Thresh x</label>
     <input type="number" id="baselineThresholdScale" class="input-sm" value="0.25" step="0.05" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label">Base t0 s</div>
+    <label class="param-label" for="baselineStart">Base t0 s</label>
     <input type="number" id="baselineStart" class="input-sm" step="any">
   </div>
   <div class="param-row">
-    <div class="param-label">Base t1 s</div>
+    <label class="param-label" for="baselineEnd">Base t1 s</label>
     <input type="number" id="baselineEnd" class="input-sm" step="any">
   </div>
   <div class="param-row">
-    <div class="param-label">Seed</div>
+    <label class="param-label" for="baselineSeed">Seed</label>
     <input type="number" id="baselineSeed" class="input-sm" step="1" placeholder="auto">
   </div>
   <div class="input-row" style="gap:6px; margin-top:8px;">

@@ -49,11 +49,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">{{ 'GIF Parameters' if gif_page_mode == 'gif' else 'Preview Parameters' }}</div>
   <div class="param-row">
-    <div class="param-label">FPS</div>
+    <label class="param-label" for="gifFps">FPS</label>
     <input type="number" id="gifFps" class="input-sm" value="5" step="0.5" min="0.1" data-dp-change="scheduleGifPreview()">
   </div>
   <div class="param-row">
-    <div class="param-label">LUT</div>
+    <label class="param-label" for="gifLut">LUT</label>
     <select id="gifLut" class="input-sm" data-dp-change="scheduleGifPreview()">
       <option>Gray</option>
       <option>Red</option>
@@ -64,7 +64,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Bar µm</div>
+    <label class="param-label" for="gifBarUm">Bar µm</label>
     <input type="number" id="gifBarUm" class="input-sm" value="10" step="1" min="0" data-dp-change="scheduleGifPreview()">
   </div>
   <label class="checkbox-row" style="margin-bottom:6px">
@@ -72,13 +72,13 @@
     <span>Auto scale from JSON</span>
   </label>
   <div class="param-row" id="manualScaleRow">
-    <div class="param-label">Manual px/µm</div>
+    <label class="param-label" for="gifPxPerUm">Manual px/µm</label>
     <input type="number" id="gifPxPerUm" class="input-sm" value="3.45" step="0.01" min="0.01" data-dp-change="scheduleGifPreview()">
   </div>
   <details class="ctrl-details">
     <summary class="ctrl-label">Preview Label</summary>
     <div class="param-row">
-      <div class="param-label">Label</div>
+      <label class="param-label" for="gifLabelMode">Label</label>
       <select id="gifLabelMode" class="input-sm" data-dp-change="scheduleGifPreview()">
         <option value="frame" selected>Frame #</option>
         <option value="time">Time (s)</option>
@@ -88,18 +88,18 @@
   </details>
   {% if gif_page_mode == 'gif' %}
   <div class="param-row">
-    <div class="param-label">Crop</div>
+    <label class="param-label" for="gifCropMode">Crop</label>
     <select id="gifCropMode" class="input-sm" data-dp-change="updateGifCropControls(); scheduleGifPreview()">
       <option value="full" selected>Full frame</option>
       <option value="selected_rect">ROI2 rectangle</option>
     </select>
   </div>
   <div class="param-row" id="gifCropRoiRow" style="display:none">
-    <div class="param-label">Crop ROI2</div>
+    <label class="param-label" for="gifCropRoiSelect">Crop ROI2</label>
     <select id="gifCropRoiSelect" class="input-sm" data-dp-change="scheduleGifPreview()"></select>
   </div>
   <div class="param-row" id="gifCropPadRow" style="display:none">
-    <div class="param-label">Padding px</div>
+    <label class="param-label" for="gifCropPadding">Padding px</label>
     <input type="number" id="gifCropPadding" class="input-sm" value="8" step="1" min="0" data-dp-change="scheduleGifPreview()">
   </div>
   <label class="checkbox-row" style="margin-bottom:6px">
@@ -107,7 +107,7 @@
     <span>Mark ROI in GIF</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Output</div>
+    <label class="param-label" for="gifOutput">Output</label>
     <input type="text" id="gifOutput" placeholder="(auto — based on first TIFF)" style="font-size:11.5px">
   </div>
   <button class="btn-primary" id="btnGenerate" data-dp-click="DP.page.generateGif()" style="width:100%;margin-top:8px">Generate GIF</button>
@@ -182,7 +182,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">ROI Time Analysis</div>
   <div class="param-row">
-    <div class="param-label">BG mode</div>
+    <label class="param-label" for="gifBgMode">BG mode</label>
     <select id="gifBgMode" data-dp-change="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
       <option value="none">None</option>
       <option value="corner_br">Corner (bottom-right)</option>
@@ -191,11 +191,11 @@
     </select>
   </div>
   <div id="gifBgRoiRow" class="param-row" style="display:none">
-    <div class="param-label">BG ROI</div>
+    <label class="param-label" for="gifBgRoiSelect">BG ROI</label>
     <select id="gifBgRoiSelect" data-dp-change="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
   </div>
   <div class="param-row">
-    <div class="param-label">Metric</div>
+    <label class="param-label" for="gifRoiMetric">Metric</label>
     <select id="gifRoiMetric" style="flex:1">
       <option value="mean">Mean</option>
       <option value="top20_mean">Top 20% mean</option>
@@ -205,7 +205,7 @@
     </select>
   </div>
   <div class="param-row">
-    <div class="param-label">Plot mode</div>
+    <label class="param-label" for="gifRoiPlotMetric">Plot mode</label>
     <select id="gifRoiPlotMetric" style="flex:1">
       <option value="delta_f_over_f0" selected>DeltaF/F0</option>
       <option value="bg_subtracted">BG Subtracted</option>
@@ -218,7 +218,7 @@
     <input type="number" id="gifRoiRefFrame" value="1" min="1" step="1" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Prefix</div>
+    <label class="param-label" for="gifRoiPrefix">Prefix</label>
     <input type="text" id="gifRoiPrefix" value="gif_roi_time_analysis" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
   <button class="btn-secondary" id="btnAnalyzeGifRoi" data-dp-click="DP.page.runGifRoiAnalysis()" style="width:100%;margin-top:4px">Analyze ROI Time</button>
@@ -236,7 +236,7 @@
 <div class="ctrl-section">
   <div class="ctrl-label">Background</div>
   <div class="param-row">
-    <div class="param-label">BG mode</div>
+    <label class="param-label" for="gifBgMode">BG mode</label>
     <select id="gifBgMode" data-dp-change="updateGifBgControls(); updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1">
       <option value="none">None</option>
       <option value="corner_br">Corner (bottom-right)</option>
@@ -245,7 +245,7 @@
     </select>
   </div>
   <div id="gifBgRoiRow" class="param-row" style="display:none">
-    <div class="param-label">BG ROI</div>
+    <label class="param-label" for="gifBgRoiSelect">BG ROI</label>
     <select id="gifBgRoiSelect" data-dp-change="updateGifKymoControls(); renderPolygonList(); drawPolygons();" style="flex:1"></select>
   </div>
 </div>
@@ -253,11 +253,11 @@
 <div class="ctrl-section">
   <div class="ctrl-label">ROI Kymography</div>
   <div class="param-row">
-    <div class="param-label">ROI</div>
+    <label class="param-label" for="gifKymoRoiSelect">ROI</label>
     <select id="gifKymoRoiSelect" style="flex:1"></select>
   </div>
   <div class="param-row">
-    <div class="param-label">Mode</div>
+    <label class="param-label" for="gifKymoValueMode">Mode</label>
     <select id="gifKymoValueMode" style="flex:1">
       <option value="delta_f_over_f0" selected>DeltaF/F0</option>
       <option value="bg_subtracted">BG Subtracted</option>
@@ -267,24 +267,24 @@
   <details class="ctrl-details">
     <summary class="ctrl-label">Advanced Kymography</summary>
   <div class="param-row">
-    <div class="param-label">Bins</div>
+    <label class="param-label" for="gifKymoBins">Bins</label>
     <input type="number" id="gifKymoBins" value="50" min="8" max="240" step="1" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Range %</div>
+    <label class="param-label" for="gifKymoLowPct">Range %</label>
     <input type="number" id="gifKymoLowPct" value="1" min="0" max="49" step="0.5" title="Lower percentile for contrast stretching" style="font-size:11.5px">
     <input type="number" id="gifKymoHighPct" value="99.5" min="51" max="100" step="0.5" title="Upper percentile for contrast stretching" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Thresholds</div>
+    <label class="param-label" for="gifKymoThresholds">Thresholds</label>
     <input type="text" id="gifKymoThresholds" placeholder="e.g. 5000, 10000" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Line p%</div>
+    <label class="param-label" for="gifKymoPercentiles">Line p%</label>
     <input type="text" id="gifKymoPercentiles" placeholder="e.g. 50, 90, 99" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Top mean %</div>
+    <label class="param-label" for="gifKymoTopMeans">Top mean %</label>
     <input type="text" id="gifKymoTopMeans" placeholder="e.g. 1, 5" style="font-size:11.5px">
   </div>
   <label class="checkbox-row" style="margin-bottom:4px">
@@ -296,11 +296,11 @@
     <span>Show ROI mean intensity line</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Smooth I</div>
+    <label class="param-label" for="gifKymoSmoothIntensity">Smooth I</label>
     <input type="number" id="gifKymoSmoothIntensity" value="1.2" min="0" max="8" step="0.1" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">Smooth T</div>
+    <label class="param-label" for="gifKymoSmoothTime">Smooth T</label>
     <input type="number" id="gifKymoSmoothTime" value="0.8" min="0" max="8" step="0.1" style="font-size:11.5px">
   </div>
   <label class="checkbox-row" style="margin-bottom:6px">
@@ -312,7 +312,7 @@
     <input type="number" id="gifKymoRefFrame" value="1" min="1" step="1" style="font-size:11.5px">
   </div>
   <div class="param-row">
-    <div class="param-label">F0 stat</div>
+    <label class="param-label" for="gifKymoRefStat">F0 stat</label>
     <select id="gifKymoRefStat" style="flex:1">
       <option value="median" selected>Median</option>
       <option value="mean">Mean</option>
@@ -322,7 +322,7 @@
   </div>
   </details>
   <div class="param-row">
-    <div class="param-label">Prefix</div>
+    <label class="param-label" for="gifKymoPrefix">Prefix</label>
     <input type="text" id="gifKymoPrefix" value="gif_roi_kymograph" placeholder="output filename prefix" style="font-size:11.5px">
   </div>
   <button class="btn-secondary" id="btnRunGifKymo" data-dp-click="DP.page.runGifKymograph()" style="width:100%;margin-top:4px">Run Kymograph</button>

@@ -75,7 +75,7 @@
 <div class="ctrl-section" id="histologyTiffProjectControls">
   <div class="ctrl-label">1 · Exported TIFF / ETS Source</div>
   <div class="param-row">
-    <div class="param-label">Source</div>
+    <label class="param-label" for="histologyExportedTiffPath">Source</label>
     <div class="input-row histology-grow">
       <input type="text" id="histologyExportedTiffPath" class="input-path histology-grow" placeholder="/path/to/source folder, .tif, or .ets">
       <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyExportedTiffPath','scanHistologyTiffProject')">Open File</button>
@@ -102,7 +102,7 @@
 <div class="ctrl-section" id="histologyDataProjectControls">
   <div class="ctrl-label">2 · DataProcess Project</div>
   <div class="param-row">
-    <div class="param-label">Project</div>
+    <label class="param-label" for="histologyProjectPath">Project</label>
     <div class="input-row histology-grow">
       <input type="text" id="histologyProjectPath" class="input-path histology-grow" placeholder="save folder or histology_project.dphistology">
       <button class="btn-icon" type="button" data-dp-click="DP.folder.pickFile('histologyProjectPath','loadHistologyDataProject')">Open File</button>
@@ -119,7 +119,7 @@
   <div class="ctrl-label">Cases</div>
   <div id="histologyProjectImageList" class="file-list histology-project-list"></div>
   <div class="param-row histology-stack-gap">
-    <div class="param-label">Name</div>
+    <label class="param-label" for="histologyProjectEntryName">Name</label>
     <input type="text" id="histologyProjectEntryName" class="input-sm" placeholder="Sample / case name">
   </div>
   <button class="btn-primary btn-block histology-stack-gap" id="btnRenameHistologyProjectEntry" type="button" data-dp-click="DP.page.renameHistologyDataProjectEntry()">Rename Case</button>

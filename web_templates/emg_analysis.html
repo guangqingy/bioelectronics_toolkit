@@ -24,19 +24,19 @@
 <div class="ctrl-section">
   <div class="ctrl-label">View Window</div>
   <div class="param-row">
-    <div class="param-label">X Min</div>
+    <label class="param-label" for="xMin">X Min</label>
     <input type="number" id="xMin" class="input-sm" step="any" value="0" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">X Max</div>
+    <label class="param-label" for="xMax">X Max</label>
     <input type="number" id="xMax" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Y Min</div>
+    <label class="param-label" for="yMin">Y Min</label>
     <input type="number" id="yMin" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Y Max</div>
+    <label class="param-label" for="yMax">Y Max</label>
     <input type="number" id="yMax" class="input-sm" step="any" data-dp-change="plot()">
   </div>
   <label class="checkbox-row">
@@ -44,7 +44,7 @@
     <span>Invert Y polarity</span>
   </label>
   <div class="param-row">
-    <div class="param-label">Downsample</div>
+    <label class="param-label" for="previewDownsample">Downsample</label>
     <select id="previewDownsample" style="flex:1" data-dp-change="plot()">
       <option value="auto" selected>Auto</option>
       <option value="1">1x</option>
@@ -63,7 +63,7 @@
   <details class="ctrl-details">
     <summary class="ctrl-label" title="Optional filtering applied to the preview and current-channel figure export">Filter</summary>
   <div class="param-row">
-    <div class="param-label">Filter</div>
+    <label class="param-label" for="filterType">Filter</label>
     <select id="filterType" style="flex:1" data-dp-change="updateEmgAnalysisParameterGroups(); plot()">
       <option value="none" selected>None</option>
       <option value="notch">Notch</option>
@@ -73,19 +73,19 @@
     </select>
   </div>
   <div class="param-row" data-filter-mode="highpass bandpass">
-    <div class="param-label">Low Hz</div>
+    <label class="param-label" for="filterLowHz">Low Hz</label>
     <input type="number" id="filterLowHz" class="input-sm" step="any" value="20" data-dp-change="plot()">
   </div>
   <div class="param-row" data-filter-mode="lowpass bandpass">
-    <div class="param-label">High Hz</div>
+    <label class="param-label" for="filterHighHz">High Hz</label>
     <input type="number" id="filterHighHz" class="input-sm" step="any" value="500" data-dp-change="plot()">
   </div>
   <div class="param-row" data-filter-mode="notch">
-    <div class="param-label">Notch Hz</div>
+    <label class="param-label" for="filterNotchHz">Notch Hz</label>
     <input type="number" id="filterNotchHz" class="input-sm" step="any" value="60" data-dp-change="plot()">
   </div>
   <div class="param-row" data-filter-mode="lowpass highpass bandpass">
-    <div class="param-label">IIR Order</div>
+    <label class="param-label" for="filterOrder">IIR Order</label>
     <input type="number" id="filterOrder" class="input-sm" step="1" value="4" min="1" max="12" data-dp-change="plot()">
   </div>
   <div class="param-row" data-filter-mode="notch">
@@ -98,7 +98,7 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Post-processing</summary>
   <div class="param-row">
-    <div class="param-label">Process</div>
+    <label class="param-label" for="processType">Process</label>
     <select id="processType" style="flex:1" data-dp-change="updateEmgAnalysisParameterGroups()">
       <option value="envelope" selected>Envelope</option>
       <option value="smooth">Smooth</option>
@@ -108,22 +108,22 @@
     </select>
   </div>
   <div class="param-row" data-process-mode="smooth">
-    <div class="param-label">Smooth ms</div>
+    <label class="param-label" for="smoothMs">Smooth ms</label>
     <input type="number" id="smoothMs" class="input-sm" step="any" value="5">
   </div>
   <div class="param-row" data-process-mode="envelope">
-    <div class="param-label">Envelope ms</div>
+    <label class="param-label" for="envelopeSmoothMs">Envelope ms</label>
     <input type="number" id="envelopeSmoothMs" class="input-sm" step="any" value="0">
   </div>
   <div class="param-row" data-process-mode="smooth">
-    <div class="param-label">Smooth</div>
+    <label class="param-label" for="smoothMethod">Smooth</label>
     <select id="smoothMethod" style="flex:1">
       <option value="moving" selected>Moving avg</option>
       <option value="savgol">Savitzky-Golay</option>
     </select>
   </div>
   <div class="param-row" data-process-mode="smooth">
-    <div class="param-label">SG poly</div>
+    <label class="param-label" for="sgPoly">SG poly</label>
     <input type="number" id="sgPoly" class="input-sm" step="1" value="2" min="1" max="5">
   </div>
   <div class="param-row" data-process-mode="fitting">
@@ -135,7 +135,7 @@
     <span>Show raw fit trace</span>
   </label>
   <div class="param-row" data-process-mode="fft">
-    <div class="param-label">FFT Window</div>
+    <label class="param-label" for="fftWindow">FFT Window</label>
     <select id="fftWindow" style="flex:1">
       <option value="hann" selected>Hann</option>
       <option value="hamming">Hamming</option>
@@ -144,7 +144,7 @@
     </select>
   </div>
   <div class="param-row" data-process-mode="fft">
-    <div class="param-label">FFT Max Hz</div>
+    <label class="param-label" for="fftMaxHz">FFT Max Hz</label>
     <input type="number" id="fftMaxHz" class="input-sm" step="any">
   </div>
   <label class="checkbox-row" data-process-mode="fft">
@@ -156,15 +156,15 @@
     <input type="number" id="stftMs" class="input-sm" step="any" value="100">
   </div>
   <div class="param-row" data-process-mode="stft">
-    <div class="param-label">STFT Overlap %</div>
+    <label class="param-label" for="stftOverlapPct">STFT Overlap %</label>
     <input type="number" id="stftOverlapPct" class="input-sm" step="any" value="50" min="0" max="95">
   </div>
   <div class="param-row" data-process-mode="stft">
-    <div class="param-label">STFT Max Hz</div>
+    <label class="param-label" for="stftMaxHz">STFT Max Hz</label>
     <input type="number" id="stftMaxHz" class="input-sm" step="any">
   </div>
   <div class="param-row" data-process-mode="stft">
-    <div class="param-label">STFT Cmap</div>
+    <label class="param-label" for="stftCmap">STFT Cmap</label>
     <select id="stftCmap" style="flex:1">
       <option value="viridis" selected>Viridis</option>
       <option value="magma">Magma</option>
@@ -188,23 +188,23 @@
 <details class="ctrl-section ctrl-details">
   <summary class="ctrl-label">Figure Output</summary>
   <div class="param-row">
-    <div class="param-label">Width in</div>
+    <label class="param-label" for="figWidthIn">Width in</label>
     <input type="number" id="figWidthIn" class="input-sm" step="any" value="10" min="3" max="20" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Height in</div>
+    <label class="param-label" for="figHeightIn">Height in</label>
     <input type="number" id="figHeightIn" class="input-sm" step="any" value="3.5" min="1.8" max="12" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">DPI</div>
+    <label class="param-label" for="figDpi">DPI</label>
     <input type="number" id="figDpi" class="input-sm" step="1" value="300" min="72" max="1200" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Line Width</div>
+    <label class="param-label" for="traceLineWidth">Line Width</label>
     <input type="number" id="traceLineWidth" class="input-sm" step="any" value="0.6" min="0.1" max="5" data-dp-change="plot()">
   </div>
   <div class="param-row">
-    <div class="param-label">Line Color</div>
+    <label class="param-label" for="traceColor">Line Color</label>
     <input type="color" id="traceColor" class="input-sm" value="#3E6AE1" data-dp-change="plot()">
   </div>
   <label class="checkbox-row">
@@ -246,11 +246,11 @@
   <summary class="ctrl-label">Rename Recording</summary>
   <div class="run-history-meta" style="margin-bottom:8px;">Quick rename replaces the recording token across the selected folder tree.</div>
   <div class="param-row">
-    <div class="param-label">Old Tok</div>
+    <label class="param-label" for="renameFind">Old Tok</label>
     <input type="text" id="renameFind" class="input-sm" placeholder="old recording name">
   </div>
   <div class="param-row">
-    <div class="param-label">New Tok</div>
+    <label class="param-label" for="renameReplace">New Tok</label>
     <input type="text" id="renameReplace" class="input-sm" placeholder="new recording name">
   </div>
   <div class="btn-row">
@@ -264,11 +264,11 @@
   <details class="ctrl-details" style="margin-top:10px;">
     <summary class="ctrl-label">Advanced Rename Options</summary>
   <div class="param-row">
-    <div class="param-label">Prefix</div>
+    <label class="param-label" for="renamePrefix">Prefix</label>
     <input type="text" id="renamePrefix" class="input-sm">
   </div>
   <div class="param-row">
-    <div class="param-label">Suffix</div>
+    <label class="param-label" for="renameSuffix">Suffix</label>
     <input type="text" id="renameSuffix" class="input-sm">
   </div>
   <label class="checkbox-row"><input type="checkbox" id="renameRoot" checked><span>Rename current folder</span></label>
@@ -278,7 +278,7 @@
   <label class="checkbox-row"><input type="checkbox" id="renameRegex"><span>Regex</span></label>
   <label class="checkbox-row"><input type="checkbox" id="renameCaseSensitive" checked><span>Case sensitive</span></label>
   <div class="param-row">
-    <div class="param-label">Exts</div>
+    <label class="param-label" for="renameExtensions">Exts</label>
     <input type="text" id="renameExtensions" class="input-sm" value=".rhd,.xml,.csv,.txt,.tsv,.json,.png,.svg">
   </div>
   <button class="btn-tertiary" type="button" data-dp-click="DP.page.useCurrentFolderName()" style="width:100%; margin-top:8px;">Use Folder Name</button>

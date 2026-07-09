@@ -43,11 +43,11 @@
   </label>
   <div id="windowRow">
     <div class="param-row">
-      <div class="param-label param-label-with-help">Start (s)<span class="help-tip" title="First timestamp included in the detection window.">?</span></div>
+      <label class="param-label param-label-with-help" for="t0">Start (s)<span class="help-tip" title="First timestamp included in the detection window.">?</span></label>
       <input type="number" id="t0" class="input-sm" value="0" step="0.1">
     </div>
     <div class="param-row">
-      <div class="param-label param-label-with-help">End (s)<span class="help-tip" title="Last timestamp included in the detection window.">?</span></div>
+      <label class="param-label param-label-with-help" for="t1">End (s)<span class="help-tip" title="Last timestamp included in the detection window.">?</span></label>
       <input type="number" id="t1" class="input-sm" value="10" step="0.1">
     </div>
   </div>
@@ -56,23 +56,23 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Detection Parameters</div>
   <div class="param-row">
-    <div class="param-label param-label-with-help">POS min (mA)<span class="help-tip" title="Minimum positive current peak amplitude required to count as a POS event.">?</span></div>
+    <label class="param-label param-label-with-help" for="posMin">POS min (mA)<span class="help-tip" title="Minimum positive current peak amplitude required to count as a POS event.">?</span></label>
     <input type="number" id="posMin" class="input-sm" value="0.01" step="0.001">
   </div>
   <div class="param-row">
-    <div class="param-label param-label-with-help">NEG min |abs| (mA)<span class="help-tip" title="Minimum absolute negative current amplitude required to count as a NEG event.">?</span></div>
+    <label class="param-label param-label-with-help" for="negMin">NEG min |abs| (mA)<span class="help-tip" title="Minimum absolute negative current amplitude required to count as a NEG event.">?</span></label>
     <input type="number" id="negMin" class="input-sm" value="0.01" step="0.001" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label param-label-with-help">Min delay (ms)<span class="help-tip" title="Shortest allowed time between a POS event and its paired NEG event.">?</span></div>
+    <label class="param-label param-label-with-help" for="minDelay">Min delay (ms)<span class="help-tip" title="Shortest allowed time between a POS event and its paired NEG event.">?</span></label>
     <input type="number" id="minDelay" class="input-sm" value="1" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label param-label-with-help">Max delay (ms)<span class="help-tip" title="Longest allowed time between a POS event and its paired NEG event.">?</span></div>
+    <label class="param-label param-label-with-help" for="maxDelay">Max delay (ms)<span class="help-tip" title="Longest allowed time between a POS event and its paired NEG event.">?</span></label>
     <input type="number" id="maxDelay" class="input-sm" value="15" step="0.1" min="0">
   </div>
   <div class="param-row">
-    <div class="param-label param-label-with-help">Min POS dist (ms)<span class="help-tip" title="Minimum spacing between positive events before another POS peak can be counted.">?</span></div>
+    <label class="param-label param-label-with-help" for="minPosDist">Min POS dist (ms)<span class="help-tip" title="Minimum spacing between positive events before another POS peak can be counted.">?</span></label>
     <input type="number" id="minPosDist" class="input-sm" value="200" step="1" min="1">
   </div>
 </div>
