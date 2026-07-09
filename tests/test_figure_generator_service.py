@@ -7,7 +7,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from services.figure_generator import _parse_ranges, browse_payload, preview_payload, run_payload
+from services.figure_generator import _parse_ranges, _plot_linear, browse_payload, preview_payload, run_payload
+from services.matplotlib_utils import close_figure
 
 
 class FigureGeneratorServiceTest(unittest.TestCase):
@@ -88,6 +89,25 @@ class FigureGeneratorServiceTest(unittest.TestCase):
                     "peak_log_0.01-100",
                 ],
             )
+
+    def test_metric_plot_keeps_single_series_axes_wide(self) -> None:
+        series = {
+            "sample": pd.DataFrame(
+                {
+                    "power_density": [0.0, 50.0, 100.0],
+                    "mean": [0.0, -1.0, -2.0],
+                    "sem": [0.05, 0.05, 0.05],
+                }
+            )
+        }
+
+        fig = _plot_linear(series, "Peak (normalized)", "Peak vs Power", 0.0, 100.0)
+        try:
+            self.assertIsNotNone(fig)
+            ax = fig.axes[0]
+            self.assertGreater(ax.get_position().width, 0.74)
+        finally:
+            close_figure(fig)
 
 
 if __name__ == "__main__":

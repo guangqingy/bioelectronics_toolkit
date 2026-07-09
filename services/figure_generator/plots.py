@@ -9,9 +9,11 @@ from services.matplotlib_utils import close_figure, new_figure, prop_cycle_color
 from .constants import DPI, EPS
 from .summary import _clip_to_range, _min_positive_x
 
+_METRIC_FIGSIZE = (7.6, 4.4)
+
 
 def _plot_linear(groups, ylabel, title_txt, xmin, xmax):
-    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    fig = new_figure(figsize=_METRIC_FIGSIZE, dpi=DPI)
     ax = fig.subplots()
     plotted = False
     for label, gdf in groups.items():
@@ -39,8 +41,7 @@ def _plot_linear(groups, ylabel, title_txt, xmin, xmax):
     ax.set_xlim(xmin, xmax)
     ax.set_title(title_txt)
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
-    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, borderaxespad=0.0)
-    fig.tight_layout(rect=(0.0, 0.0, 0.78, 1.0))
+    _layout_metric_legend(fig, ax)
     return fig
 
 
@@ -48,7 +49,7 @@ def _plot_log(groups, ylabel, title_txt, xmin, xmax):
     minpos = _min_positive_x(list(groups.values()))
     xmin_safe = max(xmin if xmin > 0 else minpos, EPS)
 
-    fig = new_figure(figsize=(6, 4.5), dpi=DPI)
+    fig = new_figure(figsize=_METRIC_FIGSIZE, dpi=DPI)
     ax = fig.subplots()
     plotted = False
     for label, gdf in groups.items():
@@ -83,9 +84,47 @@ def _plot_log(groups, ylabel, title_txt, xmin, xmax):
     ax.xaxis.set_minor_locator(LogLocator(base=10, subs=np.arange(2, 10) * 0.1))
     ax.xaxis.set_major_formatter(ScalarFormatter())
     ax.grid(True, which="both", linestyle="--", linewidth=0.5, alpha=0.5)
-    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False, borderaxespad=0.0)
-    fig.tight_layout(rect=(0.0, 0.0, 0.78, 1.0))
+    _layout_metric_legend(fig, ax)
     return fig
+
+
+def _layout_metric_legend(fig, ax):
+    handles, labels = ax.get_legend_handles_labels()
+    if not labels:
+        fig.tight_layout()
+        return
+
+    if len(labels) == 1:
+        ax.legend(handles, labels, loc="best", frameon=False, fontsize=8.5)
+        fig.tight_layout()
+        return
+
+    if len(labels) <= 4:
+        ax.legend(
+            handles,
+            labels,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.22),
+            ncol=min(2, len(labels)),
+            frameon=False,
+            fontsize=8.5,
+            handlelength=1.8,
+            columnspacing=1.2,
+            borderaxespad=0.0,
+        )
+        fig.subplots_adjust(left=0.11, right=0.98, top=0.90, bottom=0.30)
+        return
+
+    ax.legend(
+        handles,
+        labels,
+        loc="center left",
+        bbox_to_anchor=(1.01, 0.5),
+        frameon=False,
+        fontsize=8.0,
+        borderaxespad=0.0,
+    )
+    fig.subplots_adjust(left=0.11, right=0.80, top=0.90, bottom=0.14)
 
 
 def _plot_linear_svg_plotonly(groups, xmin, xmax, out_path):
