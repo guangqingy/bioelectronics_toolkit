@@ -2,6 +2,7 @@ let _currentFile = null;
 let _pulses = [];
 let _lastWindow = null;
 let _lastParams = null;
+let _currentUnit = 'source';
 
 window.dpCurrentFilePath = () => _currentFile || '';
 window.dpCurrentProjectRoot = () => document.getElementById('folderPath').value.trim();
@@ -39,6 +40,20 @@ window.dpApplyRunManifest = manifest => {
 
 function baseName(p) { return (p || '').split('/').pop() || p; }
 function num(v, d) { return Number(v || 0).toFixed(d); }
+
+function unitFromColumn(label, fallback) {
+  const text = String(label || '');
+  const match = text.match(/(?:_|\/|\()((?:m|u|n|µ)?V)(?:\)|$)/i);
+  return match ? match[1].replace(/^u/i, 'µ') : fallback;
+}
+
+function updatePotentialUnit(label) {
+  _currentUnit = unitFromColumn(label, _currentUnit || 'source');
+  ['pvUnitThreshold', 'pvUnitTable'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = _currentUnit;
+  });
+}
 
 function toggleWindow(useAll) {
   const row = document.getElementById('windowRow');
@@ -102,6 +117,7 @@ function selectFile(el, path) {
   setStatus('status', 'Loading…', 'loading');
   plotTracePreview(path)
     .then(d => {
+      updatePotentialUnit(d.y_label);
       document.getElementById('t1').value = d.duration || 10;
       document.getElementById('fileInfo').textContent =
         baseName(path)

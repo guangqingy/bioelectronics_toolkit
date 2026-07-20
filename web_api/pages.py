@@ -51,6 +51,10 @@ def register_page_routes(app, ctx) -> None:
     def echem_lineshape():
         return render_template("echem_lineshape.html", active="echem_lineshape")
 
+    @app.route("/echem/quant")
+    def echem_quant():
+        return render_template("echem_quant.html", active="echem_quant")
+
     @app.route("/emg/analysis")
     def emg_analysis():
         return render_template("emg_analysis.html", active="emg_analysis", has_rhd=has_rhd)

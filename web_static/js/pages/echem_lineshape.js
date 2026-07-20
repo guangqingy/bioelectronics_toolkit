@@ -31,7 +31,8 @@ function renderSourceFiles() {
   const el = document.getElementById('sourceFileList');
   if (!el) return;
   if (!_sourceFiles.length) {
-    el.innerHTML = '<div class="file-list-empty">Scan a source folder</div>';
+    el.innerHTML = '<div class="file-list-empty">No exported pair/pulse segments found. '
+      + 'Run detection and “Summary + Pair/Pulse Files” in Photocurrent or Photovoltage first.</div>';
     updateSourceCount();
     if (typeof dpApplyFileListFilter === 'function') dpApplyFileListFilter('sourceFileList');
     return;
