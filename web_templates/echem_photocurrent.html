@@ -56,11 +56,11 @@
 <div class="ctrl-section" data-resettable="true">
   <div class="ctrl-label">Detection Parameters</div>
   <div class="param-row">
-    <label class="param-label param-label-with-help" for="posMin">POS min (mA)<span class="help-tip" title="Minimum positive current peak amplitude required to count as a POS event.">?</span></label>
+    <label class="param-label param-label-with-help" for="posMin">POS min (<span id="pcUnitPos">source unit</span>)<span class="help-tip" title="Minimum positive current peak amplitude required to count as a POS event. The unit follows the selected file.">?</span></label>
     <input type="number" id="posMin" class="input-sm" value="0.01" step="0.001">
   </div>
   <div class="param-row">
-    <label class="param-label param-label-with-help" for="negMin">NEG min |abs| (mA)<span class="help-tip" title="Minimum absolute negative current amplitude required to count as a NEG event.">?</span></label>
+    <label class="param-label param-label-with-help" for="negMin">NEG min |abs| (<span id="pcUnitNeg">source unit</span>)<span class="help-tip" title="Minimum absolute negative current amplitude required to count as a NEG event. The unit follows the selected file.">?</span></label>
     <input type="number" id="negMin" class="input-sm" value="0.01" step="0.001" min="0">
   </div>
   <div class="param-row">
@@ -119,8 +119,8 @@
             <tr>
               <th>#</th>
               <th>Time (s)</th>
-              <th>Pos Peak</th>
-              <th>Neg Peak</th>
+              <th>Pos Peak (<span id="pcUnitPosTable">source</span>)</th>
+              <th>Neg Peak (<span id="pcUnitNegTable">source</span>)</th>
               <th>Duration (ms)</th>
               <th>Action</th>
             </tr>

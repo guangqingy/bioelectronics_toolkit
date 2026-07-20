@@ -16,6 +16,15 @@ PC_VALUE_COL_HINTS = ["<i>", "current", "i/m", "i/\u00b5", "i/a", "ewe"]
 PV_VALUE_COL_HINTS = ["voltage", "potential", "ewe", "v/"]
 SAVE_MODES = frozenset({"save", "server", "path", "local", "source"})
 
+_CURRENT_TO_NA = {
+    "a": 1e9,
+    "ma": 1e6,
+    "ua": 1e3,
+    "µa": 1e3,
+    "na": 1.0,
+}
+_POTENTIAL_TO_MV = {"v": 1e3, "mv": 1.0, "uv": 1e-3, "µv": 1e-3}
+
 
 def _sort_by_time(t_arr: np.ndarray, v_arr: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     if np.any(np.diff(t_arr) <= 0):
@@ -92,6 +101,156 @@ def load_photocurrent(path: str | Path):
 
 def load_photovoltage(path: str | Path):
     return load_echem_file(path, PV_VALUE_COL_HINTS)
+
+
+def _column_unit(column: object, units: dict[str, float]) -> str | None:
+    """Return the physical unit embedded in an EChem column header."""
+    text = str(column or "").strip().lower().replace("μ", "µ")
+    # Prefer longer names so ``mA``/``mV`` cannot be mistaken for ``A``/``V``.
+    for unit in sorted(units, key=len, reverse=True):
+        if re.search(rf"(?:^|[/_(\s]){re.escape(unit)}(?:$|[)\]\s])", text):
+            return unit
+        if text.endswith(f"_{unit}"):
+            return unit
+    return None
+
+
+def load_photocurrent_nA(path: str | Path):
+    """Load a CA-style current trace and normalize its values to nA.
+
+    The legacy loader intentionally preserves source units for the interactive
+    detector.  Quantification needs a stable contract, so this companion
+    loader converts A/mA/uA/nA columns explicitly and rejects ambiguous value
+    columns instead of silently labelling them nA.
+    """
+    t, current, t_col, current_col = load_photocurrent(path)
+    unit = _column_unit(current_col, _CURRENT_TO_NA)
+    if unit is None:
+        raise ValueError(f"Current unit is missing from column: {current_col}")
+    return t, current * _CURRENT_TO_NA[unit], t_col, "current_nA"
+
+
+def load_photovoltage_mV(path: str | Path):
+    """Load a CP-style potential trace and normalize its values to mV."""
+    t, potential, t_col, potential_col = load_photovoltage(path)
+    unit = _column_unit(potential_col, _POTENTIAL_TO_MV)
+    if unit is None:
+        raise ValueError(f"Potential unit is missing from column: {potential_col}")
+    return t, potential * _POTENTIAL_TO_MV[unit], t_col, "potential_mV"
+
+
+def load_cv(path: str | Path) -> tuple[np.ndarray, np.ndarray, str, str]:
+    """Load cyclic-voltammetry potential (V) and current (uA)."""
+    source = Path(str(path or "").strip()).expanduser()
+    if not source.is_file():
+        raise ValueError(f"EChem file not found: {source}")
+    frame = pd.read_csv(source)
+    potential_col = next(
+        (c for c in frame.columns if "potential" in c.lower() or c.lower() in {"ewe", "e/v"}),
+        None,
+    )
+    current_col = next((c for c in frame.columns if "current" in c.lower()), None)
+    if potential_col is None or current_col is None:
+        raise ValueError(f"CV columns not found in: {source.name}")
+
+    potential = pd.to_numeric(frame[potential_col], errors="coerce")
+    current = pd.to_numeric(frame[current_col], errors="coerce")
+    valid = potential.notna() & current.notna()
+    potential_v = potential[valid].to_numpy(dtype=float)
+    current_raw = current[valid].to_numpy(dtype=float)
+    potential_unit = _column_unit(potential_col, _POTENTIAL_TO_MV)
+    current_unit = _column_unit(current_col, _CURRENT_TO_NA)
+    if potential_unit is None or current_unit is None:
+        raise ValueError(f"CV units are missing from columns: {potential_col}, {current_col}")
+    return (
+        potential_v * _POTENTIAL_TO_MV[potential_unit] / 1e3,
+        current_raw * _CURRENT_TO_NA[current_unit] / 1e3,
+        "potential_V",
+        "current_uA",
+    )
+
+
+def load_corrtest(
+    path: str | Path,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, float | None]:
+    """Load standardized or raw CorrTest data as seconds, nA, V and OCP V.
+
+    Raw CorrTest ASCII files contain a long numeric metadata header.  Parsing
+    them with the generic numeric-line fallback corrupts the time series, so
+    the data block is located strictly after ``End Comments``.
+    """
+    source = Path(str(path or "").strip()).expanduser()
+    if not source.is_file():
+        raise ValueError(f"EChem file not found: {source}")
+
+    if source.suffix.lower() == ".csv":
+        frame = pd.read_csv(source)
+        required = {"time_s", "current_nA"}
+        if not required.issubset(frame.columns):
+            raise ValueError(f"CorrTest columns not found in: {source.name}")
+        time_s = pd.to_numeric(frame["time_s"], errors="coerce")
+        current_nA = pd.to_numeric(frame["current_nA"], errors="coerce")
+        potential = (
+            pd.to_numeric(frame["potential_V"], errors="coerce")
+            if "potential_V" in frame
+            else pd.Series(np.zeros(len(frame)), index=frame.index)
+        )
+        valid = time_s.notna() & current_nA.notna() & potential.notna()
+        ocp = None
+        if "ocp_V" in frame:
+            ocp_values = pd.to_numeric(frame["ocp_V"], errors="coerce").dropna()
+            if not ocp_values.empty:
+                ocp = float(ocp_values.iloc[0])
+        return (
+            time_s[valid].to_numpy(dtype=float),
+            current_nA[valid].to_numpy(dtype=float),
+            potential[valid].to_numpy(dtype=float),
+            ocp,
+        )
+
+    raw = source.read_bytes()
+    marker = b"End Comments"
+    offset = raw.find(marker)
+    if offset < 0:
+        raise ValueError(f"CorrTest data marker not found in: {source.name}")
+    data_start = raw.find(b"\n", offset)
+    if data_start < 0:
+        raise ValueError(f"CorrTest data block is empty in: {source.name}")
+
+    rows: list[tuple[float, float, float]] = []
+    for line in raw[data_start + 1 :].decode("latin-1", errors="ignore").splitlines():
+        parts = line.replace(",", " ").split()
+        if len(parts) < 3:
+            continue
+        try:
+            rows.append((float(parts[0]), float(parts[1]), float(parts[2])))
+        except ValueError:
+            continue
+    if not rows:
+        raise ValueError(f"No CorrTest samples found in: {source.name}")
+    data = np.asarray(rows, dtype=float)
+    time_s = data[:, 2]
+    if len(time_s) > 1:
+        sample_frequency = re.search(rb"SampleFrq=([\d.]+)", raw[: data_start + 1])
+        expected_dt = 1.0 / float(sample_frequency.group(1)) if sample_frequency else None
+        positive_deltas = np.diff(time_s)
+        positive_deltas = positive_deltas[positive_deltas > 0]
+        measured_dt = float(np.median(positive_deltas)) if len(positive_deltas) else float("nan")
+        if expected_dt and np.isfinite(measured_dt):
+            ratio = measured_dt / expected_dt
+            if 500 <= ratio <= 1500:
+                time_s = time_s * 1e-3
+            elif not 0.5 <= ratio <= 2.0:
+                raise ValueError(
+                    f"CorrTest sample timing disagrees with SampleFrq in: {source.name}"
+                )
+    ocp_match = re.search(rb"OcpValue=([-+\d.eE]+)", raw[: data_start + 1])
+    if not ocp_match:
+        ocp_match = re.search(
+            rb"Open Circuit Potential \(V\):\s*([-+\d.eE]+)", raw[: data_start + 1]
+        )
+    ocp = float(ocp_match.group(1)) if ocp_match else None
+    return time_s, data[:, 1] * 1e9, data[:, 0], ocp
 
 
 def _clip_xy(
@@ -390,7 +549,7 @@ def detect_photocurrent_pairs(
         neg_local = j0 + int(np.argmin(yy[j0:j1]))
         pos_val = float(yy[ip])
         neg_val = float(yy[neg_local])
-        if pos_val >= pos_min_mA and abs(neg_val) >= neg_min_abs_mA:
+        if pos_val >= pos_min_mA and neg_val <= -abs(neg_min_abs_mA):
             pairs.append((start + int(ip), start + int(neg_local)))
     return pairs
 

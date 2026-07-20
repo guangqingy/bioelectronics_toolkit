@@ -433,6 +433,41 @@ class EchemServiceTests(unittest.TestCase):
 
         self.assertEqual(pairs, [(2, 5)])
 
+    def test_quantification_loaders_normalize_source_units(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_echem_units_") as tmp:
+            current_path = Path(tmp) / "trace_CA.csv"
+            current_path.write_text("time_s,current_mA\n0,0.001\n1,0.002\n", encoding="utf-8")
+            voltage_path = Path(tmp) / "trace_CP.csv"
+            voltage_path.write_text("time_s,potential_V\n0,0.1\n1,0.2\n", encoding="utf-8")
+
+            _t, current_nA, _tc, current_col = echem.load_photocurrent_nA(current_path)
+            _t, potential_mV, _tc, potential_col = echem.load_photovoltage_mV(voltage_path)
+
+            np.testing.assert_allclose(current_nA, [1000.0, 2000.0])
+            np.testing.assert_allclose(potential_mV, [100.0, 200.0])
+            self.assertEqual(current_col, "current_nA")
+            self.assertEqual(potential_col, "potential_mV")
+
+    def test_corrtest_loader_skips_numeric_metadata_header(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="dataprocess_corrtest_") as tmp:
+            path = Path(tmp) / "mb_light_on_1s_off_1s.txt"
+            path.write_text(
+                "CORRW ASCII\n"
+                "ExpParmas:SampleFrq=10&-&OcpValue=-0.2&-&Cycles=99\n"
+                "End Comments\n"
+                "0.1 1e-9 0.0\n"
+                "0.1 2e-9 0.1\n"
+                "0.1 3e-9 0.2\n",
+                encoding="latin-1",
+            )
+
+            time_s, current_nA, potential_v, ocp_v = echem.load_corrtest(path)
+
+            np.testing.assert_allclose(time_s, [0.0, 0.1, 0.2])
+            np.testing.assert_allclose(current_nA, [1.0, 2.0, 3.0])
+            np.testing.assert_allclose(potential_v, [0.1, 0.1, 0.1])
+            self.assertAlmostEqual(ocp_v, -0.2)
+
     def test_pulse_detection_reports_width(self) -> None:
         t = np.arange(10, dtype=float) * 0.001
         detrended = np.zeros_like(t)
@@ -647,7 +682,9 @@ class EchemLineshapeServiceTests(unittest.TestCase):
             manifest_path = Path(result["source_manifest_path"])
             self.assertTrue(manifest_path.exists())
             manifest_text = manifest_path.read_text(encoding="utf-8")
-            self.assertIn("lineshape_average_source_manifest", {o["role"] for o in result["outputs"]})
+            self.assertIn(
+                "lineshape_average_source_manifest", {o["role"] for o in result["outputs"]}
+            )
             self.assertIn("ATAT_photocurrent_1_1_pair_001.csv", manifest_text)
             self.assertIn("ATAT_photocurrent_2_1_pair_001.csv", manifest_text)
             self.assertEqual(len(result["outputs"]), 4)
@@ -693,7 +730,9 @@ class EchemLineshapeServiceTests(unittest.TestCase):
                 }
             )
 
-            self.assertEqual(Path(result["output_dir"]), Path(tmp) / "DateRun" / "plots_shape_average")
+            self.assertEqual(
+                Path(result["output_dir"]), Path(tmp) / "DateRun" / "plots_shape_average"
+            )
             self.assertTrue(Path(result["csv_path"]).name.startswith("shape_ATAT_photocurrent_1_1"))
 
 
@@ -929,9 +968,7 @@ class EmgServiceTests(unittest.TestCase):
             )["data"]
 
             linked_segments = [
-                Path(path)
-                for path in result["segment_paths"]
-                if Path(path).parent.name == "A_CH1"
+                Path(path) for path in result["segment_paths"] if Path(path).parent.name == "A_CH1"
             ]
             self.assertEqual(len(linked_segments), 1)
             linked_df = pd.read_csv(linked_segments[0])
@@ -942,7 +979,9 @@ class EmgServiceTests(unittest.TestCase):
         self.assertIn("CH1", result["segment_channels"])
         self.assertIn("source_channel", linked_df.columns)
         self.assertEqual(set(linked_df["source_channel"]), {"CH1"})
-        self.assertTrue(((linked_df["t_rel_ms"] >= -1.001) & (linked_df["t_rel_ms"] <= 1.001)).all())
+        self.assertTrue(
+            ((linked_df["t_rel_ms"] >= -1.001) & (linked_df["t_rel_ms"] <= 1.001)).all()
+        )
 
     def test_emg_grouped_export_uses_peak_like_baseline_window(self) -> None:
         with tempfile.TemporaryDirectory(prefix="dataprocess_emg_baseline_") as tmp:
@@ -986,9 +1025,7 @@ class EmgServiceTests(unittest.TestCase):
             )["data"]
 
             baseline_segments = [
-                Path(path)
-                for path in result["segment_paths"]
-                if Path(path).parent.name == "1_CH0"
+                Path(path) for path in result["segment_paths"] if Path(path).parent.name == "1_CH0"
             ]
             self.assertEqual(len(baseline_segments), 1)
             self.assertTrue(baseline_segments[0].name.startswith("peak_CH0_"))

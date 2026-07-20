@@ -9,6 +9,7 @@ from flask import Response, jsonify
 from pydantic import ValidationError
 
 from services import echem as echem_service
+from services import echem_tokens
 from services.matplotlib_utils import close_figure, new_subplots
 from web_api.common import as_bool, float_or, int_or
 
@@ -131,7 +132,7 @@ def register_echem_photovoltage_routes(app, ctx):
         if fmt not in {"png", "svg"}:
             raise ValueError("Figure format must be png or svg")
 
-        t, v_raw, _t_col, _v_col = _load_echem(str(src))
+        t, v_raw, _t_col, v_col = _load_echem(str(src))
         if len(t) == 0:
             raise ValueError("No data points found in file")
         params = body.get("params", {}) if isinstance(body.get("params"), dict) else {}
@@ -150,10 +151,10 @@ def register_echem_photovoltage_routes(app, ctx):
             sg_window_ms = float_or(body.get("sg_window_ms", params.get("sg_window_ms", 51.0)), 51.0)
             sg_poly = int_or(body.get("sg_poly", params.get("sg_poly", 3)), 3)
             y = _detrend_signal(t, v_raw, baseline_method, baseline_win_ms, sg_window_ms, sg_poly)
-            y_label = "Detrended Voltage (V)"
+            y_label = f"Detrended {v_col}"
         else:
             y = v_raw
-            y_label = "Voltage (V)"
+            y_label = v_col
 
         x0, x1 = _figure_window(body, t)
         mask = (t >= x0) & (t <= x1)
@@ -231,7 +232,11 @@ def register_echem_photovoltage_routes(app, ctx):
             body = parse_json_payload(EchemPhotovoltageBrowseRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        files = browse_files(body.folder, {".txt", ".csv"})
+        files = [
+            record
+            for record in browse_files(body.folder, {".txt", ".csv"})
+            if echem_tokens.recording_matches_techniques(record["path"], {"CP"})
+        ]
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem/photovoltage/load", methods=["POST"])
@@ -424,7 +429,7 @@ def register_echem_photovoltage_routes(app, ctx):
                 )
 
             y_plot = e_det if show_detrended else v
-            y_label = "Detrended Voltage (V)" if show_detrended else v_col
+            y_label = f"Detrended {v_col}" if show_detrended else v_col
 
             fig, ax = new_subplots(figsize=(10, 3.8))
             ax.plot(t, y_plot, color=line_color, lw=0.8)

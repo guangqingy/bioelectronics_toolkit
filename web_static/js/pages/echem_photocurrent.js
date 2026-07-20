@@ -5,6 +5,7 @@ let _lastParams = null;
 let _folderFiles = [];
 let _latestFile = null;
 let _folderRefreshTimer = null;
+let _currentUnit = 'source';
 
 window.dpCurrentFilePath = () => _currentFile || '';
 window.dpCurrentProjectRoot = () => document.getElementById('folderPath').value.trim();
@@ -42,6 +43,20 @@ window.dpApplyRunManifest = manifest => {
 
 function baseName(p) { return (p || '').split('/').pop() || p; }
 function num(v, d) { return Number(v || 0).toFixed(d); }
+
+function unitFromColumn(label, fallback) {
+  const text = String(label || '');
+  const match = text.match(/(?:_|\/|\()((?:m|u|n|µ)?A)(?:\)|$)/i);
+  return match ? match[1].replace(/^u/i, 'µ') : fallback;
+}
+
+function updateCurrentUnit(label) {
+  _currentUnit = unitFromColumn(label, _currentUnit || 'source');
+  ['pcUnitPos', 'pcUnitNeg', 'pcUnitPosTable', 'pcUnitNegTable'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = _currentUnit;
+  });
+}
 
 function echemBrowseFiles(payload) {
   return DP.liveFolder.normalizeFiles(payload.file_meta || payload.files || []);
@@ -198,6 +213,7 @@ function selectFile(el, path) {
   setStatus('status', 'Loading…', 'loading');
   plotTracePreview(path)
     .then(d => {
+      updateCurrentUnit(d.y_label);
       document.getElementById('t1').value = d.duration || 10;
       document.getElementById('fileInfo').textContent = baseName(path) + (d.n_points ? ' · ' + d.n_points + ' pts' : '') + (d.duration ? ' · ' + Number(d.duration).toFixed(1) + ' s' : '');
       loadGenericFileProfileForCurrent(true).finally(() => setStatus('status', 'Ready', 'ok'));

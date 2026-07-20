@@ -10,6 +10,7 @@ from flask import Response, jsonify
 from pydantic import ValidationError
 
 from services import echem as echem_service
+from services import echem_tokens
 from services.matplotlib_utils import close_figure, new_subplots
 from web_api.common import as_bool, float_or, mode_is_save
 
@@ -306,7 +307,11 @@ def register_echem_photocurrent_routes(app, ctx):
             body = parse_json_payload(EchemPhotocurrentBrowseRequest)
         except ValidationError as exc:
             return validation_error_response(exc)
-        files = browse_files(body.folder, {".txt", ".csv"})
+        files = [
+            record
+            for record in browse_files(body.folder, {".txt", ".csv"})
+            if echem_tokens.recording_matches_techniques(record["path"], {"CA"})
+        ]
         return jsonify({"files": [f["path"] for f in files], "file_meta": files})
 
     @app.route("/api/echem/photocurrent/load", methods=["POST"])

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}EChem Quantification{% endblock %}
+
+{% block controls %}
+<div class="ctrl-section">
+  <div class="ctrl-label">Project or Session Folder</div>
+  <div class="input-row">
+    <input type="text" id="folderPath" class="input-path" placeholder="/path/to/EChem">
+  </div>
+  <div class="btn-row" style="margin-top:6px">
+    <button class="btn-secondary" type="button" data-dp-click="DP.folder.pick('folderPath','scanFolder')">Choose</button>
+    <button class="btn-secondary" type="button" data-dp-click="DP.page.scanFolder()">Scan Recursively</button>
+  </div>
+  <div id="scanInfo" class="folder-refresh-info"></div>
+</div>
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Filter by Token</div>
+  <div id="facetList" class="file-list" style="max-height:320px">
+    <div class="file-list-empty">Scan a folder to list tokens</div>
+  </div>
+  <div class="btn-row" style="margin-top:6px">
+    <button class="btn-tertiary" type="button" data-dp-click="DP.page.clearFilters()">Clear Filters</button>
+  </div>
+</div>
+
+<div class="ctrl-section" data-resettable="true">
+  <div class="ctrl-label">Detection</div>
+  <div class="param-row">
+    <label class="param-label param-label-with-help" for="preset">Preset<span class="help-tip" title="Auto tries the available CA detection strategies and keeps the one with the strongest valid pulse train. Choose a named preset only to reproduce a fixed analysis.">?</span></label>
+    <select id="preset" class="input-sm">
+      <option value="auto" selected>Auto (recommended)</option>
+      <option value="default">default</option>
+      <option value="waveform">waveform</option>
+      <option value="legacy_day">legacy_day</option>
+      <option value="auto_polarity">auto_polarity</option>
+    </select>
+  </div>
+  <div class="param-row">
+    <label class="param-label param-label-with-help" for="expectedPeriod">CP period override (s)<span class="help-tip" title="Leave blank for automatic full-cycle detection. A manual value overrides both filename timing and the paired CA recording.">?</span></label>
+    <input type="number" id="expectedPeriod" class="input-sm" placeholder="Auto" step="0.0001" min="0">
+  </div>
+  <div class="param-row">
+    <label class="param-label param-label-with-help" for="electrodeArea">Electrode area (cm²)<span class="help-tip" title="Used to report current and charge density alongside absolute values. The current EChem scripts use a 5 mm × 5 mm electrode (0.25 cm²).">?</span></label>
+    <input type="number" id="electrodeArea" class="input-sm" value="0.25" step="0.01" min="0.000001">
+  </div>
+  <div class="param-row">
+    <label class="param-label param-label-with-help" for="cvWindowLow">CV anodic window (V)<span class="help-tip" title="Branch-aware anodic peak search window. Peaks near either window edge are rejected and reported as QC failures.">?</span></label>
+    <div class="input-row">
+      <input type="number" id="cvWindowLow" class="input-sm" value="-0.25" step="0.01">
+      <input type="number" id="cvWindowHigh" class="input-sm" value="-0.12" step="0.01">
+    </div>
+  </div>
+  <label class="checkbox-row" style="margin-top:6px">
+    <input type="checkbox" id="signed">
+    <span>Signed CA amplitudes</span>
+  </label>
+</div>
+
+<button class="btn-primary" id="btnQuantify" data-label="Quantify Folder" data-dp-click="DP.page.quantify()">Quantify Folder</button>
+
+<hr class="sep">
+
+<div class="ctrl-section">
+  <div class="ctrl-label">Export</div>
+  <div class="btn-row">
+    <button class="btn-secondary" data-dp-click="DP.page.exportCSV()">Results CSV</button>
+  </div>
+</div>
+
+<div id="status" class="status-bar"></div>
+{% endblock %}
+
+{% block main %}
+<div class="view-main">
+  <div class="view-header">
+    <div class="view-title">EChem Quantification</div>
+    <div class="view-sub" id="fileInfo">Scan the EChem project recursively, filter by experimental tokens, and quantify CA, CP, CV, and CorrTest recordings with technique-specific metrics.</div>
+  </div>
+
+  <div id="warnBox" class="status-bar" style="display:none"></div>
+
+  <div class="result-card" id="scanSummaryCard">
+    <div class="result-card-header">
+      <span>Project scan</span>
+    </div>
+    <div class="result-card-body">
+      <div id="scanSummaryBody" class="view-sub">Choose the EChem root or one session folder. Generated outputs and archives are excluded automatically.</div>
+    </div>
+  </div>
+
+  <div class="result-card" id="resultCard" style="display:none">
+    <div class="result-card-header">
+      <span>Results</span>
+      <span id="resultCount" style="font-weight:400;color:var(--silver)"></span>
+    </div>
+    <div class="result-card-body" style="padding:0">
+      <div class="data-table-wrap">
+        <table id="resultTable" class="dp-table">
+          <thead><tr></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="result-card" id="unparsedCard" style="display:none">
+    <div class="result-card-header">
+      <span>Unrecognized name fragments</span>
+    </div>
+    <div class="result-card-body">
+      <div id="unparsedBody" class="view-sub"></div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script defer src="{{ static_asset('js/pages/echem_quant.js') }}"></script>
+{% endblock %}

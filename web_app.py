@@ -50,6 +50,7 @@ from web_api.csv_viewer import register_csv_viewer_routes
 from web_api.echem_lineshape import register_echem_lineshape_routes
 from web_api.echem_photocurrent import register_echem_photocurrent_routes
 from web_api.echem_photovoltage import register_echem_photovoltage_routes
+from web_api.echem_quant import register_echem_quant_routes
 from web_api.emg_peak_selection import register_emg_peak_selection_routes
 from web_api.figure_generator import register_figure_generator_routes
 from web_api.file_profiles import register_file_profile_routes
@@ -240,6 +241,7 @@ def create_app(
     register_echem_photocurrent_routes(flask_app, web_api_ctx)
     register_echem_photovoltage_routes(flask_app, web_api_ctx)
     register_echem_lineshape_routes(flask_app, web_api_ctx)
+    register_echem_quant_routes(flask_app, web_api_ctx)
     register_emg_analysis_routes(flask_app, web_api_ctx)
     register_emg_peak_selection_routes(flask_app, web_api_ctx)
     register_fluorescence_routes(flask_app, web_api_ctx)

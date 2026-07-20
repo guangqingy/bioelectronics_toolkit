@@ -1,5 +1,5 @@
 {% set abf_active = active in ['abf_viewer', 'abf_batch', 'abf_figure', 'abf_peaks'] %}
-{% set echem_active = active in ['echem_photocurrent', 'echem_photovoltage', 'echem_lineshape'] %}
+{% set echem_active = active in ['echem_photocurrent', 'echem_photovoltage', 'echem_lineshape', 'echem_quant'] %}
 {% set emg_active = active in ['emg_analysis', 'emg_peak_selection'] %}
 {% set data_active = active in ['csv_viewer'] %}
 {% set fl_active = active in ['fluorescence', 'fluorescence_lif', 'fluorescence_3d_stacking', 'fluorescence_roi', 'fluorescence_gif', 'fluorescence_timecourse', 'fluorescence_kymograph'] %}
@@ -31,6 +31,7 @@
           <a class="nav-dropdown-item {% if active=='echem_photocurrent' %}active{% endif %}" href="/echem/photocurrent" title="Photocurrent Detector">Photocurrent</a>
           <a class="nav-dropdown-item {% if active=='echem_photovoltage' %}active{% endif %}" href="/echem/photovoltage" title="Photovoltage Detector">Photovoltage</a>
           <a class="nav-dropdown-item {% if active=='echem_lineshape' %}active{% endif %}" href="/echem/lineshape" title="Average exported pair/pulse segments from Photocurrent or Photovoltage">Waveform Averager</a>
+          <a class="nav-dropdown-item {% if active=='echem_quant' %}active{% endif %}" href="/echem/quant" title="Batch quantification of a session folder, grouped by condition tokens parsed from filenames">Quantification</a>
         </div>
       </div>
 
